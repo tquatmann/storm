@@ -1094,6 +1094,17 @@ namespace storm {
                 std::unique_ptr<storm::modelchecker::CheckResult> result;
                 try {
                     result = storm::api::computeExpectedVisitingTimesWithSparseEngine<ValueType>(mpi.env, sparseModel);
+                    if (result->isExplicitQuantitativeCheckResult()) {
+                        STORM_PRINT("Accumulated values for labels:" << std::endl);
+                        auto labels = sparseModel->getStateLabeling().getLabels();
+                        for (auto const label : labels) {
+                            ValueType value = storm::utility::zero<ValueType>();
+                            for (auto stateIndex : sparseModel->getStateLabeling().getStates(label)) {
+                                value += result->template asExplicitQuantitativeCheckResult<ValueType>()[stateIndex];
+                            }
+                            STORM_PRINT("\t" << label << ": " << value << std::endl);
+                        }
+                    }
                 } catch (storm::exceptions::BaseException const& ex) {
                     STORM_LOG_WARN("Cannot compute expected visiting times: " << ex.what());
                 }
