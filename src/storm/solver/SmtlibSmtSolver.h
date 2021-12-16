@@ -71,7 +71,7 @@ class SmtlibSmtSolver : public SmtSolver {
     //	virtual std::vector<storm::expressions::SimpleValuation> allSat(std::vector<storm::expressions::Variable> const& important) override;
 
     //	virtual uint_fast64_t allSat(std::vector<storm::expressions::Variable> const& important, std::function<bool(storm::expressions::SimpleValuation&)>
-    //const& callback) override;
+    // const& callback) override;
 
     //	virtual uint_fast64_t allSat(std::vector<storm::expressions::Variable> const& important, std::function<bool(ModelReference&)> const& callback) override;
 

@@ -224,9 +224,10 @@ bool TopologicalCudaMinMaxLinearEquationSolver<ValueType>::internalSolveEquation
 
                 // STORM_LOG_INFO("Device has " << getTotalCudaMemory() << " Bytes of Memory with " << getFreeCudaMemory() << "Bytes free (" <<
                 // (static_cast<double>(getFreeCudaMemory()) / static_cast<double>(getTotalCudaMemory())) * 100 << "%)."); STORM_LOG_INFO("We will allocate " <<
-                // (sizeof(uint_fast64_t)* sccSubmatrix.rowIndications.size() + sizeof(uint_fast64_t)* sccSubmatrix.columnsAndValues.size() * 2 + sizeof(double)*
-                // sccSubX.size() + sizeof(double)* sccSubX.size() + sizeof(double)* sccSubB.size() + sizeof(double)* sccSubB.size() + sizeof(uint_fast64_t)*
-                // sccSubNondeterministicChoiceIndices.size()) << " Bytes."); STORM_LOG_INFO("The CUDA Runtime Version is " << getRuntimeCudaVersion());
+                // (sizeof(uint_fast64_t)* sccSubmatrix.rowIndications.size() + sizeof(uint_fast64_t)* sccSubmatrix.columnsAndValues.size() * 2 +
+                // sizeof(double)* sccSubX.size() + sizeof(double)* sccSubX.size() + sizeof(double)* sccSubB.size() + sizeof(double)* sccSubB.size() +
+                // sizeof(uint_fast64_t)* sccSubNondeterministicChoiceIndices.size()) << " Bytes."); STORM_LOG_INFO("The CUDA Runtime Version is " <<
+                // getRuntimeCudaVersion());
 
                 bool result = false;
                 localIterations = 0;
