@@ -65,7 +65,9 @@ Model::Model(std::string const& name, ModelType const& modelType, uint64_t versi
     STORM_LOG_ASSERT(actionIndex == SILENT_ACTION_INDEX, "Illegal silent action index.");
 }
 
-Model::Model(Model const& other) { *this = other; }
+Model::Model(Model const& other) {
+    *this = other;
+}
 
 Model& Model::operator=(Model const& other) {
     if (this != &other) {
@@ -107,21 +109,37 @@ Model& Model::operator=(Model const& other) {
     return *this;
 }
 
-storm::expressions::ExpressionManager& Model::getManager() const { return *expressionManager; }
+storm::expressions::ExpressionManager& Model::getManager() const {
+    return *expressionManager;
+}
 
-uint64_t Model::getJaniVersion() const { return version; }
+uint64_t Model::getJaniVersion() const {
+    return version;
+}
 
-ModelType const& Model::getModelType() const { return modelType; }
+ModelType const& Model::getModelType() const {
+    return modelType;
+}
 
-void Model::setModelType(ModelType const& newModelType) { modelType = newModelType; }
+void Model::setModelType(ModelType const& newModelType) {
+    modelType = newModelType;
+}
 
-ModelFeatures const& Model::getModelFeatures() const { return modelFeatures; }
+ModelFeatures const& Model::getModelFeatures() const {
+    return modelFeatures;
+}
 
-ModelFeatures& Model::getModelFeatures() { return modelFeatures; }
+ModelFeatures& Model::getModelFeatures() {
+    return modelFeatures;
+}
 
-std::string const& Model::getName() const { return name; }
+std::string const& Model::getName() const {
+    return name;
+}
 
-void Model::setName(std::string const& newName) { name = newName; }
+void Model::setName(std::string const& newName) {
+    name = newName;
+}
 
 struct ConditionalMetaEdge {
     ConditionalMetaEdge() : actionIndex(0) {
@@ -606,9 +624,13 @@ uint64_t Model::addAction(Action const& action) {
     return actions.size() - 1;
 }
 
-Action const& Model::getAction(uint64_t index) const { return actions[index]; }
+Action const& Model::getAction(uint64_t index) const {
+    return actions[index];
+}
 
-bool Model::hasAction(std::string const& name) const { return actionToIndex.find(name) != actionToIndex.end(); }
+bool Model::hasAction(std::string const& name) const {
+    return actionToIndex.find(name) != actionToIndex.end();
+}
 
 uint64_t Model::getActionIndex(std::string const& name) const {
     auto it = actionToIndex.find(name);
@@ -616,11 +638,17 @@ uint64_t Model::getActionIndex(std::string const& name) const {
     return it->second;
 }
 
-std::unordered_map<std::string, uint64_t> const& Model::getActionToIndexMap() const { return actionToIndex; }
+std::unordered_map<std::string, uint64_t> const& Model::getActionToIndexMap() const {
+    return actionToIndex;
+}
 
-std::vector<Action> const& Model::getActions() const { return actions; }
+std::vector<Action> const& Model::getActions() const {
+    return actions;
+}
 
-storm::storage::FlatSet<uint64_t> const& Model::getNonsilentActionIndices() const { return nonsilentActionIndices; }
+storm::storage::FlatSet<uint64_t> const& Model::getNonsilentActionIndices() const {
+    return nonsilentActionIndices;
+}
 
 void Model::addConstant(Constant const& constant) {
     auto it = constantToIndex.find(constant.getName());
@@ -631,7 +659,9 @@ void Model::addConstant(Constant const& constant) {
     // Note that we should not return a reference to the inserted constant as it might get invalidated when more constants are added.
 }
 
-bool Model::hasConstant(std::string const& name) const { return constantToIndex.find(name) != constantToIndex.end(); }
+bool Model::hasConstant(std::string const& name) const {
+    return constantToIndex.find(name) != constantToIndex.end();
+}
 
 void Model::removeConstant(std::string const& name) {
     auto pos = constantToIndex.find(name);
@@ -655,9 +685,13 @@ Constant const& Model::getConstant(std::string const& name) const {
     return constants[it->second];
 }
 
-std::vector<Constant> const& Model::getConstants() const { return constants; }
+std::vector<Constant> const& Model::getConstants() const {
+    return constants;
+}
 
-std::vector<Constant>& Model::getConstants() { return constants; }
+std::vector<Constant>& Model::getConstants() {
+    return constants;
+}
 
 std::size_t Model::getNumberOfEdges() const {
     size_t res = 0;
@@ -675,13 +709,21 @@ std::size_t Model::getTotalNumberOfNonTransientVariables() const {
     return res;
 }
 
-InformationObject Model::getModelInformation() const { return collectModelInformation(*this); }
+InformationObject Model::getModelInformation() const {
+    return collectModelInformation(*this);
+}
 
-Variable const& Model::addVariable(Variable const& variable) { return globalVariables.addVariable(variable); }
+Variable const& Model::addVariable(Variable const& variable) {
+    return globalVariables.addVariable(variable);
+}
 
-VariableSet& Model::getGlobalVariables() { return globalVariables; }
+VariableSet& Model::getGlobalVariables() {
+    return globalVariables;
+}
 
-VariableSet const& Model::getGlobalVariables() const { return globalVariables; }
+VariableSet const& Model::getGlobalVariables() const {
+    return globalVariables;
+}
 
 std::set<storm::expressions::Variable> Model::getAllExpressionVariables(bool includeLocationExpressionVariables) const {
     std::set<storm::expressions::Variable> result;
@@ -711,9 +753,13 @@ std::set<storm::expressions::Variable> Model::getAllLocationExpressionVariables(
     return result;
 }
 
-bool Model::hasGlobalVariable(std::string const& name) const { return globalVariables.hasVariable(name); }
+bool Model::hasGlobalVariable(std::string const& name) const {
+    return globalVariables.hasVariable(name);
+}
 
-Variable const& Model::getGlobalVariable(std::string const& name) const { return globalVariables.getVariable(name); }
+Variable const& Model::getGlobalVariable(std::string const& name) const {
+    return globalVariables.getVariable(name);
+}
 
 bool Model::hasNonGlobalTransientVariable() const {
     for (auto const& automaton : automata) {
@@ -731,15 +777,25 @@ FunctionDefinition const& Model::addFunctionDefinition(FunctionDefinition const&
     return insertionRes.first->second;
 }
 
-std::unordered_map<std::string, FunctionDefinition> const& Model::getGlobalFunctionDefinitions() const { return globalFunctions; }
+std::unordered_map<std::string, FunctionDefinition> const& Model::getGlobalFunctionDefinitions() const {
+    return globalFunctions;
+}
 
-std::unordered_map<std::string, FunctionDefinition>& Model::getGlobalFunctionDefinitions() { return globalFunctions; }
+std::unordered_map<std::string, FunctionDefinition>& Model::getGlobalFunctionDefinitions() {
+    return globalFunctions;
+}
 
-storm::expressions::ExpressionManager& Model::getExpressionManager() const { return *expressionManager; }
+storm::expressions::ExpressionManager& Model::getExpressionManager() const {
+    return *expressionManager;
+}
 
-bool Model::hasNonTrivialRewardExpression() const { return !nonTrivialRewardModels.empty(); }
+bool Model::hasNonTrivialRewardExpression() const {
+    return !nonTrivialRewardModels.empty();
+}
 
-bool Model::isNonTrivialRewardModelExpression(std::string const& identifier) const { return nonTrivialRewardModels.count(identifier) > 0; }
+bool Model::isNonTrivialRewardModelExpression(std::string const& identifier) const {
+    return nonTrivialRewardModels.count(identifier) > 0;
+}
 
 bool Model::addNonTrivialRewardExpression(std::string const& identifier, storm::expressions::Expression const& rewardExpression) {
     if (isNonTrivialRewardModelExpression(identifier)) {
@@ -795,9 +851,13 @@ std::vector<std::pair<std::string, storm::expressions::Expression>> Model::getAl
     return result;
 }
 
-std::unordered_map<std::string, storm::expressions::Expression> const& Model::getNonTrivialRewardExpressions() const { return nonTrivialRewardModels; }
+std::unordered_map<std::string, storm::expressions::Expression> const& Model::getNonTrivialRewardExpressions() const {
+    return nonTrivialRewardModels;
+}
 
-std::unordered_map<std::string, storm::expressions::Expression>& Model::getNonTrivialRewardExpressions() { return nonTrivialRewardModels; }
+std::unordered_map<std::string, storm::expressions::Expression>& Model::getNonTrivialRewardExpressions() {
+    return nonTrivialRewardModels;
+}
 
 uint64_t Model::addAutomaton(Automaton const& automaton) {
     auto it = automatonToIndex.find(automaton.getName());
@@ -808,13 +868,21 @@ uint64_t Model::addAutomaton(Automaton const& automaton) {
     return automata.size() - 1;
 }
 
-std::vector<Automaton>& Model::getAutomata() { return automata; }
+std::vector<Automaton>& Model::getAutomata() {
+    return automata;
+}
 
-std::vector<Automaton> const& Model::getAutomata() const { return automata; }
+std::vector<Automaton> const& Model::getAutomata() const {
+    return automata;
+}
 
-bool Model::hasAutomaton(std::string const& name) const { return automatonToIndex.find(name) != automatonToIndex.end(); }
+bool Model::hasAutomaton(std::string const& name) const {
+    return automatonToIndex.find(name) != automatonToIndex.end();
+}
 
-void Model::replaceAutomaton(uint64_t index, Automaton const& automaton) { automata[index] = automaton; }
+void Model::replaceAutomaton(uint64_t index, Automaton const& automaton) {
+    automata[index] = automaton;
+}
 
 Automaton& Model::getAutomaton(std::string const& name) {
     auto it = automatonToIndex.find(name);
@@ -822,9 +890,13 @@ Automaton& Model::getAutomaton(std::string const& name) {
     return automata[it->second];
 }
 
-Automaton& Model::getAutomaton(uint64_t index) { return automata[index]; }
+Automaton& Model::getAutomaton(uint64_t index) {
+    return automata[index];
+}
 
-Automaton const& Model::getAutomaton(uint64_t index) const { return automata[index]; }
+Automaton const& Model::getAutomaton(uint64_t index) const {
+    return automata[index];
+}
 
 Automaton const& Model::getAutomaton(std::string const& name) const {
     auto it = automatonToIndex.find(name);
@@ -838,7 +910,9 @@ uint64_t Model::getAutomatonIndex(std::string const& name) const {
     return it->second;
 }
 
-std::size_t Model::getNumberOfAutomata() const { return automata.size(); }
+std::size_t Model::getNumberOfAutomata() const {
+    return automata.size();
+}
 
 std::shared_ptr<Composition> Model::getStandardSystemComposition() const {
     // Determine the action indices used by each of the automata and create the standard subcompositions.
@@ -876,7 +950,9 @@ std::shared_ptr<Composition> Model::getStandardSystemComposition() const {
     return std::make_shared<ParallelComposition>(subcompositions, synchVectors);
 }
 
-Composition const& Model::getSystemComposition() const { return *composition; }
+Composition const& Model::getSystemComposition() const {
+    return *composition;
+}
 
 class CompositionSimplificationVisitor : public CompositionVisitor {
    public:
@@ -941,9 +1017,13 @@ void Model::simplifyComposition() {
     this->setSystemComposition(newComposition);
 }
 
-void Model::setSystemComposition(std::shared_ptr<Composition> const& composition) { this->composition = composition; }
+void Model::setSystemComposition(std::shared_ptr<Composition> const& composition) {
+    this->composition = composition;
+}
 
-void Model::setStandardSystemComposition() { setSystemComposition(getStandardSystemComposition()); }
+void Model::setStandardSystemComposition() {
+    setSystemComposition(getStandardSystemComposition());
+}
 
 std::set<std::string> Model::getActionNames(bool includeSilent) const {
     std::set<std::string> result;
@@ -1127,7 +1207,9 @@ void Model::substituteFunctions() {
     substituteFunctions(emptyPropertyVector);
 }
 
-void Model::substituteFunctions(std::vector<Property>& properties) { eliminateFunctions(*this, properties); }
+void Model::substituteFunctions(std::vector<Property>& properties) {
+    eliminateFunctions(*this, properties);
+}
 
 bool Model::containsArrayVariables() const {
     if (getGlobalVariables().containsArrayVariables()) {
@@ -1189,9 +1271,13 @@ void Model::setInitialStatesRestriction(storm::expressions::Expression const& in
     this->initialStatesRestriction = initialStatesRestriction;
 }
 
-bool Model::hasInitialStatesRestriction() const { return this->initialStatesRestriction.isInitialized(); }
+bool Model::hasInitialStatesRestriction() const {
+    return this->initialStatesRestriction.isInitialized();
+}
 
-storm::expressions::Expression const& Model::getInitialStatesRestriction() const { return initialStatesRestriction; }
+storm::expressions::Expression const& Model::getInitialStatesRestriction() const {
+    return initialStatesRestriction;
+}
 
 bool Model::hasNonTrivialInitialStates() const {
     if (this->hasInitialStatesRestriction() && !this->getInitialStatesRestriction().isTrue()) {
@@ -1270,9 +1356,13 @@ storm::expressions::Expression Model::getInitialStatesExpression(std::vector<std
     return result;
 }
 
-bool Model::isDeterministicModel() const { return this->getModelType() == ModelType::DTMC || this->getModelType() == ModelType::CTMC; }
+bool Model::isDeterministicModel() const {
+    return this->getModelType() == ModelType::DTMC || this->getModelType() == ModelType::CTMC;
+}
 
-bool Model::isDiscreteTimeModel() const { return this->getModelType() == ModelType::DTMC || this->getModelType() == ModelType::MDP; }
+bool Model::isDiscreteTimeModel() const {
+    return this->getModelType() == ModelType::DTMC || this->getModelType() == ModelType::MDP;
+}
 
 std::vector<storm::expressions::Expression> Model::getAllRangeExpressions(
     std::vector<std::reference_wrapper<storm::jani::Automaton const>> const& automata) const {
@@ -1486,9 +1576,13 @@ bool Model::reusesActionsInComposition() const {
     return false;
 }
 
-uint64_t Model::encodeAutomatonAndEdgeIndices(uint64_t automatonIndex, uint64_t edgeIndex) { return automatonIndex << 32 | edgeIndex; }
+uint64_t Model::encodeAutomatonAndEdgeIndices(uint64_t automatonIndex, uint64_t edgeIndex) {
+    return automatonIndex << 32 | edgeIndex;
+}
 
-std::pair<uint64_t, uint64_t> Model::decodeAutomatonAndEdgeIndices(uint64_t index) { return std::make_pair(index >> 32, index & ((1ull << 32) - 1)); }
+std::pair<uint64_t, uint64_t> Model::decodeAutomatonAndEdgeIndices(uint64_t index) {
+    return std::make_pair(index >> 32, index & ((1ull << 32) - 1));
+}
 
 Model Model::restrictEdges(storm::storage::FlatSet<uint_fast64_t> const& automataAndEdgeIndices) const {
     Model result(*this);

@@ -15,7 +15,9 @@ namespace resources {
  * Get used CPU time.
  * @return CPU time in seconds.
  */
-inline std::size_t usedCPU() { return std::size_t(clock()) / CLOCKS_PER_SEC; }
+inline std::size_t usedCPU() {
+    return std::size_t(clock()) / CLOCKS_PER_SEC;
+}
 
 /*!
  * Get memory limit.

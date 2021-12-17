@@ -91,13 +91,21 @@ class BisimulationDecomposition : public Decomposition<StateBlock> {
             type = t;
         }
 
-        BisimulationType getType() const { return this->type; }
+        BisimulationType getType() const {
+            return this->type;
+        }
 
-        bool getBounded() const { return this->bounded; }
+        bool getBounded() const {
+            return this->bounded;
+        }
 
-        bool getKeepRewards() const { return this->keepRewards; }
+        bool getKeepRewards() const {
+            return this->keepRewards;
+        }
 
-        bool isOptimizationDirectionSet() const { return static_cast<bool>(optimalityType); }
+        bool isOptimizationDirectionSet() const {
+            return static_cast<bool>(optimalityType);
+        }
 
         OptimizationDirection getOptimizationDirection() const {
             STORM_LOG_ASSERT(optimalityType, "Optimality type not set.");

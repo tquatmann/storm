@@ -26,13 +26,21 @@ SmtratSmtSolver::SmtratSmtSolver(storm::expressions::ExpressionManager& manager)
     // settingsObjects.clear();
 }
 
-SmtratSmtSolver::~SmtratSmtSolver() { delete solver; }
+SmtratSmtSolver::~SmtratSmtSolver() {
+    delete solver;
+}
 
-void SmtratSmtSolver::push() { this->solver->push(); }
+void SmtratSmtSolver::push() {
+    this->solver->push();
+}
 
-void SmtratSmtSolver::pop() { this->solver->pop(); }
+void SmtratSmtSolver::pop() {
+    this->solver->pop();
+}
 
-void SmtratSmtSolver::pop(uint_fast64_t n) { this->solver->pop(static_cast<unsigned int>(n)); }
+void SmtratSmtSolver::pop(uint_fast64_t n) {
+    this->solver->pop(static_cast<unsigned int>(n));
+}
 
 SmtSolver::CheckResult SmtratSmtSolver::check() {
     switch (this->solver->check()) {
@@ -52,14 +60,18 @@ SmtSolver::CheckResult SmtratSmtSolver::check() {
     }
     return this->lastResult;
 }
-void SmtratSmtSolver::add(const storm::RawPolynomial& pol, storm::CompareRelation cr) { this->solver->add(smtrat::FormulaT(pol, cr)); }
+void SmtratSmtSolver::add(const storm::RawPolynomial& pol, storm::CompareRelation cr) {
+    this->solver->add(smtrat::FormulaT(pol, cr));
+}
 
 template<>
 smtrat::Model SmtratSmtSolver::getModel() const {
     return this->solver->model();
 }
 
-std::vector<smtrat::FormulasT> const& SmtratSmtSolver::getUnsatisfiableCores() const { return this->solver->infeasibleSubsets(); }
+std::vector<smtrat::FormulasT> const& SmtratSmtSolver::getUnsatisfiableCores() const {
+    return this->solver->infeasibleSubsets();
+}
 
 }  // namespace solver
 }  // namespace storm

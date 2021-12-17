@@ -13,17 +13,29 @@ ConditionalFormula::ConditionalFormula(std::shared_ptr<Formula const> const& sub
                     "Invalid context for formula.");
 }
 
-Formula const& ConditionalFormula::getSubformula() const { return *subformula; }
+Formula const& ConditionalFormula::getSubformula() const {
+    return *subformula;
+}
 
-Formula const& ConditionalFormula::getConditionFormula() const { return *conditionFormula; }
+Formula const& ConditionalFormula::getConditionFormula() const {
+    return *conditionFormula;
+}
 
-FormulaContext const& ConditionalFormula::getContext() const { return context; }
+FormulaContext const& ConditionalFormula::getContext() const {
+    return context;
+}
 
-bool ConditionalFormula::isConditionalProbabilityFormula() const { return context == FormulaContext::Probability; }
+bool ConditionalFormula::isConditionalProbabilityFormula() const {
+    return context == FormulaContext::Probability;
+}
 
-bool ConditionalFormula::isConditionalRewardFormula() const { return context == FormulaContext::Reward; }
+bool ConditionalFormula::isConditionalRewardFormula() const {
+    return context == FormulaContext::Reward;
+}
 
-boost::any ConditionalFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any ConditionalFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void ConditionalFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     this->getSubformula().gatherAtomicExpressionFormulas(atomicExpressionFormulas);
@@ -45,9 +57,13 @@ void ConditionalFormula::gatherUsedVariables(std::set<storm::expressions::Variab
     this->getConditionFormula().gatherUsedVariables(usedVariables);
 }
 
-bool ConditionalFormula::hasQualitativeResult() const { return false; }
+bool ConditionalFormula::hasQualitativeResult() const {
+    return false;
+}
 
-bool ConditionalFormula::hasQuantitativeResult() const { return true; }
+bool ConditionalFormula::hasQuantitativeResult() const {
+    return true;
+}
 
 std::ostream& ConditionalFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

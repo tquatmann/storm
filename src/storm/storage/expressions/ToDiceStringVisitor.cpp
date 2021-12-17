@@ -6,7 +6,9 @@ namespace storm {
 namespace expressions {
 ToDiceStringVisitor::ToDiceStringVisitor(uint64 nrBits) : nrBits(nrBits) {}
 
-std::string ToDiceStringVisitor::toString(Expression const& expression) { return toString(expression.getBaseExpressionPointer().get()); }
+std::string ToDiceStringVisitor::toString(Expression const& expression) {
+    return toString(expression.getBaseExpressionPointer().get());
+}
 
 std::string ToDiceStringVisitor::toString(BaseExpression const* expression) {
     stream.str("");

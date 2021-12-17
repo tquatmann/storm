@@ -18,7 +18,9 @@ StateLabeling::StateLabeling(ItemLabeling const&& itemLab) : ItemLabeling(itemLa
     // Intentionally left empty.
 }
 
-bool StateLabeling::isStateLabeling() const { return true; }
+bool StateLabeling::isStateLabeling() const {
+    return true;
+}
 
 bool StateLabeling::operator==(StateLabeling const& other) const {
     if (itemCount != other.itemCount) {
@@ -38,11 +40,17 @@ bool StateLabeling::operator==(StateLabeling const& other) const {
     return true;
 }
 
-StateLabeling StateLabeling::getSubLabeling(storm::storage::BitVector const& states) const { return StateLabeling(ItemLabeling::getSubLabeling(states)); }
+StateLabeling StateLabeling::getSubLabeling(storm::storage::BitVector const& states) const {
+    return StateLabeling(ItemLabeling::getSubLabeling(states));
+}
 
-std::set<std::string> StateLabeling::getLabelsOfState(storm::storage::sparse::state_type state) const { return ItemLabeling::getLabelsOfItem(state); }
+std::set<std::string> StateLabeling::getLabelsOfState(storm::storage::sparse::state_type state) const {
+    return ItemLabeling::getLabelsOfItem(state);
+}
 
-void StateLabeling::addLabelToState(std::string const& label, storm::storage::sparse::state_type state) { ItemLabeling::addLabelToItem(label, state); }
+void StateLabeling::addLabelToState(std::string const& label, storm::storage::sparse::state_type state) {
+    ItemLabeling::addLabelToItem(label, state);
+}
 
 void StateLabeling::removeLabelFromState(std::string const& label, storm::storage::sparse::state_type state) {
     ItemLabeling::removeLabelFromItem(label, state);
@@ -52,11 +60,17 @@ bool StateLabeling::getStateHasLabel(std::string const& label, storm::storage::s
     return ItemLabeling::getItemHasLabel(label, state);
 }
 
-storm::storage::BitVector const& StateLabeling::getStates(std::string const& label) const { return ItemLabeling::getItems(label); }
+storm::storage::BitVector const& StateLabeling::getStates(std::string const& label) const {
+    return ItemLabeling::getItems(label);
+}
 
-void StateLabeling::setStates(std::string const& label, storage::BitVector const& labeling) { ItemLabeling::setItems(label, labeling); }
+void StateLabeling::setStates(std::string const& label, storage::BitVector const& labeling) {
+    ItemLabeling::setItems(label, labeling);
+}
 
-void StateLabeling::setStates(std::string const& label, storage::BitVector&& labeling) { ItemLabeling::setItems(label, labeling); }
+void StateLabeling::setStates(std::string const& label, storage::BitVector&& labeling) {
+    ItemLabeling::setItems(label, labeling);
+}
 
 std::ostream& operator<<(std::ostream& out, StateLabeling const& labeling) {
     labeling.printLabelingInformationToStream(out);

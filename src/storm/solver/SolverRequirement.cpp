@@ -10,7 +10,9 @@ SolverRequirement::SolverRequirement() : enabled(false), critical(false) {
     // Intentionally left empty
 }
 
-SolverRequirement::operator bool() const { return enabled; }
+SolverRequirement::operator bool() const {
+    return enabled;
+}
 
 void SolverRequirement::enable(bool critical) {
     this->enabled = true;
@@ -22,7 +24,9 @@ void SolverRequirement::clear() {
     critical = false;
 }
 
-bool SolverRequirement::isCritical() const { return this->critical; }
+bool SolverRequirement::isCritical() const {
+    return this->critical;
+}
 
 }  // namespace solver
 }  // namespace storm

@@ -27,20 +27,30 @@ class TimeBoundReference {
 
     TimeBoundReference(TimeBoundReference const& other) = default;
 
-    TimeBoundType getType() const { return type; }
+    TimeBoundType getType() const {
+        return type;
+    }
 
-    bool isStepBound() const { return type == TimeBoundType::Steps; }
+    bool isStepBound() const {
+        return type == TimeBoundType::Steps;
+    }
 
-    bool isTimeBound() const { return type == TimeBoundType::Time; }
+    bool isTimeBound() const {
+        return type == TimeBoundType::Time;
+    }
 
-    bool isRewardBound() const { return type == TimeBoundType::Reward; }
+    bool isRewardBound() const {
+        return type == TimeBoundType::Reward;
+    }
 
     std::string const& getRewardName() const {
         assert(isRewardBound());
         return rewardName;
     }
 
-    bool hasRewardAccumulation() const { return rewardAccumulation.is_initialized(); }
+    bool hasRewardAccumulation() const {
+        return rewardAccumulation.is_initialized();
+    }
 
     RewardAccumulation const& getRewardAccumulation() const {
         assert(isRewardBound());

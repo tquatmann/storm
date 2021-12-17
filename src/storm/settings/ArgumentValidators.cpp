@@ -119,7 +119,9 @@ bool MultipleChoiceValidator::isValid(std::string const& value) {
     return false;
 }
 
-std::string MultipleChoiceValidator::toString() const { return "in {" + boost::join(legalValues, ", ") + "}"; }
+std::string MultipleChoiceValidator::toString() const {
+    return "in {" + boost::join(legalValues, ", ") + "}";
+}
 
 std::shared_ptr<ArgumentValidator<int64_t>> ArgumentValidatorFactory::createIntegerRangeValidatorExcluding(int_fast64_t lowerBound, int_fast64_t upperBound) {
     return createRangeValidatorExcluding<int64_t>(lowerBound, upperBound);

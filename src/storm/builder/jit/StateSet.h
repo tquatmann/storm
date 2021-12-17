@@ -9,7 +9,9 @@ namespace jit {
 template<typename StateType>
 class StateSet {
    public:
-    StateType const& peek() const { return storage.front(); }
+    StateType const& peek() const {
+        return storage.front();
+    }
 
     StateType get() {
         StateType result = std::move(storage.front());
@@ -17,9 +19,13 @@ class StateSet {
         return result;
     }
 
-    void add(StateType const& state) { storage.push(state); }
+    void add(StateType const& state) {
+        storage.push(state);
+    }
 
-    bool empty() const { return storage.empty(); }
+    bool empty() const {
+        return storage.empty();
+    }
 
    private:
     std::queue<StateType> storage;

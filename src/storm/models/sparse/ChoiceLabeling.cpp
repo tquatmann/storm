@@ -18,7 +18,9 @@ ChoiceLabeling::ChoiceLabeling(ItemLabeling const&& itemLab) : ItemLabeling(item
     // Intentionally left empty.
 }
 
-bool ChoiceLabeling::isChoiceLabeling() const { return true; }
+bool ChoiceLabeling::isChoiceLabeling() const {
+    return true;
+}
 
 bool ChoiceLabeling::operator==(ChoiceLabeling const& other) const {
     if (itemCount != other.itemCount) {
@@ -38,19 +40,33 @@ bool ChoiceLabeling::operator==(ChoiceLabeling const& other) const {
     return true;
 }
 
-ChoiceLabeling ChoiceLabeling::getSubLabeling(storm::storage::BitVector const& choices) const { return ChoiceLabeling(ItemLabeling::getSubLabeling(choices)); }
+ChoiceLabeling ChoiceLabeling::getSubLabeling(storm::storage::BitVector const& choices) const {
+    return ChoiceLabeling(ItemLabeling::getSubLabeling(choices));
+}
 
-std::set<std::string> ChoiceLabeling::getLabelsOfChoice(uint64_t choice) const { return this->getLabelsOfItem(choice); }
+std::set<std::string> ChoiceLabeling::getLabelsOfChoice(uint64_t choice) const {
+    return this->getLabelsOfItem(choice);
+}
 
-void ChoiceLabeling::addLabelToChoice(std::string const& label, uint64_t choice) { return ItemLabeling::addLabelToItem(label, choice); }
+void ChoiceLabeling::addLabelToChoice(std::string const& label, uint64_t choice) {
+    return ItemLabeling::addLabelToItem(label, choice);
+}
 
-bool ChoiceLabeling::getChoiceHasLabel(std::string const& label, uint64_t choice) const { return this->getItemHasLabel(label, choice); }
+bool ChoiceLabeling::getChoiceHasLabel(std::string const& label, uint64_t choice) const {
+    return this->getItemHasLabel(label, choice);
+}
 
-storm::storage::BitVector const& ChoiceLabeling::getChoices(std::string const& label) const { return this->getItems(label); }
+storm::storage::BitVector const& ChoiceLabeling::getChoices(std::string const& label) const {
+    return this->getItems(label);
+}
 
-void ChoiceLabeling::setChoices(std::string const& label, storage::BitVector const& labeling) { this->setItems(label, labeling); }
+void ChoiceLabeling::setChoices(std::string const& label, storage::BitVector const& labeling) {
+    this->setItems(label, labeling);
+}
 
-void ChoiceLabeling::setChoices(std::string const& label, storage::BitVector&& labeling) { this->setItems(label, labeling); }
+void ChoiceLabeling::setChoices(std::string const& label, storage::BitVector&& labeling) {
+    this->setItems(label, labeling);
+}
 
 std::ostream& operator<<(std::ostream& out, ChoiceLabeling const& labeling) {
     out << "Choice ";

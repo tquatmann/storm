@@ -8,17 +8,25 @@ AtomicExpressionFormula::AtomicExpressionFormula(storm::expressions::Expression 
     // Intentionally left empty.
 }
 
-bool AtomicExpressionFormula::isAtomicExpressionFormula() const { return true; }
+bool AtomicExpressionFormula::isAtomicExpressionFormula() const {
+    return true;
+}
 
-boost::any AtomicExpressionFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any AtomicExpressionFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-storm::expressions::Expression const& AtomicExpressionFormula::getExpression() const { return expression; }
+storm::expressions::Expression const& AtomicExpressionFormula::getExpression() const {
+    return expression;
+}
 
 void AtomicExpressionFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     atomicExpressionFormulas.push_back(std::dynamic_pointer_cast<AtomicExpressionFormula const>(this->shared_from_this()));
 }
 
-void AtomicExpressionFormula::gatherUsedVariables(std::set<storm::expressions::Variable>& usedVariables) const { expression.gatherVariables(usedVariables); }
+void AtomicExpressionFormula::gatherUsedVariables(std::set<storm::expressions::Variable>& usedVariables) const {
+    expression.gatherVariables(usedVariables);
+}
 
 std::ostream& AtomicExpressionFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     bool parentheses = allowParentheses & (this->expression.isLiteral() || this->expression.isVariable());

@@ -15,7 +15,9 @@ BinaryBooleanFunctionExpression::BinaryBooleanFunctionExpression(ExpressionManag
     // Intentionally left empty.
 }
 
-BinaryBooleanFunctionExpression::OperatorType BinaryBooleanFunctionExpression::getOperatorType() const { return this->operatorType; }
+BinaryBooleanFunctionExpression::OperatorType BinaryBooleanFunctionExpression::getOperatorType() const {
+    return this->operatorType;
+}
 
 storm::expressions::OperatorType BinaryBooleanFunctionExpression::getOperator() const {
     storm::expressions::OperatorType result = storm::expressions::OperatorType::And;
@@ -156,9 +158,13 @@ std::shared_ptr<BaseExpression const> BinaryBooleanFunctionExpression::simplify(
     }
 }
 
-boost::any BinaryBooleanFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BinaryBooleanFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool BinaryBooleanFunctionExpression::isBinaryBooleanFunctionExpression() const { return true; }
+bool BinaryBooleanFunctionExpression::isBinaryBooleanFunctionExpression() const {
+    return true;
+}
 
 void BinaryBooleanFunctionExpression::printToStream(std::ostream& stream) const {
     stream << "(" << *this->getFirstOperand();

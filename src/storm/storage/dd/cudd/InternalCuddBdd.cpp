@@ -26,9 +26,13 @@ InternalBdd<DdType::CUDD> InternalBdd<DdType::CUDD>::fromVector(InternalDdManage
                                                                         odd, sortedDdVariableIndices, filter)));
 }
 
-bool InternalBdd<DdType::CUDD>::operator==(InternalBdd<DdType::CUDD> const& other) const { return this->getCuddBdd() == other.getCuddBdd(); }
+bool InternalBdd<DdType::CUDD>::operator==(InternalBdd<DdType::CUDD> const& other) const {
+    return this->getCuddBdd() == other.getCuddBdd();
+}
 
-bool InternalBdd<DdType::CUDD>::operator!=(InternalBdd<DdType::CUDD> const& other) const { return !(*this == other); }
+bool InternalBdd<DdType::CUDD>::operator!=(InternalBdd<DdType::CUDD> const& other) const {
+    return !(*this == other);
+}
 
 InternalBdd<DdType::CUDD> InternalBdd<DdType::CUDD>::relationalProduct(InternalBdd<DdType::CUDD> const& relation,
                                                                        std::vector<InternalBdd<DdType::CUDD>> const& rowVariables,
@@ -151,7 +155,9 @@ InternalBdd<DdType::CUDD> InternalBdd<DdType::CUDD>::swapVariables(std::vector<I
     return InternalBdd<DdType::CUDD>(ddManager, this->getCuddBdd().SwapVariables(fromBdd, toBdd));
 }
 
-InternalBdd<DdType::CUDD> InternalBdd<DdType::CUDD>::getSupport() const { return InternalBdd<DdType::CUDD>(ddManager, this->getCuddBdd().Support()); }
+InternalBdd<DdType::CUDD> InternalBdd<DdType::CUDD>::getSupport() const {
+    return InternalBdd<DdType::CUDD>(ddManager, this->getCuddBdd().Support());
+}
 
 uint_fast64_t InternalBdd<DdType::CUDD>::getNonZeroCount(uint_fast64_t numberOfDdVariables) const {
     // If the number of DD variables is zero, CUDD returns a number greater 0 for constant nodes different from
@@ -162,17 +168,29 @@ uint_fast64_t InternalBdd<DdType::CUDD>::getNonZeroCount(uint_fast64_t numberOfD
     return static_cast<uint_fast64_t>(this->getCuddBdd().CountMinterm(static_cast<int>(numberOfDdVariables)));
 }
 
-uint_fast64_t InternalBdd<DdType::CUDD>::getLeafCount() const { return static_cast<uint_fast64_t>(this->getCuddBdd().CountLeaves()); }
+uint_fast64_t InternalBdd<DdType::CUDD>::getLeafCount() const {
+    return static_cast<uint_fast64_t>(this->getCuddBdd().CountLeaves());
+}
 
-uint_fast64_t InternalBdd<DdType::CUDD>::getNodeCount() const { return static_cast<uint_fast64_t>(this->getCuddBdd().nodeCount()); }
+uint_fast64_t InternalBdd<DdType::CUDD>::getNodeCount() const {
+    return static_cast<uint_fast64_t>(this->getCuddBdd().nodeCount());
+}
 
-bool InternalBdd<DdType::CUDD>::isOne() const { return this->getCuddBdd().IsOne(); }
+bool InternalBdd<DdType::CUDD>::isOne() const {
+    return this->getCuddBdd().IsOne();
+}
 
-bool InternalBdd<DdType::CUDD>::isZero() const { return this->getCuddBdd().IsZero(); }
+bool InternalBdd<DdType::CUDD>::isZero() const {
+    return this->getCuddBdd().IsZero();
+}
 
-uint_fast64_t InternalBdd<DdType::CUDD>::getIndex() const { return static_cast<uint_fast64_t>(this->getCuddBdd().NodeReadIndex()); }
+uint_fast64_t InternalBdd<DdType::CUDD>::getIndex() const {
+    return static_cast<uint_fast64_t>(this->getCuddBdd().NodeReadIndex());
+}
 
-uint_fast64_t InternalBdd<DdType::CUDD>::getLevel() const { return static_cast<uint_fast64_t>(ddManager->getCuddManager().ReadPerm(this->getIndex())); }
+uint_fast64_t InternalBdd<DdType::CUDD>::getLevel() const {
+    return static_cast<uint_fast64_t>(ddManager->getCuddManager().ReadPerm(this->getIndex()));
+}
 
 void InternalBdd<DdType::CUDD>::exportToDot(std::string const& filename, std::vector<std::string> const& ddVariableNamesAsStrings,
                                             bool showVariablesIfPossible) const {
@@ -212,9 +230,13 @@ void InternalBdd<DdType::CUDD>::exportToText(std::string const&) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Operation not supported");
 }
 
-cudd::BDD InternalBdd<DdType::CUDD>::getCuddBdd() const { return this->cuddBdd; }
+cudd::BDD InternalBdd<DdType::CUDD>::getCuddBdd() const {
+    return this->cuddBdd;
+}
 
-DdNode* InternalBdd<DdType::CUDD>::getCuddDdNode() const { return this->getCuddBdd().getNode(); }
+DdNode* InternalBdd<DdType::CUDD>::getCuddDdNode() const {
+    return this->getCuddBdd().getNode();
+}
 
 template<typename ValueType>
 InternalAdd<DdType::CUDD, ValueType> InternalBdd<DdType::CUDD>::toAdd() const {

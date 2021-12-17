@@ -16,28 +16,46 @@ Command::Command(uint_fast64_t globalIndex, bool markovian, uint_fast64_t action
     // Nothing to do here.
 }
 
-uint_fast64_t Command::getActionIndex() const { return this->actionIndex; }
+uint_fast64_t Command::getActionIndex() const {
+    return this->actionIndex;
+}
 
-bool Command::isMarkovian() const { return this->markovian; }
+bool Command::isMarkovian() const {
+    return this->markovian;
+}
 
-void Command::setMarkovian(bool value) { this->markovian = value; }
+void Command::setMarkovian(bool value) {
+    this->markovian = value;
+}
 
-std::string const& Command::getActionName() const { return this->actionName; }
+std::string const& Command::getActionName() const {
+    return this->actionName;
+}
 
-storm::expressions::Expression const& Command::getGuardExpression() const { return guardExpression; }
+storm::expressions::Expression const& Command::getGuardExpression() const {
+    return guardExpression;
+}
 
-std::size_t Command::getNumberOfUpdates() const { return this->updates.size(); }
+std::size_t Command::getNumberOfUpdates() const {
+    return this->updates.size();
+}
 
 storm::prism::Update const& Command::getUpdate(uint_fast64_t index) const {
     STORM_LOG_ASSERT(index < getNumberOfUpdates(), "Invalid index.");
     return this->updates[index];
 }
 
-std::vector<storm::prism::Update> const& Command::getUpdates() const { return this->updates; }
+std::vector<storm::prism::Update> const& Command::getUpdates() const {
+    return this->updates;
+}
 
-std::vector<storm::prism::Update>& Command::getUpdates() { return this->updates; }
+std::vector<storm::prism::Update>& Command::getUpdates() {
+    return this->updates;
+}
 
-uint_fast64_t Command::getGlobalIndex() const { return this->globalIndex; }
+uint_fast64_t Command::getGlobalIndex() const {
+    return this->globalIndex;
+}
 
 Command Command::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     std::vector<Update> newUpdates;
@@ -61,7 +79,9 @@ Command Command::substituteNonStandardPredicates() const {
                    this->getGuardExpression().substituteNonStandardPredicates().simplify(), newUpdates, this->getFilename(), this->getLineNumber());
 }
 
-bool Command::isLabeled() const { return labeled; }
+bool Command::isLabeled() const {
+    return labeled;
+}
 
 bool Command::containsVariablesOnlyInUpdateProbabilities(std::set<storm::expressions::Variable> const& undefinedConstantVariables) const {
     if (this->getGuardExpression().containsVariable(undefinedConstantVariables)) {

@@ -22,12 +22,20 @@ class DeterministicTransition {
 
     DeterministicTransition(StateId targetState) : DeterministicTransition({targetState, ProbabilityType(0)}) {}
 
-    StateId& targetState() { return mTransition.first; }
-    StateId const& targetState() const { return mTransition.first; }
+    StateId& targetState() {
+        return mTransition.first;
+    }
+    StateId const& targetState() const {
+        return mTransition.first;
+    }
 
-    ProbabilityType& probability() { return mTransition.second; }
+    ProbabilityType& probability() {
+        return mTransition.second;
+    }
 
-    ProbabilityType const& probability() const { return mTransition.second; }
+    ProbabilityType const& probability() const {
+        return mTransition.second;
+    }
 };
 }  // namespace storage
 }  // namespace storm

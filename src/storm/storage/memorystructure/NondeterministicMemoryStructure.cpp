@@ -19,15 +19,25 @@ NondeterministicMemoryStructure::NondeterministicMemoryStructure(std::vector<sto
     }
 }
 
-uint64_t NondeterministicMemoryStructure::getNumberOfStates() const { return transitions.size(); }
+uint64_t NondeterministicMemoryStructure::getNumberOfStates() const {
+    return transitions.size();
+}
 
-uint64_t NondeterministicMemoryStructure::getInitialState() const { return initialState; }
+uint64_t NondeterministicMemoryStructure::getInitialState() const {
+    return initialState;
+}
 
-storm::storage::BitVector const& NondeterministicMemoryStructure::getTransitions(uint64_t state) const { return transitions.at(state); }
+storm::storage::BitVector const& NondeterministicMemoryStructure::getTransitions(uint64_t state) const {
+    return transitions.at(state);
+}
 
-uint64_t NondeterministicMemoryStructure::getNumberOfOutgoingTransitions(uint64_t state) const { return getTransitions(state).getNumberOfSetBits(); }
+uint64_t NondeterministicMemoryStructure::getNumberOfOutgoingTransitions(uint64_t state) const {
+    return getTransitions(state).getNumberOfSetBits();
+}
 
-std::vector<storm::storage::BitVector> const& NondeterministicMemoryStructure::getTransitions() const { return transitions; }
+std::vector<storm::storage::BitVector> const& NondeterministicMemoryStructure::getTransitions() const {
+    return transitions;
+}
 
 std::string NondeterministicMemoryStructure::toString() const {
     std::string result = "NondeterministicMemoryStructure with " + std::to_string(getNumberOfStates()) + " states.\n";

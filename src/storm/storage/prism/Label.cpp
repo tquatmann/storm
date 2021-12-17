@@ -8,9 +8,13 @@ Label::Label(std::string const& name, storm::expressions::Expression const& stat
     // Intentionally left empty.
 }
 
-std::string const& Label::getName() const { return this->name; }
+std::string const& Label::getName() const {
+    return this->name;
+}
 
-storm::expressions::Expression const& Label::getStatePredicateExpression() const { return this->statePredicateExpression; }
+storm::expressions::Expression const& Label::getStatePredicateExpression() const {
+    return this->statePredicateExpression;
+}
 
 Label Label::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     return Label(this->getName(), this->getStatePredicateExpression().substitute(substitution), this->getFilename(), this->getLineNumber());

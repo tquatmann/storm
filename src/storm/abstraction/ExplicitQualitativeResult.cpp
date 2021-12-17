@@ -5,7 +5,9 @@
 namespace storm {
 namespace abstraction {
 
-ExplicitQualitativeGameResult& ExplicitQualitativeResult::asExplicitQualitativeGameResult() { return static_cast<ExplicitQualitativeGameResult&>(*this); }
+ExplicitQualitativeGameResult& ExplicitQualitativeResult::asExplicitQualitativeGameResult() {
+    return static_cast<ExplicitQualitativeGameResult&>(*this);
+}
 
 ExplicitQualitativeGameResult const& ExplicitQualitativeResult::asExplicitQualitativeGameResult() const {
     return static_cast<ExplicitQualitativeGameResult const&>(*this);

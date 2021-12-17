@@ -21,9 +21,13 @@ TopologicalSolverEnvironment::~TopologicalSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::EquationSolverType const& TopologicalSolverEnvironment::getUnderlyingEquationSolverType() const { return underlyingEquationSolverType; }
+storm::solver::EquationSolverType const& TopologicalSolverEnvironment::getUnderlyingEquationSolverType() const {
+    return underlyingEquationSolverType;
+}
 
-bool const& TopologicalSolverEnvironment::isUnderlyingEquationSolverTypeSetFromDefault() const { return underlyingEquationSolverTypeSetFromDefault; }
+bool const& TopologicalSolverEnvironment::isUnderlyingEquationSolverTypeSetFromDefault() const {
+    return underlyingEquationSolverTypeSetFromDefault;
+}
 
 void TopologicalSolverEnvironment::setUnderlyingEquationSolverType(storm::solver::EquationSolverType value) {
     STORM_LOG_THROW(value != storm::solver::EquationSolverType::Topological, storm::exceptions::InvalidArgumentException,
@@ -32,9 +36,13 @@ void TopologicalSolverEnvironment::setUnderlyingEquationSolverType(storm::solver
     underlyingEquationSolverType = value;
 }
 
-storm::solver::MinMaxMethod const& TopologicalSolverEnvironment::getUnderlyingMinMaxMethod() const { return underlyingMinMaxMethod; }
+storm::solver::MinMaxMethod const& TopologicalSolverEnvironment::getUnderlyingMinMaxMethod() const {
+    return underlyingMinMaxMethod;
+}
 
-bool const& TopologicalSolverEnvironment::isUnderlyingMinMaxMethodSetFromDefault() const { return underlyingMinMaxMethodSetFromDefault; }
+bool const& TopologicalSolverEnvironment::isUnderlyingMinMaxMethodSetFromDefault() const {
+    return underlyingMinMaxMethodSetFromDefault;
+}
 
 void TopologicalSolverEnvironment::setUnderlyingMinMaxMethod(storm::solver::MinMaxMethod value) {
     STORM_LOG_THROW(value != storm::solver::MinMaxMethod::Topological, storm::exceptions::InvalidArgumentException,

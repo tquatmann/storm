@@ -11,7 +11,9 @@ EliminateAutomaticallyAction::EliminateAutomaticallyAction(const std::string& au
       restrictToUnnamedActions(restrictToUnnamedActions),
       transitionCountThreshold(transitionCountThreshold) {}
 
-std::string EliminateAutomaticallyAction::getDescription() { return "EliminateAutomaticallyAction"; }
+std::string EliminateAutomaticallyAction::getDescription() {
+    return "EliminateAutomaticallyAction";
+}
 
 void EliminateAutomaticallyAction::doAction(JaniLocalEliminator::Session& session) {
     Automaton* automaton = &session.getModel().getAutomaton(automatonName);
@@ -51,11 +53,16 @@ void EliminateAutomaticallyAction::doAction(JaniLocalEliminator::Session& sessio
                                     std::string eliminationStatus = "";
                                     if (isUneliminable) {
                                         eliminationStatus += "Uneliminable (";
-                                        if (possiblyInitial) eliminationStatus += "initial, ";
-                                        if (partOfProp) eliminationStatus += "part of prop, ";
-                                        if (hasLoops) eliminationStatus += "has loops, ";
-                                        if (isDeadlock) eliminationStatus += "has no outgoing edges, ";
-                                        if (hasNamedAction) eliminationStatus += "has named action, ";
+                                        if (possiblyInitial)
+                                            eliminationStatus += "initial, ";
+                                        if (partOfProp)
+                                            eliminationStatus += "part of prop, ";
+                                        if (hasLoops)
+                                            eliminationStatus += "has loops, ";
+                                        if (isDeadlock)
+                                            eliminationStatus += "has no outgoing edges, ";
+                                        if (hasNamedAction)
+                                            eliminationStatus += "has named action, ";
                                         eliminationStatus = eliminationStatus.substr(0, eliminationStatus.size() - 2) + ")";
                                     } else {
                                         eliminationStatus += "Eliminable";
@@ -70,7 +77,8 @@ void EliminateAutomaticallyAction::doAction(JaniLocalEliminator::Session& sessio
                 uint64_t minNewEdges = 18446744073709551615U;  // max value of uint64
                 int bestLocIndex = -1;
                 for (const auto& loc : automaton->getLocations()) {
-                    if (uneliminable[loc.getName()]) continue;
+                    if (uneliminable[loc.getName()])
+                        continue;
 
                     auto locIndex = automaton->getLocationIndex(loc.getName());
                     uint64_t outgoing = automaton->getEdgesFromLocation(locIndex).size();

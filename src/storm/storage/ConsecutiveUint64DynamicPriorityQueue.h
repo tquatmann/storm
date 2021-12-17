@@ -49,13 +49,21 @@ class ConsecutiveUint64DynamicPriorityQueue {
         STORM_LOG_ASSERT(std::is_heap(container.begin(), container.end(), compare), "Heap structure lost.");
     }
 
-    bool contains(uint64_t element) const { return positions[element] < container.size(); }
+    bool contains(uint64_t element) const {
+        return positions[element] < container.size();
+    }
 
-    bool empty() const { return container.empty(); }
+    bool empty() const {
+        return container.empty();
+    }
 
-    std::size_t size() const { return container.size(); }
+    std::size_t size() const {
+        return container.size();
+    }
 
-    const T& top() const { return container.front(); }
+    const T& top() const {
+        return container.front();
+    }
 
     void push(uint64_t const& item) {
         container.emplace_back(item);

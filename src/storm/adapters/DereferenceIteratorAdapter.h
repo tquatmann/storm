@@ -9,7 +9,9 @@ namespace adapters {
 
 template<typename T>
 struct Dereferencer {
-    decltype((*std::declval<T>())) operator()(T const& t) const { return *t; }
+    decltype((*std::declval<T>())) operator()(T const& t) const {
+        return *t;
+    }
 };
 
 template<typename ContainerType>
@@ -24,19 +26,33 @@ class DereferenceIteratorAdapter {
         // Intentionally left empty.
     }
 
-    iterator begin() const { return boost::make_transform_iterator(it, Dereferencer<value_type>()); }
+    iterator begin() const {
+        return boost::make_transform_iterator(it, Dereferencer<value_type>());
+    }
 
-    iterator end() const { return boost::make_transform_iterator(ite, Dereferencer<value_type>()); }
+    iterator end() const {
+        return boost::make_transform_iterator(ite, Dereferencer<value_type>());
+    }
 
-    static iterator make_iterator(input_iterator it) { return boost::make_transform_iterator(it, Dereferencer<value_type>()); }
+    static iterator make_iterator(input_iterator it) {
+        return boost::make_transform_iterator(it, Dereferencer<value_type>());
+    }
 
-    bool empty() const { return it == ite; }
+    bool empty() const {
+        return it == ite;
+    }
 
-    decltype((*std::declval<value_type>())) front() const { return **it; }
+    decltype((*std::declval<value_type>())) front() const {
+        return **it;
+    }
 
-    decltype((*std::declval<value_type>())) back() const { return **(ite - 1); }
+    decltype((*std::declval<value_type>())) back() const {
+        return **(ite - 1);
+    }
 
-    std::size_t size() const { return std::distance(it, ite); }
+    std::size_t size() const {
+        return std::distance(it, ite);
+    }
 
    private:
     input_iterator it;

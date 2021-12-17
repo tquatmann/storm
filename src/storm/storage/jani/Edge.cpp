@@ -38,31 +38,57 @@ Edge::Edge(uint64_t sourceLocationIndex, uint64_t actionIndex, boost::optional<s
     }
 }
 
-uint64_t Edge::getSourceLocationIndex() const { return sourceLocationIndex; }
+uint64_t Edge::getSourceLocationIndex() const {
+    return sourceLocationIndex;
+}
 
-uint64_t Edge::getActionIndex() const { return actionIndex; }
+uint64_t Edge::getActionIndex() const {
+    return actionIndex;
+}
 
-bool Edge::hasRate() const { return static_cast<bool>(rate); }
+bool Edge::hasRate() const {
+    return static_cast<bool>(rate);
+}
 
-storm::expressions::Expression const& Edge::getRate() const { return rate.get(); }
+storm::expressions::Expression const& Edge::getRate() const {
+    return rate.get();
+}
 
-boost::optional<storm::expressions::Expression> const& Edge::getOptionalRate() const { return rate; }
+boost::optional<storm::expressions::Expression> const& Edge::getOptionalRate() const {
+    return rate;
+}
 
-void Edge::setRate(storm::expressions::Expression const& rate) { this->rate = rate; }
+void Edge::setRate(storm::expressions::Expression const& rate) {
+    this->rate = rate;
+}
 
-storm::expressions::Expression const& Edge::getGuard() const { return templateEdge->getGuard(); }
+storm::expressions::Expression const& Edge::getGuard() const {
+    return templateEdge->getGuard();
+}
 
-void Edge::setGuard(const expressions::Expression& guard) { templateEdge->setGuard(guard); }
+void Edge::setGuard(const expressions::Expression& guard) {
+    templateEdge->setGuard(guard);
+}
 
-EdgeDestination const& Edge::getDestination(uint64_t index) const { return destinations[index]; }
+EdgeDestination const& Edge::getDestination(uint64_t index) const {
+    return destinations[index];
+}
 
-std::vector<EdgeDestination> const& Edge::getDestinations() const { return destinations; }
+std::vector<EdgeDestination> const& Edge::getDestinations() const {
+    return destinations;
+}
 
-std::vector<EdgeDestination>& Edge::getDestinations() { return destinations; }
+std::vector<EdgeDestination>& Edge::getDestinations() {
+    return destinations;
+}
 
-std::size_t Edge::getNumberOfDestinations() const { return destinations.size(); }
+std::size_t Edge::getNumberOfDestinations() const {
+    return destinations.size();
+}
 
-OrderedAssignments const& Edge::getAssignments() const { return templateEdge->getAssignments(); }
+OrderedAssignments const& Edge::getAssignments() const {
+    return templateEdge->getAssignments();
+}
 
 void Edge::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     if (this->hasRate()) {
@@ -73,21 +99,33 @@ void Edge::substitute(std::map<storm::expressions::Variable, storm::expressions:
     }
 }
 
-bool Edge::hasSilentAction() const { return actionIndex == Model::SILENT_ACTION_INDEX; }
+bool Edge::hasSilentAction() const {
+    return actionIndex == Model::SILENT_ACTION_INDEX;
+}
 
-uint64_t Edge::getColor() const { return this->color; }
+uint64_t Edge::getColor() const {
+    return this->color;
+}
 
-void Edge::setColor(uint64_t newColor) { this->color = newColor; }
+void Edge::setColor(uint64_t newColor) {
+    this->color = newColor;
+}
 
-storm::storage::FlatSet<storm::expressions::Variable> const& Edge::getWrittenGlobalVariables() const { return templateEdge->getWrittenGlobalVariables(); }
+storm::storage::FlatSet<storm::expressions::Variable> const& Edge::getWrittenGlobalVariables() const {
+    return templateEdge->getWrittenGlobalVariables();
+}
 
 bool Edge::usesVariablesInNonTransientAssignments(std::set<storm::expressions::Variable> const& variables) const {
     return templateEdge->usesVariablesInNonTransientAssignments(variables);
 }
 
-bool Edge::hasTransientEdgeDestinationAssignments() const { return templateEdge->hasTransientEdgeDestinationAssignments(); }
+bool Edge::hasTransientEdgeDestinationAssignments() const {
+    return templateEdge->hasTransientEdgeDestinationAssignments();
+}
 
-bool Edge::usesAssignmentLevels(bool onlyTransient) const { return templateEdge->usesAssignmentLevels(onlyTransient); }
+bool Edge::usesAssignmentLevels(bool onlyTransient) const {
+    return templateEdge->usesAssignmentLevels(onlyTransient);
+}
 
 void Edge::simplifyIndexedAssignments(VariableSet const& localVars) {
     if (usesAssignmentLevels()) {
@@ -102,9 +140,13 @@ void Edge::simplifyIndexedAssignments(VariableSet const& localVars) {
     }
 }
 
-int64_t const& Edge::getLowestAssignmentLevel() const { return templateEdge->getLowestAssignmentLevel(); }
+int64_t const& Edge::getLowestAssignmentLevel() const {
+    return templateEdge->getLowestAssignmentLevel();
+}
 
-int64_t const& Edge::getHighestAssignmentLevel() const { return templateEdge->getHighestAssignmentLevel(); }
+int64_t const& Edge::getHighestAssignmentLevel() const {
+    return templateEdge->getHighestAssignmentLevel();
+}
 
 void Edge::setTemplateEdge(std::shared_ptr<TemplateEdge> const& newTe) {
     templateEdge = newTe;
@@ -126,7 +168,9 @@ std::string Edge::toString() const {
     return ss.str();
 }
 
-std::shared_ptr<TemplateEdge> const& Edge::getTemplateEdge() { return templateEdge; }
+std::shared_ptr<TemplateEdge> const& Edge::getTemplateEdge() {
+    return templateEdge;
+}
 
 std::ostream& operator<<(std::ostream& stream, Edge const& edge) {
     stream << "[" << (edge.hasSilentAction() ? "" : ("action_id: " + std::to_string(edge.getActionIndex()))) << "]";

@@ -21,22 +21,40 @@ RationalLiteralExpression::RationalLiteralExpression(ExpressionManager const& ma
     // Intentionally left empty.
 }
 
-double RationalLiteralExpression::evaluateAsDouble(Valuation const*) const { return this->getValueAsDouble(); }
+double RationalLiteralExpression::evaluateAsDouble(Valuation const*) const {
+    return this->getValueAsDouble();
+}
 
-bool RationalLiteralExpression::isLiteral() const { return true; }
+bool RationalLiteralExpression::isLiteral() const {
+    return true;
+}
 
-void RationalLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const { return; }
+void RationalLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const {
+    return;
+}
 
-std::shared_ptr<BaseExpression const> RationalLiteralExpression::simplify() const { return this->shared_from_this(); }
+std::shared_ptr<BaseExpression const> RationalLiteralExpression::simplify() const {
+    return this->shared_from_this();
+}
 
-boost::any RationalLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any RationalLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool RationalLiteralExpression::isRationalLiteralExpression() const { return true; }
+bool RationalLiteralExpression::isRationalLiteralExpression() const {
+    return true;
+}
 
-double RationalLiteralExpression::getValueAsDouble() const { return storm::utility::convertNumber<double>(this->value); }
+double RationalLiteralExpression::getValueAsDouble() const {
+    return storm::utility::convertNumber<double>(this->value);
+}
 
-storm::RationalNumber RationalLiteralExpression::getValue() const { return this->value; }
+storm::RationalNumber RationalLiteralExpression::getValue() const {
+    return this->value;
+}
 
-void RationalLiteralExpression::printToStream(std::ostream& stream) const { stream << this->getValue(); }
+void RationalLiteralExpression::printToStream(std::ostream& stream) const {
+    stream << this->getValue();
+}
 }  // namespace expressions
 }  // namespace storm

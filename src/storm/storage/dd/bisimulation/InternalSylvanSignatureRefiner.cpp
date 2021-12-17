@@ -155,7 +155,8 @@ VOID_TASK_3(sylvan_rehash, size_t, first, size_t, count, InternalSylvanSignature
                 }
             }
             pos++;
-            if (pos >= refiner->currentCapacity) pos = 0;
+            if (pos >= refiner->currentCapacity)
+                pos = 0;
         }
 
         first++;
@@ -212,8 +213,10 @@ static uint64_t sylvan_search_or_insert(uint64_t sig, uint64_t previous_block, I
             }
         }
         pos++;
-        if (pos >= refiner->currentCapacity) pos = 0;
-        if (++count >= 128) return NO_ELEMENT_MARKER;
+        if (pos >= refiner->currentCapacity)
+            pos = 0;
+        if (++count >= 128)
+            return NO_ELEMENT_MARKER;
     }
 }
 
@@ -261,9 +264,12 @@ TASK_3(BDD, sylvan_assign_block, BDD, sig, BDD, previous_block, InternalSylvanSi
 
         for (;;) {
             BDD cur = *(volatile BDD*)&refiner->signatures[p_b];
-            if (cur == sig) return previous_block;
-            if (cur != 0) break;
-            if (cas(&refiner->signatures[p_b], 0, sig)) return previous_block;
+            if (cur == sig)
+                return previous_block;
+            if (cur != 0)
+                break;
+            if (cas(&refiner->signatures[p_b], 0, sig))
+                return previous_block;
         }
     }
 
@@ -288,7 +294,8 @@ TASK_5(BDD, sylvan_refine_partition, BDD, dd, BDD, previous_partition, BDD, nond
 
     if (sylvan_set_isempty(vars)) {
         BDD result;
-        if (cache_get(dd | (256LL << 42), vars, previous_partition | (refiner->numberOfRefinements << 40), &result)) return result;
+        if (cache_get(dd | (256LL << 42), vars, previous_partition | (refiner->numberOfRefinements << 40), &result))
+            return result;
         result = CALL(sylvan_assign_block, dd, previous_partition, refiner);
         cache_put(dd | (256LL << 42), vars, previous_partition | (refiner->numberOfRefinements << 40), result);
         return result;
@@ -311,7 +318,8 @@ TASK_5(BDD, sylvan_refine_partition, BDD, dd, BDD, previous_partition, BDD, nond
         if (nondet) {
             nondetvars = sylvan_set_next(nondetvars);
         }
-        if (sylvan_set_isempty(vars)) return CALL(sylvan_refine_partition, dd, previous_partition, nondetvars, vars, refiner);
+        if (sylvan_set_isempty(vars))
+            return CALL(sylvan_refine_partition, dd, previous_partition, nondetvars, vars, refiner);
         vars_var = sylvan_var(vars);
         if (nondet) {
             nondetvars_var = sylvan_isconst(nondetvars) ? 0xffffffff : sylvan_var(nondetvars);

@@ -260,282 +260,364 @@ FragmentSpecification::FragmentSpecification() {
     rewardAccumulation = false;
 }
 
-FragmentSpecification FragmentSpecification::copy() const { return FragmentSpecification(*this); }
+FragmentSpecification FragmentSpecification::copy() const {
+    return FragmentSpecification(*this);
+}
 
-bool FragmentSpecification::areProbabilityOperatorsAllowed() const { return probabilityOperator; }
+bool FragmentSpecification::areProbabilityOperatorsAllowed() const {
+    return probabilityOperator;
+}
 
 FragmentSpecification& FragmentSpecification::setProbabilityOperatorsAllowed(bool newValue) {
     this->probabilityOperator = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areRewardOperatorsAllowed() const { return rewardOperator; }
+bool FragmentSpecification::areRewardOperatorsAllowed() const {
+    return rewardOperator;
+}
 
 FragmentSpecification& FragmentSpecification::setRewardOperatorsAllowed(bool newValue) {
     this->rewardOperator = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areTimeOperatorsAllowed() const { return expectedTimeOperator; }
+bool FragmentSpecification::areTimeOperatorsAllowed() const {
+    return expectedTimeOperator;
+}
 
 FragmentSpecification& FragmentSpecification::setTimeOperatorsAllowed(bool newValue) {
     this->expectedTimeOperator = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areLongRunAverageOperatorsAllowed() const { return longRunAverageOperator; }
+bool FragmentSpecification::areLongRunAverageOperatorsAllowed() const {
+    return longRunAverageOperator;
+}
 
 FragmentSpecification& FragmentSpecification::setLongRunAverageOperatorsAllowed(bool newValue) {
     this->longRunAverageOperator = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areMultiObjectiveFormulasAllowed() const { return multiObjectiveFormula; }
+bool FragmentSpecification::areMultiObjectiveFormulasAllowed() const {
+    return multiObjectiveFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setMultiObjectiveFormulasAllowed(bool newValue) {
     this->multiObjectiveFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areQuantileFormulasAllowed() const { return quantileFormula; }
+bool FragmentSpecification::areQuantileFormulasAllowed() const {
+    return quantileFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setQuantileFormulasAllowed(bool newValue) {
     this->quantileFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areGloballyFormulasAllowed() const { return globallyFormula; }
+bool FragmentSpecification::areGloballyFormulasAllowed() const {
+    return globallyFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setGloballyFormulasAllowed(bool newValue) {
     this->globallyFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areReachabilityProbabilityFormulasAllowed() const { return reachabilityProbabilityFormula; }
+bool FragmentSpecification::areReachabilityProbabilityFormulasAllowed() const {
+    return reachabilityProbabilityFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setReachabilityProbabilityFormulasAllowed(bool newValue) {
     this->reachabilityProbabilityFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areNextFormulasAllowed() const { return nextFormula; }
+bool FragmentSpecification::areNextFormulasAllowed() const {
+    return nextFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setNextFormulasAllowed(bool newValue) {
     this->nextFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areUntilFormulasAllowed() const { return untilFormula; }
+bool FragmentSpecification::areUntilFormulasAllowed() const {
+    return untilFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setUntilFormulasAllowed(bool newValue) {
     this->untilFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areBoundedUntilFormulasAllowed() const { return boundedUntilFormula; }
+bool FragmentSpecification::areBoundedUntilFormulasAllowed() const {
+    return boundedUntilFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setBoundedUntilFormulasAllowed(bool newValue) {
     this->boundedUntilFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areHOAPathFormulasAllowed() const { return hoaPathFormula; }
+bool FragmentSpecification::areHOAPathFormulasAllowed() const {
+    return hoaPathFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setHOAPathFormulasAllowed(bool newValue) {
     this->hoaPathFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areAtomicExpressionFormulasAllowed() const { return atomicExpressionFormula; }
+bool FragmentSpecification::areAtomicExpressionFormulasAllowed() const {
+    return atomicExpressionFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setAtomicExpressionFormulasAllowed(bool newValue) {
     this->atomicExpressionFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areAtomicLabelFormulasAllowed() const { return atomicLabelFormula; }
+bool FragmentSpecification::areAtomicLabelFormulasAllowed() const {
+    return atomicLabelFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setAtomicLabelFormulasAllowed(bool newValue) {
     this->atomicLabelFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areBooleanLiteralFormulasAllowed() const { return booleanLiteralFormula; }
+bool FragmentSpecification::areBooleanLiteralFormulasAllowed() const {
+    return booleanLiteralFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setBooleanLiteralFormulasAllowed(bool newValue) {
     this->booleanLiteralFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areUnaryBooleanStateFormulasAllowed() const { return unaryBooleanStateFormula; }
+bool FragmentSpecification::areUnaryBooleanStateFormulasAllowed() const {
+    return unaryBooleanStateFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setUnaryBooleanStateFormulasAllowed(bool newValue) {
     this->unaryBooleanStateFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areUnaryBooleanPathFormulasAllowed() const { return unaryBooleanPathFormula; }
+bool FragmentSpecification::areUnaryBooleanPathFormulasAllowed() const {
+    return unaryBooleanPathFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setUnaryBooleanPathFormulasAllowed(bool newValue) {
     this->unaryBooleanPathFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areBinaryBooleanStateFormulasAllowed() const { return binaryBooleanStateFormula; }
+bool FragmentSpecification::areBinaryBooleanStateFormulasAllowed() const {
+    return binaryBooleanStateFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setBinaryBooleanStateFormulasAllowed(bool newValue) {
     this->binaryBooleanStateFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areBinaryBooleanPathFormulasAllowed() const { return binaryBooleanPathFormula; }
+bool FragmentSpecification::areBinaryBooleanPathFormulasAllowed() const {
+    return binaryBooleanPathFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setBinaryBooleanPathFormulasAllowed(bool newValue) {
     this->binaryBooleanPathFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areCumulativeRewardFormulasAllowed() const { return cumulativeRewardFormula; }
+bool FragmentSpecification::areCumulativeRewardFormulasAllowed() const {
+    return cumulativeRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setCumulativeRewardFormulasAllowed(bool newValue) {
     this->cumulativeRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areInstantaneousRewardFormulasAllowed() const { return instantaneousRewardFormula; }
+bool FragmentSpecification::areInstantaneousRewardFormulasAllowed() const {
+    return instantaneousRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setInstantaneousFormulasAllowed(bool newValue) {
     this->instantaneousRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areReachabilityRewardFormulasAllowed() const { return reachabilityRewardFormula; }
+bool FragmentSpecification::areReachabilityRewardFormulasAllowed() const {
+    return reachabilityRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setReachabilityRewardFormulasAllowed(bool newValue) {
     this->reachabilityRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areLongRunAverageRewardFormulasAllowed() const { return longRunAverageRewardFormula; }
+bool FragmentSpecification::areLongRunAverageRewardFormulasAllowed() const {
+    return longRunAverageRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setLongRunAverageRewardFormulasAllowed(bool newValue) {
     this->longRunAverageRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areTotalRewardFormulasAllowed() const { return totalRewardFormula; }
+bool FragmentSpecification::areTotalRewardFormulasAllowed() const {
+    return totalRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setTotalRewardFormulasAllowed(bool newValue) {
     this->totalRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areConditionalProbabilityFormulasAllowed() const { return conditionalProbabilityFormula; }
+bool FragmentSpecification::areConditionalProbabilityFormulasAllowed() const {
+    return conditionalProbabilityFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setConditionalProbabilityFormulasAllowed(bool newValue) {
     this->conditionalProbabilityFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areConditionalRewardFormulasFormulasAllowed() const { return conditionalRewardFormula; }
+bool FragmentSpecification::areConditionalRewardFormulasFormulasAllowed() const {
+    return conditionalRewardFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setConditionalRewardFormulasAllowed(bool newValue) {
     this->conditionalRewardFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areReachbilityTimeFormulasAllowed() const { return reachabilityTimeFormula; }
+bool FragmentSpecification::areReachbilityTimeFormulasAllowed() const {
+    return reachabilityTimeFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setReachbilityTimeFormulasAllowed(bool newValue) {
     this->reachabilityTimeFormula = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areNestedOperatorsAllowed() const { return this->nestedOperators; }
+bool FragmentSpecification::areNestedOperatorsAllowed() const {
+    return this->nestedOperators;
+}
 
 FragmentSpecification& FragmentSpecification::setNestedOperatorsAllowed(bool newValue) {
     this->nestedOperators = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areNestedPathFormulasAllowed() const { return this->nestedPathFormulas; }
+bool FragmentSpecification::areNestedPathFormulasAllowed() const {
+    return this->nestedPathFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setNestedPathFormulasAllowed(bool newValue) {
     this->nestedPathFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areNestedMultiObjectiveFormulasAllowed() const { return this->nestedMultiObjectiveFormulas; }
+bool FragmentSpecification::areNestedMultiObjectiveFormulasAllowed() const {
+    return this->nestedMultiObjectiveFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setNestedMultiObjectiveFormulasAllowed(bool newValue) {
     this->nestedMultiObjectiveFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areNestedOperatorsInsideMultiObjectiveFormulasAllowed() const { return this->nestedOperatorsInsideMultiObjectiveFormulas; }
+bool FragmentSpecification::areNestedOperatorsInsideMultiObjectiveFormulasAllowed() const {
+    return this->nestedOperatorsInsideMultiObjectiveFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setNestedOperatorsInsideMultiObjectiveFormulasAllowed(bool newValue) {
     this->nestedOperatorsInsideMultiObjectiveFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areOnlyEventuallyFormuluasInConditionalFormulasAllowed() const { return this->onlyEventuallyFormuluasInConditionalFormulas; }
+bool FragmentSpecification::areOnlyEventuallyFormuluasInConditionalFormulasAllowed() const {
+    return this->onlyEventuallyFormuluasInConditionalFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setOnlyEventuallyFormuluasInConditionalFormulasAllowed(bool newValue) {
     this->onlyEventuallyFormuluasInConditionalFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areStepBoundedUntilFormulasAllowed() const { return this->stepBoundedUntilFormulas; }
+bool FragmentSpecification::areStepBoundedUntilFormulasAllowed() const {
+    return this->stepBoundedUntilFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setStepBoundedUntilFormulasAllowed(bool newValue) {
     this->stepBoundedUntilFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areTimeBoundedUntilFormulasAllowed() const { return this->timeBoundedUntilFormulas; }
+bool FragmentSpecification::areTimeBoundedUntilFormulasAllowed() const {
+    return this->timeBoundedUntilFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setTimeBoundedUntilFormulasAllowed(bool newValue) {
     this->timeBoundedUntilFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areRewardBoundedUntilFormulasAllowed() const { return this->rewardBoundedUntilFormulas; }
+bool FragmentSpecification::areRewardBoundedUntilFormulasAllowed() const {
+    return this->rewardBoundedUntilFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setRewardBoundedUntilFormulasAllowed(bool newValue) {
     this->rewardBoundedUntilFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areMultiDimensionalBoundedUntilFormulasAllowed() const { return this->multiDimensionalBoundedUntilFormulas; }
+bool FragmentSpecification::areMultiDimensionalBoundedUntilFormulasAllowed() const {
+    return this->multiDimensionalBoundedUntilFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setMultiDimensionalBoundedUntilFormulasAllowed(bool newValue) {
     this->multiDimensionalBoundedUntilFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areStepBoundedCumulativeRewardFormulasAllowed() const { return this->stepBoundedCumulativeRewardFormulas; }
+bool FragmentSpecification::areStepBoundedCumulativeRewardFormulasAllowed() const {
+    return this->stepBoundedCumulativeRewardFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setStepBoundedCumulativeRewardFormulasAllowed(bool newValue) {
     this->stepBoundedCumulativeRewardFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areTimeBoundedCumulativeRewardFormulasAllowed() const { return this->timeBoundedCumulativeRewardFormulas; }
+bool FragmentSpecification::areTimeBoundedCumulativeRewardFormulasAllowed() const {
+    return this->timeBoundedCumulativeRewardFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setTimeBoundedCumulativeRewardFormulasAllowed(bool newValue) {
     this->timeBoundedCumulativeRewardFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areRewardBoundedCumulativeRewardFormulasAllowed() const { return this->rewardBoundedCumulativeRewardFormulas; }
+bool FragmentSpecification::areRewardBoundedCumulativeRewardFormulasAllowed() const {
+    return this->rewardBoundedCumulativeRewardFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setRewardBoundedCumulativeRewardFormulasAllowed(bool newValue) {
     this->rewardBoundedCumulativeRewardFormulas = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areMultiDimensionalCumulativeRewardFormulasAllowed() const { return this->multiDimensionalCumulativeRewardFormulas; }
+bool FragmentSpecification::areMultiDimensionalCumulativeRewardFormulasAllowed() const {
+    return this->multiDimensionalCumulativeRewardFormulas;
+}
 
 FragmentSpecification& FragmentSpecification::setMultiDimensionalCumulativeRewardFormulasAllowed(bool newValue) {
     this->multiDimensionalCumulativeRewardFormulas = newValue;
@@ -561,63 +643,81 @@ FragmentSpecification& FragmentSpecification::setLongRunAverageProbabilitiesAllo
     return *this;
 }
 
-bool FragmentSpecification::isVarianceMeasureTypeAllowed() const { return varianceAsMeasureType; }
+bool FragmentSpecification::isVarianceMeasureTypeAllowed() const {
+    return varianceAsMeasureType;
+}
 
 FragmentSpecification& FragmentSpecification::setVarianceMeasureTypeAllowed(bool newValue) {
     this->varianceAsMeasureType = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areQuantitativeOperatorResultsAllowed() const { return this->quantitativeOperatorResults; }
+bool FragmentSpecification::areQuantitativeOperatorResultsAllowed() const {
+    return this->quantitativeOperatorResults;
+}
 
 FragmentSpecification& FragmentSpecification::setQuantitativeOperatorResultsAllowed(bool newValue) {
     this->quantitativeOperatorResults = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areQualitativeOperatorResultsAllowed() const { return this->qualitativeOperatorResults; }
+bool FragmentSpecification::areQualitativeOperatorResultsAllowed() const {
+    return this->qualitativeOperatorResults;
+}
 
 FragmentSpecification& FragmentSpecification::setQualitativeOperatorResultsAllowed(bool newValue) {
     this->qualitativeOperatorResults = newValue;
     return *this;
 }
 
-bool FragmentSpecification::isOperatorAtTopLevelRequired() const { return operatorAtTopLevelRequired; }
+bool FragmentSpecification::isOperatorAtTopLevelRequired() const {
+    return operatorAtTopLevelRequired;
+}
 
 FragmentSpecification& FragmentSpecification::setOperatorAtTopLevelRequired(bool newValue) {
     operatorAtTopLevelRequired = newValue;
     return *this;
 }
 
-bool FragmentSpecification::isMultiObjectiveFormulaAtTopLevelRequired() const { return multiObjectiveFormulaAtTopLevelRequired; }
+bool FragmentSpecification::isMultiObjectiveFormulaAtTopLevelRequired() const {
+    return multiObjectiveFormulaAtTopLevelRequired;
+}
 
 FragmentSpecification& FragmentSpecification::setMultiObjectiveFormulaAtTopLevelRequired(bool newValue) {
     multiObjectiveFormulaAtTopLevelRequired = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areOperatorsAtTopLevelOfMultiObjectiveFormulasRequired() const { return operatorsAtTopLevelOfMultiObjectiveFormulasRequired; }
+bool FragmentSpecification::areOperatorsAtTopLevelOfMultiObjectiveFormulasRequired() const {
+    return operatorsAtTopLevelOfMultiObjectiveFormulasRequired;
+}
 
 FragmentSpecification& FragmentSpecification::setOperatorsAtTopLevelOfMultiObjectiveFormulasRequired(bool newValue) {
     operatorsAtTopLevelOfMultiObjectiveFormulasRequired = newValue;
     return *this;
 }
 
-bool FragmentSpecification::isQuantileFormulaAtTopLevelRequired() const { return quantileFormulaAtTopLevelRequired; }
+bool FragmentSpecification::isQuantileFormulaAtTopLevelRequired() const {
+    return quantileFormulaAtTopLevelRequired;
+}
 
 FragmentSpecification& FragmentSpecification::setQuantileFormulaAtTopLevelRequired(bool newValue) {
     quantileFormulaAtTopLevelRequired = newValue;
     return *this;
 }
 
-bool FragmentSpecification::isRewardAccumulationAllowed() const { return rewardAccumulation; }
+bool FragmentSpecification::isRewardAccumulationAllowed() const {
+    return rewardAccumulation;
+}
 
 FragmentSpecification& FragmentSpecification::setRewardAccumulationAllowed(bool newValue) {
     rewardAccumulation = newValue;
     return *this;
 }
 
-bool FragmentSpecification::areGameFormulasAllowed() const { return gameFormula; }
+bool FragmentSpecification::areGameFormulasAllowed() const {
+    return gameFormula;
+}
 
 FragmentSpecification& FragmentSpecification::setGameFormulasAllowed(bool newValue) {
     gameFormula = newValue;

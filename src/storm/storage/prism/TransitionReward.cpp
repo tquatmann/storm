@@ -17,17 +17,29 @@ TransitionReward::TransitionReward(uint_fast64_t actionIndex, std::string const&
     // Nothing to do here.
 }
 
-std::string const& TransitionReward::getActionName() const { return this->actionName; }
+std::string const& TransitionReward::getActionName() const {
+    return this->actionName;
+}
 
-uint_fast64_t TransitionReward::getActionIndex() const { return this->actionIndex; }
+uint_fast64_t TransitionReward::getActionIndex() const {
+    return this->actionIndex;
+}
 
-storm::expressions::Expression const& TransitionReward::getSourceStatePredicateExpression() const { return this->sourceStatePredicateExpression; }
+storm::expressions::Expression const& TransitionReward::getSourceStatePredicateExpression() const {
+    return this->sourceStatePredicateExpression;
+}
 
-storm::expressions::Expression const& TransitionReward::getTargetStatePredicateExpression() const { return this->targetStatePredicateExpression; }
+storm::expressions::Expression const& TransitionReward::getTargetStatePredicateExpression() const {
+    return this->targetStatePredicateExpression;
+}
 
-storm::expressions::Expression const& TransitionReward::getRewardValueExpression() const { return this->rewardValueExpression; }
+storm::expressions::Expression const& TransitionReward::getRewardValueExpression() const {
+    return this->rewardValueExpression;
+}
 
-bool TransitionReward::isLabeled() const { return labeled; }
+bool TransitionReward::isLabeled() const {
+    return labeled;
+}
 
 TransitionReward TransitionReward::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     return TransitionReward(this->getActionIndex(), this->getActionName(), this->getSourceStatePredicateExpression().substitute(substitution),

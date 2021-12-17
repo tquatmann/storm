@@ -10,13 +10,21 @@
 
 namespace storm {
 namespace gspn {
-uint64_t GSPN::timedTransitionIdToTransitionId(uint64_t ttId) { return ttId | (1ull << ((sizeof(ttId) * CHAR_BIT) - 1)); }
+uint64_t GSPN::timedTransitionIdToTransitionId(uint64_t ttId) {
+    return ttId | (1ull << ((sizeof(ttId) * CHAR_BIT) - 1));
+}
 
-uint64_t GSPN::immediateTransitionIdToTransitionId(uint64_t itId) { return itId; }
+uint64_t GSPN::immediateTransitionIdToTransitionId(uint64_t itId) {
+    return itId;
+}
 
-uint64_t GSPN::transitionIdToTimedTransitionId(uint64_t tId) { return (tId << 1) >> 1; }
+uint64_t GSPN::transitionIdToTimedTransitionId(uint64_t tId) {
+    return (tId << 1) >> 1;
+}
 
-uint64_t GSPN::transitionIdToImmediateTransitionId(uint64_t tId) { return tId; }
+uint64_t GSPN::transitionIdToImmediateTransitionId(uint64_t tId) {
+    return tId;
+}
 
 GSPN::GSPN(std::string const& name, std::vector<Place> const& places, std::vector<ImmediateTransition<WeightType>> const& itransitions,
            std::vector<TimedTransition<RateType>> const& ttransitions, std::vector<TransitionPartition> const& partitions,
@@ -30,17 +38,29 @@ GSPN::GSPN(std::string const& name, std::vector<Place> const& places, std::vecto
       exprManager(exprManager),
       constantsSubstitution(constantsSubstitution) {}
 
-uint64_t GSPN::getNumberOfPlaces() const { return places.size(); }
+uint64_t GSPN::getNumberOfPlaces() const {
+    return places.size();
+}
 
-uint64_t GSPN::getNumberOfImmediateTransitions() const { return immediateTransitions.size(); }
+uint64_t GSPN::getNumberOfImmediateTransitions() const {
+    return immediateTransitions.size();
+}
 
-uint64_t GSPN::getNumberOfTimedTransitions() const { return timedTransitions.size(); }
+uint64_t GSPN::getNumberOfTimedTransitions() const {
+    return timedTransitions.size();
+}
 
-std::vector<storm::gspn::TimedTransition<GSPN::RateType>> const& GSPN::getTimedTransitions() const { return this->timedTransitions; }
+std::vector<storm::gspn::TimedTransition<GSPN::RateType>> const& GSPN::getTimedTransitions() const {
+    return this->timedTransitions;
+}
 
-std::vector<storm::gspn::ImmediateTransition<GSPN::WeightType>> const& GSPN::getImmediateTransitions() const { return this->immediateTransitions; }
+std::vector<storm::gspn::ImmediateTransition<GSPN::WeightType>> const& GSPN::getImmediateTransitions() const {
+    return this->immediateTransitions;
+}
 
-std::vector<storm::gspn::Place> const& GSPN::getPlaces() const { return places; }
+std::vector<storm::gspn::Place> const& GSPN::getPlaces() const {
+    return places;
+}
 
 std::shared_ptr<storm::gspn::Marking> GSPN::getInitialMarking(std::map<uint64_t, uint64_t>& numberOfBits, uint64_t const& numberOfTotalBits) const {
     auto m = std::make_shared<storm::gspn::Marking>(getNumberOfPlaces(), numberOfBits, numberOfTotalBits);
@@ -50,7 +70,9 @@ std::shared_ptr<storm::gspn::Marking> GSPN::getInitialMarking(std::map<uint64_t,
     return m;
 }
 
-std::vector<TransitionPartition> const& GSPN::getPartitions() const { return partitions; }
+std::vector<TransitionPartition> const& GSPN::getPartitions() const {
+    return partitions;
+}
 
 storm::gspn::Place const* GSPN::getPlace(uint64_t id) const {
     if (id < places.size()) {
@@ -113,9 +135,13 @@ storm::gspn::Transition const* GSPN::getTransition(std::string const& id) const 
     return getImmediateTransition(id);
 }
 
-std::shared_ptr<storm::expressions::ExpressionManager> const& GSPN::getExpressionManager() const { return exprManager; }
+std::shared_ptr<storm::expressions::ExpressionManager> const& GSPN::getExpressionManager() const {
+    return exprManager;
+}
 
-std::map<storm::expressions::Variable, storm::expressions::Expression> const& GSPN::getConstantsSubstitution() const { return constantsSubstitution; }
+std::map<storm::expressions::Variable, storm::expressions::Expression> const& GSPN::getConstantsSubstitution() const {
+    return constantsSubstitution;
+}
 
 void GSPN::setCapacities(std::unordered_map<std::string, uint64_t> const& mapping) {
     for (auto const& entry : mapping) {
@@ -213,9 +239,13 @@ void GSPN::writeDotToStream(std::ostream& outStream) const {
     outStream << "}" << std::endl;
 }
 
-void GSPN::setName(std::string const& name) { this->name = name; }
+void GSPN::setName(std::string const& name) {
+    this->name = name;
+}
 
-std::string const& GSPN::getName() const { return this->name; }
+std::string const& GSPN::getName() const {
+    return this->name;
+}
 
 bool GSPN::isValid() const {
     bool result = true;
@@ -365,15 +395,27 @@ bool GSPN::testTransitions() const {
     return result;
 }
 
-void GSPN::setPlaceLayoutInfo(uint64_t placeId, LayoutInfo const& layout) const { placeLayout[placeId] = layout; }
-void GSPN::setTransitionLayoutInfo(uint64_t transitionId, LayoutInfo const& layout) const { transitionLayout[transitionId] = layout; }
+void GSPN::setPlaceLayoutInfo(uint64_t placeId, LayoutInfo const& layout) const {
+    placeLayout[placeId] = layout;
+}
+void GSPN::setTransitionLayoutInfo(uint64_t transitionId, LayoutInfo const& layout) const {
+    transitionLayout[transitionId] = layout;
+}
 
-void GSPN::setPlaceLayoutInfo(std::map<uint64_t, LayoutInfo> const& placeLayout) const { this->placeLayout = placeLayout; }
-void GSPN::setTransitionLayoutInfo(std::map<uint64_t, LayoutInfo> const& transitionLayout) const { this->transitionLayout = transitionLayout; }
+void GSPN::setPlaceLayoutInfo(std::map<uint64_t, LayoutInfo> const& placeLayout) const {
+    this->placeLayout = placeLayout;
+}
+void GSPN::setTransitionLayoutInfo(std::map<uint64_t, LayoutInfo> const& transitionLayout) const {
+    this->transitionLayout = transitionLayout;
+}
 
-std::map<uint64_t, LayoutInfo> const& GSPN::getPlaceLayoutInfos() const { return this->placeLayout; }
+std::map<uint64_t, LayoutInfo> const& GSPN::getPlaceLayoutInfos() const {
+    return this->placeLayout;
+}
 
-std::map<uint64_t, LayoutInfo> const& GSPN::getTransitionLayoutInfos() const { return this->transitionLayout; }
+std::map<uint64_t, LayoutInfo> const& GSPN::getTransitionLayoutInfos() const {
+    return this->transitionLayout;
+}
 
 void GSPN::toPnpro(std::ostream& stream) const {
     auto space = "  ";
@@ -654,7 +696,9 @@ void GSPN::toPnml(std::ostream& stream) const {
     stream << "</pnml>" << std::endl;
 }
 
-void GSPN::toJson(std::ostream& stream) const { return storm::gspn::GspnJsonExporter::toStream(*this, stream); }
+void GSPN::toJson(std::ostream& stream) const {
+    return storm::gspn::GspnJsonExporter::toStream(*this, stream);
+}
 
 void GSPN::writeStatsToStream(std::ostream& stream) const {
     stream << "Number of places: " << getNumberOfPlaces() << std::endl;

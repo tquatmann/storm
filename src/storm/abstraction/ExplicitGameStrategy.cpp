@@ -16,13 +16,21 @@ ExplicitGameStrategy::ExplicitGameStrategy(std::vector<uint64_t>&& choices) : ch
     // Intentionally left empty.
 }
 
-uint64_t ExplicitGameStrategy::getNumberOfStates() const { return choices.size(); }
+uint64_t ExplicitGameStrategy::getNumberOfStates() const {
+    return choices.size();
+}
 
-uint64_t ExplicitGameStrategy::getChoice(uint64_t state) const { return choices[state]; }
+uint64_t ExplicitGameStrategy::getChoice(uint64_t state) const {
+    return choices[state];
+}
 
-void ExplicitGameStrategy::setChoice(uint64_t state, uint64_t choice) { choices[state] = choice; }
+void ExplicitGameStrategy::setChoice(uint64_t state, uint64_t choice) {
+    choices[state] = choice;
+}
 
-bool ExplicitGameStrategy::hasDefinedChoice(uint64_t state) const { return choices[state] != UNDEFINED; }
+bool ExplicitGameStrategy::hasDefinedChoice(uint64_t state) const {
+    return choices[state] != UNDEFINED;
+}
 
 void ExplicitGameStrategy::undefineAll() {
     for (auto& e : choices) {

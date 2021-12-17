@@ -6,7 +6,9 @@ namespace jani {
 namespace elimination_actions {
 RebuildWithoutUnreachableAction::RebuildWithoutUnreachableAction() {}
 
-std::string RebuildWithoutUnreachableAction::getDescription() { return "RebuildWithoutUnreachableAction"; }
+std::string RebuildWithoutUnreachableAction::getDescription() {
+    return "RebuildWithoutUnreachableAction";
+}
 
 void RebuildWithoutUnreachableAction::doAction(JaniLocalEliminator::Session &session) {
     STORM_LOG_TRACE("Rebuilding model without unreachable locations");
@@ -26,7 +28,8 @@ void RebuildWithoutUnreachableAction::doAction(JaniLocalEliminator::Session &ses
         std::unordered_set<const Edge *> satisfiableEdges;
 
         for (auto &oldEdge : oldAutomaton.getEdges()) {
-            if (!oldEdge.getGuard().containsVariables() && !oldEdge.getGuard().evaluateAsBool()) continue;
+            if (!oldEdge.getGuard().containsVariables() && !oldEdge.getGuard().evaluateAsBool())
+                continue;
             satisfiableEdges.emplace(&oldEdge);
         }
         STORM_LOG_TRACE("\t" + std::to_string(satisfiableEdges.size()) + " of " + std::to_string(oldAutomaton.getEdges().size()) + " edges are satisfiable.");
@@ -73,7 +76,8 @@ void RebuildWithoutUnreachableAction::doAction(JaniLocalEliminator::Session &ses
 
         for (auto const &oldLoc : oldAutomaton.getLocations()) {
             uint64_t oldLocationIndex = oldAutomaton.getLocationIndex(oldLoc.getName());
-            if (reachableLocs.count(oldLocationIndex) == 0) continue;
+            if (reachableLocs.count(oldLocationIndex) == 0)
+                continue;
 
             Location newLoc(oldLoc.getName(), oldLoc.getAssignments());
             newAutomaton.addLocation(newLoc);
@@ -88,9 +92,11 @@ void RebuildWithoutUnreachableAction::doAction(JaniLocalEliminator::Session &ses
 
         for (auto &oldEdge : oldAutomaton.getEdges()) {
             uint64_t oldSource = oldEdge.getSourceLocationIndex();
-            if (reachableLocs.count(oldSource) == 0) continue;
+            if (reachableLocs.count(oldSource) == 0)
+                continue;
 
-            if (satisfiableEdges.count(&oldEdge) == 0) continue;
+            if (satisfiableEdges.count(&oldEdge) == 0)
+                continue;
 
             oldEdge.getDestination(0).getOrderedAssignments().clone();
 

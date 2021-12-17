@@ -37,7 +37,9 @@ ExplicitQualitativeCheckResult::ExplicitQualitativeCheckResult(boost::variant<ve
     // Intentionally left empty.
 }
 
-std::unique_ptr<CheckResult> ExplicitQualitativeCheckResult::clone() const { return std::make_unique<ExplicitQualitativeCheckResult>(this->truthValues); }
+std::unique_ptr<CheckResult> ExplicitQualitativeCheckResult::clone() const {
+    return std::make_unique<ExplicitQualitativeCheckResult>(this->truthValues);
+}
 
 void ExplicitQualitativeCheckResult::performLogicalOperation(ExplicitQualitativeCheckResult& first, QualitativeCheckResult const& second, bool logicalAnd) {
     STORM_LOG_THROW(second.isExplicitQualitativeCheckResult(), storm::exceptions::InvalidOperationException,
@@ -133,9 +135,13 @@ bool ExplicitQualitativeCheckResult::operator[](storm::storage::sparse::state_ty
     }
 }
 
-ExplicitQualitativeCheckResult::vector_type const& ExplicitQualitativeCheckResult::getTruthValuesVector() const { return boost::get<vector_type>(truthValues); }
+ExplicitQualitativeCheckResult::vector_type const& ExplicitQualitativeCheckResult::getTruthValuesVector() const {
+    return boost::get<vector_type>(truthValues);
+}
 
-ExplicitQualitativeCheckResult::map_type const& ExplicitQualitativeCheckResult::getTruthValuesMap() const { return boost::get<map_type>(truthValues); }
+ExplicitQualitativeCheckResult::map_type const& ExplicitQualitativeCheckResult::getTruthValuesMap() const {
+    return boost::get<map_type>(truthValues);
+}
 
 void ExplicitQualitativeCheckResult::complement() {
     if (this->isResultForAllStates()) {
@@ -147,11 +153,17 @@ void ExplicitQualitativeCheckResult::complement() {
     }
 }
 
-bool ExplicitQualitativeCheckResult::isExplicit() const { return true; }
+bool ExplicitQualitativeCheckResult::isExplicit() const {
+    return true;
+}
 
-bool ExplicitQualitativeCheckResult::isResultForAllStates() const { return truthValues.which() == 0; }
+bool ExplicitQualitativeCheckResult::isResultForAllStates() const {
+    return truthValues.which() == 0;
+}
 
-bool ExplicitQualitativeCheckResult::isExplicitQualitativeCheckResult() const { return true; }
+bool ExplicitQualitativeCheckResult::isExplicitQualitativeCheckResult() const {
+    return true;
+}
 
 std::ostream& ExplicitQualitativeCheckResult::writeToStream(std::ostream& out) const {
     if (this->isResultForAllStates()) {

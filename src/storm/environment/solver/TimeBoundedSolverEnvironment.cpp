@@ -20,25 +20,41 @@ TimeBoundedSolverEnvironment::~TimeBoundedSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::MaBoundedReachabilityMethod const& TimeBoundedSolverEnvironment::getMaMethod() const { return maMethod; }
+storm::solver::MaBoundedReachabilityMethod const& TimeBoundedSolverEnvironment::getMaMethod() const {
+    return maMethod;
+}
 
-bool const& TimeBoundedSolverEnvironment::isMaMethodSetFromDefault() const { return maMethodSetFromDefault; }
+bool const& TimeBoundedSolverEnvironment::isMaMethodSetFromDefault() const {
+    return maMethodSetFromDefault;
+}
 
 void TimeBoundedSolverEnvironment::setMaMethod(storm::solver::MaBoundedReachabilityMethod value, bool isSetFromDefault) {
     maMethod = value;
     maMethodSetFromDefault = isSetFromDefault;
 }
 
-storm::RationalNumber const& TimeBoundedSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& TimeBoundedSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void TimeBoundedSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void TimeBoundedSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 
-bool const& TimeBoundedSolverEnvironment::getRelativeTerminationCriterion() const { return relative; }
+bool const& TimeBoundedSolverEnvironment::getRelativeTerminationCriterion() const {
+    return relative;
+}
 
-void TimeBoundedSolverEnvironment::setRelativeTerminationCriterion(bool value) { relative = value; }
+void TimeBoundedSolverEnvironment::setRelativeTerminationCriterion(bool value) {
+    relative = value;
+}
 
-storm::RationalNumber const& TimeBoundedSolverEnvironment::getUnifPlusKappa() const { return unifPlusKappa; }
+storm::RationalNumber const& TimeBoundedSolverEnvironment::getUnifPlusKappa() const {
+    return unifPlusKappa;
+}
 
-void TimeBoundedSolverEnvironment::setUnifPlusKappa(storm::RationalNumber value) { unifPlusKappa = value; }
+void TimeBoundedSolverEnvironment::setUnifPlusKappa(storm::RationalNumber value) {
+    unifPlusKappa = value;
+}
 
 }  // namespace storm

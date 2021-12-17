@@ -52,11 +52,17 @@ BitVector::const_iterator& BitVector::const_iterator::operator+=(size_t n) {
     return *this;
 }
 
-uint_fast64_t BitVector::const_iterator::operator*() const { return currentIndex; }
+uint_fast64_t BitVector::const_iterator::operator*() const {
+    return currentIndex;
+}
 
-bool BitVector::const_iterator::operator!=(const_iterator const& other) const { return currentIndex != other.currentIndex; }
+bool BitVector::const_iterator::operator!=(const_iterator const& other) const {
+    return currentIndex != other.currentIndex;
+}
 
-bool BitVector::const_iterator::operator==(const_iterator const& other) const { return currentIndex == other.currentIndex; }
+bool BitVector::const_iterator::operator==(const_iterator const& other) const {
+    return currentIndex == other.currentIndex;
+}
 
 BitVector::BitVector() : bitCount(0), buckets(nullptr) {
     // Intentionally left empty.
@@ -163,13 +169,16 @@ BitVector& BitVector::operator=(BitVector&& other) {
 
 bool BitVector::operator==(BitVector const& other) const {
     // If the lengths of the vectors do not match, they are considered unequal.
-    if (this->bitCount != other.bitCount) return false;
+    if (this->bitCount != other.bitCount)
+        return false;
 
     // If the lengths match, we compare the buckets one by one.
     return std::equal(this->buckets, this->buckets + this->bucketCount(), other.buckets);
 }
 
-bool BitVector::operator!=(BitVector const& other) const { return !(*this == other); }
+bool BitVector::operator!=(BitVector const& other) const {
+    return !(*this == other);
+}
 
 void BitVector::set(uint_fast64_t index, bool value) {
     STORM_LOG_ASSERT(index < bitCount, "Invalid call to BitVector::set: written index " << index << " out of bounds.");
@@ -611,14 +620,18 @@ bool BitVector::full() const {
     return true;
 }
 
-void BitVector::clear() { std::fill_n(buckets, this->bucketCount(), 0); }
+void BitVector::clear() {
+    std::fill_n(buckets, this->bucketCount(), 0);
+}
 
 void BitVector::fill() {
     std::fill_n(buckets, this->bucketCount(), -1ull);
     truncateLastBucket();
 }
 
-uint_fast64_t BitVector::getNumberOfSetBits() const { return getNumberOfSetBitsBeforeIndex(bitCount); }
+uint_fast64_t BitVector::getNumberOfSetBits() const {
+    return getNumberOfSetBitsBeforeIndex(bitCount);
+}
 
 uint_fast64_t BitVector::getNumberOfSetBitsBeforeIndex(uint_fast64_t index) const {
     uint_fast64_t result = 0;
@@ -679,15 +692,25 @@ std::vector<uint_fast64_t> BitVector::getNumberOfSetBitsBeforeIndices() const {
     return bitsSetBeforeIndices;
 }
 
-size_t BitVector::size() const { return static_cast<size_t>(bitCount); }
+size_t BitVector::size() const {
+    return static_cast<size_t>(bitCount);
+}
 
-std::size_t BitVector::getSizeInBytes() const { return sizeof(*this) + sizeof(uint64_t) * bucketCount(); }
+std::size_t BitVector::getSizeInBytes() const {
+    return sizeof(*this) + sizeof(uint64_t) * bucketCount();
+}
 
-BitVector::const_iterator BitVector::begin() const { return const_iterator(buckets, 0, bitCount); }
+BitVector::const_iterator BitVector::begin() const {
+    return const_iterator(buckets, 0, bitCount);
+}
 
-BitVector::const_iterator BitVector::end() const { return const_iterator(buckets, bitCount, bitCount, false); }
+BitVector::const_iterator BitVector::end() const {
+    return const_iterator(buckets, bitCount, bitCount, false);
+}
 
-uint_fast64_t BitVector::getNextSetIndex(uint_fast64_t startingIndex) const { return getNextIndexWithValue(true, buckets, startingIndex, bitCount); }
+uint_fast64_t BitVector::getNextSetIndex(uint_fast64_t startingIndex) const {
+    return getNextIndexWithValue(true, buckets, startingIndex, bitCount);
+}
 
 uint_fast64_t BitVector::getNextUnsetIndex(uint_fast64_t startingIndex) const {
 #ifdef ASSERT_BITVECTOR
@@ -1091,13 +1114,21 @@ inline __attribute__((always_inline)) uint64_t fmix64(uint64_t k) {
     return k;
 }
 
-inline uint32_t rotl32(uint32_t x, int8_t r) { return (x << r) | (x >> (32 - r)); }
+inline uint32_t rotl32(uint32_t x, int8_t r) {
+    return (x << r) | (x >> (32 - r));
+}
 
-inline uint64_t rotl64(uint64_t x, int8_t r) { return (x << r) | (x >> (64 - r)); }
+inline uint64_t rotl64(uint64_t x, int8_t r) {
+    return (x << r) | (x >> (64 - r));
+}
 
-inline __attribute__((always_inline)) uint32_t getblock32(uint32_t const* p, int i) { return p[i]; }
+inline __attribute__((always_inline)) uint32_t getblock32(uint32_t const* p, int i) {
+    return p[i];
+}
 
-inline __attribute__((always_inline)) uint32_t getblock64(uint64_t const* p, int i) { return p[i]; }
+inline __attribute__((always_inline)) uint32_t getblock64(uint64_t const* p, int i) {
+    return p[i];
+}
 
 template<>
 uint32_t Murmur3BitVectorHash<uint32_t>::operator()(storm::storage::BitVector const& bv) const {

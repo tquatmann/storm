@@ -3,7 +3,9 @@
 namespace storm {
 namespace jani {
 
-std::ostream& operator<<(std::ostream& stream, ModelType const& type) { return stream << to_string(type); }
+std::ostream& operator<<(std::ostream& stream, ModelType const& type) {
+    return stream << to_string(type);
+}
 
 std::string to_string(ModelType const& type) {
     switch (type) {

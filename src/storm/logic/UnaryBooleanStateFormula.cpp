@@ -13,13 +13,21 @@ UnaryBooleanStateFormula::UnaryBooleanStateFormula(OperatorType operatorType, st
                     "Boolean formula must have subformulas with qualitative result.");
 }
 
-bool UnaryBooleanStateFormula::isUnaryBooleanStateFormula() const { return true; }
+bool UnaryBooleanStateFormula::isUnaryBooleanStateFormula() const {
+    return true;
+}
 
-boost::any UnaryBooleanStateFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any UnaryBooleanStateFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-UnaryBooleanStateFormula::OperatorType UnaryBooleanStateFormula::getOperator() const { return operatorType; }
+UnaryBooleanStateFormula::OperatorType UnaryBooleanStateFormula::getOperator() const {
+    return operatorType;
+}
 
-bool UnaryBooleanStateFormula::isNot() const { return this->getOperator() == OperatorType::Not; }
+bool UnaryBooleanStateFormula::isNot() const {
+    return this->getOperator() == OperatorType::Not;
+}
 
 std::ostream& UnaryBooleanStateFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

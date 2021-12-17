@@ -14,7 +14,9 @@ ArrayVariableReplacementInformation::ArrayVariableReplacementInformation(uint64_
     // Intentionally left empty
 }
 
-bool ArrayVariableReplacementInformation::isInformationIndex() const { return data.which() == 0; }
+bool ArrayVariableReplacementInformation::isInformationIndex() const {
+    return data.which() == 0;
+}
 
 uint64_t ArrayVariableReplacementInformation::getInformationIndex() const {
     STORM_LOG_ASSERT(isInformationIndex(), "invalid operation.");

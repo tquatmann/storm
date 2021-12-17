@@ -11,25 +11,41 @@ Edges::Edges(iterator it, iterator ite) : it(it), ite(ite) {
     // Intentionally left empty.
 }
 
-Edges::iterator Edges::begin() const { return it; }
+Edges::iterator Edges::begin() const {
+    return it;
+}
 
-Edges::iterator Edges::end() const { return ite; }
+Edges::iterator Edges::end() const {
+    return ite;
+}
 
-bool Edges::empty() const { return it == ite; }
+bool Edges::empty() const {
+    return it == ite;
+}
 
-std::size_t Edges::size() const { return std::distance(it, ite); }
+std::size_t Edges::size() const {
+    return std::distance(it, ite);
+}
 
 ConstEdges::ConstEdges(const_iterator it, const_iterator ite) : it(it), ite(ite) {
     // Intentionally left empty.
 }
 
-ConstEdges::const_iterator ConstEdges::begin() const { return it; }
+ConstEdges::const_iterator ConstEdges::begin() const {
+    return it;
+}
 
-ConstEdges::const_iterator ConstEdges::end() const { return ite; }
+ConstEdges::const_iterator ConstEdges::end() const {
+    return ite;
+}
 
-bool ConstEdges::empty() const { return it == ite; }
+bool ConstEdges::empty() const {
+    return it == ite;
+}
 
-std::size_t ConstEdges::size() const { return std::distance(it, ite); }
+std::size_t ConstEdges::size() const {
+    return std::distance(it, ite);
+}
 }  // namespace detail
 
 EdgeContainer::EdgeContainer(EdgeContainer const& other) {
@@ -68,7 +84,9 @@ void EdgeContainer::finalize(Model const& containingModel) {
     }
 }
 
-void EdgeContainer::clearConcreteEdges() { edges.clear(); }
+void EdgeContainer::clearConcreteEdges() {
+    edges.clear();
+}
 
 void EdgeContainer::liftTransientDestinationAssignments(int64_t maxLevel) {
     for (auto& templateEdge : templates) {
@@ -103,11 +121,17 @@ bool EdgeContainer::usesAssignmentLevels(bool onlyTransient) const {
     return false;
 }
 
-std::vector<Edge>& EdgeContainer::getConcreteEdges() { return edges; }
+std::vector<Edge>& EdgeContainer::getConcreteEdges() {
+    return edges;
+}
 
-std::vector<Edge> const& EdgeContainer::getConcreteEdges() const { return edges; }
+std::vector<Edge> const& EdgeContainer::getConcreteEdges() const {
+    return edges;
+}
 
-TemplateEdgeContainer const& EdgeContainer::getTemplateEdges() const { return templates; }
+TemplateEdgeContainer const& EdgeContainer::getTemplateEdges() const {
+    return templates;
+}
 
 std::set<uint64_t> EdgeContainer::getActionIndices() const {
     std::set<uint64_t> result;
@@ -138,7 +162,9 @@ void EdgeContainer::insertEdge(Edge const& e, uint64_t locStart, uint64_t locEnd
     std::sort(it, ite, [](Edge const& a, Edge const& b) { return a.getActionIndex() < b.getActionIndex(); });
 }
 
-void EdgeContainer::insertTemplateEdge(std::shared_ptr<TemplateEdge> const& te) { templates.insert(te); }
+void EdgeContainer::insertTemplateEdge(std::shared_ptr<TemplateEdge> const& te) {
+    templates.insert(te);
+}
 
 void EdgeContainer::pushAssignmentsToDestinations() {
     for (auto& templateEdge : templates) {
@@ -152,12 +178,22 @@ void EdgeContainer::changeAssignmentVariables(std::map<Variable const*, std::ref
     }
 }
 
-size_t EdgeContainer::size() const { return edges.size(); }
+size_t EdgeContainer::size() const {
+    return edges.size();
+}
 
-EdgeContainer::iterator EdgeContainer::begin() { return edges.begin(); }
-EdgeContainer::iterator EdgeContainer::end() { return edges.end(); }
-EdgeContainer::const_iterator EdgeContainer::begin() const { return edges.begin(); }
-EdgeContainer::const_iterator EdgeContainer::end() const { return edges.end(); }
+EdgeContainer::iterator EdgeContainer::begin() {
+    return edges.begin();
+}
+EdgeContainer::iterator EdgeContainer::end() {
+    return edges.end();
+}
+EdgeContainer::const_iterator EdgeContainer::begin() const {
+    return edges.begin();
+}
+EdgeContainer::const_iterator EdgeContainer::end() const {
+    return edges.end();
+}
 
 }  // namespace jani
 }  // namespace storm

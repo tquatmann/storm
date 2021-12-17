@@ -83,10 +83,18 @@ class LraMdpPrctlModelCheckerTest : public ::testing::Test {
     typedef typename storm::models::sparse::Mdp<ValueType> SparseModelType;
 
     LraMdpPrctlModelCheckerTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
-    ValueType parseNumber(std::string const& input) const { return storm::utility::convertNumber<ValueType>(input); }
-    ValueType precision() const { return TestType::isExact ? parseNumber("0") : parseNumber("1e-6"); }
-    bool isSparseModel() const { return std::is_same<typename TestType::ModelType, SparseModelType>::value; }
+    storm::Environment const& env() const {
+        return _environment;
+    }
+    ValueType parseNumber(std::string const& input) const {
+        return storm::utility::convertNumber<ValueType>(input);
+    }
+    ValueType precision() const {
+        return TestType::isExact ? parseNumber("0") : parseNumber("1e-6");
+    }
+    bool isSparseModel() const {
+        return std::is_same<typename TestType::ModelType, SparseModelType>::value;
+    }
 
     std::pair<std::shared_ptr<SparseModelType>, std::vector<std::shared_ptr<storm::logic::Formula const>>> buildModelFormulas(
         std::string const& pathToPrismFile, std::string const& formulasAsString, std::string const& constantDefinitionString = "") const {

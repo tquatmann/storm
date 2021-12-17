@@ -8,11 +8,17 @@ Assignment::Assignment(storm::expressions::Variable const& variable, storm::expr
     // Intentionally left empty.
 }
 
-std::string const& Assignment::getVariableName() const { return variable.getName(); }
+std::string const& Assignment::getVariableName() const {
+    return variable.getName();
+}
 
-storm::expressions::Variable const& Assignment::getVariable() const { return variable; }
+storm::expressions::Variable const& Assignment::getVariable() const {
+    return variable;
+}
 
-storm::expressions::Expression const& Assignment::getExpression() const { return this->expression; }
+storm::expressions::Expression const& Assignment::getExpression() const {
+    return this->expression;
+}
 
 Assignment Assignment::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     return Assignment(this->getVariable(), this->getExpression().substitute(substitution).simplify(), this->getFilename(), this->getLineNumber());

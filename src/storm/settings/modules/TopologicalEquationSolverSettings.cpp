@@ -70,7 +70,9 @@ storm::solver::EquationSolverType TopologicalEquationSolverSettings::getUnderlyi
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown underlying equation solver '" << equationSolverName << "'.");
 }
 
-bool TopologicalEquationSolverSettings::isUnderlyingMinMaxMethodSet() const { return this->getOption(underlyingMinMaxMethodOptionName).getHasOptionBeenSet(); }
+bool TopologicalEquationSolverSettings::isUnderlyingMinMaxMethodSet() const {
+    return this->getOption(underlyingMinMaxMethodOptionName).getHasOptionBeenSet();
+}
 
 bool TopologicalEquationSolverSettings::isUnderlyingMinMaxMethodSetFromDefaultValue() const {
     return !this->getOption(underlyingMinMaxMethodOptionName).getHasOptionBeenSet() ||

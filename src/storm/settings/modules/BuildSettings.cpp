@@ -112,33 +112,57 @@ BuildSettings::BuildSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool BuildSettings::isExplorationOrderSet() const { return this->getOption(explorationOrderOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isExplorationOrderSet() const {
+    return this->getOption(explorationOrderOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isPrismCompatibilityEnabled() const { return this->getOption(prismCompatibilityOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isPrismCompatibilityEnabled() const {
+    return this->getOption(prismCompatibilityOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isDontFixDeadlocksSet() const { return this->getOption(dontFixDeadlockOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isDontFixDeadlocksSet() const {
+    return this->getOption(dontFixDeadlockOptionName).getHasOptionBeenSet();
+}
 
 std::unique_ptr<storm::settings::SettingMemento> BuildSettings::overrideDontFixDeadlocksSet(bool stateToSet) {
     return this->overrideOption(dontFixDeadlockOptionName, stateToSet);
 }
 
-bool BuildSettings::isBuildFullModelSet() const { return this->getOption(fullModelBuildOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildFullModelSet() const {
+    return this->getOption(fullModelBuildOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isNoBuildModelSet() const { return this->getOption(noBuildOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isNoBuildModelSet() const {
+    return this->getOption(noBuildOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isApplyNoMaximumProgressAssumptionSet() const { return this->getOption(applyNoMaxProgAssumptionOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isApplyNoMaximumProgressAssumptionSet() const {
+    return this->getOption(applyNoMaxProgAssumptionOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isBuildChoiceLabelsSet() const { return this->getOption(buildChoiceLabelOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildChoiceLabelsSet() const {
+    return this->getOption(buildChoiceLabelOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isBuildChoiceOriginsSet() const { return this->getOption(buildChoiceOriginsOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildChoiceOriginsSet() const {
+    return this->getOption(buildChoiceOriginsOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isBuildStateValuationsSet() const { return this->getOption(buildStateValuationsOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildStateValuationsSet() const {
+    return this->getOption(buildStateValuationsOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isBuildOutOfBoundsStateSet() const { return this->getOption(buildOutOfBoundsStateOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildOutOfBoundsStateSet() const {
+    return this->getOption(buildOutOfBoundsStateOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isAddOverlappingGuardsLabelSet() const { return this->getOption(buildOverlappingGuardsLabelOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isAddOverlappingGuardsLabelSet() const {
+    return this->getOption(buildOverlappingGuardsLabelOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isBuildAllLabelsSet() const { return this->getOption(buildAllLabelsOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isBuildAllLabelsSet() const {
+    return this->getOption(buildAllLabelsOptionName).getHasOptionBeenSet();
+}
 
 storm::builder::ExplorationOrder BuildSettings::getExplorationOrder() const {
     std::string explorationOrderAsString = this->getOption(explorationOrderOptionName).getArgumentByName("name").getValueAsString();
@@ -150,15 +174,21 @@ storm::builder::ExplorationOrder BuildSettings::getExplorationOrder() const {
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown exploration order '" << explorationOrderAsString << "'.");
 }
 
-bool BuildSettings::isExplorationChecksSet() const { return this->getOption(explorationChecksOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isExplorationChecksSet() const {
+    return this->getOption(explorationChecksOptionName).getHasOptionBeenSet();
+}
 
-bool BuildSettings::isNoSimplifySet() const { return this->getOption(noSimplifyOptionName).getHasOptionBeenSet(); }
+bool BuildSettings::isNoSimplifySet() const {
+    return this->getOption(noSimplifyOptionName).getHasOptionBeenSet();
+}
 
 uint64_t BuildSettings::getBitsForUnboundedVariables() const {
     return this->getOption(bitsForUnboundedVariablesOptionName).getArgumentByName("number").getValueAsUnsignedInteger();
 }
 
-bool BuildSettings::isLocationEliminationSet() const { return this->getOption(performLocationElimination).getHasOptionBeenSet(); }
+bool BuildSettings::isLocationEliminationSet() const {
+    return this->getOption(performLocationElimination).getHasOptionBeenSet();
+}
 
 uint64_t BuildSettings::getLocationEliminationLocationHeuristic() const {
     return this->getOption(performLocationElimination).getArgumentByName("location-heuristic").getValueAsUnsignedInteger();

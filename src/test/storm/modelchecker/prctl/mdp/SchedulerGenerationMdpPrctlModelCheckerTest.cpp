@@ -77,7 +77,9 @@ class SchedulerGenerationMdpPrctlModelCheckerTest : public ::testing::Test {
    public:
     typedef typename TestType::ValueType ValueType;
     SchedulerGenerationMdpPrctlModelCheckerTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
+    storm::Environment const& env() const {
+        return _environment;
+    }
 
     std::pair<std::shared_ptr<storm::models::sparse::Mdp<ValueType>>, std::vector<std::shared_ptr<storm::logic::Formula const>>> buildModelFormulas(
         std::string const& pathToPrismFile, std::string const& formulasAsString, std::string const& constantDefinitionString = "") const {
@@ -99,7 +101,9 @@ class SchedulerGenerationMdpPrctlModelCheckerTest : public ::testing::Test {
         return result;
     }
 
-    ValueType parseNumber(std::string const& input) const { return storm::utility::convertNumber<ValueType>(input); }
+    ValueType parseNumber(std::string const& input) const {
+        return storm::utility::convertNumber<ValueType>(input);
+    }
 
    private:
     storm::Environment _environment;

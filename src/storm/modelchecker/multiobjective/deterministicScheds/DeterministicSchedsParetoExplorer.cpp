@@ -341,7 +341,8 @@ DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::Determini
                         }
                     }
                 }
-                if (mecHasNonConstValue) ++nonConstMecCounter;
+                if (mecHasNonConstValue)
+                    ++nonConstMecCounter;
             }
             STORM_PRINT_AND_LOG("#STATS " << nonConstMecCounter << " non-constant MECS in " << modelname << std::endl);
             STORM_PRINT_AND_LOG("#STATS " << nonConstMecStateCounter << " non-constant MEC States in " << modelname << std::endl);

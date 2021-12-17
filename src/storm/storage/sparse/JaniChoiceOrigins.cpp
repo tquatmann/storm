@@ -17,11 +17,17 @@ JaniChoiceOrigins::JaniChoiceOrigins(std::shared_ptr<storm::jani::Model const> c
                     "The given edge set for the choices without origin is non-empty");
 }
 
-bool JaniChoiceOrigins::isJaniChoiceOrigins() const { return true; }
+bool JaniChoiceOrigins::isJaniChoiceOrigins() const {
+    return true;
+}
 
-uint_fast64_t JaniChoiceOrigins::getNumberOfIdentifiers() const { return identifierToEdgeIndexSet.size(); }
+uint_fast64_t JaniChoiceOrigins::getNumberOfIdentifiers() const {
+    return identifierToEdgeIndexSet.size();
+}
 
-storm::jani::Model const& JaniChoiceOrigins::getModel() const { return *model; }
+storm::jani::Model const& JaniChoiceOrigins::getModel() const {
+    return *model;
+}
 
 JaniChoiceOrigins::EdgeIndexSet const& JaniChoiceOrigins::getEdgeIndexSet(uint_fast64_t choiceIndex) const {
     return identifierToEdgeIndexSet[this->getIdentifier(choiceIndex)];
@@ -77,7 +83,9 @@ void JaniChoiceOrigins::computeIdentifierJson() const {
     }
 }
 
-std::size_t JaniChoiceOrigins::hash() const { return 0; }
+std::size_t JaniChoiceOrigins::hash() const {
+    return 0;
+}
 }  // namespace sparse
 }  // namespace storage
 }  // namespace storm

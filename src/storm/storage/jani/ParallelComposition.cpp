@@ -19,12 +19,20 @@ SynchronizationVector::SynchronizationVector(std::vector<std::string> const& inp
 
 SynchronizationVector::SynchronizationVector(std::vector<std::string> const& input) : input(input), output(storm::jani::Model::SILENT_ACTION_NAME) {}
 
-std::size_t SynchronizationVector::size() const { return input.size(); }
+std::size_t SynchronizationVector::size() const {
+    return input.size();
+}
 
-std::vector<std::string> const& SynchronizationVector::getInput() const { return input; }
+std::vector<std::string> const& SynchronizationVector::getInput() const {
+    return input;
+}
 
-std::string const& SynchronizationVector::getInput(uint64_t index) const { return input[index]; }
-std::string const& SynchronizationVector::getOutput() const { return output; }
+std::string const& SynchronizationVector::getInput(uint64_t index) const {
+    return input[index];
+}
+std::string const& SynchronizationVector::getOutput() const {
+    return output;
+}
 
 boost::optional<std::string> SynchronizationVector::getPrecedingParticipatingAction(uint64_t index) const {
     boost::optional<uint64_t> position = getPositionOfPrecedingParticipatingAction(index);
@@ -74,7 +82,9 @@ uint64_t SynchronizationVector::getNumberOfActionInputs() const {
     return result;
 }
 
-bool SynchronizationVector::isNoActionInput(std::string const& action) { return action == NO_ACTION_INPUT; }
+bool SynchronizationVector::isNoActionInput(std::string const& action) {
+    return action == NO_ACTION_INPUT;
+}
 
 std::ostream& operator<<(std::ostream& stream, SynchronizationVector const& synchronizationVector) {
     bool first = true;
@@ -100,7 +110,9 @@ bool operator==(SynchronizationVector const& vector1, SynchronizationVector cons
     return true;
 }
 
-bool operator!=(SynchronizationVector const& vector1, SynchronizationVector const& vector2) { return !(vector1 == vector2); }
+bool operator!=(SynchronizationVector const& vector1, SynchronizationVector const& vector2) {
+    return !(vector1 == vector2);
+}
 
 bool SynchronizationVectorLexicographicalLess::operator()(SynchronizationVector const& vector1, SynchronizationVector const& vector2) const {
     STORM_LOG_THROW(vector1.size() == vector2.size(), storm::exceptions::WrongFormatException, "Cannot compare synchronization vectors of different size.");
@@ -152,19 +164,33 @@ ParallelComposition::ParallelComposition(std::shared_ptr<Composition> const& lef
     }
 }
 
-bool ParallelComposition::isParallelComposition() const { return true; }
+bool ParallelComposition::isParallelComposition() const {
+    return true;
+}
 
-Composition const& ParallelComposition::getSubcomposition(uint64_t index) const { return *subcompositions[index]; }
+Composition const& ParallelComposition::getSubcomposition(uint64_t index) const {
+    return *subcompositions[index];
+}
 
-std::vector<std::shared_ptr<Composition>> const& ParallelComposition::getSubcompositions() const { return subcompositions; }
+std::vector<std::shared_ptr<Composition>> const& ParallelComposition::getSubcompositions() const {
+    return subcompositions;
+}
 
-uint64_t ParallelComposition::getNumberOfSubcompositions() const { return subcompositions.size(); }
+uint64_t ParallelComposition::getNumberOfSubcompositions() const {
+    return subcompositions.size();
+}
 
-SynchronizationVector const& ParallelComposition::getSynchronizationVector(uint64_t index) const { return synchronizationVectors[index]; }
+SynchronizationVector const& ParallelComposition::getSynchronizationVector(uint64_t index) const {
+    return synchronizationVectors[index];
+}
 
-std::vector<SynchronizationVector> const& ParallelComposition::getSynchronizationVectors() const { return synchronizationVectors; }
+std::vector<SynchronizationVector> const& ParallelComposition::getSynchronizationVectors() const {
+    return synchronizationVectors;
+}
 
-std::size_t ParallelComposition::getNumberOfSynchronizationVectors() const { return synchronizationVectors.size(); }
+std::size_t ParallelComposition::getNumberOfSynchronizationVectors() const {
+    return synchronizationVectors.size();
+}
 
 bool ParallelComposition::areActionsReused() const {
     for (uint_fast64_t inputIndex = 0; inputIndex < subcompositions.size(); ++inputIndex) {
@@ -208,7 +234,9 @@ void ParallelComposition::checkSynchronizationVectors() const {
     }
 }
 
-boost::any ParallelComposition::accept(CompositionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any ParallelComposition::accept(CompositionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void ParallelComposition::write(std::ostream& stream) const {
     std::vector<std::string> synchronizationVectorsAsStrings;

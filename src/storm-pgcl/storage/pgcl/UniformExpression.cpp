@@ -6,8 +6,12 @@ UniformExpression::UniformExpression(int_fast64_t begin, int_fast64_t end) : beg
     // Intentionally left empty.
 }
 
-int_fast64_t UniformExpression::getBegin() const { return this->begin; }
+int_fast64_t UniformExpression::getBegin() const {
+    return this->begin;
+}
 
-int_fast64_t UniformExpression::getEnd() const { return this->end; }
+int_fast64_t UniformExpression::getEnd() const {
+    return this->end;
+}
 }  // namespace pgcl
 }  // namespace storm

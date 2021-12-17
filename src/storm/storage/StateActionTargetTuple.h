@@ -26,7 +26,9 @@ inline bool operator==(StateActionTarget const& sat1, StateActionTarget const& s
 namespace std {
 template<>
 struct hash<storm::storage::StateActionTarget> {
-    bool operator()(storm::storage::StateActionTarget const& sat) const { return (sat.state ^ sat.target) << 3 | sat.action; }
+    bool operator()(storm::storage::StateActionTarget const& sat) const {
+        return (sat.state ^ sat.target) << 3 | sat.action;
+    }
 };
 
 }  // namespace std

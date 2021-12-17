@@ -13,13 +13,25 @@ ItemLabeling::ItemLabeling(uint_fast64_t itemCount) : itemCount(itemCount), name
     // Intentionally left empty.
 }
 
-bool ItemLabeling::isStateLabeling() const { return false; }
-bool ItemLabeling::isChoiceLabeling() const { return false; }
+bool ItemLabeling::isStateLabeling() const {
+    return false;
+}
+bool ItemLabeling::isChoiceLabeling() const {
+    return false;
+}
 
-StateLabeling const& ItemLabeling::asStateLabeling() const { return dynamic_cast<StateLabeling const&>(*this); }
-StateLabeling& ItemLabeling::asStateLabeling() { return dynamic_cast<StateLabeling&>(*this); }
-ChoiceLabeling const& ItemLabeling::asChoiceLabeling() const { return dynamic_cast<ChoiceLabeling const&>(*this); }
-ChoiceLabeling& ItemLabeling::asChoiceLabeling() { return dynamic_cast<ChoiceLabeling&>(*this); }
+StateLabeling const& ItemLabeling::asStateLabeling() const {
+    return dynamic_cast<StateLabeling const&>(*this);
+}
+StateLabeling& ItemLabeling::asStateLabeling() {
+    return dynamic_cast<StateLabeling&>(*this);
+}
+ChoiceLabeling const& ItemLabeling::asChoiceLabeling() const {
+    return dynamic_cast<ChoiceLabeling const&>(*this);
+}
+ChoiceLabeling& ItemLabeling::asChoiceLabeling() {
+    return dynamic_cast<ChoiceLabeling&>(*this);
+}
 
 bool ItemLabeling::operator==(ItemLabeling const& other) const {
     if (itemCount != other.itemCount) {
@@ -47,7 +59,9 @@ ItemLabeling ItemLabeling::getSubLabeling(storm::storage::BitVector const& items
     return result;
 }
 
-void ItemLabeling::addLabel(std::string const& label) { addLabel(label, storage::BitVector(itemCount)); }
+void ItemLabeling::addLabel(std::string const& label) {
+    addLabel(label, storage::BitVector(itemCount));
+}
 
 void ItemLabeling::removeLabel(std::string const& label) {
     auto labelIt = nameToLabelingIndexMap.find(label);
@@ -136,7 +150,9 @@ std::string ItemLabeling::addUniqueLabel(std::string const& prefix, storage::Bit
     return label;
 }
 
-bool ItemLabeling::containsLabel(std::string const& label) const { return nameToLabelingIndexMap.find(label) != nameToLabelingIndexMap.end(); }
+bool ItemLabeling::containsLabel(std::string const& label) const {
+    return nameToLabelingIndexMap.find(label) != nameToLabelingIndexMap.end();
+}
 
 void ItemLabeling::addLabelToItem(std::string const& label, uint64_t item) {
     STORM_LOG_THROW(this->containsLabel(label), storm::exceptions::InvalidArgumentException, "Label '" << label << "' unknown.");
@@ -157,9 +173,13 @@ bool ItemLabeling::getItemHasLabel(std::string const& label, uint64_t item) cons
     return this->labelings[nameToLabelingIndexMap.at(label)].get(item);
 }
 
-std::size_t ItemLabeling::getNumberOfLabels() const { return labelings.size(); }
+std::size_t ItemLabeling::getNumberOfLabels() const {
+    return labelings.size();
+}
 
-std::size_t ItemLabeling::getNumberOfItems() const { return itemCount; }
+std::size_t ItemLabeling::getNumberOfItems() const {
+    return itemCount;
+}
 
 storm::storage::BitVector const& ItemLabeling::getItems(std::string const& label) const {
     STORM_LOG_THROW(this->containsLabel(label), storm::exceptions::InvalidArgumentException,
@@ -199,7 +219,9 @@ void ItemLabeling::printCompleteLabelingInformationToStream(std::ostream& out) c
     }
 }
 
-std::size_t ItemLabeling::hash() const { return 0; }
+std::size_t ItemLabeling::hash() const {
+    return 0;
+}
 
 std::ostream& operator<<(std::ostream& out, ItemLabeling const& labeling) {
     labeling.printLabelingInformationToStream(out);

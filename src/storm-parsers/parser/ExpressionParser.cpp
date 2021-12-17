@@ -300,9 +300,13 @@ void ExpressionParser::setIdentifierMapping(std::unordered_map<std::string, stor
     expressionCreator->setIdentifierMapping(identifierMapping);
 }
 
-void ExpressionParser::unsetIdentifierMapping() { expressionCreator->unsetIdentifierMapping(); }
+void ExpressionParser::unsetIdentifierMapping() {
+    expressionCreator->unsetIdentifierMapping();
+}
 
-void ExpressionParser::setAcceptDoubleLiterals(bool flag) { expressionCreator->setAcceptDoubleLiterals(flag); }
+void ExpressionParser::setAcceptDoubleLiterals(bool flag) {
+    expressionCreator->setAcceptDoubleLiterals(flag);
+}
 
 bool ExpressionParser::isValidIdentifier(std::string const& identifier) {
     if (this->invalidIdentifiers_.find(identifier) != nullptr) {

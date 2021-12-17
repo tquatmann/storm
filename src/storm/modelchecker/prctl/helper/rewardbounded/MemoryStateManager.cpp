@@ -20,11 +20,17 @@ MemoryStateManager::MemoryStateManager(uint64_t dimensionCount)
     STORM_LOG_THROW(dimensionCount <= 64, storm::exceptions::IllegalArgumentException, "Invoked MemoryStateManager with too many dimensions.");
 }
 
-uint64_t const& MemoryStateManager::getDimensionCount() const { return dimensionCount; }
+uint64_t const& MemoryStateManager::getDimensionCount() const {
+    return dimensionCount;
+}
 
-uint64_t const& MemoryStateManager::getMemoryStateCount() const { return stateCount; }
+uint64_t const& MemoryStateManager::getMemoryStateCount() const {
+    return stateCount;
+}
 
-MemoryStateManager::MemoryState const& MemoryStateManager::getUpperMemoryStateBound() const { return upperMemoryStateBound; }
+MemoryStateManager::MemoryState const& MemoryStateManager::getUpperMemoryStateBound() const {
+    return upperMemoryStateBound;
+}
 
 void MemoryStateManager::setDimensionWithoutMemory(uint64_t dimension) {
     STORM_LOG_ASSERT(dimensionCount > 0, "Invoked MemoryStateManager with zero dimension count.");

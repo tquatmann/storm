@@ -16,7 +16,9 @@ class DAProduct : public Product<Model> {
         // Intentionally left blank
     }
 
-    storm::automata::AcceptanceCondition::ptr getAcceptance() { return acceptance; }
+    storm::automata::AcceptanceCondition::ptr getAcceptance() {
+        return acceptance;
+    }
 
    private:
     storm::automata::AcceptanceCondition::ptr acceptance;

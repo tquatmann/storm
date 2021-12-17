@@ -22,7 +22,9 @@ BinaryNumericalFunctionExpression::BinaryNumericalFunctionExpression(ExpressionM
     // Intentionally left empty.
 }
 
-BinaryNumericalFunctionExpression::OperatorType BinaryNumericalFunctionExpression::getOperatorType() const { return this->operatorType; }
+BinaryNumericalFunctionExpression::OperatorType BinaryNumericalFunctionExpression::getOperatorType() const {
+    return this->operatorType;
+}
 
 storm::expressions::OperatorType BinaryNumericalFunctionExpression::getOperator() const {
     storm::expressions::OperatorType result = storm::expressions::OperatorType::Plus;
@@ -228,9 +230,13 @@ std::shared_ptr<BaseExpression const> BinaryNumericalFunctionExpression::simplif
     }
 }
 
-boost::any BinaryNumericalFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BinaryNumericalFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool BinaryNumericalFunctionExpression::isBinaryNumericalFunctionExpression() const { return true; }
+bool BinaryNumericalFunctionExpression::isBinaryNumericalFunctionExpression() const {
+    return true;
+}
 
 void BinaryNumericalFunctionExpression::printToStream(std::ostream& stream) const {
     stream << "(";

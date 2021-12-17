@@ -17,7 +17,9 @@ UnfoldAction::UnfoldAction(const std::string &automatonName, const std::string &
     this->expressionVariableName = expressionVariableName;
 }
 
-std::string UnfoldAction::getDescription() { return (boost::format("UnfoldAction (Automaton %s, Variable %s)") % automatonName % variableName).str(); }
+std::string UnfoldAction::getDescription() {
+    return (boost::format("UnfoldAction (Automaton %s, Variable %s)") % automatonName % variableName).str();
+}
 
 void UnfoldAction::doAction(JaniLocalEliminator::Session &session) {
     // In addition to doing the unfolding, we also need to update which location might satisfy the property.
@@ -33,7 +35,8 @@ void UnfoldAction::doAction(JaniLocalEliminator::Session &session) {
     auto automaton = session.getModel().getAutomaton(automatonName);
     for (uint64_t i = 0; i < automaton.getNumberOfLocations(); i++) {
         partOfProp[i] = session.isPartOfProp(automatonName, i);
-        if (partOfProp[i]) partOfPropCount += 1;
+        if (partOfProp[i])
+            partOfPropCount += 1;
     }
 
     STORM_LOG_TRACE("\t\t" + std::to_string(partOfPropCount) + " old locations potentially satisfy property");

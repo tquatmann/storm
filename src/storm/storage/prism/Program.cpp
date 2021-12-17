@@ -244,15 +244,21 @@ Program::Program(std::shared_ptr<storm::expressions::ExpressionManager> manager,
     }
 }
 
-Program::ModelType Program::getModelType() const { return modelType; }
+Program::ModelType Program::getModelType() const {
+    return modelType;
+}
 
 bool Program::isDiscreteTimeModel() const {
     return modelType == ModelType::DTMC || modelType == ModelType::MDP || modelType == ModelType::POMDP || modelType == ModelType::SMG;
 }
 
-bool Program::isDeterministicModel() const { return modelType == ModelType::DTMC || modelType == ModelType::CTMC; }
+bool Program::isDeterministicModel() const {
+    return modelType == ModelType::DTMC || modelType == ModelType::CTMC;
+}
 
-bool Program::isPartiallyObservable() const { return modelType == ModelType::POMDP; }
+bool Program::isPartiallyObservable() const {
+    return modelType == ModelType::POMDP;
+}
 
 size_t Program::getNumberOfCommands() const {
     size_t res = 0;
@@ -384,14 +390,18 @@ std::string Program::getUndefinedConstantsAsString() const {
     return stream.str();
 }
 
-bool Program::hasConstant(std::string const& constantName) const { return this->constantToIndexMap.find(constantName) != this->constantToIndexMap.end(); }
+bool Program::hasConstant(std::string const& constantName) const {
+    return this->constantToIndexMap.find(constantName) != this->constantToIndexMap.end();
+}
 
 Constant const& Program::getConstant(std::string const& constantName) const {
     auto const& constantIndexPair = this->constantToIndexMap.find(constantName);
     return this->getConstants()[constantIndexPair->second];
 }
 
-std::vector<Constant> const& Program::getConstants() const { return this->constants; }
+std::vector<Constant> const& Program::getConstants() const {
+    return this->constants;
+}
 
 std::map<storm::expressions::Variable, storm::expressions::Expression> Program::getConstantsSubstitution() const {
     return getConstantsFormulasSubstitution(true, false);
@@ -465,11 +475,17 @@ std::map<std::string, std::string> Program::getFinalRenamingOfModule(Module cons
     return currentRenaming;
 }
 
-std::size_t Program::getNumberOfConstants() const { return this->getConstants().size(); }
+std::size_t Program::getNumberOfConstants() const {
+    return this->getConstants().size();
+}
 
-std::vector<BooleanVariable> const& Program::getGlobalBooleanVariables() const { return this->globalBooleanVariables; }
+std::vector<BooleanVariable> const& Program::getGlobalBooleanVariables() const {
+    return this->globalBooleanVariables;
+}
 
-std::vector<IntegerVariable> const& Program::getGlobalIntegerVariables() const { return this->globalIntegerVariables; }
+std::vector<IntegerVariable> const& Program::getGlobalIntegerVariables() const {
+    return this->globalIntegerVariables;
+}
 
 std::set<storm::expressions::Variable> Program::getAllExpressionVariables() const {
     std::set<storm::expressions::Variable> result;
@@ -507,9 +523,13 @@ std::vector<storm::expressions::Expression> Program::getAllRangeExpressions() co
     return result;
 }
 
-bool Program::globalBooleanVariableExists(std::string const& variableName) const { return this->globalBooleanVariableToIndexMap.count(variableName) > 0; }
+bool Program::globalBooleanVariableExists(std::string const& variableName) const {
+    return this->globalBooleanVariableToIndexMap.count(variableName) > 0;
+}
 
-bool Program::globalIntegerVariableExists(std::string const& variableName) const { return this->globalIntegerVariableToIndexMap.count(variableName) > 0; }
+bool Program::globalIntegerVariableExists(std::string const& variableName) const {
+    return this->globalIntegerVariableToIndexMap.count(variableName) > 0;
+}
 
 BooleanVariable const& Program::getGlobalBooleanVariable(std::string const& variableName) const {
     auto const& nameIndexPair = this->globalBooleanVariableToIndexMap.find(variableName);
@@ -525,19 +545,33 @@ IntegerVariable const& Program::getGlobalIntegerVariable(std::string const& vari
     return this->getGlobalIntegerVariables()[nameIndexPair->second];
 }
 
-std::size_t Program::getNumberOfGlobalBooleanVariables() const { return this->getGlobalBooleanVariables().size(); }
+std::size_t Program::getNumberOfGlobalBooleanVariables() const {
+    return this->getGlobalBooleanVariables().size();
+}
 
-std::size_t Program::getNumberOfGlobalIntegerVariables() const { return this->getGlobalIntegerVariables().size(); }
+std::size_t Program::getNumberOfGlobalIntegerVariables() const {
+    return this->getGlobalIntegerVariables().size();
+}
 
-std::vector<Formula> const& Program::getFormulas() const { return this->formulas; }
+std::vector<Formula> const& Program::getFormulas() const {
+    return this->formulas;
+}
 
-std::vector<Player> const& Program::getPlayers() const { return this->players; }
+std::vector<Player> const& Program::getPlayers() const {
+    return this->players;
+}
 
-std::size_t Program::getNumberOfPlayers() const { return this->getPlayers().size(); }
+std::size_t Program::getNumberOfPlayers() const {
+    return this->getPlayers().size();
+}
 
-storm::storage::PlayerIndex const& Program::getIndexOfPlayer(std::string const& playerName) const { return this->playerToIndexMap.at(playerName); }
+storm::storage::PlayerIndex const& Program::getIndexOfPlayer(std::string const& playerName) const {
+    return this->playerToIndexMap.at(playerName);
+}
 
-std::map<std::string, storm::storage::PlayerIndex> const& Program::getPlayerNameToIndexMapping() const { return playerToIndexMap; }
+std::map<std::string, storm::storage::PlayerIndex> const& Program::getPlayerNameToIndexMapping() const {
+    return playerToIndexMap;
+}
 
 std::vector<storm::storage::PlayerIndex> Program::buildModuleIndexToPlayerIndexMap() const {
     std::vector<storm::storage::PlayerIndex> result(this->getModules().size(), storm::storage::INVALID_PLAYER_INDEX);
@@ -568,13 +602,21 @@ std::map<uint64_t, storm::storage::PlayerIndex> Program::buildActionIndexToPlaye
     return result;
 }
 
-std::size_t Program::getNumberOfFormulas() const { return this->getFormulas().size(); }
+std::size_t Program::getNumberOfFormulas() const {
+    return this->getFormulas().size();
+}
 
-std::size_t Program::getNumberOfModules() const { return this->getModules().size(); }
+std::size_t Program::getNumberOfModules() const {
+    return this->getModules().size();
+}
 
-storm::prism::Module const& Program::getModule(uint_fast64_t index) const { return this->modules[index]; }
+storm::prism::Module const& Program::getModule(uint_fast64_t index) const {
+    return this->modules[index];
+}
 
-bool Program::hasModule(std::string const& moduleName) const { return this->moduleToIndexMap.find(moduleName) != this->moduleToIndexMap.end(); }
+bool Program::hasModule(std::string const& moduleName) const {
+    return this->moduleToIndexMap.find(moduleName) != this->moduleToIndexMap.end();
+}
 
 Module const& Program::getModule(std::string const& moduleName) const {
     auto const& nameIndexPair = this->moduleToIndexMap.find(moduleName);
@@ -582,9 +624,13 @@ Module const& Program::getModule(std::string const& moduleName) const {
     return this->getModules()[nameIndexPair->second];
 }
 
-std::vector<storm::prism::Module> const& Program::getModules() const { return this->modules; }
+std::vector<storm::prism::Module> const& Program::getModules() const {
+    return this->modules;
+}
 
-std::map<std::string, uint_fast64_t> const& Program::getActionNameToIndexMapping() const { return actionToIndexMap; }
+std::map<std::string, uint_fast64_t> const& Program::getActionNameToIndexMapping() const {
+    return actionToIndexMap;
+}
 
 uint64_t Program::getNumberOfUnlabeledCommands() const {
     uint64_t result = 0;
@@ -594,11 +640,17 @@ uint64_t Program::getNumberOfUnlabeledCommands() const {
     return result;
 }
 
-bool Program::hasInitialConstruct() const { return static_cast<bool>(initialConstruct); }
+bool Program::hasInitialConstruct() const {
+    return static_cast<bool>(initialConstruct);
+}
 
-storm::prism::InitialConstruct const& Program::getInitialConstruct() const { return this->initialConstruct.get(); }
+storm::prism::InitialConstruct const& Program::getInitialConstruct() const {
+    return this->initialConstruct.get();
+}
 
-boost::optional<InitialConstruct> const& Program::getOptionalInitialConstruct() const { return this->initialConstruct; }
+boost::optional<InitialConstruct> const& Program::getOptionalInitialConstruct() const {
+    return this->initialConstruct;
+}
 
 storm::expressions::Expression Program::getInitialStatesExpression() const {
     // If there is an initial construct, return its expression. If not, we construct the expression from the
@@ -648,11 +700,17 @@ storm::expressions::Expression Program::getInitialStatesExpression() const {
     }
 }
 
-bool Program::specifiesSystemComposition() const { return static_cast<bool>(systemCompositionConstruct); }
+bool Program::specifiesSystemComposition() const {
+    return static_cast<bool>(systemCompositionConstruct);
+}
 
-SystemCompositionConstruct const& Program::getSystemCompositionConstruct() const { return systemCompositionConstruct.get(); }
+SystemCompositionConstruct const& Program::getSystemCompositionConstruct() const {
+    return systemCompositionConstruct.get();
+}
 
-boost::optional<SystemCompositionConstruct> Program::getOptionalSystemCompositionConstruct() const { return systemCompositionConstruct; }
+boost::optional<SystemCompositionConstruct> Program::getOptionalSystemCompositionConstruct() const {
+    return systemCompositionConstruct;
+}
 
 std::shared_ptr<Composition> Program::getDefaultSystemComposition() const {
     std::shared_ptr<Composition> current = std::make_shared<ModuleComposition>(this->modules.front().getName());
@@ -666,9 +724,13 @@ std::shared_ptr<Composition> Program::getDefaultSystemComposition() const {
     return current;
 }
 
-std::set<std::string> const& Program::getActions() const { return this->actions; }
+std::set<std::string> const& Program::getActions() const {
+    return this->actions;
+}
 
-std::set<uint_fast64_t> const& Program::getSynchronizingActionIndices() const { return this->synchronizingActionIndices; }
+std::set<uint_fast64_t> const& Program::getSynchronizingActionIndices() const {
+    return this->synchronizingActionIndices;
+}
 
 std::string const& Program::getActionName(uint_fast64_t actionIndex) const {
     auto const& indexNamePair = this->indexToActionMap.find(actionIndex);
@@ -682,9 +744,13 @@ uint_fast64_t Program::getActionIndex(std::string const& actionName) const {
     return nameIndexPair->second;
 }
 
-bool Program::hasAction(std::string const& actionName) const { return this->actionToIndexMap.find(actionName) != this->actionToIndexMap.end(); }
+bool Program::hasAction(std::string const& actionName) const {
+    return this->actionToIndexMap.find(actionName) != this->actionToIndexMap.end();
+}
 
-bool Program::hasAction(uint_fast64_t const& actionIndex) const { return this->indexToActionMap.find(actionIndex) != this->indexToActionMap.end(); }
+bool Program::hasAction(uint_fast64_t const& actionIndex) const {
+    return this->indexToActionMap.find(actionIndex) != this->indexToActionMap.end();
+}
 
 std::set<uint_fast64_t> const& Program::getModuleIndicesByAction(std::string const& action) const {
     auto const& nameIndexPair = this->actionToIndexMap.find(action);
@@ -723,16 +789,22 @@ std::pair<uint_fast64_t, uint_fast64_t> Program::getModuleCommandIndexByGlobalCo
     return std::pair<uint_fast64_t, uint_fast64_t>(0, 0);
 }
 
-bool Program::hasRewardModel() const { return !this->rewardModels.empty(); }
+bool Program::hasRewardModel() const {
+    return !this->rewardModels.empty();
+}
 
 bool Program::hasRewardModel(std::string const& name) const {
     auto const& nameIndexPair = this->rewardModelToIndexMap.find(name);
     return nameIndexPair != this->rewardModelToIndexMap.end();
 }
 
-std::vector<storm::prism::RewardModel> const& Program::getRewardModels() const { return this->rewardModels; }
+std::vector<storm::prism::RewardModel> const& Program::getRewardModels() const {
+    return this->rewardModels;
+}
 
-std::size_t Program::getNumberOfRewardModels() const { return this->getRewardModels().size(); }
+std::size_t Program::getNumberOfRewardModels() const {
+    return this->getRewardModels().size();
+}
 
 storm::prism::RewardModel const& Program::getRewardModel(std::string const& name) const {
     auto const& nameIndexPair = this->rewardModelToIndexMap.find(name);
@@ -751,7 +823,9 @@ bool Program::hasLabel(std::string const& labelName) const {
     return it != labels.end();
 }
 
-std::vector<Label> const& Program::getLabels() const { return this->labels; }
+std::vector<Label> const& Program::getLabels() const {
+    return this->labels;
+}
 
 std::vector<storm::expressions::Expression> Program::getAllGuards(bool negated) const {
     std::vector<storm::expressions::Expression> allGuards;
@@ -778,7 +852,9 @@ std::map<std::string, storm::expressions::Expression> Program::getLabelToExpress
     return result;
 }
 
-std::size_t Program::getNumberOfLabels() const { return this->getLabels().size(); }
+std::size_t Program::getNumberOfLabels() const {
+    return this->getLabels().size();
+}
 
 void Program::addLabel(std::string const& name, storm::expressions::Expression const& statePredicateExpression) {
     auto it = std::find_if(this->labels.begin(), this->labels.end(), [&name](storm::prism::Label const& label) { return label.getName() == name; });
@@ -814,11 +890,17 @@ void Program::filterLabels(std::set<std::string> const& labelSet) {
     this->labels = std::move(newLabels);
 }
 
-std::vector<ObservationLabel> const& Program::getObservationLabels() const { return this->observationLabels; }
+std::vector<ObservationLabel> const& Program::getObservationLabels() const {
+    return this->observationLabels;
+}
 
-std::size_t Program::getNumberOfObservationLabels() const { return this->observationLabels.size(); }
+std::size_t Program::getNumberOfObservationLabels() const {
+    return this->observationLabels.size();
+}
 
-storm::storage::BitVector const& Program::getPossiblySynchronizingCommands() const { return possiblySynchronizingCommands; }
+storm::storage::BitVector const& Program::getPossiblySynchronizingCommands() const {
+    return possiblySynchronizingCommands;
+}
 
 Program Program::restrictCommands(storm::storage::FlatSet<uint_fast64_t> const& indexSet) const {
     std::vector<storm::prism::Module> newModules;
@@ -934,9 +1016,13 @@ Program Program::defineUndefinedConstants(std::map<storm::expressions::Variable,
                    this->getObservationLabels(), this->getOptionalInitialConstruct(), this->getOptionalSystemCompositionConstruct(), prismCompatibility);
 }
 
-Program Program::substituteConstants() const { return substituteConstantsFormulas(true, false); }
+Program Program::substituteConstants() const {
+    return substituteConstantsFormulas(true, false);
+}
 
-Program Program::substituteFormulas() const { return substituteConstantsFormulas(false, true); }
+Program Program::substituteFormulas() const {
+    return substituteConstantsFormulas(false, true);
+}
 
 Program Program::substituteNonStandardPredicates() const {
     // TODO support in constants,  initial construct, and rewards
@@ -1633,7 +1719,8 @@ void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
             std::set<std::pair<std::string, std::string>> globalBVarsWrittenToByCommandInThisModule;
             std::set<std::pair<std::string, std::string>> globalIVarsWrittenToByCommandInThisModule;
             for (auto const& command : module.getCommands()) {
-                if (!command.isLabeled()) continue;
+                if (!command.isLabeled())
+                    continue;
                 for (auto const& update : command.getUpdates()) {
                     for (auto const& assignment : update.getAssignments()) {
                         if (this->globalBooleanVariableExists(assignment.getVariable().getName())) {
@@ -2220,7 +2307,9 @@ uint64_t Program::getHighestCommandIndex() const {
     return highest;
 }
 
-storm::expressions::ExpressionManager& Program::getManager() const { return *this->manager; }
+storm::expressions::ExpressionManager& Program::getManager() const {
+    return *this->manager;
+}
 
 void Program::createMissingInitialValues() {
     for (auto& variable : globalBooleanVariables) {

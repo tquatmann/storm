@@ -87,32 +87,56 @@ GeneralSettings::GeneralSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, soundOptionName, false, "Sets whether to force sound model checking.").build());
 }
 
-bool GeneralSettings::isHelpSet() const { return this->getOption(helpOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isHelpSet() const {
+    return this->getOption(helpOptionName).getHasOptionBeenSet();
+}
 
-bool GeneralSettings::isVersionSet() const { return this->getOption(versionOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isVersionSet() const {
+    return this->getOption(versionOptionName).getHasOptionBeenSet();
+}
 
-std::string GeneralSettings::getHelpFilterExpression() const { return this->getOption(helpOptionName).getArgumentByName("filter").getValueAsString(); }
+std::string GeneralSettings::getHelpFilterExpression() const {
+    return this->getOption(helpOptionName).getArgumentByName("filter").getValueAsString();
+}
 
-bool GeneralSettings::isVerboseSet() const { return this->getOption(verboseOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isVerboseSet() const {
+    return this->getOption(verboseOptionName).getHasOptionBeenSet();
+}
 
-bool GeneralSettings::isShowProgressSet() const { return this->getOption(showProgressOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isShowProgressSet() const {
+    return this->getOption(showProgressOptionName).getHasOptionBeenSet();
+}
 
 uint64_t GeneralSettings::getShowProgressDelay() const {
     return this->getOption(showProgressOptionName).getArgumentByName("delay").getValueAsUnsignedInteger();
 }
 
-bool GeneralSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-void GeneralSettings::setPrecision(std::string precision) { this->getOption(precisionOptionName).getArgumentByName("value").setFromStringValue(precision); }
-double GeneralSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+void GeneralSettings::setPrecision(std::string precision) {
+    this->getOption(precisionOptionName).getArgumentByName("value").setFromStringValue(precision);
+}
+double GeneralSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool GeneralSettings::isConfigSet() const { return this->getOption(configOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isConfigSet() const {
+    return this->getOption(configOptionName).getHasOptionBeenSet();
+}
 
-std::string GeneralSettings::getConfigFilename() const { return this->getOption(configOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string GeneralSettings::getConfigFilename() const {
+    return this->getOption(configOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool GeneralSettings::isBisimulationSet() const { return this->getOption(bisimulationOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isBisimulationSet() const {
+    return this->getOption(bisimulationOptionName).getHasOptionBeenSet();
+}
 
-bool GeneralSettings::isParametricSet() const { return this->getOption(parametricOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isParametricSet() const {
+    return this->getOption(parametricOptionName).getHasOptionBeenSet();
+}
 
 bool GeneralSettings::isExactSet() const {
     return this->getOption(exactOptionName).getHasOptionBeenSet() &&
@@ -124,7 +148,9 @@ bool GeneralSettings::isExactFinitePrecisionSet() const {
            this->getOption(exactOptionName).getArgumentByName("valuetype").getValueAsString() == "floats";
 }
 
-bool GeneralSettings::isSoundSet() const { return this->getOption(soundOptionName).getHasOptionBeenSet(); }
+bool GeneralSettings::isSoundSet() const {
+    return this->getOption(soundOptionName).getHasOptionBeenSet();
+}
 
 void GeneralSettings::finalize() {
     // Intentionally left empty.

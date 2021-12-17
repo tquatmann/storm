@@ -107,17 +107,25 @@ bool LongRunAverageSolverSettings::isNondetLraMethodSetFromDefaultValue() const 
            this->getOption(nondetLraMethodOptionName).getArgumentByName("name").wasSetFromDefaultValue();
 }
 
-bool LongRunAverageSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool LongRunAverageSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t LongRunAverageSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool LongRunAverageSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool LongRunAverageSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double LongRunAverageSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double LongRunAverageSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool LongRunAverageSolverSettings::isRelativePrecision() const { return this->getOption(absoluteOptionName).getHasOptionBeenSet(); }
+bool LongRunAverageSolverSettings::isRelativePrecision() const {
+    return this->getOption(absoluteOptionName).getHasOptionBeenSet();
+}
 
 double LongRunAverageSolverSettings::getAperiodicFactor() const {
     return this->getOption(aperiodicFactorOptionName).getArgumentByName("value").getValueAsDouble();

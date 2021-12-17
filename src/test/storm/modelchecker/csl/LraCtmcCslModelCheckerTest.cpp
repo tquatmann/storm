@@ -240,12 +240,24 @@ class LraCtmcCslModelCheckerTest : public ::testing::Test {
     typedef typename storm::models::symbolic::Ctmc<TestType::ddType, ValueType> SymbolicModelType;
 
     LraCtmcCslModelCheckerTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
-    ValueType parseNumber(std::string const& input) const { return storm::utility::convertNumber<ValueType>(input); }
-    ValueType precision() const { return TestType::isExact ? parseNumber("0") : parseNumber("1e-6"); }
-    bool isSparseModel() const { return std::is_same<typename TestType::ModelType, SparseModelType>::value; }
-    bool isSymbolicModel() const { return std::is_same<typename TestType::ModelType, SymbolicModelType>::value; }
-    CtmcEngine getEngine() const { return TestType::engine; }
+    storm::Environment const& env() const {
+        return _environment;
+    }
+    ValueType parseNumber(std::string const& input) const {
+        return storm::utility::convertNumber<ValueType>(input);
+    }
+    ValueType precision() const {
+        return TestType::isExact ? parseNumber("0") : parseNumber("1e-6");
+    }
+    bool isSparseModel() const {
+        return std::is_same<typename TestType::ModelType, SparseModelType>::value;
+    }
+    bool isSymbolicModel() const {
+        return std::is_same<typename TestType::ModelType, SymbolicModelType>::value;
+    }
+    CtmcEngine getEngine() const {
+        return TestType::engine;
+    }
 
     template<typename MT = typename TestType::ModelType>
     typename std::enable_if<std::is_same<MT, SparseModelType>::value,

@@ -10,7 +10,9 @@ ModuleRenaming::ModuleRenaming(std::map<std::string, std::string>&& renaming) : 
     // Intentionally left empty
 }
 
-std::map<std::string, std::string> const& ModuleRenaming::getRenaming() const { return this->renaming; }
+std::map<std::string, std::string> const& ModuleRenaming::getRenaming() const {
+    return this->renaming;
+}
 
 std::ostream& operator<<(std::ostream& stream, ModuleRenaming const& renaming) {
     stream << "[ ";

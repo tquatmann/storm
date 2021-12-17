@@ -7,9 +7,13 @@ TimeBound::TimeBound(bool strict, storm::expressions::Expression const& bound) :
     // Intentionally left empty.
 }
 
-storm::expressions::Expression const& TimeBound::getBound() const { return bound; }
+storm::expressions::Expression const& TimeBound::getBound() const {
+    return bound;
+}
 
-bool TimeBound::isStrict() const { return strict; }
+bool TimeBound::isStrict() const {
+    return strict;
+}
 
 }  // namespace logic
 }  // namespace storm

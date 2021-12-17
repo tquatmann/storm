@@ -82,7 +82,9 @@ NativeEquationSolverSettings::NativeEquationSolverSettings() : ModuleSettings(mo
                         .build());
 }
 
-bool NativeEquationSolverSettings::isLinearEquationSystemTechniqueSet() const { return this->getOption(techniqueOptionName).getHasOptionBeenSet(); }
+bool NativeEquationSolverSettings::isLinearEquationSystemTechniqueSet() const {
+    return this->getOption(techniqueOptionName).getHasOptionBeenSet();
+}
 
 bool NativeEquationSolverSettings::isLinearEquationSystemTechniqueSetFromDefaultValue() const {
     return !this->getOption(techniqueOptionName).getHasOptionBeenSet() ||
@@ -114,19 +116,29 @@ storm::solver::NativeLinearEquationSolverMethod NativeEquationSolverSettings::ge
                     "Unknown solution technique '" << linearEquationSystemTechniqueAsString << "' selected.");
 }
 
-bool NativeEquationSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool NativeEquationSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t NativeEquationSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool NativeEquationSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool NativeEquationSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double NativeEquationSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double NativeEquationSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-double NativeEquationSolverSettings::getOmega() const { return this->getOption(omegaOptionName).getArgumentByName("value").getValueAsDouble(); }
+double NativeEquationSolverSettings::getOmega() const {
+    return this->getOption(omegaOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool NativeEquationSolverSettings::isConvergenceCriterionSet() const { return this->getOption(absoluteOptionName).getHasOptionBeenSet(); }
+bool NativeEquationSolverSettings::isConvergenceCriterionSet() const {
+    return this->getOption(absoluteOptionName).getHasOptionBeenSet();
+}
 
 NativeEquationSolverSettings::ConvergenceCriterion NativeEquationSolverSettings::getConvergenceCriterion() const {
     return this->getOption(absoluteOptionName).getHasOptionBeenSet() ? NativeEquationSolverSettings::ConvergenceCriterion::Absolute
@@ -147,7 +159,9 @@ bool NativeEquationSolverSettings::isForceIntervalIterationSymmetricUpdatesSet()
     return this->getOption(intervalIterationSymmetricUpdatesOptionName).getHasOptionBeenSet();
 }
 
-bool NativeEquationSolverSettings::check() const { return true; }
+bool NativeEquationSolverSettings::check() const {
+    return true;
+}
 
 }  // namespace modules
 }  // namespace settings

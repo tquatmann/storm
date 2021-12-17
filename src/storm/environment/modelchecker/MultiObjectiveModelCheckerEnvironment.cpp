@@ -48,61 +48,115 @@ MultiObjectiveModelCheckerEnvironment::~MultiObjectiveModelCheckerEnvironment() 
     // Intentionally left empty
 }
 
-storm::modelchecker::multiobjective::MultiObjectiveMethod const& MultiObjectiveModelCheckerEnvironment::getMethod() const { return this->method; }
+storm::modelchecker::multiobjective::MultiObjectiveMethod const& MultiObjectiveModelCheckerEnvironment::getMethod() const {
+    return this->method;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod value) { this->method = value; }
+void MultiObjectiveModelCheckerEnvironment::setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod value) {
+    this->method = value;
+}
 
 bool MultiObjectiveModelCheckerEnvironment::isExportPlotSet() const {
     return this->plotPathUnderApprox.is_initialized() || this->plotPathOverApprox.is_initialized() || this->plotPathParetoPoints.is_initialized();
 }
 
-boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathUnderApproximation() const { return plotPathUnderApprox; }
+boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathUnderApproximation() const {
+    return plotPathUnderApprox;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPlotPathUnderApproximation(std::string const& path) { plotPathUnderApprox = path; }
+void MultiObjectiveModelCheckerEnvironment::setPlotPathUnderApproximation(std::string const& path) {
+    plotPathUnderApprox = path;
+}
 
-void MultiObjectiveModelCheckerEnvironment::unsetPlotPathUnderApproximation() { plotPathUnderApprox = boost::none; }
+void MultiObjectiveModelCheckerEnvironment::unsetPlotPathUnderApproximation() {
+    plotPathUnderApprox = boost::none;
+}
 
-boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathOverApproximation() const { return plotPathOverApprox; }
+boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathOverApproximation() const {
+    return plotPathOverApprox;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPlotPathOverApproximation(std::string const& path) { plotPathOverApprox = path; }
+void MultiObjectiveModelCheckerEnvironment::setPlotPathOverApproximation(std::string const& path) {
+    plotPathOverApprox = path;
+}
 
-void MultiObjectiveModelCheckerEnvironment::unsetPlotPathOverApproximation() { plotPathOverApprox = boost::none; }
+void MultiObjectiveModelCheckerEnvironment::unsetPlotPathOverApproximation() {
+    plotPathOverApprox = boost::none;
+}
 
-boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathParetoPoints() const { return plotPathParetoPoints; }
+boost::optional<std::string> MultiObjectiveModelCheckerEnvironment::getPlotPathParetoPoints() const {
+    return plotPathParetoPoints;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPlotPathParetoPoints(std::string const& path) { plotPathParetoPoints = path; }
+void MultiObjectiveModelCheckerEnvironment::setPlotPathParetoPoints(std::string const& path) {
+    plotPathParetoPoints = path;
+}
 
-void MultiObjectiveModelCheckerEnvironment::unsetPlotPathParetoPoints() { plotPathParetoPoints = boost::none; }
+void MultiObjectiveModelCheckerEnvironment::unsetPlotPathParetoPoints() {
+    plotPathParetoPoints = boost::none;
+}
 
-storm::RationalNumber const& MultiObjectiveModelCheckerEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& MultiObjectiveModelCheckerEnvironment::getPrecision() const {
+    return precision;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPrecision(storm::RationalNumber const& value) { precision = value; }
+void MultiObjectiveModelCheckerEnvironment::setPrecision(storm::RationalNumber const& value) {
+    precision = value;
+}
 
-typename MultiObjectiveModelCheckerEnvironment::PrecisionType const& MultiObjectiveModelCheckerEnvironment::getPrecisionType() const { return precisionType; }
+typename MultiObjectiveModelCheckerEnvironment::PrecisionType const& MultiObjectiveModelCheckerEnvironment::getPrecisionType() const {
+    return precisionType;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPrecisionType(PrecisionType const& value) { precisionType = value; }
+void MultiObjectiveModelCheckerEnvironment::setPrecisionType(PrecisionType const& value) {
+    precisionType = value;
+}
 
-typename MultiObjectiveModelCheckerEnvironment::EncodingType const& MultiObjectiveModelCheckerEnvironment::getEncodingType() const { return encodingType; }
+typename MultiObjectiveModelCheckerEnvironment::EncodingType const& MultiObjectiveModelCheckerEnvironment::getEncodingType() const {
+    return encodingType;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setEncodingType(EncodingType const& value) { encodingType = value; }
+void MultiObjectiveModelCheckerEnvironment::setEncodingType(EncodingType const& value) {
+    encodingType = value;
+}
 
-bool MultiObjectiveModelCheckerEnvironment::isMaxStepsSet() const { return maxSteps.is_initialized(); }
+bool MultiObjectiveModelCheckerEnvironment::isMaxStepsSet() const {
+    return maxSteps.is_initialized();
+}
 
-uint64_t const& MultiObjectiveModelCheckerEnvironment::getMaxSteps() const { return maxSteps.get(); }
+uint64_t const& MultiObjectiveModelCheckerEnvironment::getMaxSteps() const {
+    return maxSteps.get();
+}
 
-void MultiObjectiveModelCheckerEnvironment::setMaxSteps(uint64_t const& value) { maxSteps = value; }
+void MultiObjectiveModelCheckerEnvironment::setMaxSteps(uint64_t const& value) {
+    maxSteps = value;
+}
 
-void MultiObjectiveModelCheckerEnvironment::unsetMaxSteps() { maxSteps = boost::none; }
+void MultiObjectiveModelCheckerEnvironment::unsetMaxSteps() {
+    maxSteps = boost::none;
+}
 
-bool MultiObjectiveModelCheckerEnvironment::isSchedulerRestrictionSet() const { return schedulerRestriction.is_initialized(); }
+bool MultiObjectiveModelCheckerEnvironment::isSchedulerRestrictionSet() const {
+    return schedulerRestriction.is_initialized();
+}
 
-storm::storage::SchedulerClass const& MultiObjectiveModelCheckerEnvironment::getSchedulerRestriction() const { return schedulerRestriction.get(); }
+storm::storage::SchedulerClass const& MultiObjectiveModelCheckerEnvironment::getSchedulerRestriction() const {
+    return schedulerRestriction.get();
+}
 
-void MultiObjectiveModelCheckerEnvironment::setSchedulerRestriction(storm::storage::SchedulerClass const& value) { schedulerRestriction = value; }
+void MultiObjectiveModelCheckerEnvironment::setSchedulerRestriction(storm::storage::SchedulerClass const& value) {
+    schedulerRestriction = value;
+}
 
-void MultiObjectiveModelCheckerEnvironment::unsetSchedulerRestriction() { schedulerRestriction = boost::none; }
+void MultiObjectiveModelCheckerEnvironment::unsetSchedulerRestriction() {
+    schedulerRestriction = boost::none;
+}
 
-bool MultiObjectiveModelCheckerEnvironment::isPrintResultsSet() const { return printResults; }
+bool MultiObjectiveModelCheckerEnvironment::isPrintResultsSet() const {
+    return printResults;
+}
 
-void MultiObjectiveModelCheckerEnvironment::setPrintResults(bool value) { printResults = value; }
+void MultiObjectiveModelCheckerEnvironment::setPrintResults(bool value) {
+    printResults = value;
+}
 }  // namespace storm

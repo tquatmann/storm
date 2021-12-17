@@ -10,9 +10,13 @@ class IntegerInterval {
 
     IntegerInterval(int64_t lb, int64_t rb) : leftBound(lb), rightBound(rb) {}
 
-    bool hasLeftBound() const { return leftBound != boost::none; }
+    bool hasLeftBound() const {
+        return leftBound != boost::none;
+    }
 
-    bool hasRightBound() const { return rightBound != boost::none; }
+    bool hasRightBound() const {
+        return rightBound != boost::none;
+    }
 
     bool contains(int64_t val) const {
         if (hasLeftBound()) {
@@ -71,9 +75,13 @@ class IntegerInterval {
         }
     }
 
-    boost::optional<int64_t> getLeftBound() const { return leftBound; }
+    boost::optional<int64_t> getLeftBound() const {
+        return leftBound;
+    }
 
-    boost::optional<int64_t> getRightBound() const { return rightBound; }
+    boost::optional<int64_t> getRightBound() const {
+        return rightBound;
+    }
 
    private:
     boost::optional<int64_t> leftBound;

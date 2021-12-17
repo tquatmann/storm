@@ -66,9 +66,13 @@ CounterexampleGeneratorSettings::CounterexampleGeneratorSettings() : ModuleSetti
                         .build());
 }
 
-bool CounterexampleGeneratorSettings::isCounterexampleSet() const { return this->getOption(counterexampleOptionName).getHasOptionBeenSet(); }
+bool CounterexampleGeneratorSettings::isCounterexampleSet() const {
+    return this->getOption(counterexampleOptionName).getHasOptionBeenSet();
+}
 
-bool CounterexampleGeneratorSettings::isCounterexampleTypeSet() const { return this->getOption(counterexampleTypeOptionName).getHasOptionBeenSet(); }
+bool CounterexampleGeneratorSettings::isCounterexampleTypeSet() const {
+    return this->getOption(counterexampleTypeOptionName).getHasOptionBeenSet();
+}
 
 bool CounterexampleGeneratorSettings::isMinimalCommandSetGenerationSet() const {
     return this->getOption(counterexampleTypeOptionName).getArgumentByName("type").getValueAsString() == "mincmd";
@@ -90,11 +94,17 @@ bool CounterexampleGeneratorSettings::isUseMaxSatBasedMinimalCommandSetGeneratio
     return this->getOption(minimalCommandMethodOptionName).getArgumentByName("method").getValueAsString() == "maxsat";
 }
 
-bool CounterexampleGeneratorSettings::isEncodeReachabilitySet() const { return this->getOption(encodeReachabilityOptionName).getHasOptionBeenSet(); }
+bool CounterexampleGeneratorSettings::isEncodeReachabilitySet() const {
+    return this->getOption(encodeReachabilityOptionName).getHasOptionBeenSet();
+}
 
-bool CounterexampleGeneratorSettings::isUseSchedulerCutsSet() const { return this->getOption(schedulerCutsOptionName).getHasOptionBeenSet(); }
+bool CounterexampleGeneratorSettings::isUseSchedulerCutsSet() const {
+    return this->getOption(schedulerCutsOptionName).getHasOptionBeenSet();
+}
 
-bool CounterexampleGeneratorSettings::isUseDynamicConstraintsSet() const { return !this->getOption(noDynamicConstraintsOptionName).getHasOptionBeenSet(); }
+bool CounterexampleGeneratorSettings::isUseDynamicConstraintsSet() const {
+    return !this->getOption(noDynamicConstraintsOptionName).getHasOptionBeenSet();
+}
 
 bool CounterexampleGeneratorSettings::check() const {
     STORM_LOG_THROW(isCounterexampleSet() || !isCounterexampleTypeSet(), storm::exceptions::InvalidSettingsException,

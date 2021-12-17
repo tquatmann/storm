@@ -61,9 +61,13 @@ void FunctionCallExpression::printToStream(std::ostream& stream) const {
     }
 }
 
-std::string const& FunctionCallExpression::getFunctionIdentifier() const { return identifier; }
+std::string const& FunctionCallExpression::getFunctionIdentifier() const {
+    return identifier;
+}
 
-uint64_t FunctionCallExpression::getNumberOfArguments() const { return arguments.size(); }
+uint64_t FunctionCallExpression::getNumberOfArguments() const {
+    return arguments.size();
+}
 
 std::shared_ptr<BaseExpression const> FunctionCallExpression::getArgument(uint64_t i) const {
     STORM_LOG_THROW(i < arguments.size(), storm::exceptions::InvalidArgumentException,
@@ -71,7 +75,9 @@ std::shared_ptr<BaseExpression const> FunctionCallExpression::getArgument(uint64
     return arguments[i];
 }
 
-std::vector<std::shared_ptr<BaseExpression const>> const& FunctionCallExpression::getArguments() const { return arguments; }
+std::vector<std::shared_ptr<BaseExpression const>> const& FunctionCallExpression::getArguments() const {
+    return arguments;
+}
 
 }  // namespace expressions
 }  // namespace storm

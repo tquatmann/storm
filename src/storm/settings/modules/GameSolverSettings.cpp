@@ -59,24 +59,34 @@ storm::solver::GameMethod GameSolverSettings::getGameSolvingMethod() const {
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown game solving technique '" << gameSolvingTechnique << "'.");
 }
 
-bool GameSolverSettings::isGameSolvingMethodSet() const { return this->getOption(solvingMethodOptionName).getHasOptionBeenSet(); }
+bool GameSolverSettings::isGameSolvingMethodSet() const {
+    return this->getOption(solvingMethodOptionName).getHasOptionBeenSet();
+}
 
 bool GameSolverSettings::isGameSolvingMethodSetFromDefaultValue() const {
     return !this->getOption(solvingMethodOptionName).getArgumentByName("name").getHasBeenSet() ||
            this->getOption(solvingMethodOptionName).getArgumentByName("name").wasSetFromDefaultValue();
 }
 
-bool GameSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool GameSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t GameSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool GameSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool GameSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double GameSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double GameSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool GameSolverSettings::isConvergenceCriterionSet() const { return this->getOption(absoluteOptionName).getHasOptionBeenSet(); }
+bool GameSolverSettings::isConvergenceCriterionSet() const {
+    return this->getOption(absoluteOptionName).getHasOptionBeenSet();
+}
 
 GameSolverSettings::ConvergenceCriterion GameSolverSettings::getConvergenceCriterion() const {
     return this->getOption(absoluteOptionName).getHasOptionBeenSet() ? GameSolverSettings::ConvergenceCriterion::Absolute

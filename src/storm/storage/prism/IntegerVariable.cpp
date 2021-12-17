@@ -13,7 +13,9 @@ IntegerVariable::IntegerVariable(storm::expressions::Variable const& variable, s
     // Intentionally left empty.
 }
 
-bool IntegerVariable::hasLowerBoundExpression() const { return this->lowerBoundExpression.isInitialized(); }
+bool IntegerVariable::hasLowerBoundExpression() const {
+    return this->lowerBoundExpression.isInitialized();
+}
 
 storm::expressions::Expression const& IntegerVariable::getLowerBoundExpression() const {
     STORM_LOG_ASSERT(hasLowerBoundExpression(), "Tried to get the lower bound expression of variable '" << this->getExpressionVariable().getName()
@@ -21,7 +23,9 @@ storm::expressions::Expression const& IntegerVariable::getLowerBoundExpression()
     return this->lowerBoundExpression;
 }
 
-bool IntegerVariable::hasUpperBoundExpression() const { return this->upperBoundExpression.isInitialized(); }
+bool IntegerVariable::hasUpperBoundExpression() const {
+    return this->upperBoundExpression.isInitialized();
+}
 
 storm::expressions::Expression const& IntegerVariable::getUpperBoundExpression() const {
     STORM_LOG_ASSERT(hasUpperBoundExpression(), "Tried to get the lower bound expression of variable '" << this->getExpressionVariable().getName()

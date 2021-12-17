@@ -16,40 +16,70 @@
 
 namespace storm {
 namespace modelchecker {
-bool CheckResult::isExplicit() const { return false; }
+bool CheckResult::isExplicit() const {
+    return false;
+}
 
-bool CheckResult::isSymbolic() const { return false; }
+bool CheckResult::isSymbolic() const {
+    return false;
+}
 
-bool CheckResult::isHybrid() const { return false; }
+bool CheckResult::isHybrid() const {
+    return false;
+}
 
-bool CheckResult::isQuantitative() const { return false; }
+bool CheckResult::isQuantitative() const {
+    return false;
+}
 
-bool CheckResult::isQualitative() const { return false; }
+bool CheckResult::isQualitative() const {
+    return false;
+}
 
-bool CheckResult::isParetoCurveCheckResult() const { return false; }
+bool CheckResult::isParetoCurveCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isResultForAllStates() const { return false; }
+bool CheckResult::isResultForAllStates() const {
+    return false;
+}
 
 std::ostream& operator<<(std::ostream& out, CheckResult const& checkResult) {
     checkResult.writeToStream(out);
     return out;
 }
 
-bool CheckResult::isExplicitQualitativeCheckResult() const { return false; }
+bool CheckResult::isExplicitQualitativeCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isExplicitQuantitativeCheckResult() const { return false; }
+bool CheckResult::isExplicitQuantitativeCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isExplicitParetoCurveCheckResult() const { return false; }
+bool CheckResult::isExplicitParetoCurveCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isSymbolicQualitativeCheckResult() const { return false; }
+bool CheckResult::isSymbolicQualitativeCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isSymbolicQuantitativeCheckResult() const { return false; }
+bool CheckResult::isSymbolicQuantitativeCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isSymbolicParetoCurveCheckResult() const { return false; }
+bool CheckResult::isSymbolicParetoCurveCheckResult() const {
+    return false;
+}
 
-bool CheckResult::isHybridQuantitativeCheckResult() const { return false; }
+bool CheckResult::isHybridQuantitativeCheckResult() const {
+    return false;
+}
 
-ExplicitQualitativeCheckResult& CheckResult::asExplicitQualitativeCheckResult() { return dynamic_cast<ExplicitQualitativeCheckResult&>(*this); }
+ExplicitQualitativeCheckResult& CheckResult::asExplicitQualitativeCheckResult() {
+    return dynamic_cast<ExplicitQualitativeCheckResult&>(*this);
+}
 
 ExplicitQualitativeCheckResult const& CheckResult::asExplicitQualitativeCheckResult() const {
     return dynamic_cast<ExplicitQualitativeCheckResult const&>(*this);
@@ -75,9 +105,13 @@ ExplicitParetoCurveCheckResult<ValueType> const& CheckResult::asExplicitParetoCu
     return dynamic_cast<ExplicitParetoCurveCheckResult<ValueType> const&>(*this);
 }
 
-QualitativeCheckResult& CheckResult::asQualitativeCheckResult() { return dynamic_cast<QualitativeCheckResult&>(*this); }
+QualitativeCheckResult& CheckResult::asQualitativeCheckResult() {
+    return dynamic_cast<QualitativeCheckResult&>(*this);
+}
 
-QualitativeCheckResult const& CheckResult::asQualitativeCheckResult() const { return dynamic_cast<QualitativeCheckResult const&>(*this); }
+QualitativeCheckResult const& CheckResult::asQualitativeCheckResult() const {
+    return dynamic_cast<QualitativeCheckResult const&>(*this);
+}
 
 template<typename ValueType>
 QuantitativeCheckResult<ValueType>& CheckResult::asQuantitativeCheckResult() {
@@ -129,7 +163,9 @@ SymbolicParetoCurveCheckResult<Type, ValueType> const& CheckResult::asSymbolicPa
     return dynamic_cast<SymbolicParetoCurveCheckResult<Type, ValueType> const&>(*this);
 }
 
-bool CheckResult::hasScheduler() const { return false; }
+bool CheckResult::hasScheduler() const {
+    return false;
+}
 
 // Explicitly instantiate the template functions.
 template QuantitativeCheckResult<double>& CheckResult::asQuantitativeCheckResult();

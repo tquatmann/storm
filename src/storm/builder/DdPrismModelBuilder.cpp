@@ -75,7 +75,9 @@ class ParameterCreator<Type, storm::RationalFunction> {
         return RationalFunctionType(variable);
     }
 
-    std::set<storm::RationalFunctionVariable> const& getParameters() const { return parameters; }
+    std::set<storm::RationalFunctionVariable> const& getParameters() const {
+        return parameters;
+    }
 
    private:
     // A mapping from our variables to carl's.

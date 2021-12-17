@@ -10,7 +10,9 @@ class InheritedInformation {
         // Intentionally left empty.
     }
 
-    FragmentSpecification const& getSpecification() const { return fragmentSpecification; }
+    FragmentSpecification const& getSpecification() const {
+        return fragmentSpecification;
+    }
 
    private:
     FragmentSpecification const& fragmentSpecification;

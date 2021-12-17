@@ -117,7 +117,9 @@ ExplorationSettings::NextStateHeuristic ExplorationSettings::getNextStateHeurist
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown next-state heuristic '" << nextStateHeuristicAsString << "'.");
 }
 
-double ExplorationSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double ExplorationSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
 bool ExplorationSettings::check() const {
     bool optionsSet = this->getOption(precomputationTypeOptionName).getHasOptionBeenSet() ||

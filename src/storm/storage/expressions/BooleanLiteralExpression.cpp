@@ -9,24 +9,44 @@ BooleanLiteralExpression::BooleanLiteralExpression(ExpressionManager const& mana
     // Intentionally left empty.
 }
 
-bool BooleanLiteralExpression::evaluateAsBool(Valuation const*) const { return this->getValue(); }
+bool BooleanLiteralExpression::evaluateAsBool(Valuation const*) const {
+    return this->getValue();
+}
 
-bool BooleanLiteralExpression::isLiteral() const { return true; }
+bool BooleanLiteralExpression::isLiteral() const {
+    return true;
+}
 
-bool BooleanLiteralExpression::isTrue() const { return this->getValue() == true; }
+bool BooleanLiteralExpression::isTrue() const {
+    return this->getValue() == true;
+}
 
-bool BooleanLiteralExpression::isFalse() const { return this->getValue() == false; }
+bool BooleanLiteralExpression::isFalse() const {
+    return this->getValue() == false;
+}
 
-void BooleanLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const { return; }
+void BooleanLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const {
+    return;
+}
 
-std::shared_ptr<BaseExpression const> BooleanLiteralExpression::simplify() const { return this->shared_from_this(); }
+std::shared_ptr<BaseExpression const> BooleanLiteralExpression::simplify() const {
+    return this->shared_from_this();
+}
 
-boost::any BooleanLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BooleanLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool BooleanLiteralExpression::isBooleanLiteralExpression() const { return true; }
+bool BooleanLiteralExpression::isBooleanLiteralExpression() const {
+    return true;
+}
 
-bool BooleanLiteralExpression::getValue() const { return this->value; }
+bool BooleanLiteralExpression::getValue() const {
+    return this->value;
+}
 
-void BooleanLiteralExpression::printToStream(std::ostream& stream) const { stream << (this->getValue() ? "true" : "false"); }
+void BooleanLiteralExpression::printToStream(std::ostream& stream) const {
+    stream << (this->getValue() ? "true" : "false");
+}
 }  // namespace expressions
 }  // namespace storm

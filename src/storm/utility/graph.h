@@ -661,21 +661,37 @@ struct SymbolicGameProb01Result {
         // Intentionally left empty.
     }
 
-    bool hasPlayer1Strategy() const { return static_cast<bool>(player1Strategy); }
+    bool hasPlayer1Strategy() const {
+        return static_cast<bool>(player1Strategy);
+    }
 
-    storm::dd::Bdd<Type> const& getPlayer1Strategy() const { return player1Strategy.get(); }
+    storm::dd::Bdd<Type> const& getPlayer1Strategy() const {
+        return player1Strategy.get();
+    }
 
-    boost::optional<storm::dd::Bdd<Type>> const& getOptionalPlayer1Strategy() { return player1Strategy; }
+    boost::optional<storm::dd::Bdd<Type>> const& getOptionalPlayer1Strategy() {
+        return player1Strategy;
+    }
 
-    bool hasPlayer2Strategy() const { return static_cast<bool>(player2Strategy); }
+    bool hasPlayer2Strategy() const {
+        return static_cast<bool>(player2Strategy);
+    }
 
-    storm::dd::Bdd<Type> const& getPlayer2Strategy() const { return player2Strategy.get(); }
+    storm::dd::Bdd<Type> const& getPlayer2Strategy() const {
+        return player2Strategy.get();
+    }
 
-    boost::optional<storm::dd::Bdd<Type>> const& getOptionalPlayer2Strategy() { return player2Strategy; }
+    boost::optional<storm::dd::Bdd<Type>> const& getOptionalPlayer2Strategy() {
+        return player2Strategy;
+    }
 
-    storm::dd::Bdd<Type> const& getPlayer1States() const { return player1States; }
+    storm::dd::Bdd<Type> const& getPlayer1States() const {
+        return player1States;
+    }
 
-    storm::dd::Bdd<Type> const& getPlayer2States() const { return player2States; }
+    storm::dd::Bdd<Type> const& getPlayer2States() const {
+        return player2States;
+    }
 
     storm::dd::Bdd<Type> player1States;
     storm::dd::Bdd<Type> player2States;
@@ -730,9 +746,13 @@ struct ExplicitGameProb01Result {
         // Intentionally left empty.
     }
 
-    storm::storage::BitVector const& getPlayer1States() const { return player1States; }
+    storm::storage::BitVector const& getPlayer1States() const {
+        return player1States;
+    }
 
-    storm::storage::BitVector const& getPlayer2States() const { return player2States; }
+    storm::storage::BitVector const& getPlayer2States() const {
+        return player2States;
+    }
 
     storm::storage::BitVector player1States;
     storm::storage::BitVector player2States;

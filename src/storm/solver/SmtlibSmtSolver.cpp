@@ -86,7 +86,9 @@ void SmtlibSmtSolver::pop(uint_fast64_t n) {
     writeCommand("( pop " + std::to_string(n) + " ) ", true);
 }
 
-void SmtlibSmtSolver::reset() { STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "functionality not (yet) implemented"); }
+void SmtlibSmtSolver::reset() {
+    STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "functionality not (yet) implemented");
+}
 
 void SmtlibSmtSolver::add(storm::expressions::Expression const&) {
     STORM_LOG_THROW(!useCarlExpressions, storm::exceptions::IllegalFunctionCallException, "This solver was initialized without allowing carl expressions");
@@ -139,9 +141,12 @@ SmtSolver::CheckResult SmtlibSmtSolver::check() {
             solverOutput.size() == 1, storm::exceptions::UnexpectedException,
             "expected a single line of output after smt2 command ( check-sat ). Got " + std::to_string(solverOutput.size()) + " lines of output instead.");
         solverOutput[0].erase(std::remove_if(solverOutput[0].begin(), solverOutput[0].end(), ::isspace), solverOutput[0].end());  // remove spaces
-        if (solverOutput[0] == "sat") return SmtSolver::CheckResult::Sat;
-        if (solverOutput[0] == "unsat") return SmtSolver::CheckResult::Unsat;
-        if (solverOutput[0] == "unknown") return SmtSolver::CheckResult::Unknown;
+        if (solverOutput[0] == "sat")
+            return SmtSolver::CheckResult::Sat;
+        if (solverOutput[0] == "unsat")
+            return SmtSolver::CheckResult::Unsat;
+        if (solverOutput[0] == "unknown")
+            return SmtSolver::CheckResult::Unknown;
         // if we reach this point, something unexpected happened. Lets return unknown and print some debug output
         STORM_LOG_DEBUG("unexpected solver output: " << solverOutput[0] << ". Returning result 'unknown'");
         return SmtSolver::CheckResult::Unknown;
@@ -234,7 +239,9 @@ void SmtlibSmtSolver::init() {
     // writeCommand("( get-info :name )");
 }
 
-bool SmtlibSmtSolver::isNeedsRestart() const { return this->needsRestart; }
+bool SmtlibSmtSolver::isNeedsRestart() const {
+    return this->needsRestart;
+}
 
 void SmtlibSmtSolver::writeCommand(std::string smt2Command, bool expectSuccess) {
     if (isCommandFileOpen) {

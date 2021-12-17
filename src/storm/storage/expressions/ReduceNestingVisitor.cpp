@@ -151,7 +151,9 @@ boost::any ReduceNestingVisitor::visit(BinaryRelationExpression const& expressio
     }
 }
 
-boost::any ReduceNestingVisitor::visit(VariableExpression const& expression, boost::any const&) { return expression.getSharedPointer(); }
+boost::any ReduceNestingVisitor::visit(VariableExpression const& expression, boost::any const&) {
+    return expression.getSharedPointer();
+}
 
 boost::any ReduceNestingVisitor::visit(UnaryBooleanFunctionExpression const& expression, boost::any const& data) {
     std::shared_ptr<BaseExpression const> operandExpression =
@@ -179,11 +181,17 @@ boost::any ReduceNestingVisitor::visit(UnaryNumericalFunctionExpression const& e
     }
 }
 
-boost::any ReduceNestingVisitor::visit(BooleanLiteralExpression const& expression, boost::any const&) { return expression.getSharedPointer(); }
+boost::any ReduceNestingVisitor::visit(BooleanLiteralExpression const& expression, boost::any const&) {
+    return expression.getSharedPointer();
+}
 
-boost::any ReduceNestingVisitor::visit(IntegerLiteralExpression const& expression, boost::any const&) { return expression.getSharedPointer(); }
+boost::any ReduceNestingVisitor::visit(IntegerLiteralExpression const& expression, boost::any const&) {
+    return expression.getSharedPointer();
+}
 
-boost::any ReduceNestingVisitor::visit(RationalLiteralExpression const& expression, boost::any const&) { return expression.getSharedPointer(); }
+boost::any ReduceNestingVisitor::visit(RationalLiteralExpression const& expression, boost::any const&) {
+    return expression.getSharedPointer();
+}
 
 }  // namespace expressions
 }  // namespace storm

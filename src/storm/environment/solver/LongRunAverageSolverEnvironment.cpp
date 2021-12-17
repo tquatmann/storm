@@ -25,42 +25,70 @@ LongRunAverageSolverEnvironment::~LongRunAverageSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::LraMethod const& LongRunAverageSolverEnvironment::getDetLraMethod() const { return detMethod; }
+storm::solver::LraMethod const& LongRunAverageSolverEnvironment::getDetLraMethod() const {
+    return detMethod;
+}
 
-bool const& LongRunAverageSolverEnvironment::isDetLraMethodSetFromDefault() const { return detMethodSetFromDefault; }
+bool const& LongRunAverageSolverEnvironment::isDetLraMethodSetFromDefault() const {
+    return detMethodSetFromDefault;
+}
 
 void LongRunAverageSolverEnvironment::setDetLraMethod(storm::solver::LraMethod value, bool isSetFromDefault) {
     detMethod = value;
     detMethodSetFromDefault = isSetFromDefault;
 }
 
-storm::solver::LraMethod const& LongRunAverageSolverEnvironment::getNondetLraMethod() const { return nondetMethod; }
+storm::solver::LraMethod const& LongRunAverageSolverEnvironment::getNondetLraMethod() const {
+    return nondetMethod;
+}
 
-bool const& LongRunAverageSolverEnvironment::isNondetLraMethodSetFromDefault() const { return nondetMethodSetFromDefault; }
+bool const& LongRunAverageSolverEnvironment::isNondetLraMethodSetFromDefault() const {
+    return nondetMethodSetFromDefault;
+}
 
 void LongRunAverageSolverEnvironment::setNondetLraMethod(storm::solver::LraMethod value, bool isSetFromDefault) {
     nondetMethod = value;
     nondetMethodSetFromDefault = isSetFromDefault;
 }
 
-storm::RationalNumber const& LongRunAverageSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& LongRunAverageSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void LongRunAverageSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void LongRunAverageSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 
-bool const& LongRunAverageSolverEnvironment::getRelativeTerminationCriterion() const { return relative; }
+bool const& LongRunAverageSolverEnvironment::getRelativeTerminationCriterion() const {
+    return relative;
+}
 
-void LongRunAverageSolverEnvironment::setRelativeTerminationCriterion(bool value) { relative = value; }
+void LongRunAverageSolverEnvironment::setRelativeTerminationCriterion(bool value) {
+    relative = value;
+}
 
-bool LongRunAverageSolverEnvironment::isMaximalIterationCountSet() const { return maxIters.is_initialized(); }
+bool LongRunAverageSolverEnvironment::isMaximalIterationCountSet() const {
+    return maxIters.is_initialized();
+}
 
-uint64_t LongRunAverageSolverEnvironment::getMaximalIterationCount() const { return maxIters.get(); }
+uint64_t LongRunAverageSolverEnvironment::getMaximalIterationCount() const {
+    return maxIters.get();
+}
 
-void LongRunAverageSolverEnvironment::setMaximalIterationCount(uint64_t value) { maxIters = value; }
+void LongRunAverageSolverEnvironment::setMaximalIterationCount(uint64_t value) {
+    maxIters = value;
+}
 
-void LongRunAverageSolverEnvironment::unsetMaximalIterationCount() { maxIters = boost::none; }
+void LongRunAverageSolverEnvironment::unsetMaximalIterationCount() {
+    maxIters = boost::none;
+}
 
-storm::RationalNumber const& LongRunAverageSolverEnvironment::getAperiodicFactor() const { return aperiodicFactor; }
+storm::RationalNumber const& LongRunAverageSolverEnvironment::getAperiodicFactor() const {
+    return aperiodicFactor;
+}
 
-void LongRunAverageSolverEnvironment::setAperiodicFactor(storm::RationalNumber value) { aperiodicFactor = value; }
+void LongRunAverageSolverEnvironment::setAperiodicFactor(storm::RationalNumber value) {
+    aperiodicFactor = value;
+}
 
 }  // namespace storm

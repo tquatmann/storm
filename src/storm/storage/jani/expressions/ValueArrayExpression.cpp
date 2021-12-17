@@ -58,7 +58,9 @@ void ValueArrayExpression::printToStream(std::ostream& stream) const {
     stream << " ]";
 }
 
-std::shared_ptr<BaseExpression const> ValueArrayExpression::size() const { return getManager().integer(elements.size()).getBaseExpressionPointer(); }
+std::shared_ptr<BaseExpression const> ValueArrayExpression::size() const {
+    return getManager().integer(elements.size()).getBaseExpressionPointer();
+}
 
 std::shared_ptr<BaseExpression const> ValueArrayExpression::at(uint64_t i) const {
     STORM_LOG_THROW(i < elements.size(), storm::exceptions::InvalidArgumentException,

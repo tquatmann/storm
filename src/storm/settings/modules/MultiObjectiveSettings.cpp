@@ -95,7 +95,9 @@ storm::modelchecker::multiobjective::MultiObjectiveMethod MultiObjectiveSettings
     }
 }
 
-bool MultiObjectiveSettings::isExportPlotSet() const { return this->getOption(exportPlotOptionName).getHasOptionBeenSet(); }
+bool MultiObjectiveSettings::isExportPlotSet() const {
+    return this->getOption(exportPlotOptionName).getHasOptionBeenSet();
+}
 
 std::string MultiObjectiveSettings::getExportPlotDirectory() const {
     std::string result = this->getOption(exportPlotOptionName).getArgumentByName("directory").getValueAsString();
@@ -105,19 +107,29 @@ std::string MultiObjectiveSettings::getExportPlotDirectory() const {
     return result;
 }
 
-double MultiObjectiveSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double MultiObjectiveSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
 bool MultiObjectiveSettings::getPrecisionRelativeToDiff() const {
     return this->getOption(precisionOptionName).getArgumentByName("type").getValueAsString() == "reldiff";
 }
 
-bool MultiObjectiveSettings::getPrecisionAbsolute() const { return this->getOption(precisionOptionName).getArgumentByName("type").getValueAsString() == "abs"; }
+bool MultiObjectiveSettings::getPrecisionAbsolute() const {
+    return this->getOption(precisionOptionName).getArgumentByName("type").getValueAsString() == "abs";
+}
 
-bool MultiObjectiveSettings::isMaxStepsSet() const { return this->getOption(maxStepsOptionName).getHasOptionBeenSet(); }
+bool MultiObjectiveSettings::isMaxStepsSet() const {
+    return this->getOption(maxStepsOptionName).getHasOptionBeenSet();
+}
 
-uint_fast64_t MultiObjectiveSettings::getMaxSteps() const { return this->getOption(maxStepsOptionName).getArgumentByName("value").getValueAsUnsignedInteger(); }
+uint_fast64_t MultiObjectiveSettings::getMaxSteps() const {
+    return this->getOption(maxStepsOptionName).getArgumentByName("value").getValueAsUnsignedInteger();
+}
 
-bool MultiObjectiveSettings::hasSchedulerRestriction() const { return this->getOption(schedulerRestrictionOptionName).getHasOptionBeenSet(); }
+bool MultiObjectiveSettings::hasSchedulerRestriction() const {
+    return this->getOption(schedulerRestrictionOptionName).getHasOptionBeenSet();
+}
 
 storm::storage::SchedulerClass MultiObjectiveSettings::getSchedulerRestriction() const {
     storm::storage::SchedulerClass result;
@@ -149,15 +161,21 @@ storm::storage::SchedulerClass MultiObjectiveSettings::getSchedulerRestriction()
     return result;
 }
 
-bool MultiObjectiveSettings::isPrintResultsSet() const { return this->getOption(printResultsOptionName).getHasOptionBeenSet(); }
+bool MultiObjectiveSettings::isPrintResultsSet() const {
+    return this->getOption(printResultsOptionName).getHasOptionBeenSet();
+}
 
 bool MultiObjectiveSettings::isClassicEncodingSet() const {
     return this->getOption(encodingOptionName).getArgumentByName("type").getValueAsString() == "classic";
 }
 
-bool MultiObjectiveSettings::isFlowEncodingSet() const { return this->getOption(encodingOptionName).getArgumentByName("type").getValueAsString() == "flow"; }
+bool MultiObjectiveSettings::isFlowEncodingSet() const {
+    return this->getOption(encodingOptionName).getArgumentByName("type").getValueAsString() == "flow";
+}
 
-bool MultiObjectiveSettings::isAutoEncodingSet() const { return this->getOption(encodingOptionName).getArgumentByName("type").getValueAsString() == "auto"; }
+bool MultiObjectiveSettings::isAutoEncodingSet() const {
+    return this->getOption(encodingOptionName).getArgumentByName("type").getValueAsString() == "auto";
+}
 
 bool MultiObjectiveSettings::check() const {
     std::shared_ptr<storm::settings::ArgumentValidator<std::string>> validator = ArgumentValidatorFactory::createWritableFileValidator();

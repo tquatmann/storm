@@ -33,11 +33,17 @@ SymbolicModelDescription& SymbolicModelDescription::operator=(storm::prism::Prog
     return *this;
 }
 
-bool SymbolicModelDescription::hasModel() const { return static_cast<bool>(modelDescription); }
+bool SymbolicModelDescription::hasModel() const {
+    return static_cast<bool>(modelDescription);
+}
 
-bool SymbolicModelDescription::isJaniModel() const { return modelDescription.get().which() == 0; }
+bool SymbolicModelDescription::isJaniModel() const {
+    return modelDescription.get().which() == 0;
+}
 
-bool SymbolicModelDescription::isPrismProgram() const { return modelDescription.get().which() == 1; }
+bool SymbolicModelDescription::isPrismProgram() const {
+    return modelDescription.get().which() == 1;
+}
 
 SymbolicModelDescription::ModelType SymbolicModelDescription::getModelType() const {
     if (this->isJaniModel()) {
@@ -83,9 +89,13 @@ storm::expressions::ExpressionManager& SymbolicModelDescription::getManager() co
     }
 }
 
-void SymbolicModelDescription::setModel(storm::jani::Model const& model) { modelDescription = model; }
+void SymbolicModelDescription::setModel(storm::jani::Model const& model) {
+    modelDescription = model;
+}
 
-void SymbolicModelDescription::setModel(storm::prism::Program const& program) { modelDescription = program; }
+void SymbolicModelDescription::setModel(storm::prism::Program const& program) {
+    modelDescription = program;
+}
 
 storm::jani::Model const& SymbolicModelDescription::asJaniModel() const {
     STORM_LOG_THROW(isJaniModel(), storm::exceptions::InvalidOperationException,

@@ -14,9 +14,13 @@ class ProgramAction {
 
     virtual ~ProgramAction() = default;
 
-    ProgramActionIdentifier id() const { return actId; }
+    ProgramActionIdentifier id() const {
+        return actId;
+    }
 
-    ProgramGraph const& getProgramGraph() const { return *graph; }
+    ProgramGraph const& getProgramGraph() const {
+        return *graph;
+    }
 
     virtual bool isProbabilistic() const = 0;
 
@@ -46,11 +50,15 @@ class ProbabilisticProgramAction : public ProgramAction {
      */
     ProbabilisticProgramAction(ProgramGraph* graph, ProgramActionIdentifier actId, ProgramVariableIdentifier var, int64_t from, int64_t to);
 
-    bool isProbabilistic() const override { return true; }
+    bool isProbabilistic() const override {
+        return true;
+    }
 
     std::string const& getVariableName() const;
 
-    ProgramVariableIdentifier getVariableIdentifier() const { return var; }
+    ProgramVariableIdentifier getVariableIdentifier() const {
+        return var;
+    }
 
     storm::storage::IntegerInterval getSupportInterval() const {
         assert(!values.empty());
@@ -66,13 +74,21 @@ class ProbabilisticProgramAction : public ProgramAction {
         return storm::storage::IntegerInterval(min, max);
     }
 
-    iterator begin() { return values.begin(); }
+    iterator begin() {
+        return values.begin();
+    }
 
-    iterator end() { return values.end(); }
+    iterator end() {
+        return values.end();
+    }
 
-    const_iterator begin() const { return values.begin(); }
+    const_iterator begin() const {
+        return values.begin();
+    }
 
-    const_iterator end() const { return values.end(); }
+    const_iterator end() const {
+        return values.end();
+    }
 
    private:
     // TODO not the smartest representation (but at least it is internal!)
@@ -84,17 +100,29 @@ struct AssignmentGroup {
     using iterator = std::unordered_map<uint64_t, storm::expressions::Expression>::iterator;
     using const_iterator = std::unordered_map<uint64_t, storm::expressions::Expression>::const_iterator;
 
-    storm::expressions::Expression& operator[](uint64_t varIndex) { return map[varIndex]; }
+    storm::expressions::Expression& operator[](uint64_t varIndex) {
+        return map[varIndex];
+    }
 
-    bool hasVariable(uint64_t varIndex) const { return map.count(varIndex) > 0; }
+    bool hasVariable(uint64_t varIndex) const {
+        return map.count(varIndex) > 0;
+    }
 
-    iterator begin() { return map.begin(); }
+    iterator begin() {
+        return map.begin();
+    }
 
-    iterator end() { return map.end(); }
+    iterator end() {
+        return map.end();
+    }
 
-    const_iterator begin() const { return map.begin(); }
+    const_iterator begin() const {
+        return map.begin();
+    }
 
-    const_iterator end() const { return map.end(); }
+    const_iterator end() const {
+        return map.end();
+    }
 
    private:
     std::unordered_map<ProgramVariableIdentifier, storm::expressions::Expression> map;
@@ -115,17 +143,29 @@ class DeterministicProgramAction : public ProgramAction {
         assignments[level][varIndex] = expr;
     }
 
-    size_t nrLevels() const { return assignments.size(); }
+    size_t nrLevels() const {
+        return assignments.size();
+    }
 
-    iterator begin() { return assignments.begin(); }
+    iterator begin() {
+        return assignments.begin();
+    }
 
-    iterator end() { return assignments.end(); }
+    iterator end() {
+        return assignments.end();
+    }
 
-    const_iterator begin() const { return assignments.begin(); }
+    const_iterator begin() const {
+        return assignments.begin();
+    }
 
-    const_iterator end() const { return assignments.end(); }
+    const_iterator end() const {
+        return assignments.end();
+    }
 
-    bool isProbabilistic() const override { return false; }
+    bool isProbabilistic() const override {
+        return false;
+    }
 
    protected:
     std::vector<AssignmentGroup> assignments;

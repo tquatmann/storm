@@ -8,18 +8,26 @@ SchedulerClass::SchedulerClass() : deterministic(false), memorystates(0), memory
     // Intentionally left empty
 }
 
-bool SchedulerClass::isDeterministic() const { return deterministic; }
+bool SchedulerClass::isDeterministic() const {
+    return deterministic;
+}
 
-bool SchedulerClass::isMemoryBounded() const { return memorystates > 0; }
+bool SchedulerClass::isMemoryBounded() const {
+    return memorystates > 0;
+}
 
 uint64_t SchedulerClass::getMemoryStates() const {
     STORM_LOG_ASSERT(isMemoryBounded(), "Tried to retrieve the number of memory states although it is not bounded.");
     return memorystates;
 }
 
-SchedulerClass::MemoryPattern SchedulerClass::getMemoryPattern() const { return memoryPattern; }
+SchedulerClass::MemoryPattern SchedulerClass::getMemoryPattern() const {
+    return memoryPattern;
+}
 
-bool SchedulerClass::isPositional() const { return getMemoryStates() == 1 && getMemoryPattern() == MemoryPattern::Arbitrary; }
+bool SchedulerClass::isPositional() const {
+    return getMemoryStates() == 1 && getMemoryPattern() == MemoryPattern::Arbitrary;
+}
 
 SchedulerClass& SchedulerClass::setIsDeterministic(bool value) {
     deterministic = value;

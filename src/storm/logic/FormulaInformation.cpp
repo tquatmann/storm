@@ -13,19 +13,33 @@ FormulaInformation::FormulaInformation()
     // Intentionally left empty
 }
 
-bool FormulaInformation::containsRewardOperator() const { return this->mContainsRewardOperator; }
+bool FormulaInformation::containsRewardOperator() const {
+    return this->mContainsRewardOperator;
+}
 
-bool FormulaInformation::containsNextFormula() const { return this->mContainsNextFormula; }
+bool FormulaInformation::containsNextFormula() const {
+    return this->mContainsNextFormula;
+}
 
-bool FormulaInformation::containsBoundedUntilFormula() const { return this->mContainsBoundedUntilFormula; }
+bool FormulaInformation::containsBoundedUntilFormula() const {
+    return this->mContainsBoundedUntilFormula;
+}
 
-bool FormulaInformation::containsCumulativeRewardFormula() const { return this->mContainsCumulativeRewardFormula; }
+bool FormulaInformation::containsCumulativeRewardFormula() const {
+    return this->mContainsCumulativeRewardFormula;
+}
 
-bool FormulaInformation::containsRewardBoundedFormula() const { return this->mContainsRewardBoundedFormula; }
+bool FormulaInformation::containsRewardBoundedFormula() const {
+    return this->mContainsRewardBoundedFormula;
+}
 
-bool FormulaInformation::containsLongRunFormula() const { return this->mContainsLongRunFormula; }
+bool FormulaInformation::containsLongRunFormula() const {
+    return this->mContainsLongRunFormula;
+}
 
-bool FormulaInformation::containsComplexPathFormula() const { return this->mContainsComplexPathFormula; }
+bool FormulaInformation::containsComplexPathFormula() const {
+    return this->mContainsComplexPathFormula;
+}
 
 FormulaInformation FormulaInformation::join(FormulaInformation const& other) {
     FormulaInformation result;

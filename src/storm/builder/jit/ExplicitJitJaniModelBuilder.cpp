@@ -212,7 +212,8 @@ boost::optional<std::string> ExplicitJitJaniModelBuilder<ValueType, RewardModelT
     STORM_LOG_THROW(pipe, storm::exceptions::InvalidStateException, "Call to popen failed: " << strerror(errno));
 
     while (!feof(pipe.get())) {
-        if (fgets(buffer, 128, pipe.get()) != nullptr) output << buffer;
+        if (fgets(buffer, 128, pipe.get()) != nullptr)
+            output << buffer;
     }
     int result = pclose(pipe.get());
     pipe.release();

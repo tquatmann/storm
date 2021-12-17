@@ -477,12 +477,16 @@ struct less<storm::expressions::Expression> {
 
 template<>
 struct hash<storm::expressions::Expression> {
-    size_t operator()(storm::expressions::Expression const& e) const { return reinterpret_cast<size_t>(e.getBaseExpressionPointer().get()); }
+    size_t operator()(storm::expressions::Expression const& e) const {
+        return reinterpret_cast<size_t>(e.getBaseExpressionPointer().get());
+    }
 };
 
 template<>
 struct equal_to<storm::expressions::Expression> {
-    bool operator()(storm::expressions::Expression const& e1, storm::expressions::Expression const& e2) const { return e1.areSame(e2); }
+    bool operator()(storm::expressions::Expression const& e1, storm::expressions::Expression const& e2) const {
+        return e1.areSame(e2);
+    }
 };
 }  // namespace std
 

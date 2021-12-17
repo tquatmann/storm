@@ -121,11 +121,17 @@ storm::dd::bisimulation::QuotientFormat BisimulationSettings::getQuotientFormat(
     return storm::dd::bisimulation::QuotientFormat::Dd;
 }
 
-bool BisimulationSettings::isUseRepresentativesSet() const { return this->getOption(representativeOptionName).getHasOptionBeenSet(); }
+bool BisimulationSettings::isUseRepresentativesSet() const {
+    return this->getOption(representativeOptionName).getHasOptionBeenSet();
+}
 
-bool BisimulationSettings::isUseOriginalVariablesSet() const { return this->getOption(originalVariablesOptionName).getHasOptionBeenSet(); }
+bool BisimulationSettings::isUseOriginalVariablesSet() const {
+    return this->getOption(originalVariablesOptionName).getHasOptionBeenSet();
+}
 
-bool BisimulationSettings::useExactArithmeticInDdBisimulation() const { return this->getOption(exactArithmeticDdOptionName).getHasOptionBeenSet(); }
+bool BisimulationSettings::useExactArithmeticInDdBisimulation() const {
+    return this->getOption(exactArithmeticDdOptionName).getHasOptionBeenSet();
+}
 
 storm::dd::bisimulation::SignatureMode BisimulationSettings::getSignatureMode() const {
     std::string modeAsString = this->getOption(signatureModeOptionName).getArgumentByName("mode").getValueAsString();

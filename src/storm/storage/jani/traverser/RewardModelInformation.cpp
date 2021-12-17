@@ -89,11 +89,17 @@ RewardModelInformation RewardModelInformation::join(RewardModelInformation const
                                   this->hasTransitionRewards() || other.hasTransitionRewards());
 }
 
-bool RewardModelInformation::hasStateRewards() const { return stateRewards; }
+bool RewardModelInformation::hasStateRewards() const {
+    return stateRewards;
+}
 
-bool RewardModelInformation::hasActionRewards() const { return actionRewards; }
+bool RewardModelInformation::hasActionRewards() const {
+    return actionRewards;
+}
 
-bool RewardModelInformation::hasTransitionRewards() const { return transitionRewards; }
+bool RewardModelInformation::hasTransitionRewards() const {
+    return transitionRewards;
+}
 
 }  // namespace jani
 }  // namespace storm

@@ -15,11 +15,17 @@ VariableIterator::VariableIterator(ExpressionManager const& manager, std::unorde
     moveUntilNextSelectedElement(false);
 }
 
-bool VariableIterator::operator==(VariableIterator const& other) { return this->nameIndexIterator == other.nameIndexIterator; }
+bool VariableIterator::operator==(VariableIterator const& other) {
+    return this->nameIndexIterator == other.nameIndexIterator;
+}
 
-bool VariableIterator::operator!=(VariableIterator const& other) { return !(*this == other); }
+bool VariableIterator::operator!=(VariableIterator const& other) {
+    return !(*this == other);
+}
 
-VariableIterator::value_type& VariableIterator::operator*() { return currentElement; }
+VariableIterator::value_type& VariableIterator::operator*() {
+    return currentElement;
+}
 
 VariableIterator& VariableIterator::operator++(int) {
     moveUntilNextSelectedElement();
@@ -71,19 +77,29 @@ ExpressionManager::~ExpressionManager() {
     // Intentionally left empty.
 }
 
-std::shared_ptr<ExpressionManager> ExpressionManager::clone() const { return std::shared_ptr<ExpressionManager>(new ExpressionManager(*this)); }
+std::shared_ptr<ExpressionManager> ExpressionManager::clone() const {
+    return std::shared_ptr<ExpressionManager>(new ExpressionManager(*this));
+}
 
-Expression ExpressionManager::boolean(bool value) const { return Expression(std::make_shared<BooleanLiteralExpression>(*this, value)); }
+Expression ExpressionManager::boolean(bool value) const {
+    return Expression(std::make_shared<BooleanLiteralExpression>(*this, value));
+}
 
-Expression ExpressionManager::integer(int_fast64_t value) const { return Expression(std::make_shared<IntegerLiteralExpression>(*this, value)); }
+Expression ExpressionManager::integer(int_fast64_t value) const {
+    return Expression(std::make_shared<IntegerLiteralExpression>(*this, value));
+}
 
-Expression ExpressionManager::rational(double value) const { return Expression(std::make_shared<RationalLiteralExpression>(*this, value)); }
+Expression ExpressionManager::rational(double value) const {
+    return Expression(std::make_shared<RationalLiteralExpression>(*this, value));
+}
 
 Expression ExpressionManager::rational(storm::RationalNumber const& value) const {
     return Expression(std::make_shared<RationalLiteralExpression>(*this, value));
 }
 
-bool ExpressionManager::operator==(ExpressionManager const& other) const { return this == &other; }
+bool ExpressionManager::operator==(ExpressionManager const& other) const {
+    return this == &other;
+}
 
 Type const& ExpressionManager::getBooleanType() const {
     if (!booleanType) {
@@ -121,7 +137,9 @@ Type const& ExpressionManager::getArrayType(Type elementType) const {
     return *arrayTypes.insert(type).first;
 }
 
-bool ExpressionManager::isValidVariableName(std::string const& name) { return name.size() < 2 || name.at(0) != '_' || name.at(1) != '_'; }
+bool ExpressionManager::isValidVariableName(std::string const& name) {
+    return name.size() < 2 || name.at(0) != '_' || name.at(1) != '_';
+}
 
 bool ExpressionManager::variableExists(std::string const& name) const {
     auto nameIndexPair = nameToIndexMapping.find(name);
@@ -224,11 +242,17 @@ Variable ExpressionManager::getVariable(std::string const& name) const {
     return Variable(this->getSharedPointer(), nameIndexPair->second);
 }
 
-std::set<Variable> const& ExpressionManager::getVariables() const { return variableSet; }
+std::set<Variable> const& ExpressionManager::getVariables() const {
+    return variableSet;
+}
 
-Expression ExpressionManager::getVariableExpression(std::string const& name) const { return Expression(getVariable(name)); }
+Expression ExpressionManager::getVariableExpression(std::string const& name) const {
+    return Expression(getVariable(name));
+}
 
-bool ExpressionManager::hasVariable(std::string const& name) const { return nameToIndexMapping.find(name) != nameToIndexMapping.end(); }
+bool ExpressionManager::hasVariable(std::string const& name) const {
+    return nameToIndexMapping.find(name) != nameToIndexMapping.end();
+}
 
 Variable ExpressionManager::declareFreshVariable(storm::expressions::Type const& variableType, bool auxiliary, std::string const& prefix) {
     std::string newName = prefix + std::to_string(freshVariableCounter++);
@@ -266,15 +290,25 @@ uint_fast64_t ExpressionManager::getNumberOfVariables() const {
     return numberOfBooleanVariables + numberOfIntegerVariables + numberOfBitVectorVariables + numberOfRationalVariables + numberOfArrayVariables;
 }
 
-uint_fast64_t ExpressionManager::getNumberOfBooleanVariables() const { return numberOfBooleanVariables; }
+uint_fast64_t ExpressionManager::getNumberOfBooleanVariables() const {
+    return numberOfBooleanVariables;
+}
 
-uint_fast64_t ExpressionManager::getNumberOfIntegerVariables() const { return numberOfIntegerVariables; }
+uint_fast64_t ExpressionManager::getNumberOfIntegerVariables() const {
+    return numberOfIntegerVariables;
+}
 
-uint_fast64_t ExpressionManager::getNumberOfBitVectorVariables() const { return numberOfBitVectorVariables; }
+uint_fast64_t ExpressionManager::getNumberOfBitVectorVariables() const {
+    return numberOfBitVectorVariables;
+}
 
-uint_fast64_t ExpressionManager::getNumberOfRationalVariables() const { return numberOfRationalVariables; }
+uint_fast64_t ExpressionManager::getNumberOfRationalVariables() const {
+    return numberOfRationalVariables;
+}
 
-uint_fast64_t ExpressionManager::getNumberOfArrayVariables() const { return numberOfRationalVariables; }
+uint_fast64_t ExpressionManager::getNumberOfArrayVariables() const {
+    return numberOfRationalVariables;
+}
 
 std::string const& ExpressionManager::getVariableName(uint_fast64_t index) const {
     auto indexTypeNamePair = indexToNameMapping.find(index);
@@ -288,7 +322,9 @@ Type const& ExpressionManager::getVariableType(uint_fast64_t index) const {
     return indexTypePair->second;
 }
 
-uint_fast64_t ExpressionManager::getOffset(uint_fast64_t index) const { return index & offsetMask; }
+uint_fast64_t ExpressionManager::getOffset(uint_fast64_t index) const {
+    return index & offsetMask;
+}
 
 ExpressionManager::const_iterator ExpressionManager::begin() const {
     return ExpressionManager::const_iterator(*this, this->nameToIndexMapping.begin(), this->nameToIndexMapping.end(),
@@ -300,9 +336,13 @@ ExpressionManager::const_iterator ExpressionManager::end() const {
                                              const_iterator::VariableSelection::OnlyRegularVariables);
 }
 
-std::shared_ptr<ExpressionManager> ExpressionManager::getSharedPointer() { return this->shared_from_this(); }
+std::shared_ptr<ExpressionManager> ExpressionManager::getSharedPointer() {
+    return this->shared_from_this();
+}
 
-std::shared_ptr<ExpressionManager const> ExpressionManager::getSharedPointer() const { return this->shared_from_this(); }
+std::shared_ptr<ExpressionManager const> ExpressionManager::getSharedPointer() const {
+    return this->shared_from_this();
+}
 
 std::ostream& operator<<(std::ostream& out, ExpressionManager const& manager) {
     out << "manager {" << std::endl;

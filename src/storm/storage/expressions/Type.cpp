@@ -14,71 +14,121 @@ BaseType::BaseType() {
     // Intentionally left empty.
 }
 
-bool BaseType::operator==(BaseType const& other) const { return this->getMask() == other.getMask(); }
+bool BaseType::operator==(BaseType const& other) const {
+    return this->getMask() == other.getMask();
+}
 
-bool BaseType::isErrorType() const { return false; }
+bool BaseType::isErrorType() const {
+    return false;
+}
 
-bool BaseType::isBooleanType() const { return false; }
+bool BaseType::isBooleanType() const {
+    return false;
+}
 
-bool BooleanType::isBooleanType() const { return true; }
+bool BooleanType::isBooleanType() const {
+    return true;
+}
 
-bool BaseType::isIntegerType() const { return false; }
+bool BaseType::isIntegerType() const {
+    return false;
+}
 
-bool IntegerType::isIntegerType() const { return true; }
+bool IntegerType::isIntegerType() const {
+    return true;
+}
 
-bool BitVectorType::isIntegerType() const { return true; }
+bool BitVectorType::isIntegerType() const {
+    return true;
+}
 
-bool BaseType::isBitVectorType() const { return false; }
+bool BaseType::isBitVectorType() const {
+    return false;
+}
 
-bool BitVectorType::isBitVectorType() const { return true; }
+bool BitVectorType::isBitVectorType() const {
+    return true;
+}
 
-bool BaseType::isRationalType() const { return false; }
+bool BaseType::isRationalType() const {
+    return false;
+}
 
-bool RationalType::isRationalType() const { return true; }
+bool RationalType::isRationalType() const {
+    return true;
+}
 
-bool BaseType::isArrayType() const { return false; }
+bool BaseType::isArrayType() const {
+    return false;
+}
 
-bool ArrayType::isArrayType() const { return true; }
+bool ArrayType::isArrayType() const {
+    return true;
+}
 
-uint64_t BooleanType::getMask() const { return BooleanType::mask; }
+uint64_t BooleanType::getMask() const {
+    return BooleanType::mask;
+}
 
-std::string BooleanType::getStringRepresentation() const { return "bool"; }
+std::string BooleanType::getStringRepresentation() const {
+    return "bool";
+}
 
-uint64_t IntegerType::getMask() const { return IntegerType::mask; }
+uint64_t IntegerType::getMask() const {
+    return IntegerType::mask;
+}
 
-std::string IntegerType::getStringRepresentation() const { return "int"; }
+std::string IntegerType::getStringRepresentation() const {
+    return "int";
+}
 
 BitVectorType::BitVectorType(std::size_t width) : width(width) {
     // Intentionally left empty.
 }
 
-uint64_t BitVectorType::getMask() const { return BitVectorType::mask; }
+uint64_t BitVectorType::getMask() const {
+    return BitVectorType::mask;
+}
 
-std::string BitVectorType::getStringRepresentation() const { return "bv[" + std::to_string(width) + "]"; }
+std::string BitVectorType::getStringRepresentation() const {
+    return "bv[" + std::to_string(width) + "]";
+}
 
-std::size_t BitVectorType::getWidth() const { return width; }
+std::size_t BitVectorType::getWidth() const {
+    return width;
+}
 
 bool BitVectorType::operator==(BaseType const& other) const {
     return BaseType::operator==(other) && this->width == static_cast<BitVectorType const&>(other).getWidth();
 }
 
-uint64_t RationalType::getMask() const { return RationalType::mask; }
+uint64_t RationalType::getMask() const {
+    return RationalType::mask;
+}
 
-std::string RationalType::getStringRepresentation() const { return "rational"; }
+std::string RationalType::getStringRepresentation() const {
+    return "rational";
+}
 
 ArrayType::ArrayType(Type elementType) : elementType(elementType) {
     // Intentionally left empty
 }
 
-Type ArrayType::getElementType() const { return elementType; }
+Type ArrayType::getElementType() const {
+    return elementType;
+}
 
 bool ArrayType::operator==(BaseType const& other) const {
     return BaseType::operator==(other) && this->elementType == static_cast<ArrayType const&>(other).getElementType();
 }
 
-uint64_t ArrayType::getMask() const { return ArrayType::mask; }
+uint64_t ArrayType::getMask() const {
+    return ArrayType::mask;
+}
 
-std::string ArrayType::getStringRepresentation() const { return "array[" + elementType.getStringRepresentation() + "]"; }
+std::string ArrayType::getStringRepresentation() const {
+    return "array[" + elementType.getStringRepresentation() + "]";
+}
 
 bool operator<(BaseType const& first, BaseType const& second) {
     if (first.getMask() < second.getMask()) {
@@ -101,29 +151,53 @@ Type::Type(std::shared_ptr<ExpressionManager const> const& manager, std::shared_
     // Intentionally left empty.
 }
 
-bool Type::operator==(Type const& other) const { return *this->innerType == *other.innerType; }
+bool Type::operator==(Type const& other) const {
+    return *this->innerType == *other.innerType;
+}
 
-uint64_t Type::getMask() const { return this->innerType->getMask(); }
+uint64_t Type::getMask() const {
+    return this->innerType->getMask();
+}
 
-bool Type::isBooleanType() const { return this->innerType->isBooleanType(); }
+bool Type::isBooleanType() const {
+    return this->innerType->isBooleanType();
+}
 
-bool Type::isIntegerType() const { return this->innerType->isIntegerType(); }
+bool Type::isIntegerType() const {
+    return this->innerType->isIntegerType();
+}
 
-bool Type::isBitVectorType() const { return this->innerType->isBitVectorType(); }
+bool Type::isBitVectorType() const {
+    return this->innerType->isBitVectorType();
+}
 
-bool Type::isNumericalType() const { return this->isIntegerType() || this->isRationalType(); }
+bool Type::isNumericalType() const {
+    return this->isIntegerType() || this->isRationalType();
+}
 
-bool Type::isArrayType() const { return this->innerType->isArrayType(); }
+bool Type::isArrayType() const {
+    return this->innerType->isArrayType();
+}
 
-std::string Type::getStringRepresentation() const { return this->innerType->getStringRepresentation(); }
+std::string Type::getStringRepresentation() const {
+    return this->innerType->getStringRepresentation();
+}
 
-std::size_t Type::getWidth() const { return static_cast<BitVectorType const&>(*this->innerType).getWidth(); }
+std::size_t Type::getWidth() const {
+    return static_cast<BitVectorType const&>(*this->innerType).getWidth();
+}
 
-Type Type::getElementType() const { return static_cast<ArrayType const&>(*this->innerType).getElementType(); }
+Type Type::getElementType() const {
+    return static_cast<ArrayType const&>(*this->innerType).getElementType();
+}
 
-bool Type::isRationalType() const { return this->innerType->isRationalType(); }
+bool Type::isRationalType() const {
+    return this->innerType->isRationalType();
+}
 
-storm::expressions::ExpressionManager const& Type::getManager() const { return *manager; }
+storm::expressions::ExpressionManager const& Type::getManager() const {
+    return *manager;
+}
 
 Type Type::plusMinusTimes(Type const& other) const {
     STORM_LOG_THROW(this->isNumericalType() && other.isNumericalType(), storm::exceptions::InvalidTypeException, "Operator requires numerical operands.");
@@ -194,7 +268,9 @@ Type Type::minimumMaximum(Type const& other) const {
     return std::max(*this, other);
 }
 
-bool operator<(storm::expressions::Type const& type1, storm::expressions::Type const& type2) { return *type1.innerType < *type2.innerType; }
+bool operator<(storm::expressions::Type const& type1, storm::expressions::Type const& type2) {
+    return *type1.innerType < *type2.innerType;
+}
 
 std::ostream& operator<<(std::ostream& stream, Type const& type) {
     stream << type.getStringRepresentation();

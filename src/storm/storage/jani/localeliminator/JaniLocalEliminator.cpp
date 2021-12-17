@@ -68,7 +68,9 @@ void JaniLocalEliminator::eliminate(bool flatten) {
     newModel.finalize();
 }
 
-Model const &JaniLocalEliminator::getResult() { return newModel; }
+Model const &JaniLocalEliminator::getResult() {
+    return newModel;
+}
 
 bool JaniLocalEliminator::Session::isEliminable(const std::string &automatonName, std::string const &locationName) {
     return !isPossiblyInitial(automatonName, locationName) && !hasLoops(automatonName, locationName) && !isPartOfProp(automatonName, locationName);
@@ -78,7 +80,8 @@ bool JaniLocalEliminator::Session::hasLoops(const std::string &automatonName, st
     uint64_t locationIndex = automaton.getLocationIndex(locationName);
     for (Edge edge : automaton.getEdgesFromLocation(locationIndex)) {
         for (const EdgeDestination &dest : edge.getDestinations()) {
-            if (dest.getLocationIndex() == locationIndex) return true;
+            if (dest.getLocationIndex() == locationIndex)
+                return true;
         }
     }
     return false;
@@ -98,7 +101,8 @@ bool JaniLocalEliminator::Session::isPossiblyInitial(const std::string &automato
     Automaton &automaton = model.getAutomaton(automatonName);
     auto location = automaton.getLocation(automaton.getLocationIndex(locationName));
     for (const auto &asg : location.getAssignments()) {
-        if (!asg.isTransient()) continue;
+        if (!asg.isTransient())
+            continue;
         if (asg.getAssignedExpression().containsVariables() ||
             (asg.getVariable().hasInitExpression() && asg.getVariable().getInitExpression().containsVariables()))
             continue;
@@ -106,7 +110,8 @@ bool JaniLocalEliminator::Session::isPossiblyInitial(const std::string &automato
             if (asg.getVariable().hasInitExpression()) {
                 int initValue = asg.getVariable().getInitExpression().evaluateAsInt();
                 int currentValue = asg.getAssignedExpression().evaluateAsInt();
-                if (initValue != currentValue) return false;
+                if (initValue != currentValue)
+                    return false;
             } else {
                 STORM_LOG_WARN("Variable " + asg.getVariable().getName() + " has no init expression. The result may not be correct.");
             }
@@ -114,7 +119,8 @@ bool JaniLocalEliminator::Session::isPossiblyInitial(const std::string &automato
             if (asg.getVariable().hasInitExpression()) {
                 bool initValue = asg.getVariable().getInitExpression().evaluateAsBool();
                 bool currentValue = asg.getAssignedExpression().evaluateAsBool();
-                if (initValue != currentValue) return false;
+                if (initValue != currentValue)
+                    return false;
             } else {
                 STORM_LOG_WARN("Variable " + asg.getVariable().getName() + " has no init expression. The result may not be correct.");
             }
@@ -145,7 +151,8 @@ bool JaniLocalEliminator::Session::computeIsPartOfProp(const std::string &automa
     auto location = automaton.getLocation(locationIndex);
     std::map<expressions::Variable, expressions::Expression> substitutionMap;
     for (auto &asg : location.getAssignments()) {
-        if (!asg.isTransient()) continue;
+        if (!asg.isTransient())
+            continue;
         substitutionMap.insert(std::pair<expressions::Variable, expressions::Expression>(asg.getExpressionVariable(), asg.getAssignedExpression()));
     }
     return computeIsPartOfProp(substitutionMap);
@@ -246,7 +253,9 @@ std::unique_ptr<JaniLocalEliminator::Action> JaniLocalEliminator::EliminationSch
     return val;
 }
 
-void JaniLocalEliminator::EliminationScheduler::addAction(std::unique_ptr<JaniLocalEliminator::Action> action) { actionQueue.push(std::move(action)); }
+void JaniLocalEliminator::EliminationScheduler::addAction(std::unique_ptr<JaniLocalEliminator::Action> action) {
+    actionQueue.push(std::move(action));
+}
 
 JaniLocalEliminator::Session::Session(Model model, Property property, bool flatten) : model(model), property(property), finished(false) {
     if (flatten && model.getNumberOfAutomata() > 1) {
@@ -269,15 +278,25 @@ JaniLocalEliminator::Session::Session(Model model, Property property, bool flatt
     }
 }
 
-Model &JaniLocalEliminator::Session::getModel() { return model; }
+Model &JaniLocalEliminator::Session::getModel() {
+    return model;
+}
 
-void JaniLocalEliminator::Session::setModel(const Model &model) { this->model = model; }
+void JaniLocalEliminator::Session::setModel(const Model &model) {
+    this->model = model;
+}
 
-Property &JaniLocalEliminator::Session::getProperty() { return property; }
+Property &JaniLocalEliminator::Session::getProperty() {
+    return property;
+}
 
-bool JaniLocalEliminator::Session::getFinished() const { return finished; }
+bool JaniLocalEliminator::Session::getFinished() const {
+    return finished;
+}
 
-void JaniLocalEliminator::Session::setFinished(bool finished) { this->finished = finished; }
+void JaniLocalEliminator::Session::setFinished(bool finished) {
+    this->finished = finished;
+}
 
 expressions::Expression JaniLocalEliminator::Session::getNewGuard(const Edge &edge, const EdgeDestination &dest, const Edge &outgoing) {
     expressions::Expression wp = outgoing.getGuard().substitute(dest.getAsVariableToExpressionMap()).simplify();
@@ -357,7 +376,8 @@ void JaniLocalEliminator::Session::addMissingGuards(const std::string &automaton
     automataInfo[automatonName].sinkIndex = sinkIndex;
 
     for (uint64_t i = 0; i < automaton.getNumberOfLocations(); i++) {
-        if (i == sinkIndex) continue;
+        if (i == sinkIndex)
+            continue;
         auto outgoingEdges = automaton.getEdgesFromLocation(i);
         expressions::Expression allGuards;
         allGuards = model.getExpressionManager().boolean(false);
@@ -430,7 +450,9 @@ void JaniLocalEliminator::Session::buildAutomataInfo() {
     }
 }
 
-JaniLocalEliminator::AutomatonInfo &JaniLocalEliminator::Session::getAutomatonInfo(const std::string &name) { return automataInfo[name]; }
+JaniLocalEliminator::AutomatonInfo &JaniLocalEliminator::Session::getAutomatonInfo(const std::string &name) {
+    return automataInfo[name];
+}
 
 JaniLocalEliminator::AutomatonInfo::AutomatonInfo() : hasSink(false), sinkIndex(0) {}
 }  // namespace jani

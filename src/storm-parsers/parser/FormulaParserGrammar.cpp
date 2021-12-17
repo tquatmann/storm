@@ -356,7 +356,9 @@ void FormulaParserGrammar::addConstant(std::string const& name, ConstantDataType
     }
 }
 
-bool FormulaParserGrammar::areConstantDefinitionsAllowed() const { return static_cast<bool>(manager); }
+bool FormulaParserGrammar::areConstantDefinitionsAllowed() const {
+    return static_cast<bool>(manager);
+}
 
 std::shared_ptr<storm::logic::TimeBoundReference> FormulaParserGrammar::createTimeBoundReference(storm::logic::TimeBoundType const& type,
                                                                                                  boost::optional<std::string> const& rewardModelName) const {

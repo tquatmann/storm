@@ -8,19 +8,33 @@ RewardModelInformation::RewardModelInformation(std::string const& name, bool sta
     // Intentionally left empty.
 }
 
-std::string const& RewardModelInformation::getName() const { return name; }
+std::string const& RewardModelInformation::getName() const {
+    return name;
+}
 
-bool RewardModelInformation::hasStateRewards() const { return stateRewards; }
+bool RewardModelInformation::hasStateRewards() const {
+    return stateRewards;
+}
 
-bool RewardModelInformation::hasStateActionRewards() const { return stateActionRewards; }
+bool RewardModelInformation::hasStateActionRewards() const {
+    return stateActionRewards;
+}
 
-bool RewardModelInformation::hasTransitionRewards() const { return transitionRewards; }
+bool RewardModelInformation::hasTransitionRewards() const {
+    return transitionRewards;
+}
 
-void RewardModelInformation::setHasStateRewards() { stateRewards = true; }
+void RewardModelInformation::setHasStateRewards() {
+    stateRewards = true;
+}
 
-void RewardModelInformation::setHasStateActionRewards() { stateActionRewards = true; }
+void RewardModelInformation::setHasStateActionRewards() {
+    stateActionRewards = true;
+}
 
-void RewardModelInformation::setHasTransitionRewards() { transitionRewards = true; }
+void RewardModelInformation::setHasTransitionRewards() {
+    transitionRewards = true;
+}
 
 }  // namespace builder
 }  // namespace storm

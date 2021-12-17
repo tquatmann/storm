@@ -82,7 +82,9 @@ class PgclParser : public qi::grammar<Iterator, storm::pgcl::PgclProgram(), Skip
 
     /// Denotes the invalid identifiers, which are later passed to the expression parser.
     struct keywordsStruct : qi::symbols<char, uint_fast64_t> {
-        keywordsStruct() { add("while", 1)("if", 2)("observe", 3)("int", 4)("bool", 5)("function", 6); }
+        keywordsStruct() {
+            add("while", 1)("if", 2)("observe", 3)("int", 4)("bool", 5)("function", 6);
+        }
     };
 
     /// Initializes the invalid identifier struct.

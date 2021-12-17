@@ -277,14 +277,18 @@ class LpSolver {
      *
      * @return A value indicating whether the objective function of this model is to be minimized or maximized.
      */
-    OptimizationDirection getOptimizationDirection() const { return optimizationDirection; }
+    OptimizationDirection getOptimizationDirection() const {
+        return optimizationDirection;
+    }
 
     /*!
      * Retrieves the manager for the variables created for this solver.
      *
      * @return The manager for the variables created for this solver.
      */
-    storm::expressions::ExpressionManager const& getManager() const { return *manager; }
+    storm::expressions::ExpressionManager const& getManager() const {
+        return *manager;
+    }
 
     /*!
      * Pushes a backtracking point on the solver's stack. A following call to pop() deletes exactly those

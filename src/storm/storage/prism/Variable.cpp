@@ -21,21 +21,33 @@ Variable::Variable(storm::expressions::ExpressionManager& manager, Variable cons
     // Intentionally left empty.
 }
 
-std::string const& Variable::getName() const { return this->variable.getName(); }
+std::string const& Variable::getName() const {
+    return this->variable.getName();
+}
 
-bool Variable::hasInitialValue() const { return this->initialValueExpression.isInitialized(); }
+bool Variable::hasInitialValue() const {
+    return this->initialValueExpression.isInitialized();
+}
 
-storm::expressions::Expression const& Variable::getInitialValueExpression() const { return this->initialValueExpression; }
+storm::expressions::Expression const& Variable::getInitialValueExpression() const {
+    return this->initialValueExpression;
+}
 
 void Variable::setInitialValueExpression(storm::expressions::Expression const& initialValueExpression) {
     this->initialValueExpression = initialValueExpression;
 }
 
-storm::expressions::Variable const& Variable::getExpressionVariable() const { return this->variable; }
+storm::expressions::Variable const& Variable::getExpressionVariable() const {
+    return this->variable;
+}
 
-storm::expressions::Expression Variable::getExpression() const { return variable.getExpression(); }
+storm::expressions::Expression Variable::getExpression() const {
+    return variable.getExpression();
+}
 
-bool Variable::isObservable() const { return this->observable; }
+bool Variable::isObservable() const {
+    return this->observable;
+}
 
 }  // namespace prism
 }  // namespace storm

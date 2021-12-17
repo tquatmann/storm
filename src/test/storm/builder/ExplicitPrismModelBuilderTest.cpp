@@ -175,11 +175,17 @@ TEST(ExplicitPrismModelBuilderTest, ExportExplicitLookup) {
     EXPECT_EQ(1ul, model->getLabelsOfState(lookup.lookup({{svar, manager.integer(7)}, {dvar, manager.integer(2)}})).count("two"));
 }
 
-bool trivial_true_mask(storm::expressions::SimpleValuation const&, uint64_t) { return true; }
+bool trivial_true_mask(storm::expressions::SimpleValuation const&, uint64_t) {
+    return true;
+}
 
-bool trivial_false_mask(storm::expressions::SimpleValuation const&, uint64_t) { return false; }
+bool trivial_false_mask(storm::expressions::SimpleValuation const&, uint64_t) {
+    return false;
+}
 
-bool only_first_action_mask(storm::expressions::SimpleValuation const&, uint64_t actionIndex) { return actionIndex <= 1; }
+bool only_first_action_mask(storm::expressions::SimpleValuation const&, uint64_t actionIndex) {
+    return actionIndex <= 1;
+}
 
 TEST(ExplicitPrismModelBuilderTest, CallbackActionMask) {
     storm::prism::Program program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/mdp/die_selection.nm");

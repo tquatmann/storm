@@ -174,7 +174,9 @@ namespace std {
 
 template<typename ValueType>
 struct hash<storm::storage::Distribution<ValueType>> {
-    std::size_t operator()(storm::storage::Distribution<ValueType> const& distribution) const { return (distribution.getHash()); }
+    std::size_t operator()(storm::storage::Distribution<ValueType> const& distribution) const {
+        return (distribution.getHash());
+    }
 };
 
 }  // namespace std

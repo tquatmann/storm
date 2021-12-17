@@ -31,17 +31,29 @@ DebugSettings::DebugSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, testOptionName, false, "Activate a test setting.").setIsAdvanced().build());
 }
 
-bool DebugSettings::isDebugSet() const { return this->getOption(debugOptionName).getHasOptionBeenSet(); }
+bool DebugSettings::isDebugSet() const {
+    return this->getOption(debugOptionName).getHasOptionBeenSet();
+}
 
-bool DebugSettings::isTraceSet() const { return this->getOption(traceOptionName).getHasOptionBeenSet(); }
+bool DebugSettings::isTraceSet() const {
+    return this->getOption(traceOptionName).getHasOptionBeenSet();
+}
 
-bool DebugSettings::isAdditionalChecksSet() const { return this->getOption(additionalChecksOptionName).getHasOptionBeenSet(); }
+bool DebugSettings::isAdditionalChecksSet() const {
+    return this->getOption(additionalChecksOptionName).getHasOptionBeenSet();
+}
 
-bool DebugSettings::isLogfileSet() const { return this->getOption(logfileOptionName).getHasOptionBeenSet(); }
+bool DebugSettings::isLogfileSet() const {
+    return this->getOption(logfileOptionName).getHasOptionBeenSet();
+}
 
-std::string DebugSettings::getLogfilename() const { return this->getOption(logfileOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string DebugSettings::getLogfilename() const {
+    return this->getOption(logfileOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool DebugSettings::isTestSet() const { return this->getOption(testOptionName).getHasOptionBeenSet(); }
+bool DebugSettings::isTestSet() const {
+    return this->getOption(testOptionName).getHasOptionBeenSet();
+}
 
 }  // namespace modules
 }  // namespace settings

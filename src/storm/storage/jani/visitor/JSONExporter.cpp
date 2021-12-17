@@ -196,7 +196,9 @@ ExportJsonType FormulaToJaniJson::translate(storm::logic::Formula const& formula
     return result;
 }
 
-bool FormulaToJaniJson::containsStateExitRewards() const { return stateExitRewards; }
+bool FormulaToJaniJson::containsStateExitRewards() const {
+    return stateExitRewards;
+}
 
 boost::any FormulaToJaniJson::visit(storm::logic::AtomicExpressionFormula const& f, boost::any const&) const {
     return buildExpression(f.getExpression(), model.getConstants(), model.getGlobalVariables());

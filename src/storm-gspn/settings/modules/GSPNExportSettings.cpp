@@ -51,45 +51,67 @@ GSPNExportSettings::GSPNExportSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, displayStatsOptionName, false, "Print stats to stdout").build());
 }
 
-bool GSPNExportSettings::isWriteToDotSet() const { return this->getOption(writeToDotOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteToDotSet() const {
+    return this->getOption(writeToDotOptionName).getHasOptionBeenSet();
+}
 
-std::string GSPNExportSettings::getWriteToDotFilename() const { return this->getOption(writeToDotOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string GSPNExportSettings::getWriteToDotFilename() const {
+    return this->getOption(writeToDotOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool GSPNExportSettings::isWriteToPnmlSet() const { return this->getOption(writeToPnmlOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteToPnmlSet() const {
+    return this->getOption(writeToPnmlOptionName).getHasOptionBeenSet();
+}
 
 std::string GSPNExportSettings::getWriteToPnmlFilename() const {
     return this->getOption(writeToPnmlOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool GSPNExportSettings::isWriteToPnproSet() const { return this->getOption(writeToPnproOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteToPnproSet() const {
+    return this->getOption(writeToPnproOptionName).getHasOptionBeenSet();
+}
 
 std::string GSPNExportSettings::getWriteToPnproFilename() const {
     return this->getOption(writeToPnproOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool GSPNExportSettings::isWriteToJsonSet() const { return this->getOption(writeToJsonOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteToJsonSet() const {
+    return this->getOption(writeToJsonOptionName).getHasOptionBeenSet();
+}
 
 std::string GSPNExportSettings::getWriteToJsonFilename() const {
     return this->getOption(writeToJsonOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool GSPNExportSettings::isWriteToJaniSet() const { return this->getOption(writeToJaniOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteToJaniSet() const {
+    return this->getOption(writeToJaniOptionName).getHasOptionBeenSet();
+}
 
 std::string GSPNExportSettings::getWriteToJaniFilename() const {
     return this->getOption(writeToJaniOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool GSPNExportSettings::isAddJaniPropertiesSet() const { return this->getOption(addJaniPropertiesOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isAddJaniPropertiesSet() const {
+    return this->getOption(addJaniPropertiesOptionName).getHasOptionBeenSet();
+}
 
-bool GSPNExportSettings::isDisplayStatsSet() const { return this->getOption(displayStatsOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isDisplayStatsSet() const {
+    return this->getOption(displayStatsOptionName).getHasOptionBeenSet();
+}
 
-bool GSPNExportSettings::isWriteStatsToFileSet() const { return this->getOption(writeStatsOptionName).getHasOptionBeenSet(); }
+bool GSPNExportSettings::isWriteStatsToFileSet() const {
+    return this->getOption(writeStatsOptionName).getHasOptionBeenSet();
+}
 
-std::string GSPNExportSettings::getWriteStatsFilename() const { return this->getOption(writeStatsOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string GSPNExportSettings::getWriteStatsFilename() const {
+    return this->getOption(writeStatsOptionName).getArgumentByName("filename").getValueAsString();
+}
 
 void GSPNExportSettings::finalize() {}
 
-bool GSPNExportSettings::check() const { return true; }
+bool GSPNExportSettings::check() const {
+    return true;
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

@@ -149,7 +149,9 @@ namespace std {
 // Provide a hashing operator, so we can put variables in unordered collections.
 template<>
 struct hash<storm::expressions::Variable> {
-    std::size_t operator()(storm::expressions::Variable const& variable) const { return std::hash<uint_fast64_t>()(variable.getIndex()); }
+    std::size_t operator()(storm::expressions::Variable const& variable) const {
+        return std::hash<uint_fast64_t>()(variable.getIndex());
+    }
 };
 }  // namespace std
 

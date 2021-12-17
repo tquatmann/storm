@@ -31,11 +31,17 @@ LinearEquationSolverRequirements& LinearEquationSolverRequirements::requireBound
     return *this;
 }
 
-SolverRequirement const& LinearEquationSolverRequirements::acyclic() const { return acyclicRequirement; }
+SolverRequirement const& LinearEquationSolverRequirements::acyclic() const {
+    return acyclicRequirement;
+}
 
-SolverRequirement const& LinearEquationSolverRequirements::lowerBounds() const { return lowerBoundsRequirement; }
+SolverRequirement const& LinearEquationSolverRequirements::lowerBounds() const {
+    return lowerBoundsRequirement;
+}
 
-SolverRequirement const& LinearEquationSolverRequirements::upperBounds() const { return upperBoundsRequirement; }
+SolverRequirement const& LinearEquationSolverRequirements::upperBounds() const {
+    return upperBoundsRequirement;
+}
 
 SolverRequirement const& LinearEquationSolverRequirements::get(Element const& element) const {
     switch (element) {
@@ -49,13 +55,21 @@ SolverRequirement const& LinearEquationSolverRequirements::get(Element const& el
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentException, "Unknown ElementType");
 }
 
-void LinearEquationSolverRequirements::clearAcyclic() { acyclicRequirement.clear(); }
+void LinearEquationSolverRequirements::clearAcyclic() {
+    acyclicRequirement.clear();
+}
 
-void LinearEquationSolverRequirements::clearLowerBounds() { lowerBoundsRequirement.clear(); }
+void LinearEquationSolverRequirements::clearLowerBounds() {
+    lowerBoundsRequirement.clear();
+}
 
-void LinearEquationSolverRequirements::clearUpperBounds() { upperBoundsRequirement.clear(); }
+void LinearEquationSolverRequirements::clearUpperBounds() {
+    upperBoundsRequirement.clear();
+}
 
-bool LinearEquationSolverRequirements::hasEnabledRequirement() const { return acyclicRequirement || lowerBoundsRequirement || upperBoundsRequirement; }
+bool LinearEquationSolverRequirements::hasEnabledRequirement() const {
+    return acyclicRequirement || lowerBoundsRequirement || upperBoundsRequirement;
+}
 
 bool LinearEquationSolverRequirements::hasEnabledCriticalRequirement() const {
     return acyclicRequirement.isCritical() || lowerBoundsRequirement.isCritical() || upperBoundsRequirement.isCritical();

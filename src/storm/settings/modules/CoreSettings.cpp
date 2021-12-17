@@ -108,7 +108,9 @@ storm::solver::EquationSolverType CoreSettings::getEquationSolver() const {
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown equation solver '" << equationSolverName << "'.");
 }
 
-bool CoreSettings::isEquationSolverSet() const { return this->getOption(eqSolverOptionName).getHasOptionBeenSet(); }
+bool CoreSettings::isEquationSolverSet() const {
+    return this->getOption(eqSolverOptionName).getHasOptionBeenSet();
+}
 
 bool CoreSettings::isEquationSolverSetFromDefaultValue() const {
     return !this->getOption(eqSolverOptionName).getHasOptionBeenSet() || this->getOption(eqSolverOptionName).getArgumentByName("name").wasSetFromDefaultValue();
@@ -154,15 +156,25 @@ bool CoreSettings::isDdLibraryTypeSetFromDefaultValue() const {
            this->getOption(ddLibraryOptionName).getArgumentByName("name").wasSetFromDefaultValue();
 }
 
-bool CoreSettings::isShowStatisticsSet() const { return this->getOption(statisticsOptionName).getHasOptionBeenSet(); }
+bool CoreSettings::isShowStatisticsSet() const {
+    return this->getOption(statisticsOptionName).getHasOptionBeenSet();
+}
 
-bool CoreSettings::isUseIntelTbbSet() const { return this->getOption(intelTbbOptionName).getHasOptionBeenSet(); }
+bool CoreSettings::isUseIntelTbbSet() const {
+    return this->getOption(intelTbbOptionName).getHasOptionBeenSet();
+}
 
-bool CoreSettings::isUseCudaSet() const { return this->getOption(cudaOptionName).getHasOptionBeenSet(); }
+bool CoreSettings::isUseCudaSet() const {
+    return this->getOption(cudaOptionName).getHasOptionBeenSet();
+}
 
-storm::utility::Engine CoreSettings::getEngine() const { return engine; }
+storm::utility::Engine CoreSettings::getEngine() const {
+    return engine;
+}
 
-void CoreSettings::setEngine(storm::utility::Engine const& newEngine) { this->engine = newEngine; }
+void CoreSettings::setEngine(storm::utility::Engine const& newEngine) {
+    this->engine = newEngine;
+}
 
 void CoreSettings::finalize() {
     // Finalize engine.

@@ -24,15 +24,21 @@ std::shared_ptr<BaseExpression const> IfThenElseExpression::getOperand(uint_fast
     }
 }
 
-OperatorType IfThenElseExpression::getOperator() const { return OperatorType::Ite; }
+OperatorType IfThenElseExpression::getOperator() const {
+    return OperatorType::Ite;
+}
 
-bool IfThenElseExpression::isFunctionApplication() const { return true; }
+bool IfThenElseExpression::isFunctionApplication() const {
+    return true;
+}
 
 bool IfThenElseExpression::containsVariables() const {
     return this->getCondition()->containsVariables() || this->getThenExpression()->containsVariables() || this->getElseExpression()->containsVariables();
 }
 
-uint_fast64_t IfThenElseExpression::getArity() const { return 3; }
+uint_fast64_t IfThenElseExpression::getArity() const {
+    return 3;
+}
 
 bool IfThenElseExpression::evaluateAsBool(Valuation const* valuation) const {
     bool conditionValue = this->condition->evaluateAsBool(valuation);
@@ -87,15 +93,25 @@ std::shared_ptr<BaseExpression const> IfThenElseExpression::simplify() const {
     }
 }
 
-boost::any IfThenElseExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any IfThenElseExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool IfThenElseExpression::isIfThenElseExpression() const { return true; }
+bool IfThenElseExpression::isIfThenElseExpression() const {
+    return true;
+}
 
-std::shared_ptr<BaseExpression const> IfThenElseExpression::getCondition() const { return this->condition; }
+std::shared_ptr<BaseExpression const> IfThenElseExpression::getCondition() const {
+    return this->condition;
+}
 
-std::shared_ptr<BaseExpression const> IfThenElseExpression::getThenExpression() const { return this->thenExpression; }
+std::shared_ptr<BaseExpression const> IfThenElseExpression::getThenExpression() const {
+    return this->thenExpression;
+}
 
-std::shared_ptr<BaseExpression const> IfThenElseExpression::getElseExpression() const { return this->elseExpression; }
+std::shared_ptr<BaseExpression const> IfThenElseExpression::getElseExpression() const {
+    return this->elseExpression;
+}
 
 void IfThenElseExpression::printToStream(std::ostream& stream) const {
     stream << "(" << *this->condition << " ? " << *this->thenExpression << " : " << *this->elseExpression << ")";

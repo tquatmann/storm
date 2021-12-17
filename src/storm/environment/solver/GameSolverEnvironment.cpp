@@ -29,25 +29,41 @@ GameSolverEnvironment::~GameSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::GameMethod const& GameSolverEnvironment::getMethod() const { return gameMethod; }
+storm::solver::GameMethod const& GameSolverEnvironment::getMethod() const {
+    return gameMethod;
+}
 
-bool const& GameSolverEnvironment::isMethodSetFromDefault() const { return methodSetFromDefault; }
+bool const& GameSolverEnvironment::isMethodSetFromDefault() const {
+    return methodSetFromDefault;
+}
 
 void GameSolverEnvironment::setMethod(storm::solver::GameMethod value) {
     methodSetFromDefault = false;
     gameMethod = value;
 }
 
-uint64_t const& GameSolverEnvironment::getMaximalNumberOfIterations() const { return maxIterationCount; }
+uint64_t const& GameSolverEnvironment::getMaximalNumberOfIterations() const {
+    return maxIterationCount;
+}
 
-void GameSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) { maxIterationCount = value; }
+void GameSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) {
+    maxIterationCount = value;
+}
 
-storm::RationalNumber const& GameSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& GameSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void GameSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void GameSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 
-bool const& GameSolverEnvironment::getRelativeTerminationCriterion() const { return considerRelativeTerminationCriterion; }
+bool const& GameSolverEnvironment::getRelativeTerminationCriterion() const {
+    return considerRelativeTerminationCriterion;
+}
 
-void GameSolverEnvironment::setRelativeTerminationCriterion(bool value) { considerRelativeTerminationCriterion = value; }
+void GameSolverEnvironment::setRelativeTerminationCriterion(bool value) {
+    considerRelativeTerminationCriterion = value;
+}
 
 }  // namespace storm

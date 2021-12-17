@@ -2,6 +2,8 @@
 
 namespace storm {
 namespace logic {
-bool PathFormula::isPathFormula() const { return true; }
+bool PathFormula::isPathFormula() const {
+    return true;
+}
 }  // namespace logic
 }  // namespace storm

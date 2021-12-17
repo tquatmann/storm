@@ -587,7 +587,8 @@ std::vector<Choice<ValueType>> PrismNextStateGenerator<ValueType, StateType>::ge
             storm::prism::Command const& command = module.getCommand(j);
 
             // Only consider commands that are not possibly synchronizing.
-            if (isCommandPotentiallySynchronizing(command)) continue;
+            if (isCommandPotentiallySynchronizing(command))
+                continue;
 
             if (commandFilter != CommandFilter::All) {
                 STORM_LOG_ASSERT(commandFilter == CommandFilter::Markovian || commandFilter == CommandFilter::Probabilistic, "Unexpected command filter.");

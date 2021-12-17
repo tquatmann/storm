@@ -13,21 +13,37 @@ InstantaneousRewardFormula::InstantaneousRewardFormula(storm::expressions::Expre
     // Intentionally left empty.
 }
 
-bool InstantaneousRewardFormula::isInstantaneousRewardFormula() const { return true; }
+bool InstantaneousRewardFormula::isInstantaneousRewardFormula() const {
+    return true;
+}
 
-bool InstantaneousRewardFormula::isRewardPathFormula() const { return true; }
+bool InstantaneousRewardFormula::isRewardPathFormula() const {
+    return true;
+}
 
-boost::any InstantaneousRewardFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any InstantaneousRewardFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-TimeBoundType const& InstantaneousRewardFormula::getTimeBoundType() const { return timeBoundType; }
+TimeBoundType const& InstantaneousRewardFormula::getTimeBoundType() const {
+    return timeBoundType;
+}
 
-bool InstantaneousRewardFormula::isStepBounded() const { return timeBoundType == TimeBoundType::Steps; }
+bool InstantaneousRewardFormula::isStepBounded() const {
+    return timeBoundType == TimeBoundType::Steps;
+}
 
-bool InstantaneousRewardFormula::isTimeBounded() const { return timeBoundType == TimeBoundType::Time; }
+bool InstantaneousRewardFormula::isTimeBounded() const {
+    return timeBoundType == TimeBoundType::Time;
+}
 
-bool InstantaneousRewardFormula::hasIntegerBound() const { return bound.hasIntegerType(); }
+bool InstantaneousRewardFormula::hasIntegerBound() const {
+    return bound.hasIntegerType();
+}
 
-storm::expressions::Expression const& InstantaneousRewardFormula::getBound() const { return bound; }
+storm::expressions::Expression const& InstantaneousRewardFormula::getBound() const {
+    return bound;
+}
 
 template<>
 double InstantaneousRewardFormula::getBound() const {

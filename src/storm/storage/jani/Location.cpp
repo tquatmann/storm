@@ -16,22 +16,34 @@ Location::Location(std::string const& name, OrderedAssignments const& assignment
     // Intentionally left empty.
 }
 
-std::string const& Location::getName() const { return name; }
+std::string const& Location::getName() const {
+    return name;
+}
 
-OrderedAssignments const& Location::getAssignments() const { return assignments; }
+OrderedAssignments const& Location::getAssignments() const {
+    return assignments;
+}
 
-OrderedAssignments& Location::getAssignments() { return assignments; }
+OrderedAssignments& Location::getAssignments() {
+    return assignments;
+}
 
 void Location::addTransientAssignment(storm::jani::Assignment const& assignment) {
     STORM_LOG_THROW(assignment.isTransient(), storm::exceptions::InvalidArgumentException, "Must not add non-transient assignment to location.");
     assignments.add(assignment);
 }
 
-bool Location::hasTimeProgressInvariant() const { return timeProgressInvariant.isInitialized(); }
+bool Location::hasTimeProgressInvariant() const {
+    return timeProgressInvariant.isInitialized();
+}
 
-storm::expressions::Expression const& Location::getTimeProgressInvariant() const { return timeProgressInvariant; }
+storm::expressions::Expression const& Location::getTimeProgressInvariant() const {
+    return timeProgressInvariant;
+}
 
-void Location::setTimeProgressInvariant(storm::expressions::Expression const& expression) { timeProgressInvariant = expression; }
+void Location::setTimeProgressInvariant(storm::expressions::Expression const& expression) {
+    timeProgressInvariant = expression;
+}
 
 void Location::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     for (auto& assignment : assignments) {
@@ -50,7 +62,9 @@ void Location::checkValid() const {
     // Intentionally left empty.
 }
 
-bool Location::isLinear() const { return assignments.areLinear(); }
+bool Location::isLinear() const {
+    return assignments.areLinear();
+}
 
 }  // namespace jani
 }  // namespace storm

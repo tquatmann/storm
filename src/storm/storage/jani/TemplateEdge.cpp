@@ -24,9 +24,13 @@ TemplateEdge::TemplateEdge(storm::expressions::Expression const& guard, OrderedA
     // Intentionally left empty.
 }
 
-void TemplateEdge::addDestination(TemplateEdgeDestination const& destination) { destinations.emplace_back(destination); }
+void TemplateEdge::addDestination(TemplateEdgeDestination const& destination) {
+    destinations.emplace_back(destination);
+}
 
-bool TemplateEdge::addTransientAssignment(Assignment const& assignment, bool addToExisting) { return assignments.add(assignment, addToExisting); }
+bool TemplateEdge::addTransientAssignment(Assignment const& assignment, bool addToExisting) {
+    return assignments.add(assignment, addToExisting);
+}
 
 void TemplateEdge::finalize(Model const& containingModel) {
     lowestAssignmentLevel = std::numeric_limits<int64_t>::max();
@@ -45,23 +49,41 @@ void TemplateEdge::finalize(Model const& containingModel) {
     }
 }
 
-storm::storage::FlatSet<storm::expressions::Variable> const& TemplateEdge::getWrittenGlobalVariables() const { return writtenGlobalVariables; }
+storm::storage::FlatSet<storm::expressions::Variable> const& TemplateEdge::getWrittenGlobalVariables() const {
+    return writtenGlobalVariables;
+}
 
-storm::expressions::Expression const& TemplateEdge::getGuard() const { return guard; }
+storm::expressions::Expression const& TemplateEdge::getGuard() const {
+    return guard;
+}
 
-void TemplateEdge::setGuard(storm::expressions::Expression const& newGuard) { guard = newGuard; }
+void TemplateEdge::setGuard(storm::expressions::Expression const& newGuard) {
+    guard = newGuard;
+}
 
-std::size_t TemplateEdge::getNumberOfDestinations() const { return destinations.size(); }
+std::size_t TemplateEdge::getNumberOfDestinations() const {
+    return destinations.size();
+}
 
-std::vector<TemplateEdgeDestination> const& TemplateEdge::getDestinations() const { return destinations; }
+std::vector<TemplateEdgeDestination> const& TemplateEdge::getDestinations() const {
+    return destinations;
+}
 
-std::vector<TemplateEdgeDestination>& TemplateEdge::getDestinations() { return destinations; }
+std::vector<TemplateEdgeDestination>& TemplateEdge::getDestinations() {
+    return destinations;
+}
 
-TemplateEdgeDestination const& TemplateEdge::getDestination(uint64_t index) const { return destinations[index]; }
+TemplateEdgeDestination const& TemplateEdge::getDestination(uint64_t index) const {
+    return destinations[index];
+}
 
-OrderedAssignments const& TemplateEdge::getAssignments() const { return assignments; }
+OrderedAssignments const& TemplateEdge::getAssignments() const {
+    return assignments;
+}
 
-OrderedAssignments& TemplateEdge::getAssignments() { return assignments; }
+OrderedAssignments& TemplateEdge::getAssignments() {
+    return assignments;
+}
 
 void TemplateEdge::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     guard = substituteJaniExpression(guard, substitution);
@@ -159,9 +181,13 @@ bool TemplateEdge::usesAssignmentLevels(bool onlyTransient) const {
     return false;
 }
 
-int64_t const& TemplateEdge::getLowestAssignmentLevel() const { return lowestAssignmentLevel; }
+int64_t const& TemplateEdge::getLowestAssignmentLevel() const {
+    return lowestAssignmentLevel;
+}
 
-int64_t const& TemplateEdge::getHighestAssignmentLevel() const { return highestAssignmentLevel; }
+int64_t const& TemplateEdge::getHighestAssignmentLevel() const {
+    return highestAssignmentLevel;
+}
 
 bool TemplateEdge::hasEdgeDestinationAssignments() const {
     for (auto const& destination : destinations) {

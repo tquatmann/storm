@@ -554,7 +554,9 @@ class InternalBdd<DdType::CUDD> {
 namespace std {
 template<>
 struct hash<storm::dd::InternalBdd<storm::dd::DdType::CUDD>> {
-    std::size_t operator()(storm::dd::InternalBdd<storm::dd::DdType::CUDD> const& key) const { return reinterpret_cast<std::size_t>(key.cuddBdd.getNode()); }
+    std::size_t operator()(storm::dd::InternalBdd<storm::dd::DdType::CUDD> const& key) const {
+        return reinterpret_cast<std::size_t>(key.cuddBdd.getNode());
+    }
 };
 }  // namespace std
 

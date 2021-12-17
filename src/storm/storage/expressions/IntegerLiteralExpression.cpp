@@ -10,22 +10,40 @@ IntegerLiteralExpression::IntegerLiteralExpression(ExpressionManager const& mana
     // Intentionally left empty.
 }
 
-int_fast64_t IntegerLiteralExpression::evaluateAsInt(Valuation const*) const { return this->getValue(); }
+int_fast64_t IntegerLiteralExpression::evaluateAsInt(Valuation const*) const {
+    return this->getValue();
+}
 
-double IntegerLiteralExpression::evaluateAsDouble(Valuation const* valuation) const { return static_cast<double>(this->evaluateAsInt(valuation)); }
+double IntegerLiteralExpression::evaluateAsDouble(Valuation const* valuation) const {
+    return static_cast<double>(this->evaluateAsInt(valuation));
+}
 
-bool IntegerLiteralExpression::isLiteral() const { return true; }
+bool IntegerLiteralExpression::isLiteral() const {
+    return true;
+}
 
-void IntegerLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const { return; }
+void IntegerLiteralExpression::gatherVariables(std::set<storm::expressions::Variable>&) const {
+    return;
+}
 
-std::shared_ptr<BaseExpression const> IntegerLiteralExpression::simplify() const { return this->shared_from_this(); }
+std::shared_ptr<BaseExpression const> IntegerLiteralExpression::simplify() const {
+    return this->shared_from_this();
+}
 
-boost::any IntegerLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any IntegerLiteralExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool IntegerLiteralExpression::isIntegerLiteralExpression() const { return true; }
+bool IntegerLiteralExpression::isIntegerLiteralExpression() const {
+    return true;
+}
 
-int_fast64_t IntegerLiteralExpression::getValue() const { return this->value; }
+int_fast64_t IntegerLiteralExpression::getValue() const {
+    return this->value;
+}
 
-void IntegerLiteralExpression::printToStream(std::ostream& stream) const { stream << this->getValue(); }
+void IntegerLiteralExpression::printToStream(std::ostream& stream) const {
+    stream << this->getValue();
+}
 }  // namespace expressions
 }  // namespace storm

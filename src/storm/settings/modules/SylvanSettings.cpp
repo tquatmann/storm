@@ -34,7 +34,9 @@ uint_fast64_t SylvanSettings::getMaximalMemory() const {
     return this->getOption(maximalMemoryOptionName).getArgumentByName("value").getValueAsUnsignedInteger();
 }
 
-bool SylvanSettings::isNumberOfThreadsSet() const { return this->getOption(threadCountOptionName).getArgumentByName("value").getHasBeenSet(); }
+bool SylvanSettings::isNumberOfThreadsSet() const {
+    return this->getOption(threadCountOptionName).getArgumentByName("value").getHasBeenSet();
+}
 
 uint_fast64_t SylvanSettings::getNumberOfThreads() const {
     return this->getOption(threadCountOptionName).getArgumentByName("value").getValueAsUnsignedInteger();

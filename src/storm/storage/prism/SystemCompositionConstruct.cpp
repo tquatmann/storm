@@ -8,7 +8,9 @@ SystemCompositionConstruct::SystemCompositionConstruct(std::shared_ptr<Compositi
     // Intentionlly left empty.
 }
 
-Composition const& SystemCompositionConstruct::getSystemComposition() const { return *composition; }
+Composition const& SystemCompositionConstruct::getSystemComposition() const {
+    return *composition;
+}
 
 std::ostream& operator<<(std::ostream& stream, SystemCompositionConstruct const& systemCompositionConstruct) {
     stream << "system" << std::endl;

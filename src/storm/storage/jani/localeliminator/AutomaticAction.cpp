@@ -13,7 +13,9 @@ AutomaticAction::AutomaticAction() : locationLimit(30), newTransitionLimit(20000
 AutomaticAction::AutomaticAction(uint64_t locationLimit, uint64_t newTransitionLimit, uint64_t maxDomainSize, bool flatten)
     : locationLimit(locationLimit), newTransitionLimit(newTransitionLimit), maxDomainSize(maxDomainSize), flatten(flatten) {}
 
-std::string AutomaticAction::getDescription() { return "AutomaticAction"; }
+std::string AutomaticAction::getDescription() {
+    return "AutomaticAction";
+}
 
 void AutomaticAction::doAction(JaniLocalEliminator::Session &session) {
     if (flatten) {

@@ -230,9 +230,13 @@ storm::utility::Engine AutomaticSettings::getEngine() const {
     return engine;
 }
 
-bool AutomaticSettings::enableBisimulation() const { return useBisimulation; }
+bool AutomaticSettings::enableBisimulation() const {
+    return useBisimulation;
+}
 
-bool AutomaticSettings::enableExact() const { return useExact; }
+bool AutomaticSettings::enableExact() const {
+    return useExact;
+}
 
 void AutomaticSettings::sparse() {
     engine = storm::utility::Engine::Sparse;

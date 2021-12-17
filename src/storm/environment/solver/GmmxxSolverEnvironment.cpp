@@ -25,23 +25,43 @@ GmmxxSolverEnvironment::~GmmxxSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::GmmxxLinearEquationSolverMethod const& GmmxxSolverEnvironment::getMethod() const { return method; }
+storm::solver::GmmxxLinearEquationSolverMethod const& GmmxxSolverEnvironment::getMethod() const {
+    return method;
+}
 
-void GmmxxSolverEnvironment::setMethod(storm::solver::GmmxxLinearEquationSolverMethod value) { method = value; }
+void GmmxxSolverEnvironment::setMethod(storm::solver::GmmxxLinearEquationSolverMethod value) {
+    method = value;
+}
 
-storm::solver::GmmxxLinearEquationSolverPreconditioner const& GmmxxSolverEnvironment::getPreconditioner() const { return preconditioner; }
+storm::solver::GmmxxLinearEquationSolverPreconditioner const& GmmxxSolverEnvironment::getPreconditioner() const {
+    return preconditioner;
+}
 
-void GmmxxSolverEnvironment::setPreconditioner(storm::solver::GmmxxLinearEquationSolverPreconditioner value) { preconditioner = value; }
+void GmmxxSolverEnvironment::setPreconditioner(storm::solver::GmmxxLinearEquationSolverPreconditioner value) {
+    preconditioner = value;
+}
 
-uint64_t const& GmmxxSolverEnvironment::getRestartThreshold() const { return restartThreshold; }
+uint64_t const& GmmxxSolverEnvironment::getRestartThreshold() const {
+    return restartThreshold;
+}
 
-void GmmxxSolverEnvironment::setRestartThreshold(uint64_t value) { restartThreshold = value; }
+void GmmxxSolverEnvironment::setRestartThreshold(uint64_t value) {
+    restartThreshold = value;
+}
 
-uint64_t const& GmmxxSolverEnvironment::getMaximalNumberOfIterations() const { return maxIterationCount; }
+uint64_t const& GmmxxSolverEnvironment::getMaximalNumberOfIterations() const {
+    return maxIterationCount;
+}
 
-void GmmxxSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) { maxIterationCount = value; }
+void GmmxxSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) {
+    maxIterationCount = value;
+}
 
-storm::RationalNumber const& GmmxxSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& GmmxxSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void GmmxxSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void GmmxxSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 }  // namespace storm

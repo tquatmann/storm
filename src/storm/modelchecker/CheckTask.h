@@ -134,32 +134,44 @@ class CheckTask {
     /*!
      * Retrieves the formula from this task.
      */
-    FormulaType const& getFormula() const { return formula.get(); }
+    FormulaType const& getFormula() const {
+        return formula.get();
+    }
 
     /*!
      * Retrieves whether an optimization direction was set.
      */
-    bool isOptimizationDirectionSet() const { return static_cast<bool>(optimizationDirection); }
+    bool isOptimizationDirectionSet() const {
+        return static_cast<bool>(optimizationDirection);
+    }
 
     /*!
      * Retrieves the optimization direction (if set).
      */
-    storm::OptimizationDirection const& getOptimizationDirection() const { return optimizationDirection.get(); }
+    storm::OptimizationDirection const& getOptimizationDirection() const {
+        return optimizationDirection.get();
+    }
 
     /*!
      * Sets the optimization direction.
      */
-    void setOptimizationDirection(storm::OptimizationDirection const& dir) { optimizationDirection = dir; }
+    void setOptimizationDirection(storm::OptimizationDirection const& dir) {
+        optimizationDirection = dir;
+    }
 
     /*!
      * Retrieves whether a player coalition was set.
      */
-    bool isPlayerCoalitionSet() const { return static_cast<bool>(playerCoalition); }
+    bool isPlayerCoalitionSet() const {
+        return static_cast<bool>(playerCoalition);
+    }
 
     /*!
      * Retrieves the player coalition (if set).
      */
-    storm::logic::PlayerCoalition const& getPlayerCoalition() const { return playerCoalition.get(); }
+    storm::logic::PlayerCoalition const& getPlayerCoalition() const {
+        return playerCoalition.get();
+    }
 
     /*!
      * Sets the player coalition.
@@ -172,17 +184,23 @@ class CheckTask {
     /*!
      * Retrieves whether a reward model was set.
      */
-    bool isRewardModelSet() const { return static_cast<bool>(rewardModel); }
+    bool isRewardModelSet() const {
+        return static_cast<bool>(rewardModel);
+    }
 
     /*!
      * Retrieves the reward model over which to perform the checking (if set).
      */
-    std::string const& getRewardModel() const { return rewardModel.get(); }
+    std::string const& getRewardModel() const {
+        return rewardModel.get();
+    }
 
     /*!
      * Retrieves whether only the initial states are relevant in the computation.
      */
-    bool isOnlyInitialStatesRelevantSet() const { return onlyInitialStatesRelevant; }
+    bool isOnlyInitialStatesRelevantSet() const {
+        return onlyInitialStatesRelevant;
+    }
 
     /*!
      * Sets whether only initial states are relevant.
@@ -195,7 +213,9 @@ class CheckTask {
     /*!
      * Retrieves whether there is a bound with which the values for the states will be compared.
      */
-    bool isBoundSet() const { return static_cast<bool>(bound); }
+    bool isBoundSet() const {
+        return static_cast<bool>(bound);
+    }
 
     /*!
      * Retrieves the value of the bound (if set).
@@ -209,56 +229,78 @@ class CheckTask {
     /*!
      * Retrieves the comparison type of the bound (if set).
      */
-    storm::logic::ComparisonType const& getBoundComparisonType() const { return bound.get().comparisonType; }
+    storm::logic::ComparisonType const& getBoundComparisonType() const {
+        return bound.get().comparisonType;
+    }
 
     /*!
      * Retrieves the bound (if set).
      */
-    storm::logic::Bound const& getBound() const { return bound.get(); }
+    storm::logic::Bound const& getBound() const {
+        return bound.get();
+    }
 
     /*!
      * Retrieves the bound (if set).
      */
-    boost::optional<storm::logic::Bound> const& getOptionalBound() const { return bound; }
+    boost::optional<storm::logic::Bound> const& getOptionalBound() const {
+        return bound;
+    }
 
     /*!
      * Retrieves whether the computation only needs to be performed qualitatively, because the values will only
      * be compared to 0/1.
      */
-    bool isQualitativeSet() const { return qualitative; }
+    bool isQualitativeSet() const {
+        return qualitative;
+    }
 
     /*!
      * sets whether the computation only needs to be performed qualitatively, because the values will only
      * be compared to 0/1.
      */
-    void setQualitative(bool value) { qualitative = value; }
+    void setQualitative(bool value) {
+        qualitative = value;
+    }
 
     /*!
      * Sets whether to produce schedulers (if supported).
      */
-    void setProduceSchedulers(bool produceSchedulers = true) { this->produceSchedulers = produceSchedulers; }
+    void setProduceSchedulers(bool produceSchedulers = true) {
+        this->produceSchedulers = produceSchedulers;
+    }
 
     /*!
      * Retrieves whether scheduler(s) are to be produced (if supported).
      */
-    bool isProduceSchedulersSet() const { return produceSchedulers; }
+    bool isProduceSchedulersSet() const {
+        return produceSchedulers;
+    }
 
     /*!
      * sets a hint that might contain information that speeds up the modelchecking process (if supported by the model checker)
      */
-    void setHint(std::shared_ptr<ModelCheckerHint> const& hint) { this->hint = hint; }
+    void setHint(std::shared_ptr<ModelCheckerHint> const& hint) {
+        this->hint = hint;
+    }
 
     /*!
      * Retrieves a hint that might contain information that speeds up the modelchecking process (if supported by the model checker)
      */
-    ModelCheckerHint const& getHint() const { return *hint; }
+    ModelCheckerHint const& getHint() const {
+        return *hint;
+    }
 
-    ModelCheckerHint& getHint() { return *hint; }
+    ModelCheckerHint& getHint() {
+        return *hint;
+    }
 
     /*!
      * Conversion operator that strips the type of the formula.
      */
-    operator CheckTask<storm::logic::Formula, ValueType>() const { return this->substituteFormula<storm::logic::Formula>(this->getFormula()); }
+    operator CheckTask<storm::logic::Formula, ValueType>() const {
+        return this->substituteFormula<storm::logic::Formula>(this->getFormula());
+    }
 
    private:
     /*!

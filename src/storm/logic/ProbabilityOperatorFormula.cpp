@@ -12,9 +12,13 @@ ProbabilityOperatorFormula::ProbabilityOperatorFormula(std::shared_ptr<Formula c
     // Intentionally left empty.
 }
 
-bool ProbabilityOperatorFormula::isProbabilityOperatorFormula() const { return true; }
+bool ProbabilityOperatorFormula::isProbabilityOperatorFormula() const {
+    return true;
+}
 
-boost::any ProbabilityOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any ProbabilityOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 std::ostream& ProbabilityOperatorFormula::writeToStream(std::ostream& out, bool /* allowParentheses */) const {
     // No parentheses necessary

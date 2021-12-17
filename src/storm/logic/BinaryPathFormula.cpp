@@ -7,11 +7,17 @@ BinaryPathFormula::BinaryPathFormula(std::shared_ptr<Formula const> const& leftS
     // Intentionally left empty.
 }
 
-bool BinaryPathFormula::isBinaryPathFormula() const { return true; }
+bool BinaryPathFormula::isBinaryPathFormula() const {
+    return true;
+}
 
-Formula const& BinaryPathFormula::getLeftSubformula() const { return *leftSubformula; }
+Formula const& BinaryPathFormula::getLeftSubformula() const {
+    return *leftSubformula;
+}
 
-Formula const& BinaryPathFormula::getRightSubformula() const { return *rightSubformula; }
+Formula const& BinaryPathFormula::getRightSubformula() const {
+    return *rightSubformula;
+}
 
 void BinaryPathFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     this->getLeftSubformula().gatherAtomicExpressionFormulas(atomicExpressionFormulas);
@@ -33,8 +39,12 @@ void BinaryPathFormula::gatherUsedVariables(std::set<storm::expressions::Variabl
     this->getRightSubformula().gatherUsedVariables(usedVariables);
 }
 
-bool BinaryPathFormula::hasQualitativeResult() const { return false; }
+bool BinaryPathFormula::hasQualitativeResult() const {
+    return false;
+}
 
-bool BinaryPathFormula::hasQuantitativeResult() const { return true; }
+bool BinaryPathFormula::hasQuantitativeResult() const {
+    return true;
+}
 }  // namespace logic
 }  // namespace storm

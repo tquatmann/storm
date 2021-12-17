@@ -43,7 +43,9 @@ class JaniProgramGraphBuilder {
         // intentionally left empty
     }
 
-    void restrictAllVariables(int64_t from, int64_t to) { restrictAllVariables(storm::storage::IntegerInterval(from, to)); }
+    void restrictAllVariables(int64_t from, int64_t to) {
+        restrictAllVariables(storm::storage::IntegerInterval(from, to));
+    }
 
     void restrictAllVariables(storm::storage::IntegerInterval const& restr) {
         for (auto const& v : programGraph.getVariables()) {
@@ -75,9 +77,13 @@ class JaniProgramGraphBuilder {
     }
 
    private:
-    std::string janiLocationName(storm::ppg::ProgramLocationIdentifier i) { return "l" + std::to_string(i); }
+    std::string janiLocationName(storm::ppg::ProgramLocationIdentifier i) {
+        return "l" + std::to_string(i);
+    }
 
-    std::string janiVariableOutOfBoundsLocationName(storm::ppg::ProgramVariableIdentifier i) { return "oob-" + programGraph.getVariableName(i); }
+    std::string janiVariableOutOfBoundsLocationName(storm::ppg::ProgramVariableIdentifier i) {
+        return "oob-" + programGraph.getVariableName(i);
+    }
 
     storm::jani::OrderedAssignments buildOrderedAssignments(storm::jani::Automaton& automaton, storm::ppg::DeterministicProgramAction const& act);
     void addEdges(storm::jani::Automaton& automaton);
@@ -93,7 +99,9 @@ class JaniProgramGraphBuilder {
     std::pair<std::vector<storm::jani::Edge>, storm::expressions::Expression> addVariableChecks(storm::jani::Automaton& automaton,
                                                                                                 storm::ppg::ProgramEdge const& edge);
 
-    bool isUserRestrictedVariable(storm::ppg::ProgramVariableIdentifier i) const { return userVariableRestrictions.count(i) == 1 && !isRewardVariable(i); }
+    bool isUserRestrictedVariable(storm::ppg::ProgramVariableIdentifier i) const {
+        return userVariableRestrictions.count(i) == 1 && !isRewardVariable(i);
+    }
 
     bool isRestrictedVariable(storm::ppg::ProgramVariableIdentifier i) const {
         // Might be different from user restricted in near future.
@@ -109,9 +117,13 @@ class JaniProgramGraphBuilder {
         }
     }
 
-    bool isRewardVariable(storm::ppg::ProgramVariableIdentifier i) const { return std::find(rewards.begin(), rewards.end(), i) != rewards.end(); }
+    bool isRewardVariable(storm::ppg::ProgramVariableIdentifier i) const {
+        return std::find(rewards.begin(), rewards.end(), i) != rewards.end();
+    }
 
-    bool isConstant(storm::ppg::ProgramVariableIdentifier i) const { return std::find(constants.begin(), constants.end(), i) != constants.end(); }
+    bool isConstant(storm::ppg::ProgramVariableIdentifier i) const {
+        return std::find(constants.begin(), constants.end(), i) != constants.end();
+    }
 
     void addProcedureVariables(storm::jani::Model& model, storm::jani::Automaton& automaton);
 

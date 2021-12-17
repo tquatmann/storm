@@ -9,9 +9,13 @@ StateReward::StateReward(storm::expressions::Expression const& statePredicateExp
     // Nothing to do here.
 }
 
-storm::expressions::Expression const& StateReward::getStatePredicateExpression() const { return this->statePredicateExpression; }
+storm::expressions::Expression const& StateReward::getStatePredicateExpression() const {
+    return this->statePredicateExpression;
+}
 
-storm::expressions::Expression const& StateReward::getRewardValueExpression() const { return this->rewardValueExpression; }
+storm::expressions::Expression const& StateReward::getRewardValueExpression() const {
+    return this->rewardValueExpression;
+}
 
 StateReward StateReward::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     return StateReward(this->getStatePredicateExpression().substitute(substitution), this->getRewardValueExpression().substitute(substitution),

@@ -9,9 +9,13 @@ ParallelComposition::ParallelComposition(std::shared_ptr<Composition> const& lef
     // Intentionally left empty.
 }
 
-Composition const& ParallelComposition::getLeftSubcomposition() const { return *left; }
+Composition const& ParallelComposition::getLeftSubcomposition() const {
+    return *left;
+}
 
-Composition const& ParallelComposition::getRightSubcomposition() const { return *right; }
+Composition const& ParallelComposition::getRightSubcomposition() const {
+    return *right;
+}
 
 }  // namespace prism
 }  // namespace storm

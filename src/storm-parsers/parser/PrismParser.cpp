@@ -492,9 +492,13 @@ void PrismParser::createFormulaIdentifiers(std::vector<storm::prism::Formula> co
     }
 }
 
-void PrismParser::allowDoubleLiterals(bool flag) { this->expressionParser->setAcceptDoubleLiterals(flag); }
+void PrismParser::allowDoubleLiterals(bool flag) {
+    this->expressionParser->setAcceptDoubleLiterals(flag);
+}
 
-std::string const& PrismParser::getFilename() const { return this->filename; }
+std::string const& PrismParser::getFilename() const {
+    return this->filename;
+}
 
 bool PrismParser::isValidIdentifier(std::string const& identifier) {
     if (this->keywords_.find(identifier) != nullptr) {
@@ -571,13 +575,21 @@ bool PrismParser::isFreshRewardModelName(std::string const& rewardModelName) {
     return true;
 }
 
-bool PrismParser::isFreshPlayerName(std::string const& playerName) { return true; }
+bool PrismParser::isFreshPlayerName(std::string const& playerName) {
+    return true;
+}
 
-bool PrismParser::isOfBoolType(storm::expressions::Expression const& expression) { return !this->secondRun || expression.hasBooleanType(); }
+bool PrismParser::isOfBoolType(storm::expressions::Expression const& expression) {
+    return !this->secondRun || expression.hasBooleanType();
+}
 
-bool PrismParser::isOfIntType(storm::expressions::Expression const& expression) { return !this->secondRun || expression.hasIntegerType(); }
+bool PrismParser::isOfIntType(storm::expressions::Expression const& expression) {
+    return !this->secondRun || expression.hasIntegerType();
+}
 
-bool PrismParser::isOfNumericalType(storm::expressions::Expression const& expression) { return !this->secondRun || expression.hasNumericalType(); }
+bool PrismParser::isOfNumericalType(storm::expressions::Expression const& expression) {
+    return !this->secondRun || expression.hasNumericalType();
+}
 
 bool PrismParser::addInitialStatesConstruct(storm::expressions::Expression const& initialStatesExpression, GlobalProgramInformation& globalProgramInformation) {
     STORM_LOG_THROW(!globalProgramInformation.hasInitialConstruct, storm::exceptions::WrongFormatException,
@@ -1185,6 +1197,8 @@ storm::prism::Program PrismParser::createProgram(GlobalProgramInformation const&
         globalProgramInformation.systemCompositionConstruct, prismCompatibility, this->getFilename(), 1, this->secondRun);
 }
 
-void PrismParser::removeInitialConstruct(GlobalProgramInformation& globalProgramInformation) const { globalProgramInformation.hasInitialConstruct = false; }
+void PrismParser::removeInitialConstruct(GlobalProgramInformation& globalProgramInformation) const {
+    globalProgramInformation.hasInitialConstruct = false;
+}
 }  // namespace parser
 }  // namespace storm

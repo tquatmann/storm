@@ -57,8 +57,10 @@ storm::models::sparse::StateLabeling AtomicPropositionLabelingParser::parseAtomi
     // If #DECLARATION or #END have not been found, the file format is wrong.
     if (!(foundDecl && foundEnd)) {
         STORM_LOG_ERROR("Error while parsing " << filename << ": File header is corrupted (#DECLARATION or #END missing - case sensitive).");
-        if (!foundDecl) STORM_LOG_ERROR("\tDid not find #DECLARATION token.");
-        if (!foundEnd) STORM_LOG_ERROR("\tDid not find #END token.");
+        if (!foundDecl)
+            STORM_LOG_ERROR("\tDid not find #DECLARATION token.");
+        if (!foundEnd)
+            STORM_LOG_ERROR("\tDid not find #END token.");
         throw storm::exceptions::WrongFormatException()
             << "Error while parsing " << filename << ": File header is corrupted (#DECLARATION or #END missing - case sensitive).";
     }
@@ -92,10 +94,12 @@ storm::models::sparse::StateLabeling AtomicPropositionLabelingParser::parseAtomi
 
         } else if (cnt > 0) {
             // If the next token is #DECLARATION: Just skip it.
-            if (strncmp(buf, "#DECLARATION", cnt) == 0) continue;
+            if (strncmp(buf, "#DECLARATION", cnt) == 0)
+                continue;
 
             // If the next token is #END: Stop the search.
-            if (strncmp(buf, "#END", cnt) == 0) break;
+            if (strncmp(buf, "#END", cnt) == 0)
+                break;
 
             // Otherwise copy the token to the buffer, append a trailing null byte and hand it to labeling.
             strncpy(proposition, buf, cnt);
@@ -135,7 +139,8 @@ storm::models::sparse::StateLabeling AtomicPropositionLabelingParser::parseAtomi
                 // The next character is a separator.
                 // If it is a line separator, we continue with next node.
                 // Otherwise, we skip it and try again.
-                if (buf[0] == '\n' || buf[0] == '\r') break;
+                if (buf[0] == '\n' || buf[0] == '\r')
+                    break;
                 buf++;
             } else {
                 // Copy the label to the buffer, null terminate it and add it to labeling.

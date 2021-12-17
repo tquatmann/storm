@@ -32,37 +32,65 @@ NativeSolverEnvironment::~NativeSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::NativeLinearEquationSolverMethod const& NativeSolverEnvironment::getMethod() const { return method; }
+storm::solver::NativeLinearEquationSolverMethod const& NativeSolverEnvironment::getMethod() const {
+    return method;
+}
 
-bool const& NativeSolverEnvironment::isMethodSetFromDefault() const { return methodSetFromDefault; }
+bool const& NativeSolverEnvironment::isMethodSetFromDefault() const {
+    return methodSetFromDefault;
+}
 
 void NativeSolverEnvironment::setMethod(storm::solver::NativeLinearEquationSolverMethod value) {
     methodSetFromDefault = false;
     method = value;
 }
 
-uint64_t const& NativeSolverEnvironment::getMaximalNumberOfIterations() const { return maxIterationCount; }
+uint64_t const& NativeSolverEnvironment::getMaximalNumberOfIterations() const {
+    return maxIterationCount;
+}
 
-void NativeSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) { maxIterationCount = value; }
+void NativeSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) {
+    maxIterationCount = value;
+}
 
-storm::RationalNumber const& NativeSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& NativeSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void NativeSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void NativeSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 
-bool const& NativeSolverEnvironment::getRelativeTerminationCriterion() const { return considerRelativeTerminationCriterion; }
+bool const& NativeSolverEnvironment::getRelativeTerminationCriterion() const {
+    return considerRelativeTerminationCriterion;
+}
 
-void NativeSolverEnvironment::setRelativeTerminationCriterion(bool value) { considerRelativeTerminationCriterion = value; }
+void NativeSolverEnvironment::setRelativeTerminationCriterion(bool value) {
+    considerRelativeTerminationCriterion = value;
+}
 
-storm::solver::MultiplicationStyle const& NativeSolverEnvironment::getPowerMethodMultiplicationStyle() const { return powerMethodMultiplicationStyle; }
+storm::solver::MultiplicationStyle const& NativeSolverEnvironment::getPowerMethodMultiplicationStyle() const {
+    return powerMethodMultiplicationStyle;
+}
 
-void NativeSolverEnvironment::setPowerMethodMultiplicationStyle(storm::solver::MultiplicationStyle value) { powerMethodMultiplicationStyle = value; }
+void NativeSolverEnvironment::setPowerMethodMultiplicationStyle(storm::solver::MultiplicationStyle value) {
+    powerMethodMultiplicationStyle = value;
+}
 
-storm::RationalNumber const& NativeSolverEnvironment::getSorOmega() const { return sorOmega; }
+storm::RationalNumber const& NativeSolverEnvironment::getSorOmega() const {
+    return sorOmega;
+}
 
-void NativeSolverEnvironment::setSorOmega(storm::RationalNumber const& value) { sorOmega = value; }
+void NativeSolverEnvironment::setSorOmega(storm::RationalNumber const& value) {
+    sorOmega = value;
+}
 
-bool NativeSolverEnvironment::isSymmetricUpdatesSet() const { return symmetricUpdates; }
+bool NativeSolverEnvironment::isSymmetricUpdatesSet() const {
+    return symmetricUpdates;
+}
 
-void NativeSolverEnvironment::setSymmetricUpdates(bool value) { symmetricUpdates = value; }
+void NativeSolverEnvironment::setSymmetricUpdates(bool value) {
+    symmetricUpdates = value;
+}
 
 }  // namespace storm

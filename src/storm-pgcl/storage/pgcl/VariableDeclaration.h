@@ -11,9 +11,13 @@ class VariableDeclaration {
         // Not implemented.
     }
 
-    storm::expressions::Variable const& getVariable() const { return variable; }
+    storm::expressions::Variable const& getVariable() const {
+        return variable;
+    }
 
-    storm::expressions::Expression const& getInitialValueExpression() const { return initialValue; }
+    storm::expressions::Expression const& getInitialValueExpression() const {
+        return initialValue;
+    }
 
    private:
     storm::expressions::Variable variable;

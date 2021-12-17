@@ -65,7 +65,9 @@ double LinearCoefficientVisitor::VariableCoefficients::getCoefficient(storm::exp
     return variableToCoefficientMapping[variable];
 }
 
-double LinearCoefficientVisitor::VariableCoefficients::getConstantPart() const { return this->constantPart; }
+double LinearCoefficientVisitor::VariableCoefficients::getConstantPart() const {
+    return this->constantPart;
+}
 
 void LinearCoefficientVisitor::VariableCoefficients::separateVariablesFromConstantPart(VariableCoefficients& rhs) {
     for (auto const& rhsVariableCoefficientPair : rhs.variableToCoefficientMapping) {

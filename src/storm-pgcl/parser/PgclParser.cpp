@@ -149,7 +149,9 @@ PgclParser::PgclParser(std::string const& filename, Iterator first)
     this->locationToStatement.insert(this->locationToStatement.begin(), dummy);
 }  // PgclParser()
 
-void PgclParser::enableExpressions() { (this->expressionParser).setIdentifierMapping(&this->identifiers_); }
+void PgclParser::enableExpressions() {
+    (this->expressionParser).setIdentifierMapping(&this->identifiers_);
+}
 
 /*
  * Creators for various program parts. They all follow the basic scheme
@@ -182,7 +184,9 @@ storm::pgcl::PgclProgram PgclParser::createProgram(std::string const& programNam
     return *result;
 }
 
-bool PgclParser::isValidIdentifier(std::string const& identifier) { return this->invalidIdentifiers.find(identifier) == nullptr; }
+bool PgclParser::isValidIdentifier(std::string const& identifier) {
+    return this->invalidIdentifiers.find(identifier) == nullptr;
+}
 
 storm::expressions::Variable PgclParser::declareDoubleVariable(std::string const& variableName) {
     storm::expressions::Variable variable = expressionManager->declareRationalVariable(variableName);
@@ -358,7 +362,9 @@ storm::pgcl::BooleanExpression PgclParser::createBooleanExpression(storm::expres
     }
 }
 
-storm::pgcl::UniformExpression PgclParser::createUniformExpression(int const& begin, int const& end) { return storm::pgcl::UniformExpression(begin, end); }
+storm::pgcl::UniformExpression PgclParser::createUniformExpression(int const& begin, int const& end) {
+    return storm::pgcl::UniformExpression(begin, end);
+}
 
 }  // namespace parser
 }  // namespace storm

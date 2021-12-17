@@ -28,7 +28,9 @@ inline void quickest_exit(int errorCode) {
  * Set timeout by raising an alarm after timeout seconds.
  * @param timeout Timeout in seconds.
  */
-inline void setTimeoutAlarm(uint_fast64_t timeout) { alarm(timeout); }
+inline void setTimeoutAlarm(uint_fast64_t timeout) {
+    alarm(timeout);
+}
 
 class SignalInformation {
    public:
@@ -50,27 +52,35 @@ class SignalInformation {
      *
      * @return True iff program should terminate.
      */
-    inline bool isTerminate() const { return terminate; }
+    inline bool isTerminate() const {
+        return terminate;
+    }
 
     /*!
      * Set whether the program should terminate.
      *
      * @param terminate True iff program should terminate.
      */
-    inline void setTerminate(bool terminate) { this->terminate = terminate; }
+    inline void setTerminate(bool terminate) {
+        this->terminate = terminate;
+    }
 
     /*! Get the error code.
      * Default is 0. If a signal was handled, the corresponding signal code is returned.
      *
      * @return Error code.
      */
-    inline int getErrorCode() const { return lastSignal; }
+    inline int getErrorCode() const {
+        return lastSignal;
+    }
 
     /*! Set the error code.
      *
      * @param errorCode Error code.
      */
-    inline void setErrorCode(int errorCode) { lastSignal = errorCode; }
+    inline void setErrorCode(int errorCode) {
+        lastSignal = errorCode;
+    }
 
    private:
     /*!
@@ -100,7 +110,9 @@ inline void resetTimeoutAlarm() {
  *
  * @return True iff program should terminate.
  */
-inline bool isTerminate() { return SignalInformation::infos().isTerminate(); }
+inline bool isTerminate() {
+    return SignalInformation::infos().isTerminate();
+}
 
 /*!
  * Register some signal handlers to detect and correctly handle abortion (due to timeout for example).

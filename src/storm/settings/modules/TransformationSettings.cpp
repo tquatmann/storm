@@ -48,7 +48,9 @@ TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool TransformationSettings::isChainEliminationSet() const { return this->getOption(chainEliminationOptionName).getHasOptionBeenSet(); }
+bool TransformationSettings::isChainEliminationSet() const {
+    return this->getOption(chainEliminationOptionName).getHasOptionBeenSet();
+}
 
 storm::transformer::EliminationLabelBehavior TransformationSettings::getLabelBehavior() const {
     std::string labelBehaviorAsString = this->getOption(labelBehaviorOptionName).getArgumentByName("behavior").getValueAsString();
@@ -63,9 +65,13 @@ storm::transformer::EliminationLabelBehavior TransformationSettings::getLabelBeh
                     "Illegal value '" << labelBehaviorAsString << "' set as label behavior for the elimination.");
 }
 
-bool TransformationSettings::isToNondeterministicModelSet() const { return this->getOption(toNondetOptionName).getHasOptionBeenSet(); }
+bool TransformationSettings::isToNondeterministicModelSet() const {
+    return this->getOption(toNondetOptionName).getHasOptionBeenSet();
+}
 
-bool TransformationSettings::isToDiscreteTimeModelSet() const { return this->getOption(toDiscreteTimeOptionName).getHasOptionBeenSet(); }
+bool TransformationSettings::isToDiscreteTimeModelSet() const {
+    return this->getOption(toDiscreteTimeOptionName).getHasOptionBeenSet();
+}
 
 bool TransformationSettings::check() const {
     // Ensure that labeling preservation is only set if chain elimination is set

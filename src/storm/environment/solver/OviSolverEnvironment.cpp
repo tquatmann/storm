@@ -20,14 +20,24 @@ OviSolverEnvironment::~OviSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::RationalNumber OviSolverEnvironment::getPrecisionUpdateFactor() const { return precisionUpdateFactor; }
+storm::RationalNumber OviSolverEnvironment::getPrecisionUpdateFactor() const {
+    return precisionUpdateFactor;
+}
 
-storm::RationalNumber OviSolverEnvironment::getMaxVerificationIterationFactor() const { return maxVerificationIterationFactor; }
+storm::RationalNumber OviSolverEnvironment::getMaxVerificationIterationFactor() const {
+    return maxVerificationIterationFactor;
+}
 
-storm::RationalNumber OviSolverEnvironment::getUpperBoundGuessingFactor() const { return upperBoundGuessingFactor; }
+storm::RationalNumber OviSolverEnvironment::getUpperBoundGuessingFactor() const {
+    return upperBoundGuessingFactor;
+}
 
-uint64_t OviSolverEnvironment::getUpperBoundOnlyIterations() const { return upperBoundOnlyIterations; }
+uint64_t OviSolverEnvironment::getUpperBoundOnlyIterations() const {
+    return upperBoundOnlyIterations;
+}
 
-bool OviSolverEnvironment::useNoTerminationGuaranteeMinimumMethod() const { return noTerminationGuaranteeMinimumMethod; }
+bool OviSolverEnvironment::useNoTerminationGuaranteeMinimumMethod() const {
+    return noTerminationGuaranteeMinimumMethod;
+}
 
 }  // namespace storm

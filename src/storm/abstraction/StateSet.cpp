@@ -4,7 +4,9 @@
 namespace storm {
 namespace abstraction {
 
-bool StateSet::isSymbolic() const { return false; }
+bool StateSet::isSymbolic() const {
+    return false;
+}
 
 template<storm::dd::DdType Type>
 SymbolicStateSet<Type> const& StateSet::asSymbolicStateSet() const {

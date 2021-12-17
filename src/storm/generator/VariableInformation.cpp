@@ -259,7 +259,9 @@ uint_fast64_t VariableInformation::getTotalBitOffset(bool roundTo64Bit) const {
     return result;
 }
 
-bool VariableInformation::hasOutOfBoundsBit() const { return outOfBoundsBit != boost::none; }
+bool VariableInformation::hasOutOfBoundsBit() const {
+    return outOfBoundsBit != boost::none;
+}
 
 uint64_t VariableInformation::getOutOfBoundsBit() const {
     assert(hasOutOfBoundsBit());

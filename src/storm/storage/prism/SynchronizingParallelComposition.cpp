@@ -8,7 +8,9 @@ SynchronizingParallelComposition::SynchronizingParallelComposition(std::shared_p
     // Intentionally left empty.
 }
 
-boost::any SynchronizingParallelComposition::accept(CompositionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any SynchronizingParallelComposition::accept(CompositionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void SynchronizingParallelComposition::writeToStream(std::ostream& stream) const {
     stream << "(" << this->getLeftSubcomposition() << " || " << this->getRightSubcomposition() << ")";

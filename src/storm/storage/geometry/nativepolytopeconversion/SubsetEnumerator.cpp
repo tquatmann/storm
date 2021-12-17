@@ -25,7 +25,8 @@ std::vector<uint_fast64_t> const& SubsetEnumerator<DataType>::getCurrentSubset()
 
 template<typename DataType>
 bool SubsetEnumerator<DataType>::setToFirstSubset() {
-    if (n < k) return false;
+    if (n < k)
+        return false;
     // set the upper boundaries first.
     upperBoundaries.clear();
     upperBoundaries.reserve(k);

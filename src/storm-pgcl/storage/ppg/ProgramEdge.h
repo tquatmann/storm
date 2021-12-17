@@ -16,14 +16,22 @@ class ProgramEdge {
     }
 
     ProgramLocationIdentifier getSourceId() const;
-    ProgramLocationIdentifier getTargetId() const { return target; }
-    ProgramEdgeIdentifier getEdgeId() const { return edgeId; }
+    ProgramLocationIdentifier getTargetId() const {
+        return target;
+    }
+    ProgramEdgeIdentifier getEdgeId() const {
+        return edgeId;
+    }
 
-    storm::expressions::Expression const& getCondition() const { return condition; }
+    storm::expressions::Expression const& getCondition() const {
+        return condition;
+    }
 
     bool hasNoAction() const;
     ProgramAction const& getAction() const;
-    ProgramActionIdentifier getActionId() const { return action; }
+    ProgramActionIdentifier getActionId() const {
+        return action;
+    }
 
     virtual ~ProgramEdge() {
         // Intentionally left empty.

@@ -10,7 +10,9 @@ SmtSolver::ModelReference::ModelReference(storm::expressions::ExpressionManager 
     // Intentionally left empty.
 }
 
-storm::expressions::ExpressionManager const& SmtSolver::ModelReference::getManager() const { return manager; }
+storm::expressions::ExpressionManager const& SmtSolver::ModelReference::getManager() const {
+    return manager;
+}
 
 SmtSolver::SmtSolver(storm::expressions::ExpressionManager& manager) : manager(manager) {
     // Intentionally left empty.
@@ -74,13 +76,21 @@ storm::expressions::Expression SmtSolver::getInterpolant(std::vector<uint_fast64
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "This solver does not support generation of interpolants.");
 }
 
-storm::expressions::ExpressionManager const& SmtSolver::getManager() const { return manager; }
+storm::expressions::ExpressionManager const& SmtSolver::getManager() const {
+    return manager;
+}
 
-storm::expressions::ExpressionManager& SmtSolver::getManager() { return manager; }
+storm::expressions::ExpressionManager& SmtSolver::getManager() {
+    return manager;
+}
 
-bool SmtSolver::setTimeout(uint_fast64_t) { return false; }
+bool SmtSolver::setTimeout(uint_fast64_t) {
+    return false;
+}
 
-bool SmtSolver::unsetTimeout() { return false; }
+bool SmtSolver::unsetTimeout() {
+    return false;
+}
 
 std::string SmtSolver::getSmtLibString() const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "This solver does not support exporting the assertions in the SMT-LIB format.");

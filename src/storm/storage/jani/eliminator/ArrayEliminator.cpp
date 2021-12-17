@@ -476,7 +476,9 @@ class ArrayExpressionEliminationVisitor : public storm::expressions::ExpressionV
             STORM_LOG_ASSERT(!isArrayOutOfBounds(), "Tried to get the result expression, but the expression is out-of-bounds");
             return expression;
         };
-        bool isArrayOutOfBounds() { return expression.get() == nullptr; };
+        bool isArrayOutOfBounds() {
+            return expression.get() == nullptr;
+        };
 
        private:
         BaseExprPtr expression;
@@ -811,7 +813,9 @@ class ArrayVariableReplacer : public JaniTraverser {
         : elimData(data), arrayExprEliminator(data), keepNonTrivialArrayAccess(keepNonTrivialArrayAccess) {}
 
     virtual ~ArrayVariableReplacer() = default;
-    void replace(Model& model) { traverse(model, boost::any()); }
+    void replace(Model& model) {
+        traverse(model, boost::any());
+    }
 
     virtual void traverse(Model& model, boost::any const& data) override {
         // Traverse relevant model components
@@ -1132,7 +1136,9 @@ ArrayEliminatorData::Replacement::Replacement(std::vector<Replacement>&& replace
     // Intentionally left empty
 }
 
-bool ArrayEliminatorData::Replacement::isVariable() const { return data.which() == 0; }
+bool ArrayEliminatorData::Replacement::isVariable() const {
+    return data.which() == 0;
+}
 
 storm::jani::Variable const& ArrayEliminatorData::Replacement::getVariable() const {
     STORM_LOG_ASSERT(isVariable(), "unexpected replacement type");
@@ -1170,7 +1176,9 @@ typename ArrayEliminatorData::Replacement& ArrayEliminatorData::Replacement::at(
     return *cur;
 }
 
-std::size_t ArrayEliminatorData::Replacement::size() const { return getReplacements().size(); }
+std::size_t ArrayEliminatorData::Replacement::size() const {
+    return getReplacements().size();
+}
 
 void ArrayEliminatorData::Replacement::grow(std::size_t const& minimumSize) {
     if (getReplacements().size() < minimumSize) {

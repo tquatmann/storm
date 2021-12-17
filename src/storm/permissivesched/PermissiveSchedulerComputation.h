@@ -28,11 +28,17 @@ class PermissiveSchedulerComputation {
 
     virtual void calculatePermissiveScheduler(bool lowerBound, double boundary) = 0;
 
-    void setPenalties(PermissiveSchedulerPenalties penalties) { mPenalties = penalties; }
+    void setPenalties(PermissiveSchedulerPenalties penalties) {
+        mPenalties = penalties;
+    }
 
-    PermissiveSchedulerPenalties const& getPenalties() const { return mPenalties; }
+    PermissiveSchedulerPenalties const& getPenalties() const {
+        return mPenalties;
+    }
 
-    PermissiveSchedulerPenalties& getPenalties() { return mPenalties; }
+    PermissiveSchedulerPenalties& getPenalties() {
+        return mPenalties;
+    }
 
     virtual bool foundSolution() const = 0;
 

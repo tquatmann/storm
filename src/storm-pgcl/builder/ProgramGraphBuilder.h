@@ -38,18 +38,26 @@ class ProgramGraphBuilder {
         }
     }
 
-    storm::ppg::ProgramLocation* currentLoc() const { return currentStack.back(); }
+    storm::ppg::ProgramLocation* currentLoc() const {
+        return currentStack.back();
+    }
 
     storm::ppg::ProgramLocation* newLocation() {
         currentStack.push_back(graph->addLocation());
         return currentLoc();
     }
 
-    void storeNextLocation(storm::ppg::ProgramLocation* loc) { nextStack.push_back(loc); }
+    void storeNextLocation(storm::ppg::ProgramLocation* loc) {
+        nextStack.push_back(loc);
+    }
 
-    storm::ppg::ProgramLocation* nextLoc() const { return nextStack.back(); }
+    storm::ppg::ProgramLocation* nextLoc() const {
+        return nextStack.back();
+    }
 
-    storm::ppg::ProgramLocationIdentifier nextLocId() const { return nextLoc()->id(); }
+    storm::ppg::ProgramLocationIdentifier nextLocId() const {
+        return nextLoc()->id();
+    }
 
     storm::ppg::ProgramActionIdentifier addAction(storm::expressions::Variable const& var, storm::expressions::Expression const& expr) const {
         storm::ppg::DeterministicProgramAction* action = graph->addDeterministicAction();
@@ -63,9 +71,13 @@ class ProgramGraphBuilder {
         return action->id();
     }
 
-    storm::ppg::ProgramActionIdentifier noAction() const { return noActionId; }
+    storm::ppg::ProgramActionIdentifier noAction() const {
+        return noActionId;
+    }
 
-    std::shared_ptr<storm::expressions::ExpressionManager> const& getExpressionManager() const { return program.getExpressionManager(); }
+    std::shared_ptr<storm::expressions::ExpressionManager> const& getExpressionManager() const {
+        return program.getExpressionManager();
+    }
 
     void buildBlock(storm::pgcl::PgclBlock const& block) {
         ProgramGraphBuilderVisitor visitor(*this);

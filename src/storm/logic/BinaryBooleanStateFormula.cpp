@@ -14,15 +14,25 @@ BinaryBooleanStateFormula::BinaryBooleanStateFormula(OperatorType operatorType, 
                     storm::exceptions::InvalidPropertyException, "Boolean formula must have subformulas with qualitative result.");
 }
 
-bool BinaryBooleanStateFormula::isBinaryBooleanStateFormula() const { return true; }
+bool BinaryBooleanStateFormula::isBinaryBooleanStateFormula() const {
+    return true;
+}
 
-boost::any BinaryBooleanStateFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BinaryBooleanStateFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-BinaryBooleanStateFormula::OperatorType BinaryBooleanStateFormula::getOperator() const { return operatorType; }
+BinaryBooleanStateFormula::OperatorType BinaryBooleanStateFormula::getOperator() const {
+    return operatorType;
+}
 
-bool BinaryBooleanStateFormula::isAnd() const { return this->getOperator() == OperatorType::And; }
+bool BinaryBooleanStateFormula::isAnd() const {
+    return this->getOperator() == OperatorType::And;
+}
 
-bool BinaryBooleanStateFormula::isOr() const { return this->getOperator() == OperatorType::Or; }
+bool BinaryBooleanStateFormula::isOr() const {
+    return this->getOperator() == OperatorType::Or;
+}
 
 std::ostream& BinaryBooleanStateFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

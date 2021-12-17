@@ -78,27 +78,37 @@ ConversionInputSettings::ConversionInputSettings() : ModuleSettings(moduleName) 
                         .build());
 }
 
-bool ConversionInputSettings::isPrismInputSet() const { return this->getOption(prismInputOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isPrismInputSet() const {
+    return this->getOption(prismInputOptionName).getHasOptionBeenSet();
+}
 
 std::string ConversionInputSettings::getPrismInputFilename() const {
     return this->getOption(prismInputOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool ConversionInputSettings::isJaniInputSet() const { return this->getOption(janiInputOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isJaniInputSet() const {
+    return this->getOption(janiInputOptionName).getHasOptionBeenSet();
+}
 
 std::string ConversionInputSettings::getJaniInputFilename() const {
     return this->getOption(janiInputOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool ConversionInputSettings::isPrismCompatibilityEnabled() const { return this->getOption(prismCompatibilityOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isPrismCompatibilityEnabled() const {
+    return this->getOption(prismCompatibilityOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionInputSettings::isConstantsSet() const { return this->getOption(constantsOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isConstantsSet() const {
+    return this->getOption(constantsOptionName).getHasOptionBeenSet();
+}
 
 std::string ConversionInputSettings::getConstantDefinitionString() const {
     return this->getOption(constantsOptionName).getArgumentByName("values").getValueAsString();
 }
 
-bool ConversionInputSettings::isPropertyInputSet() const { return this->getOption(propertyOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isPropertyInputSet() const {
+    return this->getOption(propertyOptionName).getHasOptionBeenSet();
+}
 
 std::string ConversionInputSettings::getPropertyInput() const {
     return this->getOption(propertyOptionName).getArgumentByName("property or filename").getValueAsString();
@@ -108,7 +118,9 @@ std::string ConversionInputSettings::getPropertyInputFilter() const {
     return this->getOption(propertyOptionName).getArgumentByName("filter").getValueAsString();
 }
 
-bool ConversionInputSettings::isJaniPropertiesSet() const { return this->getOption(janiPropertyOptionName).getHasOptionBeenSet(); }
+bool ConversionInputSettings::isJaniPropertiesSet() const {
+    return this->getOption(janiPropertyOptionName).getHasOptionBeenSet();
+}
 
 bool ConversionInputSettings::areJaniPropertiesSelected() const {
     return this->getOption(janiPropertyOptionName).getHasOptionBeenSet() &&
@@ -123,7 +135,9 @@ void ConversionInputSettings::finalize() {
     // Intentionally left empty.
 }
 
-bool ConversionInputSettings::check() const { return true; }
+bool ConversionInputSettings::check() const {
+    return true;
+}
 
 }  // namespace modules
 }  // namespace settings

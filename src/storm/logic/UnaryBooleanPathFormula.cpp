@@ -14,17 +14,29 @@ UnaryBooleanPathFormula::UnaryBooleanPathFormula(OperatorType operatorType, std:
     STORM_LOG_THROW(context == FormulaContext::Probability, storm::exceptions::InvalidPropertyException, "Invalid context for formula.");
 }
 
-FormulaContext const& UnaryBooleanPathFormula::getContext() const { return context; }
+FormulaContext const& UnaryBooleanPathFormula::getContext() const {
+    return context;
+}
 
-bool UnaryBooleanPathFormula::isUnaryBooleanPathFormula() const { return true; }
+bool UnaryBooleanPathFormula::isUnaryBooleanPathFormula() const {
+    return true;
+}
 
-bool UnaryBooleanPathFormula::isProbabilityPathFormula() const { return true; }
+bool UnaryBooleanPathFormula::isProbabilityPathFormula() const {
+    return true;
+}
 
-boost::any UnaryBooleanPathFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any UnaryBooleanPathFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-UnaryBooleanPathFormula::OperatorType UnaryBooleanPathFormula::getOperator() const { return operatorType; }
+UnaryBooleanPathFormula::OperatorType UnaryBooleanPathFormula::getOperator() const {
+    return operatorType;
+}
 
-bool UnaryBooleanPathFormula::isNot() const { return this->getOperator() == OperatorType::Not; }
+bool UnaryBooleanPathFormula::isNot() const {
+    return this->getOperator() == OperatorType::Not;
+}
 
 std::ostream& UnaryBooleanPathFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

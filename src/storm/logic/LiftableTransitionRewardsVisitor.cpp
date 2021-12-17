@@ -11,11 +11,17 @@ LiftableTransitionRewardsVisitor::LiftableTransitionRewardsVisitor(storm::storag
     // Intentionally left empty.
 }
 
-bool LiftableTransitionRewardsVisitor::areTransitionRewardsLiftable(Formula const& f) const { return boost::any_cast<bool>(f.accept(*this, boost::any())); }
+bool LiftableTransitionRewardsVisitor::areTransitionRewardsLiftable(Formula const& f) const {
+    return boost::any_cast<bool>(f.accept(*this, boost::any()));
+}
 
-boost::any LiftableTransitionRewardsVisitor::visit(AtomicExpressionFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(AtomicExpressionFormula const&, boost::any const&) const {
+    return true;
+}
 
-boost::any LiftableTransitionRewardsVisitor::visit(AtomicLabelFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(AtomicLabelFormula const&, boost::any const&) const {
+    return true;
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(BinaryBooleanStateFormula const& f, boost::any const& data) const {
     return boost::any_cast<bool>(f.getLeftSubformula().accept(*this, data)) && boost::any_cast<bool>(f.getRightSubformula().accept(*this, data));
@@ -25,7 +31,9 @@ boost::any LiftableTransitionRewardsVisitor::visit(BinaryBooleanPathFormula cons
     return boost::any_cast<bool>(f.getLeftSubformula().accept(*this, data)) && boost::any_cast<bool>(f.getRightSubformula().accept(*this, data));
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(BooleanLiteralFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(BooleanLiteralFormula const&, boost::any const&) const {
+    return true;
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(BoundedUntilFormula const& f, boost::any const& data) const {
     for (unsigned i = 0; i < f.getDimension(); ++i) {
@@ -61,11 +69,17 @@ boost::any LiftableTransitionRewardsVisitor::visit(CumulativeRewardFormula const
     return true;
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(EventuallyFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any LiftableTransitionRewardsVisitor::visit(EventuallyFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
-boost::any LiftableTransitionRewardsVisitor::visit(TimeOperatorFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any LiftableTransitionRewardsVisitor::visit(TimeOperatorFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
-boost::any LiftableTransitionRewardsVisitor::visit(GloballyFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any LiftableTransitionRewardsVisitor::visit(GloballyFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(GameFormula const& f, boost::any const& data) const {
     STORM_LOG_WARN("Transitionbranch-based rewards might be reduced to action-based rewards. Be sure that this is correct for your property.");
@@ -73,13 +87,17 @@ boost::any LiftableTransitionRewardsVisitor::visit(GameFormula const& f, boost::
     return f.getSubformula().accept(*this, data);
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(InstantaneousRewardFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(InstantaneousRewardFormula const&, boost::any const&) const {
+    return true;
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(LongRunAverageOperatorFormula const& f, boost::any const& data) const {
     return f.getSubformula().accept(*this, data);
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(LongRunAverageRewardFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(LongRunAverageRewardFormula const&, boost::any const&) const {
+    return true;
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(MultiObjectiveFormula const& f, boost::any const& data) const {
     bool result = true;
@@ -89,7 +107,9 @@ boost::any LiftableTransitionRewardsVisitor::visit(MultiObjectiveFormula const& 
     return result;
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(QuantileFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any LiftableTransitionRewardsVisitor::visit(QuantileFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(NextFormula const& f, boost::any const& data) const {
     return boost::any_cast<bool>(f.getSubformula().accept(*this, data));
@@ -103,7 +123,9 @@ boost::any LiftableTransitionRewardsVisitor::visit(RewardOperatorFormula const& 
     return boost::any_cast<bool>(f.getSubformula().accept(*this, data));
 }
 
-boost::any LiftableTransitionRewardsVisitor::visit(TotalRewardFormula const&, boost::any const&) const { return true; }
+boost::any LiftableTransitionRewardsVisitor::visit(TotalRewardFormula const&, boost::any const&) const {
+    return true;
+}
 
 boost::any LiftableTransitionRewardsVisitor::visit(UnaryBooleanStateFormula const& f, boost::any const& data) const {
     return f.getSubformula().accept(*this, data);

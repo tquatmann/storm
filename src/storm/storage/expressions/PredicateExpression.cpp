@@ -26,7 +26,9 @@ PredicateExpression::PredicateExpression(ExpressionManager const& manager, Type 
     : BaseExpression(manager, type), predicate(predicateType), operands(operands) {}
 
 // Override base class methods.
-storm::expressions::OperatorType PredicateExpression::getOperator() const { return toOperatorType(predicate); }
+storm::expressions::OperatorType PredicateExpression::getOperator() const {
+    return toOperatorType(predicate);
+}
 
 bool PredicateExpression::evaluateAsBool(Valuation const* valuation) const {
     STORM_LOG_THROW(this->hasBooleanType(), storm::exceptions::InvalidTypeException, "Unable to evaluate expression as boolean.");
@@ -94,11 +96,17 @@ std::shared_ptr<BaseExpression const> PredicateExpression::simplify() const {
     return this->shared_from_this();
 }
 
-boost::any PredicateExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any PredicateExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool PredicateExpression::isPredicateExpression() const { return true; }
+bool PredicateExpression::isPredicateExpression() const {
+    return true;
+}
 
-bool PredicateExpression::isFunctionApplication() const { return true; }
+bool PredicateExpression::isFunctionApplication() const {
+    return true;
+}
 
 bool PredicateExpression::containsVariables() const {
     for (auto const& operand : operands) {
@@ -109,7 +117,9 @@ bool PredicateExpression::containsVariables() const {
     return false;
 }
 
-uint_fast64_t PredicateExpression::getArity() const { return operands.size(); }
+uint_fast64_t PredicateExpression::getArity() const {
+    return operands.size();
+}
 
 std::shared_ptr<BaseExpression const> PredicateExpression::getOperand(uint_fast64_t operandIndex) const {
     STORM_LOG_ASSERT(operandIndex < this->getArity(), "Invalid operand access");
@@ -127,7 +137,9 @@ void PredicateExpression::gatherVariables(std::set<storm::expressions::Variable>
  *
  * @return The relation associated with the expression.
  */
-PredicateExpression::PredicateType PredicateExpression::getPredicateType() const { return predicate; }
+PredicateExpression::PredicateType PredicateExpression::getPredicateType() const {
+    return predicate;
+}
 
 void PredicateExpression::printToStream(std::ostream& stream) const {
     switch (this->getPredicateType()) {

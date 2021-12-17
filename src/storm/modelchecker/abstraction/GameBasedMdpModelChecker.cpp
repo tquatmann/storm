@@ -984,7 +984,9 @@ class ExplicitGameExporter {
                    maxStrategyPair);
     }
 
-    void setShowNonStrategyAlternatives(bool value) { showNonStrategyAlternatives = value; }
+    void setShowNonStrategyAlternatives(bool value) {
+        showNonStrategyAlternatives = value;
+    }
 
    private:
     struct NodeData {

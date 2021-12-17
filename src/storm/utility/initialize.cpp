@@ -33,7 +33,9 @@ void cleanUp() {
     // Intentionally left empty.
 }
 
-void setOutputDigits(int digits) { std::cout.precision(digits); }
+void setOutputDigits(int digits) {
+    std::cout.precision(digits);
+}
 
 void setOutputDigitsFromGeneralPrecision(float precision) {
     if (precision >= 1 || precision < 0) {
@@ -49,7 +51,9 @@ void setOutputDigitsFromGeneralPrecision(float precision) {
     }
 }
 
-l3pp::LogLevel getLogLevel() { return l3pp::Logger::getRootLogger()->getLevel(); }
+l3pp::LogLevel getLogLevel() {
+    return l3pp::Logger::getRootLogger()->getLevel();
+}
 
 void setLogLevel(l3pp::LogLevel level) {
     l3pp::Logger::getRootLogger()->setLevel(level);

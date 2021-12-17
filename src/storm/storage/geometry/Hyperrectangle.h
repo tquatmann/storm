@@ -31,13 +31,21 @@ class Hyperrectangle {
                         "Tried to construct a hyperrectangle but the number of given lower bounds does not equal the number of given upper bounds.");
     }
 
-    std::vector<ValueType> const& lowerBounds() const { return mLowerBounds; }
+    std::vector<ValueType> const& lowerBounds() const {
+        return mLowerBounds;
+    }
 
-    std::vector<ValueType>& lowerBounds() { return mLowerBounds; }
+    std::vector<ValueType>& lowerBounds() {
+        return mLowerBounds;
+    }
 
-    std::vector<ValueType> const& upperBounds() const { return mUpperBounds; }
+    std::vector<ValueType> const& upperBounds() const {
+        return mUpperBounds;
+    }
 
-    std::vector<ValueType>& upperBounds() { return mUpperBounds; }
+    std::vector<ValueType>& upperBounds() {
+        return mUpperBounds;
+    }
 
     /*
      * Enlarges this hyperrectangle such that it contains the given point

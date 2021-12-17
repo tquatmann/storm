@@ -97,21 +97,27 @@ class ExpressionParser : public qi::grammar<Iterator, storm::expressions::Expres
 
    private:
     struct orOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        orOperatorStruct() { add("|", storm::expressions::OperatorType::Or)("=>", storm::expressions::OperatorType::Implies); }
+        orOperatorStruct() {
+            add("|", storm::expressions::OperatorType::Or)("=>", storm::expressions::OperatorType::Implies);
+        }
     };
 
     // A parser used for recognizing the operators at the "or" precedence level.
     orOperatorStruct orOperator_;
 
     struct andOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        andOperatorStruct() { add("&", storm::expressions::OperatorType::And); }
+        andOperatorStruct() {
+            add("&", storm::expressions::OperatorType::And);
+        }
     };
 
     // A parser used for recognizing the operators at the "and" precedence level.
     andOperatorStruct andOperator_;
 
     struct equalityOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        equalityOperatorStruct() { add("=", storm::expressions::OperatorType::Equal)("!=", storm::expressions::OperatorType::NotEqual); }
+        equalityOperatorStruct() {
+            add("=", storm::expressions::OperatorType::Equal)("!=", storm::expressions::OperatorType::NotEqual);
+        }
     };
 
     // A parser used for recognizing the operators at the "equality" precedence level.
@@ -128,49 +134,63 @@ class ExpressionParser : public qi::grammar<Iterator, storm::expressions::Expres
     relationalOperatorStruct relationalOperator_;
 
     struct plusOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        plusOperatorStruct() { add("+", storm::expressions::OperatorType::Plus)("-", storm::expressions::OperatorType::Minus); }
+        plusOperatorStruct() {
+            add("+", storm::expressions::OperatorType::Plus)("-", storm::expressions::OperatorType::Minus);
+        }
     };
 
     // A parser used for recognizing the operators at the "plus" precedence level.
     plusOperatorStruct plusOperator_;
 
     struct multiplicationOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        multiplicationOperatorStruct() { add("*", storm::expressions::OperatorType::Times)("/", storm::expressions::OperatorType::Divide); }
+        multiplicationOperatorStruct() {
+            add("*", storm::expressions::OperatorType::Times)("/", storm::expressions::OperatorType::Divide);
+        }
     };
 
     // A parser used for recognizing the operators at the "multiplication" precedence level.
     multiplicationOperatorStruct multiplicationOperator_;
 
     struct infixPowerModuloOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        infixPowerModuloOperatorStruct() { add("^", storm::expressions::OperatorType::Power)("%", storm::expressions::OperatorType::Modulo); }
+        infixPowerModuloOperatorStruct() {
+            add("^", storm::expressions::OperatorType::Power)("%", storm::expressions::OperatorType::Modulo);
+        }
     };
 
     // A parser used for recognizing the operators at the "power" precedence level.
     infixPowerModuloOperatorStruct infixPowerModuloOperator_;
 
     struct unaryOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        unaryOperatorStruct() { add("!", storm::expressions::OperatorType::Not)("-", storm::expressions::OperatorType::Minus); }
+        unaryOperatorStruct() {
+            add("!", storm::expressions::OperatorType::Not)("-", storm::expressions::OperatorType::Minus);
+        }
     };
 
     // A parser used for recognizing the operators at the "unary" precedence level.
     unaryOperatorStruct unaryOperator_;
 
     struct floorCeilOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        floorCeilOperatorStruct() { add("floor", storm::expressions::OperatorType::Floor)("ceil", storm::expressions::OperatorType::Ceil); }
+        floorCeilOperatorStruct() {
+            add("floor", storm::expressions::OperatorType::Floor)("ceil", storm::expressions::OperatorType::Ceil);
+        }
     };
 
     // A parser used for recognizing the operators at the "floor/ceil" precedence level.
     floorCeilOperatorStruct floorCeilOperator_;
 
     struct minMaxOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        minMaxOperatorStruct() { add("min", storm::expressions::OperatorType::Min)("max", storm::expressions::OperatorType::Max); }
+        minMaxOperatorStruct() {
+            add("min", storm::expressions::OperatorType::Min)("max", storm::expressions::OperatorType::Max);
+        }
     };
 
     // A parser used for recognizing the operators at the "min/max" precedence level.
     minMaxOperatorStruct minMaxOperator_;
 
     struct prefixPowerModuloOperatorStruct : qi::symbols<char, storm::expressions::OperatorType> {
-        prefixPowerModuloOperatorStruct() { add("pow", storm::expressions::OperatorType::Power)("mod", storm::expressions::OperatorType::Modulo); }
+        prefixPowerModuloOperatorStruct() {
+            add("pow", storm::expressions::OperatorType::Power)("mod", storm::expressions::OperatorType::Modulo);
+        }
     };
 
     // A parser used for recognizing the operators at the "power" precedence level.

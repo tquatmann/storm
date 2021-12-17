@@ -48,7 +48,9 @@ struct SparseMultiObjectivePreprocessorResult {
         return count;
     }
 
-    bool containsOnlyTotalRewardFormulas() const { return getNumberOfTotalRewardFormulas() == objectives.size(); }
+    bool containsOnlyTotalRewardFormulas() const {
+        return getNumberOfTotalRewardFormulas() == objectives.size();
+    }
 
     uint64_t getNumberOfLongRunAverageRewardFormulas() const {
         uint64_t count = 0;
@@ -60,7 +62,9 @@ struct SparseMultiObjectivePreprocessorResult {
         return count;
     }
 
-    bool containsLongRunAverageRewardFormulas() const { return getNumberOfLongRunAverageRewardFormulas() > 0; }
+    bool containsLongRunAverageRewardFormulas() const {
+        return getNumberOfLongRunAverageRewardFormulas() > 0;
+    }
 
     bool containsOnlyTrivialObjectives() const {
         // Trivial objectives are either total reward formulas, LRA reward formulas or single-dimensional step or time bounded cumulative reward formulas

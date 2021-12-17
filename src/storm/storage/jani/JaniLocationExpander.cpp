@@ -118,7 +118,8 @@ JaniLocationExpander::AutomatonAndIndices JaniLocationExpander::transformAutomat
 
                 Location newLoc(newLocationName, newAssignments);
 
-                if (useTransientVariables) newLoc.addTransientAssignment(Assignment(newVariablePointer, newIndices.variableDomain[i], 0));
+                if (useTransientVariables)
+                    newLoc.addTransientAssignment(Assignment(newVariablePointer, newIndices.variableDomain[i], 0));
 
                 uint64_t newLocationIndex = newAutomaton.addLocation(newLoc);
                 newIndices.locationVariableValueMap[origIndex][i] = newLocationIndex;
@@ -205,6 +206,8 @@ JaniLocationExpander::AutomatonAndIndices JaniLocationExpander::transformAutomat
     return {newAutomaton, newIndices};
 }
 
-void JaniLocationExpander::excludeLocation(uint64_t index) { excludedLocations.insert(index); }
+void JaniLocationExpander::excludeLocation(uint64_t index) {
+    excludedLocations.insert(index);
+}
 }  // namespace jani
 }  // namespace storm

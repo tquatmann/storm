@@ -11,7 +11,9 @@ EliminateAction::EliminateAction(const std::string& automatonName, const std::st
     this->locationName = locationName;
 }
 
-std::string EliminateAction::getDescription() { return (boost::format("EliminateAction (Automaton %s, Location %s)") % automatonName % locationName).str(); }
+std::string EliminateAction::getDescription() {
+    return (boost::format("EliminateAction (Automaton %s, Location %s)") % automatonName % locationName).str();
+}
 
 void EliminateAction::doAction(JaniLocalEliminator::Session& session) {
     STORM_LOG_THROW(!session.hasLoops(automatonName, locationName), storm::exceptions::InvalidArgumentException, "Locations with loops cannot be eliminated");
@@ -63,7 +65,8 @@ void EliminateAction::doAction(JaniLocalEliminator::Session& session) {
     // The elimination is now complete. To make sure nothing went wrong, we go over all the edges one more
     // time. If any are still incident to the location we want to eliminate, something went wrong.
     for (Edge& edge : automaton.getEdges()) {
-        if (!edge.getGuard().containsVariables() && !edge.getGuard().evaluateAsBool()) continue;
+        if (!edge.getGuard().containsVariables() && !edge.getGuard().evaluateAsBool())
+            continue;
         for (const EdgeDestination& dest : edge.getDestinations()) {
             if (dest.getLocationIndex() == locIndex) {
                 STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentException, "Could not eliminate location");
@@ -82,7 +85,8 @@ void EliminateAction::eliminateDestination(JaniLocalEliminator::Session& session
         newEdges;  // Don't add the new edges immediately -- we cannot safely iterate over the outgoing edges while adding new edges to the structure
 
     for (Edge& outEdge : outgoing) {
-        if (!outEdge.getGuard().containsVariables() && !outEdge.getGuard().evaluateAsBool()) continue;
+        if (!outEdge.getGuard().containsVariables() && !outEdge.getGuard().evaluateAsBool())
+            continue;
 
         expressions::Expression newGuard = session.getNewGuard(edge, dest, outEdge);
         std::shared_ptr<storm::jani::TemplateEdge> templateEdge = std::make_shared<storm::jani::TemplateEdge>(newGuard);
@@ -100,7 +104,8 @@ void EliminateAction::eliminateDestination(JaniLocalEliminator::Session& session
         // Add remaining destinations back to the edge:
         uint64_t destCount = edge.getNumberOfDestinations();
         for (uint64_t i = 0; i < destCount; i++) {
-            if (i == destIndex) continue;
+            if (i == destIndex)
+                continue;
             const EdgeDestination& unchangedDest = edge.getDestination(i);
             OrderedAssignments oa(unchangedDest.getOrderedAssignments().clone());
             TemplateEdgeDestination templateEdgeDestination(oa);

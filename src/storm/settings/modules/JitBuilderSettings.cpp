@@ -58,33 +58,49 @@ JitBuilderSettings::JitBuilderSettings() : ModuleSettings(moduleName) {
             .build());
 }
 
-bool JitBuilderSettings::isCompilerSet() const { return this->getOption(compilerOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isCompilerSet() const {
+    return this->getOption(compilerOptionName).getHasOptionBeenSet();
+}
 
-std::string JitBuilderSettings::getCompiler() const { return this->getOption(compilerOptionName).getArgumentByName("name").getValueAsString(); }
+std::string JitBuilderSettings::getCompiler() const {
+    return this->getOption(compilerOptionName).getArgumentByName("name").getValueAsString();
+}
 
-bool JitBuilderSettings::isStormIncludeDirectorySet() const { return this->getOption(stormIncludeDirectoryOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isStormIncludeDirectorySet() const {
+    return this->getOption(stormIncludeDirectoryOptionName).getHasOptionBeenSet();
+}
 
 std::string JitBuilderSettings::getStormIncludeDirectory() const {
     return this->getOption(stormIncludeDirectoryOptionName).getArgumentByName("dir").getValueAsString();
 }
 
-bool JitBuilderSettings::isBoostIncludeDirectorySet() const { return this->getOption(boostIncludeDirectoryOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isBoostIncludeDirectorySet() const {
+    return this->getOption(boostIncludeDirectoryOptionName).getHasOptionBeenSet();
+}
 
 std::string JitBuilderSettings::getBoostIncludeDirectory() const {
     return this->getOption(boostIncludeDirectoryOptionName).getArgumentByName("dir").getValueAsString();
 }
 
-bool JitBuilderSettings::isCarlIncludeDirectorySet() const { return this->getOption(carlIncludeDirectoryOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isCarlIncludeDirectorySet() const {
+    return this->getOption(carlIncludeDirectoryOptionName).getHasOptionBeenSet();
+}
 
 std::string JitBuilderSettings::getCarlIncludeDirectory() const {
     return this->getOption(carlIncludeDirectoryOptionName).getArgumentByName("dir").getValueAsString();
 }
 
-bool JitBuilderSettings::isDoctorSet() const { return this->getOption(doctorOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isDoctorSet() const {
+    return this->getOption(doctorOptionName).getHasOptionBeenSet();
+}
 
-bool JitBuilderSettings::isCompilerFlagsSet() const { return this->getOption(compilerFlagsOptionName).getHasOptionBeenSet(); }
+bool JitBuilderSettings::isCompilerFlagsSet() const {
+    return this->getOption(compilerFlagsOptionName).getHasOptionBeenSet();
+}
 
-std::string JitBuilderSettings::getCompilerFlags() const { return this->getOption(compilerFlagsOptionName).getArgumentByName("flags").getValueAsString(); }
+std::string JitBuilderSettings::getCompilerFlags() const {
+    return this->getOption(compilerFlagsOptionName).getArgumentByName("flags").getValueAsString();
+}
 
 uint64_t JitBuilderSettings::getOptimizationLevel() const {
     return this->getOption(optimizationLevelOptionName).getArgumentByName("level").getValueAsUnsignedInteger();
@@ -94,7 +110,9 @@ void JitBuilderSettings::finalize() {
     // Intentionally left empty.
 }
 
-bool JitBuilderSettings::check() const { return true; }
+bool JitBuilderSettings::check() const {
+    return true;
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

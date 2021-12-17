@@ -64,7 +64,9 @@ class StateBlock {
      * @param other The state block with which to compare the current one.
      * @return True iff the two state blocks contain exactly the same states.
      */
-    bool operator==(StateBlock const& other) const { return this->states == other.states; }
+    bool operator==(StateBlock const& other) const {
+        return this->states == other.states;
+    }
 
     /*!
      * Returns an iterator to the states in this SCC.
@@ -85,7 +87,9 @@ class StateBlock {
      *
      * @return A const iterator to the states in this SCC.
      */
-    const_iterator cbegin() const { return this->begin(); };
+    const_iterator cbegin() const {
+        return this->begin();
+    };
 
     /*!
      * Returns an iterator that points one past the end of the states in this SCC.
@@ -106,7 +110,9 @@ class StateBlock {
      *
      * @return A const iterator that points one past the end of the states in this SCC.
      */
-    const_iterator cend() const { return this->end(); };
+    const_iterator cend() const {
+        return this->end();
+    };
 
     /*!
      * Retrieves whether the given state is in the SCC.

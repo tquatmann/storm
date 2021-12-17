@@ -42,15 +42,25 @@ Automaton Automaton::clone(storm::expressions::ExpressionManager& manager, std::
     return result;
 }
 
-std::string const& Automaton::getName() const { return name; }
+std::string const& Automaton::getName() const {
+    return name;
+}
 
-Variable const& Automaton::addVariable(Variable const& variable) { return variables.addVariable(variable); }
+Variable const& Automaton::addVariable(Variable const& variable) {
+    return variables.addVariable(variable);
+}
 
-bool Automaton::hasVariable(std::string const& name) const { return variables.hasVariable(name); }
+bool Automaton::hasVariable(std::string const& name) const {
+    return variables.hasVariable(name);
+}
 
-VariableSet& Automaton::getVariables() { return variables; }
+VariableSet& Automaton::getVariables() {
+    return variables;
+}
 
-VariableSet const& Automaton::getVariables() const { return variables; }
+VariableSet const& Automaton::getVariables() const {
+    return variables;
+}
 
 std::set<storm::expressions::Variable> Automaton::getAllExpressionVariables() const {
     std::set<storm::expressions::Variable> result;
@@ -60,7 +70,9 @@ std::set<storm::expressions::Variable> Automaton::getAllExpressionVariables() co
     return result;
 }
 
-bool Automaton::hasTransientVariable() const { return variables.hasTransientVariable(); }
+bool Automaton::hasTransientVariable() const {
+    return variables.hasTransientVariable();
+}
 
 FunctionDefinition const& Automaton::addFunctionDefinition(FunctionDefinition const& functionDefinition) {
     auto insertionRes = functionDefinitions.emplace(functionDefinition.getName(), functionDefinition);
@@ -69,19 +81,33 @@ FunctionDefinition const& Automaton::addFunctionDefinition(FunctionDefinition co
     return insertionRes.first->second;
 }
 
-std::unordered_map<std::string, FunctionDefinition> const& Automaton::getFunctionDefinitions() const { return functionDefinitions; }
+std::unordered_map<std::string, FunctionDefinition> const& Automaton::getFunctionDefinitions() const {
+    return functionDefinitions;
+}
 
-std::unordered_map<std::string, FunctionDefinition>& Automaton::getFunctionDefinitions() { return functionDefinitions; }
+std::unordered_map<std::string, FunctionDefinition>& Automaton::getFunctionDefinitions() {
+    return functionDefinitions;
+}
 
-bool Automaton::hasLocation(std::string const& name) const { return locationToIndex.find(name) != locationToIndex.end(); }
+bool Automaton::hasLocation(std::string const& name) const {
+    return locationToIndex.find(name) != locationToIndex.end();
+}
 
-std::vector<Location> const& Automaton::getLocations() const { return locations; }
+std::vector<Location> const& Automaton::getLocations() const {
+    return locations;
+}
 
-std::vector<Location>& Automaton::getLocations() { return locations; }
+std::vector<Location>& Automaton::getLocations() {
+    return locations;
+}
 
-Location const& Automaton::getLocation(uint64_t index) const { return locations[index]; }
+Location const& Automaton::getLocation(uint64_t index) const {
+    return locations[index];
+}
 
-Location& Automaton::getLocation(uint64_t index) { return locations[index]; }
+Location& Automaton::getLocation(uint64_t index) {
+    return locations[index];
+}
 
 uint64_t Automaton::addLocation(Location const& location) {
     STORM_LOG_THROW(!this->hasLocation(location.getName()), storm::exceptions::WrongFormatException,
@@ -110,7 +136,9 @@ void Automaton::addInitialLocation(uint64_t index) {
     initialLocationIndices.insert(index);
 }
 
-std::set<uint64_t> const& Automaton::getInitialLocationIndices() const { return initialLocationIndices; }
+std::set<uint64_t> const& Automaton::getInitialLocationIndices() const {
+    return initialLocationIndices;
+}
 
 std::map<uint64_t, std::string> Automaton::buildIdToLocationNameMap() const {
     std::map<uint64_t, std::string> mapping;
@@ -122,9 +150,13 @@ std::map<uint64_t, std::string> Automaton::buildIdToLocationNameMap() const {
     return mapping;
 }
 
-storm::expressions::Variable const& Automaton::getLocationExpressionVariable() const { return locationExpressionVariable; }
+storm::expressions::Variable const& Automaton::getLocationExpressionVariable() const {
+    return locationExpressionVariable;
+}
 
-Edge const& Automaton::getEdge(uint64_t index) const { return edges.getConcreteEdges()[index]; }
+Edge const& Automaton::getEdge(uint64_t index) const {
+    return edges.getConcreteEdges()[index];
+}
 
 Automaton::Edges Automaton::getEdgesFromLocation(std::string const& name) {
     auto it = locationToIndex.find(name);
@@ -252,9 +284,13 @@ Automaton::ConstEdges Automaton::getEdgesFromLocation(uint64_t locationIndex, ui
     return ConstEdges(it1, it2);
 }
 
-EdgeContainer const& Automaton::getEdgeContainer() const { return edges; }
+EdgeContainer const& Automaton::getEdgeContainer() const {
+    return edges;
+}
 
-EdgeContainer& Automaton::getEdgeContainer() { return edges; }
+EdgeContainer& Automaton::getEdgeContainer() {
+    return edges;
+}
 
 void Automaton::addEdge(Edge const& edge) {
     STORM_LOG_THROW(edge.getSourceLocationIndex() < locations.size(), storm::exceptions::InvalidArgumentException,
@@ -271,15 +307,25 @@ void Automaton::addEdge(Edge const& edge) {
     }
 }
 
-std::vector<Edge>& Automaton::getEdges() { return edges.getConcreteEdges(); }
+std::vector<Edge>& Automaton::getEdges() {
+    return edges.getConcreteEdges();
+}
 
-std::vector<Edge> const& Automaton::getEdges() const { return edges.getConcreteEdges(); }
+std::vector<Edge> const& Automaton::getEdges() const {
+    return edges.getConcreteEdges();
+}
 
-std::set<uint64_t> Automaton::getActionIndices() const { return edges.getActionIndices(); }
+std::set<uint64_t> Automaton::getActionIndices() const {
+    return edges.getActionIndices();
+}
 
-uint64_t Automaton::getNumberOfLocations() const { return locations.size(); }
+uint64_t Automaton::getNumberOfLocations() const {
+    return locations.size();
+}
 
-uint64_t Automaton::getNumberOfEdges() const { return edges.size(); }
+uint64_t Automaton::getNumberOfEdges() const {
+    return edges.size();
+}
 
 bool Automaton::hasRestrictedInitialStates() const {
     if (!hasInitialStatesRestriction()) {
@@ -292,7 +338,9 @@ bool Automaton::hasRestrictedInitialStates() const {
     }
 }
 
-bool Automaton::hasInitialStatesRestriction() const { return initialStatesRestriction.isInitialized(); }
+bool Automaton::hasInitialStatesRestriction() const {
+    return initialStatesRestriction.isInitialized();
+}
 
 bool Automaton::hasNonTrivialInitialStates() const {
     if (this->hasInitialStatesRestriction() && !this->getInitialStatesRestriction().isTrue()) {
@@ -308,7 +356,9 @@ bool Automaton::hasNonTrivialInitialStates() const {
     return false;
 }
 
-storm::expressions::Expression const& Automaton::getInitialStatesRestriction() const { return initialStatesRestriction; }
+storm::expressions::Expression const& Automaton::getInitialStatesRestriction() const {
+    return initialStatesRestriction;
+}
 
 void Automaton::setInitialStatesRestriction(storm::expressions::Expression const& initialStatesRestriction) {
     this->initialStatesRestriction = initialStatesRestriction;
@@ -367,7 +417,9 @@ bool Automaton::hasTrivialInitialStatesExpression() const {
     return result;
 }
 
-bool Automaton::hasEdgeLabeledWithActionIndex(uint64_t actionIndex) const { return actionIndices.find(actionIndex) != actionIndices.end(); }
+bool Automaton::hasEdgeLabeledWithActionIndex(uint64_t actionIndex) const {
+    return actionIndices.find(actionIndex) != actionIndices.end();
+}
 
 std::vector<storm::expressions::Expression> Automaton::getAllRangeExpressions() const {
     std::vector<storm::expressions::Expression> result;
@@ -394,7 +446,9 @@ void Automaton::substitute(std::map<storm::expressions::Variable, storm::express
 
     edges.substitute(substitution);
 }
-void Automaton::registerTemplateEdge(std::shared_ptr<TemplateEdge> const& te) { edges.insertTemplateEdge(te); }
+void Automaton::registerTemplateEdge(std::shared_ptr<TemplateEdge> const& te) {
+    edges.insertTemplateEdge(te);
+}
 
 void Automaton::changeAssignmentVariables(std::map<Variable const*, std::reference_wrapper<Variable const>> const& remapping) {
     for (auto& location : locations) {
@@ -431,7 +485,9 @@ bool Automaton::containsVariablesOnlyInProbabilitiesOrTransientAssignments(std::
     return true;
 }
 
-void Automaton::pushEdgeAssignmentsToDestinations() { edges.pushAssignmentsToDestinations(); }
+void Automaton::pushEdgeAssignmentsToDestinations() {
+    edges.pushAssignmentsToDestinations();
+}
 
 void Automaton::pushTransientRealLocationAssignmentsToEdges() {
     std::set<std::shared_ptr<storm::jani::TemplateEdge>> encounteredTemplateEdges;
@@ -476,7 +532,9 @@ bool Automaton::hasTransientEdgeDestinationAssignments() const {
     return false;
 }
 
-void Automaton::liftTransientEdgeDestinationAssignments(int64_t maxLevel) { edges.liftTransientDestinationAssignments(maxLevel); }
+void Automaton::liftTransientEdgeDestinationAssignments(int64_t maxLevel) {
+    edges.liftTransientDestinationAssignments(maxLevel);
+}
 
 bool Automaton::validate() const {
     assert(locationToStartingIndex.size() == locations.size() + 1);
@@ -486,7 +544,9 @@ bool Automaton::validate() const {
     return true;
 }
 
-bool Automaton::usesAssignmentLevels(bool onlyTransient) const { return edges.usesAssignmentLevels(onlyTransient); }
+bool Automaton::usesAssignmentLevels(bool onlyTransient) const {
+    return edges.usesAssignmentLevels(onlyTransient);
+}
 
 bool Automaton::isLinear() const {
     bool result = true;

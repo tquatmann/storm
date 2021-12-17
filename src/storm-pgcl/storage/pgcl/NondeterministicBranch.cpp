@@ -8,8 +8,12 @@ NondeterministicBranch::NondeterministicBranch(std::shared_ptr<storm::pgcl::Pgcl
     rightBranch = right;
 }
 
-void NondeterministicBranch::accept(storm::pgcl::AbstractStatementVisitor& visitor) { visitor.visit(*this); }
+void NondeterministicBranch::accept(storm::pgcl::AbstractStatementVisitor& visitor) {
+    visitor.visit(*this);
+}
 
-bool NondeterministicBranch::isNondet() const { return true; }
+bool NondeterministicBranch::isNondet() const {
+    return true;
+}
 }  // namespace pgcl
 }  // namespace storm

@@ -118,10 +118,12 @@ void SparseItemLabelingParser::parseLabelNames(std::string const& filename, stor
 
         } else if (cnt > 0) {
             // If the next token is #DECLARATION: Just skip it.
-            if (strncmp(buf, "#DECLARATION", cnt) == 0) continue;
+            if (strncmp(buf, "#DECLARATION", cnt) == 0)
+                continue;
 
             // If the next token is #END: Stop the search.
-            if (strncmp(buf, "#END", cnt) == 0) break;
+            if (strncmp(buf, "#END", cnt) == 0)
+                break;
 
             // Otherwise copy the token to the buffer, append a trailing null byte and hand it to labeling.
             strncpy(proposition, buf, cnt);
@@ -164,7 +166,8 @@ void SparseItemLabelingParser::parseDeterministicLabelAssignments(std::string co
                 // The next character is a separator.
                 // If it is a line separator, we continue with next node.
                 // Otherwise, we skip it and try again.
-                if (buf[0] == '\n' || buf[0] == '\r') break;
+                if (buf[0] == '\n' || buf[0] == '\r')
+                    break;
                 buf++;
             } else {
                 // Copy the label to the buffer, null terminate it and add it to labeling.
@@ -230,7 +233,8 @@ void SparseItemLabelingParser::parseNonDeterministicLabelAssignments(std::string
                 // The next character is a separator.
                 // If it is a line separator, we continue with next node.
                 // Otherwise, we skip it and try again.
-                if (buf[0] == '\n' || buf[0] == '\r') break;
+                if (buf[0] == '\n' || buf[0] == '\r')
+                    break;
                 buf++;
             } else {
                 // Copy the label to the buffer, null terminate it and add it to labeling.

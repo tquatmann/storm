@@ -78,6 +78,8 @@ InformationObject::InformationObject() : nrVariables(0), nrAutomata(0), nrEdges(
     // Intentionally left empty
 }
 
-InformationObject collectModelInformation(Model const& model) { return detail::InformationCollector().collect(model); }
+InformationObject collectModelInformation(Model const& model) {
+    return detail::InformationCollector().collect(model);
+}
 }  // namespace jani
 }  // namespace storm

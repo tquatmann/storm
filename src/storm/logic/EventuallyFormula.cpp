@@ -15,27 +15,49 @@ EventuallyFormula::EventuallyFormula(std::shared_ptr<Formula const> const& subfo
                     "Reward accumulations should only be given for time- and reward formulas");
 }
 
-FormulaContext const& EventuallyFormula::getContext() const { return context; }
+FormulaContext const& EventuallyFormula::getContext() const {
+    return context;
+}
 
-bool EventuallyFormula::isEventuallyFormula() const { return true; }
+bool EventuallyFormula::isEventuallyFormula() const {
+    return true;
+}
 
-bool EventuallyFormula::isReachabilityProbabilityFormula() const { return context == FormulaContext::Probability; }
+bool EventuallyFormula::isReachabilityProbabilityFormula() const {
+    return context == FormulaContext::Probability;
+}
 
-bool EventuallyFormula::isReachabilityRewardFormula() const { return context == FormulaContext::Reward; }
+bool EventuallyFormula::isReachabilityRewardFormula() const {
+    return context == FormulaContext::Reward;
+}
 
-bool EventuallyFormula::isReachabilityTimeFormula() const { return context == FormulaContext::Time; }
+bool EventuallyFormula::isReachabilityTimeFormula() const {
+    return context == FormulaContext::Time;
+}
 
-bool EventuallyFormula::isProbabilityPathFormula() const { return this->isReachabilityProbabilityFormula(); }
+bool EventuallyFormula::isProbabilityPathFormula() const {
+    return this->isReachabilityProbabilityFormula();
+}
 
-bool EventuallyFormula::isRewardPathFormula() const { return this->isReachabilityRewardFormula(); }
+bool EventuallyFormula::isRewardPathFormula() const {
+    return this->isReachabilityRewardFormula();
+}
 
-bool EventuallyFormula::isTimePathFormula() const { return this->isReachabilityTimeFormula(); }
+bool EventuallyFormula::isTimePathFormula() const {
+    return this->isReachabilityTimeFormula();
+}
 
-bool EventuallyFormula::hasRewardAccumulation() const { return rewardAccumulation.is_initialized(); }
+bool EventuallyFormula::hasRewardAccumulation() const {
+    return rewardAccumulation.is_initialized();
+}
 
-RewardAccumulation const& EventuallyFormula::getRewardAccumulation() const { return rewardAccumulation.get(); }
+RewardAccumulation const& EventuallyFormula::getRewardAccumulation() const {
+    return rewardAccumulation.get();
+}
 
-boost::any EventuallyFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any EventuallyFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 std::ostream& EventuallyFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

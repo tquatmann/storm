@@ -11,14 +11,18 @@ StaticStatePriorityQueue::StaticStatePriorityQueue(std::vector<storm::storage::s
     // Intentionally left empty.
 }
 
-bool StaticStatePriorityQueue::hasNext() const { return currentPosition < sortedStates.size(); }
+bool StaticStatePriorityQueue::hasNext() const {
+    return currentPosition < sortedStates.size();
+}
 
 storm::storage::sparse::state_type StaticStatePriorityQueue::pop() {
     ++currentPosition;
     return sortedStates[currentPosition - 1];
 }
 
-std::size_t StaticStatePriorityQueue::size() const { return sortedStates.size() - currentPosition; }
+std::size_t StaticStatePriorityQueue::size() const {
+    return sortedStates.size() - currentPosition;
+}
 
 }  // namespace stateelimination
 }  // namespace solver

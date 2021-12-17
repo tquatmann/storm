@@ -14,18 +14,24 @@ ModuleSettings::ModuleSettings(std::string const& moduleName) : moduleName(modul
     // Intentionally left empty.
 }
 
-bool ModuleSettings::check() const { return true; }
+bool ModuleSettings::check() const {
+    return true;
+}
 
 void ModuleSettings::finalize() {}
 
-void ModuleSettings::set(std::string const& name) { return this->getOption(name).setHasOptionBeenSet(); }
+void ModuleSettings::set(std::string const& name) {
+    return this->getOption(name).setHasOptionBeenSet();
+}
 
 void ModuleSettings::unset(std::string const& name) {
     return this->getOption(name).setHasOptionBeenSet(false);
     return this->getOption(name).setHasOptionBeenSetWithModulePrefix(false);
 }
 
-std::vector<std::shared_ptr<Option>> const& ModuleSettings::getOptions() const { return this->options; }
+std::vector<std::shared_ptr<Option>> const& ModuleSettings::getOptions() const {
+    return this->options;
+}
 
 Option const& ModuleSettings::getOption(std::string const& longName) const {
     auto optionIterator = this->optionMap.find(longName);
@@ -41,7 +47,9 @@ Option& ModuleSettings::getOption(std::string const& longName) {
     return *optionIterator->second;
 }
 
-std::string const& ModuleSettings::getModuleName() const { return this->moduleName; }
+std::string const& ModuleSettings::getModuleName() const {
+    return this->moduleName;
+}
 
 std::unique_ptr<storm::settings::SettingMemento> ModuleSettings::overrideOption(std::string const& name, bool requiredStatus) {
     bool currentStatus = this->isSet(name);
@@ -53,7 +61,9 @@ std::unique_ptr<storm::settings::SettingMemento> ModuleSettings::overrideOption(
     return std::unique_ptr<storm::settings::SettingMemento>(new storm::settings::SettingMemento(*this, name, currentStatus));
 }
 
-bool ModuleSettings::isSet(std::string const& optionName) const { return this->getOption(optionName).getHasOptionBeenSet(); }
+bool ModuleSettings::isSet(std::string const& optionName) const {
+    return this->getOption(optionName).getHasOptionBeenSet();
+}
 
 void ModuleSettings::addOption(std::shared_ptr<Option> const& option) {
     auto optionIterator = this->optionMap.find(option->getLongName());

@@ -542,13 +542,21 @@ storm::jani::Model ToJaniConverter::convert(storm::prism::Program const& program
     return janiModel;
 }
 
-bool ToJaniConverter::labelsWereRenamed() const { return !labelRenaming.empty(); }
+bool ToJaniConverter::labelsWereRenamed() const {
+    return !labelRenaming.empty();
+}
 
-bool ToJaniConverter::rewardModelsWereRenamed() const { return !rewardModelRenaming.empty(); }
+bool ToJaniConverter::rewardModelsWereRenamed() const {
+    return !rewardModelRenaming.empty();
+}
 
-std::map<std::string, std::string> const& ToJaniConverter::getLabelRenaming() const { return labelRenaming; }
+std::map<std::string, std::string> const& ToJaniConverter::getLabelRenaming() const {
+    return labelRenaming;
+}
 
-std::map<std::string, std::string> const& ToJaniConverter::getRewardModelRenaming() const { return rewardModelRenaming; }
+std::map<std::string, std::string> const& ToJaniConverter::getRewardModelRenaming() const {
+    return rewardModelRenaming;
+}
 
 storm::jani::Property ToJaniConverter::applyRenaming(storm::jani::Property const& property) const {
     storm::jani::Property result;

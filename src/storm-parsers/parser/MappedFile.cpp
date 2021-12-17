@@ -91,11 +91,17 @@ MappedFile::~MappedFile() {
 #endif
 }
 
-char const* MappedFile::getData() const { return data; }
+char const* MappedFile::getData() const {
+    return data;
+}
 
-char const* MappedFile::getDataEnd() const { return dataEnd; }
+char const* MappedFile::getDataEnd() const {
+    return dataEnd;
+}
 
-std::size_t MappedFile::getDataSize() const { return this->getDataEnd() - this->getData(); }
+std::size_t MappedFile::getDataSize() const {
+    return this->getDataEnd() - this->getData();
+}
 
 }  // namespace parser
 }  // namespace storm

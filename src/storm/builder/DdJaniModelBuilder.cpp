@@ -217,7 +217,9 @@ class ParameterCreator<Type, storm::RationalFunction> {
         return RationalFunctionType(variable);
     }
 
-    std::set<storm::RationalFunctionVariable> const& getParameters() const { return parameters; }
+    std::set<storm::RationalFunctionVariable> const& getParameters() const {
+        return parameters;
+    }
 
    private:
     // A mapping from our variables to carl's.
@@ -739,11 +741,17 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
             // Intentionally left empty.
         }
 
-        uint64_t getLowestLocalNondeterminismVariable() const { return localNondeterminismVariables.first; }
+        uint64_t getLowestLocalNondeterminismVariable() const {
+            return localNondeterminismVariables.first;
+        }
 
-        uint64_t getHighestLocalNondeterminismVariable() const { return localNondeterminismVariables.second; }
+        uint64_t getHighestLocalNondeterminismVariable() const {
+            return localNondeterminismVariables.second;
+        }
 
-        std::pair<uint64_t, uint64_t> const& getLocalNondeterminismVariables() const { return localNondeterminismVariables; }
+        std::pair<uint64_t, uint64_t> const& getLocalNondeterminismVariables() const {
+            return localNondeterminismVariables;
+        }
 
         ActionDd multiplyTransitions(storm::dd::Add<Type, ValueType> const& factor) const {
             return ActionDd(guard, transitions * factor, transientEdgeAssignments, localNondeterminismVariables, variableToWritingFragment, illegalFragment);
@@ -799,9 +807,13 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
             illegalFragment &= condition;
         }
 
-        bool isInputEnabled() const { return inputEnabled; }
+        bool isInputEnabled() const {
+            return inputEnabled;
+        }
 
-        void setIsInputEnabled() { inputEnabled = true; }
+        void setIsInputEnabled() {
+            inputEnabled = true;
+        }
 
         // A DD that represents all states that have this action enabled.
         storm::dd::Bdd<Type> guard;
@@ -843,9 +855,13 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
             // Intentionally left empty.
         }
 
-        void setMarkovian(bool markovian) { this->markovian = markovian; }
+        void setMarkovian(bool markovian) {
+            this->markovian = markovian;
+        }
 
-        bool isMarkovian() const { return this->markovian; }
+        bool isMarkovian() const {
+            return this->markovian;
+        }
 
         bool operator==(ActionIdentification const& other) const {
             bool result = actionIndex == other.actionIndex && markovian == other.markovian;
@@ -890,13 +906,21 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
             // Intentionally left empty.
         }
 
-        uint64_t getLowestLocalNondeterminismVariable() const { return localNondeterminismVariables.first; }
+        uint64_t getLowestLocalNondeterminismVariable() const {
+            return localNondeterminismVariables.first;
+        }
 
-        void setLowestLocalNondeterminismVariable(uint64_t newValue) { localNondeterminismVariables.first = newValue; }
+        void setLowestLocalNondeterminismVariable(uint64_t newValue) {
+            localNondeterminismVariables.first = newValue;
+        }
 
-        uint64_t getHighestLocalNondeterminismVariable() const { return localNondeterminismVariables.second; }
+        uint64_t getHighestLocalNondeterminismVariable() const {
+            return localNondeterminismVariables.second;
+        }
 
-        void setHighestLocalNondeterminismVariable(uint64_t newValue) { localNondeterminismVariables.second = newValue; }
+        void setHighestLocalNondeterminismVariable(uint64_t newValue) {
+            localNondeterminismVariables.second = newValue;
+        }
 
         void extendLocalNondeterminismVariables(std::pair<uint64_t, uint64_t> const& localNondeterminismVariables) {
             setLowestLocalNondeterminismVariable(std::min(localNondeterminismVariables.first, getLowestLocalNondeterminismVariable()));
@@ -949,9 +973,13 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
             // Intentionally left empty.
         }
 
-        void setMarkovian(bool markovian) { this->markovian = markovian; }
+        void setMarkovian(bool markovian) {
+            this->markovian = markovian;
+        }
 
-        bool isMarkovian() const { return this->markovian; }
+        bool isMarkovian() const {
+            return this->markovian;
+        }
 
         bool operator==(ActionInstantiation const& other) const {
             bool result = actionIndex == other.actionIndex && markovian == other.markovian;
@@ -1376,7 +1404,9 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
         return combineUnsynchronizedActions(action1, action2);
     }
 
-    ActionDd combineUnsynchronizedActions(ActionDd action1, ActionDd action2) { return combineUnsynchronizedActions({action1, action2}); }
+    ActionDd combineUnsynchronizedActions(ActionDd action1, ActionDd action2) {
+        return combineUnsynchronizedActions({action1, action2});
+    }
 
     ActionDd combineUnsynchronizedActions(std::vector<ActionDd> actions) {
         STORM_LOG_TRACE("Combining unsynchronized actions.");

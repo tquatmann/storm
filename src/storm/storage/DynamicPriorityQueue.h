@@ -22,13 +22,21 @@ class DynamicPriorityQueue {
         std::make_heap(container.begin(), container.end(), compare);
     }
 
-    void fix() { std::make_heap(container.begin(), container.end(), compare); }
+    void fix() {
+        std::make_heap(container.begin(), container.end(), compare);
+    }
 
-    bool empty() const { return container.empty(); }
+    bool empty() const {
+        return container.empty();
+    }
 
-    std::size_t size() const { return container.size(); }
+    std::size_t size() const {
+        return container.size();
+    }
 
-    const T& top() const { return container.front(); }
+    const T& top() const {
+        return container.front();
+    }
 
     void push(const T& item) {
         container.push_back(item);
@@ -51,7 +59,9 @@ class DynamicPriorityQueue {
         return item;
     }
 
-    Container getContainer() const { return container; }
+    Container getContainer() const {
+        return container;
+    }
 };
 }  // namespace storage
 }  // namespace storm

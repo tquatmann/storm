@@ -16,19 +16,33 @@ QuantileFormula::~QuantileFormula() {
     // Intentionally left empty
 }
 
-bool QuantileFormula::isQuantileFormula() const { return true; }
+bool QuantileFormula::isQuantileFormula() const {
+    return true;
+}
 
-bool QuantileFormula::hasQuantitativeResult() const { return true; }
+bool QuantileFormula::hasQuantitativeResult() const {
+    return true;
+}
 
-bool QuantileFormula::hasNumericalResult() const { return !isMultiDimensional(); }
+bool QuantileFormula::hasNumericalResult() const {
+    return !isMultiDimensional();
+}
 
-bool QuantileFormula::hasParetoCurveResult() const { return isMultiDimensional(); }
+bool QuantileFormula::hasParetoCurveResult() const {
+    return isMultiDimensional();
+}
 
-Formula const& QuantileFormula::getSubformula() const { return *subformula; }
+Formula const& QuantileFormula::getSubformula() const {
+    return *subformula;
+}
 
-uint64_t QuantileFormula::getDimension() const { return boundVariables.size(); }
+uint64_t QuantileFormula::getDimension() const {
+    return boundVariables.size();
+}
 
-bool QuantileFormula::isMultiDimensional() const { return getDimension() > 1; }
+bool QuantileFormula::isMultiDimensional() const {
+    return getDimension() > 1;
+}
 
 storm::expressions::Variable const& QuantileFormula::getBoundVariable() const {
     STORM_LOG_THROW(boundVariables.size() == 1, storm::exceptions::InvalidArgumentException,
@@ -42,9 +56,13 @@ storm::expressions::Variable const& QuantileFormula::getBoundVariable(uint64_t i
     return boundVariables[index];
 }
 
-std::vector<storm::expressions::Variable> const& QuantileFormula::getBoundVariables() const { return boundVariables; }
+std::vector<storm::expressions::Variable> const& QuantileFormula::getBoundVariables() const {
+    return boundVariables;
+}
 
-boost::any QuantileFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any QuantileFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void QuantileFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     subformula->gatherAtomicExpressionFormulas(atomicExpressionFormulas);

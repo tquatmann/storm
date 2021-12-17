@@ -12,9 +12,13 @@ FormulaInformation FormulaInformationVisitor::getInformation(Formula const& f, b
 
 FormulaInformationVisitor::FormulaInformationVisitor(bool recurseIntoOperators) : recurseIntoOperators(recurseIntoOperators) {}
 
-boost::any FormulaInformationVisitor::visit(AtomicExpressionFormula const&, boost::any const&) const { return FormulaInformation(); }
+boost::any FormulaInformationVisitor::visit(AtomicExpressionFormula const&, boost::any const&) const {
+    return FormulaInformation();
+}
 
-boost::any FormulaInformationVisitor::visit(AtomicLabelFormula const&, boost::any const&) const { return FormulaInformation(); }
+boost::any FormulaInformationVisitor::visit(AtomicLabelFormula const&, boost::any const&) const {
+    return FormulaInformation();
+}
 
 boost::any FormulaInformationVisitor::visit(BinaryBooleanStateFormula const& f, boost::any const& data) const {
     return boost::any_cast<FormulaInformation>(f.getLeftSubformula().accept(*this, data))
@@ -27,7 +31,9 @@ boost::any FormulaInformationVisitor::visit(BinaryBooleanPathFormula const& f, b
     return result.setContainsComplexPathFormula();
 }
 
-boost::any FormulaInformationVisitor::visit(BooleanLiteralFormula const&, boost::any const&) const { return FormulaInformation(); }
+boost::any FormulaInformationVisitor::visit(BooleanLiteralFormula const&, boost::any const&) const {
+    return FormulaInformation();
+}
 
 boost::any FormulaInformationVisitor::visit(BoundedUntilFormula const& f, boost::any const& data) const {
     FormulaInformation result;
@@ -80,7 +86,9 @@ boost::any FormulaInformationVisitor::visit(EventuallyFormula const& f, boost::a
     return result;
 }
 
-boost::any FormulaInformationVisitor::visit(TimeOperatorFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any FormulaInformationVisitor::visit(TimeOperatorFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
 boost::any FormulaInformationVisitor::visit(GloballyFormula const& f, boost::any const& data) const {
     FormulaInformation result = boost::any_cast<FormulaInformation>(f.getSubformula().accept(*this, data));
@@ -90,9 +98,13 @@ boost::any FormulaInformationVisitor::visit(GloballyFormula const& f, boost::any
     return result;
 }
 
-boost::any FormulaInformationVisitor::visit(GameFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any FormulaInformationVisitor::visit(GameFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
-boost::any FormulaInformationVisitor::visit(InstantaneousRewardFormula const&, boost::any const&) const { return FormulaInformation(); }
+boost::any FormulaInformationVisitor::visit(InstantaneousRewardFormula const&, boost::any const&) const {
+    return FormulaInformation();
+}
 
 boost::any FormulaInformationVisitor::visit(LongRunAverageOperatorFormula const& f, boost::any const& data) const {
     FormulaInformation result;
@@ -151,9 +163,13 @@ boost::any FormulaInformationVisitor::visit(RewardOperatorFormula const& f, boos
     }
 }
 
-boost::any FormulaInformationVisitor::visit(TotalRewardFormula const&, boost::any const&) const { return FormulaInformation(); }
+boost::any FormulaInformationVisitor::visit(TotalRewardFormula const&, boost::any const&) const {
+    return FormulaInformation();
+}
 
-boost::any FormulaInformationVisitor::visit(UnaryBooleanStateFormula const& f, boost::any const& data) const { return f.getSubformula().accept(*this, data); }
+boost::any FormulaInformationVisitor::visit(UnaryBooleanStateFormula const& f, boost::any const& data) const {
+    return f.getSubformula().accept(*this, data);
+}
 
 boost::any FormulaInformationVisitor::visit(UnaryBooleanPathFormula const& f, boost::any const& data) const {
     FormulaInformation result = boost::any_cast<FormulaInformation>(f.getSubformula().accept(*this, data));

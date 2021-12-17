@@ -5,7 +5,9 @@
 namespace storm {
 namespace gspn {
 
-void Transition::setInputArcMultiplicity(storm::gspn::Place const& place, uint64_t multiplicity) { inputMultiplicities[place.getID()] = multiplicity; }
+void Transition::setInputArcMultiplicity(storm::gspn::Place const& place, uint64_t multiplicity) {
+    inputMultiplicities[place.getID()] = multiplicity;
+}
 
 bool Transition::removeInputArc(storm::gspn::Place const& place) {
     if (existsInputArc(place)) {
@@ -16,9 +18,13 @@ bool Transition::removeInputArc(storm::gspn::Place const& place) {
     }
 }
 
-bool Transition::existsInputArc(storm::gspn::Place const& place) const { return inputMultiplicities.end() != inputMultiplicities.find(place.getID()); }
+bool Transition::existsInputArc(storm::gspn::Place const& place) const {
+    return inputMultiplicities.end() != inputMultiplicities.find(place.getID());
+}
 
-void Transition::setOutputArcMultiplicity(storm::gspn::Place const& place, uint64_t multiplicity) { outputMultiplicities[place.getID()] = multiplicity; }
+void Transition::setOutputArcMultiplicity(storm::gspn::Place const& place, uint64_t multiplicity) {
+    outputMultiplicities[place.getID()] = multiplicity;
+}
 
 bool Transition::removeOutputArc(storm::gspn::Place const& place) {
     if (existsOutputArc(place)) {
@@ -29,7 +35,9 @@ bool Transition::removeOutputArc(storm::gspn::Place const& place) {
     }
 }
 
-bool Transition::existsOutputArc(storm::gspn::Place const& place) const { return outputMultiplicities.end() != outputMultiplicities.find(place.getID()); }
+bool Transition::existsOutputArc(storm::gspn::Place const& place) const {
+    return outputMultiplicities.end() != outputMultiplicities.find(place.getID());
+}
 
 void Transition::setInhibitionArcMultiplicity(storm::gspn::Place const& place, uint64_t multiplicity) {
     inhibitionMultiplicities[place.getID()] = multiplicity;
@@ -88,15 +96,25 @@ storm::gspn::Marking Transition::fire(storm::gspn::Marking const& marking) const
     return newMarking;
 }
 
-void Transition::setName(std::string const& name) { this->name = name; }
+void Transition::setName(std::string const& name) {
+    this->name = name;
+}
 
-std::string const& Transition::getName() const { return this->name; }
+std::string const& Transition::getName() const {
+    return this->name;
+}
 
-std::unordered_map<uint64_t, uint64_t> const& Transition::getInputPlaces() const { return inputMultiplicities; }
+std::unordered_map<uint64_t, uint64_t> const& Transition::getInputPlaces() const {
+    return inputMultiplicities;
+}
 
-std::unordered_map<uint64_t, uint64_t> const& Transition::getOutputPlaces() const { return outputMultiplicities; }
+std::unordered_map<uint64_t, uint64_t> const& Transition::getOutputPlaces() const {
+    return outputMultiplicities;
+}
 
-std::unordered_map<uint64_t, uint64_t> const& Transition::getInhibitionPlaces() const { return inhibitionMultiplicities; }
+std::unordered_map<uint64_t, uint64_t> const& Transition::getInhibitionPlaces() const {
+    return inhibitionMultiplicities;
+}
 
 uint64_t Transition::getInputArcMultiplicity(storm::gspn::Place const& place) const {
     if (existsInputArc(place)) {
@@ -122,8 +140,12 @@ uint64_t Transition::getOutputArcMultiplicity(storm::gspn::Place const& place) c
     }
 }
 
-void Transition::setPriority(uint64_t const& priority) { this->priority = priority; }
+void Transition::setPriority(uint64_t const& priority) {
+    this->priority = priority;
+}
 
-uint64_t Transition::getPriority() const { return this->priority; }
+uint64_t Transition::getPriority() const {
+    return this->priority;
+}
 }  // namespace gspn
 }  // namespace storm

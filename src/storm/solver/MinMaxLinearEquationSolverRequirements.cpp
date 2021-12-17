@@ -42,15 +42,25 @@ MinMaxLinearEquationSolverRequirements& MinMaxLinearEquationSolverRequirements::
     return *this;
 }
 
-SolverRequirement const& MinMaxLinearEquationSolverRequirements::acyclic() const { return acyclicRequirement; }
+SolverRequirement const& MinMaxLinearEquationSolverRequirements::acyclic() const {
+    return acyclicRequirement;
+}
 
-SolverRequirement const& MinMaxLinearEquationSolverRequirements::uniqueSolution() const { return uniqueSolutionRequirement; }
+SolverRequirement const& MinMaxLinearEquationSolverRequirements::uniqueSolution() const {
+    return uniqueSolutionRequirement;
+}
 
-SolverRequirement const& MinMaxLinearEquationSolverRequirements::validInitialScheduler() const { return validInitialSchedulerRequirement; }
+SolverRequirement const& MinMaxLinearEquationSolverRequirements::validInitialScheduler() const {
+    return validInitialSchedulerRequirement;
+}
 
-SolverRequirement const& MinMaxLinearEquationSolverRequirements::lowerBounds() const { return lowerBoundsRequirement; }
+SolverRequirement const& MinMaxLinearEquationSolverRequirements::lowerBounds() const {
+    return lowerBoundsRequirement;
+}
 
-SolverRequirement const& MinMaxLinearEquationSolverRequirements::upperBounds() const { return upperBoundsRequirement; }
+SolverRequirement const& MinMaxLinearEquationSolverRequirements::upperBounds() const {
+    return upperBoundsRequirement;
+}
 
 SolverRequirement const& MinMaxLinearEquationSolverRequirements::get(Element const& element) const {
     switch (element) {
@@ -73,15 +83,25 @@ SolverRequirement const& MinMaxLinearEquationSolverRequirements::get(Element con
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentException, "Unknown ElementType");
 }
 
-void MinMaxLinearEquationSolverRequirements::clearAcyclic() { acyclicRequirement.clear(); }
+void MinMaxLinearEquationSolverRequirements::clearAcyclic() {
+    acyclicRequirement.clear();
+}
 
-void MinMaxLinearEquationSolverRequirements::clearUniqueSolution() { uniqueSolutionRequirement.clear(); }
+void MinMaxLinearEquationSolverRequirements::clearUniqueSolution() {
+    uniqueSolutionRequirement.clear();
+}
 
-void MinMaxLinearEquationSolverRequirements::clearValidInitialScheduler() { validInitialSchedulerRequirement.clear(); }
+void MinMaxLinearEquationSolverRequirements::clearValidInitialScheduler() {
+    validInitialSchedulerRequirement.clear();
+}
 
-void MinMaxLinearEquationSolverRequirements::clearLowerBounds() { lowerBoundsRequirement.clear(); }
+void MinMaxLinearEquationSolverRequirements::clearLowerBounds() {
+    lowerBoundsRequirement.clear();
+}
 
-void MinMaxLinearEquationSolverRequirements::clearUpperBounds() { upperBoundsRequirement.clear(); }
+void MinMaxLinearEquationSolverRequirements::clearUpperBounds() {
+    upperBoundsRequirement.clear();
+}
 
 void MinMaxLinearEquationSolverRequirements::clearBounds() {
     clearLowerBounds();

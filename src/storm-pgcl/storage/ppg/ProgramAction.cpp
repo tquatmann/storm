@@ -14,6 +14,8 @@ ProbabilisticProgramAction::ProbabilisticProgramAction(ProgramGraph* graph, Prog
     }
 }
 
-std::string const& ProbabilisticProgramAction::getVariableName() const { return getProgramGraph().getVariableName(var); }
+std::string const& ProbabilisticProgramAction::getVariableName() const {
+    return getProgramGraph().getVariableName(var);
+}
 }  // namespace ppg
 }  // namespace storm

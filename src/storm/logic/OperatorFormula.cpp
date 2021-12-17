@@ -17,16 +17,22 @@ OperatorFormula::OperatorFormula(std::shared_ptr<Formula const> const& subformul
     // Intentionally left empty.
 }
 
-bool OperatorFormula::hasBound() const { return static_cast<bool>(operatorInformation.bound); }
+bool OperatorFormula::hasBound() const {
+    return static_cast<bool>(operatorInformation.bound);
+}
 
 ComparisonType OperatorFormula::getComparisonType() const {
     STORM_LOG_ASSERT(operatorInformation.bound.is_initialized(), "Cannot get Formula comparison type (has no bound?)");
     return operatorInformation.bound.get().comparisonType;
 }
 
-void OperatorFormula::setComparisonType(ComparisonType newComparisonType) { operatorInformation.bound.get().comparisonType = newComparisonType; }
+void OperatorFormula::setComparisonType(ComparisonType newComparisonType) {
+    operatorInformation.bound.get().comparisonType = newComparisonType;
+}
 
-storm::expressions::Expression const& OperatorFormula::getThreshold() const { return operatorInformation.bound.get().threshold; }
+storm::expressions::Expression const& OperatorFormula::getThreshold() const {
+    return operatorInformation.bound.get().threshold;
+}
 
 template<>
 double OperatorFormula::getThresholdAs() const {
@@ -49,29 +55,53 @@ storm::RationalFunction OperatorFormula::getThresholdAs() const {
     return storm::utility::convertNumber<storm::RationalFunction>(operatorInformation.bound.get().threshold.evaluateAsRational());
 }
 
-void OperatorFormula::setThreshold(storm::expressions::Expression const& newThreshold) { operatorInformation.bound.get().threshold = newThreshold; }
+void OperatorFormula::setThreshold(storm::expressions::Expression const& newThreshold) {
+    operatorInformation.bound.get().threshold = newThreshold;
+}
 
-Bound const& OperatorFormula::getBound() const { return operatorInformation.bound.get(); }
+Bound const& OperatorFormula::getBound() const {
+    return operatorInformation.bound.get();
+}
 
-void OperatorFormula::setBound(Bound const& newBound) { operatorInformation.bound = newBound; }
+void OperatorFormula::setBound(Bound const& newBound) {
+    operatorInformation.bound = newBound;
+}
 
-void OperatorFormula::removeBound() { operatorInformation.bound = boost::none; }
+void OperatorFormula::removeBound() {
+    operatorInformation.bound = boost::none;
+}
 
-bool OperatorFormula::hasOptimalityType() const { return static_cast<bool>(operatorInformation.optimalityType); }
+bool OperatorFormula::hasOptimalityType() const {
+    return static_cast<bool>(operatorInformation.optimalityType);
+}
 
-OptimizationDirection const& OperatorFormula::getOptimalityType() const { return operatorInformation.optimalityType.get(); }
+OptimizationDirection const& OperatorFormula::getOptimalityType() const {
+    return operatorInformation.optimalityType.get();
+}
 
-void OperatorFormula::setOptimalityType(storm::solver::OptimizationDirection newOptimalityType) { operatorInformation.optimalityType = newOptimalityType; }
+void OperatorFormula::setOptimalityType(storm::solver::OptimizationDirection newOptimalityType) {
+    operatorInformation.optimalityType = newOptimalityType;
+}
 
-void OperatorFormula::removeOptimalityType() { operatorInformation.optimalityType = boost::none; }
+void OperatorFormula::removeOptimalityType() {
+    operatorInformation.optimalityType = boost::none;
+}
 
-bool OperatorFormula::isOperatorFormula() const { return true; }
+bool OperatorFormula::isOperatorFormula() const {
+    return true;
+}
 
-OperatorInformation const& OperatorFormula::getOperatorInformation() const { return operatorInformation; }
+OperatorInformation const& OperatorFormula::getOperatorInformation() const {
+    return operatorInformation;
+}
 
-bool OperatorFormula::hasQualitativeResult() const { return this->hasBound(); }
+bool OperatorFormula::hasQualitativeResult() const {
+    return this->hasBound();
+}
 
-bool OperatorFormula::hasQuantitativeResult() const { return !this->hasBound(); }
+bool OperatorFormula::hasQuantitativeResult() const {
+    return !this->hasBound();
+}
 
 void OperatorFormula::gatherUsedVariables(std::set<storm::expressions::Variable>& usedVariables) const {
     UnaryStateFormula::gatherUsedVariables(usedVariables);

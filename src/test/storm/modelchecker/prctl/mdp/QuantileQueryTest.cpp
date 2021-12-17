@@ -58,7 +58,9 @@ class QuantileQueryTest : public ::testing::Test {
    public:
     typedef typename TestType::ValueType ValueType;
     QuantileQueryTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
+    storm::Environment const& env() const {
+        return _environment;
+    }
     ValueType parseNumber(std::string const& input) const {
         if (input.find("inf") != std::string::npos) {
             return storm::utility::infinity<ValueType>();

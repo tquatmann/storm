@@ -12,11 +12,17 @@ RenamingComposition::RenamingComposition(std::shared_ptr<Composition> const& sub
     // Intentionally left empty.
 }
 
-boost::any RenamingComposition::accept(CompositionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any RenamingComposition::accept(CompositionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-Composition const& RenamingComposition::getSubcomposition() const { return *sub; }
+Composition const& RenamingComposition::getSubcomposition() const {
+    return *sub;
+}
 
-std::map<std::string, std::string> const& RenamingComposition::getActionRenaming() const { return actionRenaming; }
+std::map<std::string, std::string> const& RenamingComposition::getActionRenaming() const {
+    return actionRenaming;
+}
 
 void RenamingComposition::writeToStream(std::ostream& stream) const {
     std::vector<std::string> renamings;

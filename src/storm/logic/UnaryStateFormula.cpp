@@ -8,9 +8,13 @@ UnaryStateFormula::UnaryStateFormula(std::shared_ptr<Formula const> subformula) 
     // Intentionally left empty.
 }
 
-bool UnaryStateFormula::isUnaryStateFormula() const { return true; }
+bool UnaryStateFormula::isUnaryStateFormula() const {
+    return true;
+}
 
-Formula const& UnaryStateFormula::getSubformula() const { return *subformula; }
+Formula const& UnaryStateFormula::getSubformula() const {
+    return *subformula;
+}
 
 void UnaryStateFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     this->getSubformula().gatherAtomicExpressionFormulas(atomicExpressionFormulas);

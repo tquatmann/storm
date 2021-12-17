@@ -8,9 +8,13 @@ ExprtkCompiledExpression::ExprtkCompiledExpression(CompiledExpressionType const&
     // Intentionally left empty.
 }
 
-ExprtkCompiledExpression::CompiledExpressionType const& ExprtkCompiledExpression::getCompiledExpression() const { return exprtkCompiledExpression; }
+ExprtkCompiledExpression::CompiledExpressionType const& ExprtkCompiledExpression::getCompiledExpression() const {
+    return exprtkCompiledExpression;
+}
 
-bool ExprtkCompiledExpression::isExprtkCompiledExpression() const { return true; }
+bool ExprtkCompiledExpression::isExprtkCompiledExpression() const {
+    return true;
+}
 
 }  // namespace expressions
 }  // namespace storm

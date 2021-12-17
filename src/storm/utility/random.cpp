@@ -11,9 +11,13 @@ RandomProbabilityGenerator<double>::RandomProbabilityGenerator() : distribution(
 
 RandomProbabilityGenerator<double>::RandomProbabilityGenerator(uint64_t seed) : distribution(0.0, 1.0), engine(seed) {}
 
-double RandomProbabilityGenerator<double>::random() { return distribution(engine); }
+double RandomProbabilityGenerator<double>::random() {
+    return distribution(engine);
+}
 
-uint64_t RandomProbabilityGenerator<double>::random_uint(uint64_t min, uint64_t max) { return std::uniform_int_distribution<uint64_t>(min, max)(engine); }
+uint64_t RandomProbabilityGenerator<double>::random_uint(uint64_t min, uint64_t max) {
+    return std::uniform_int_distribution<uint64_t>(min, max)(engine);
+}
 
 RandomProbabilityGenerator<RationalNumber>::RandomProbabilityGenerator() : distribution(0, std::numeric_limits<uint64_t>::max()) {
     std::random_device rd;
@@ -32,10 +36,14 @@ uint64_t RandomProbabilityGenerator<RationalNumber>::random_uint(uint64_t min, u
 
 BernoulliDistributionGenerator::BernoulliDistributionGenerator(double prob) : distribution(prob) {}
 
-bool BernoulliDistributionGenerator::random(boost::mt19937& engine) { return distribution(engine); }
+bool BernoulliDistributionGenerator::random(boost::mt19937& engine) {
+    return distribution(engine);
+}
 
 ExponentialDistributionGenerator::ExponentialDistributionGenerator(double rate) : distribution(rate) {}
 
-double ExponentialDistributionGenerator::random(boost::mt19937& engine) { return distribution(engine); }
+double ExponentialDistributionGenerator::random(boost::mt19937& engine) {
+    return distribution(engine);
+}
 }  // namespace utility
 }  // namespace storm

@@ -20,9 +20,13 @@ Property::Property(std::string const& name, FilterExpression const& fe, std::set
     // Intentionally left empty.
 }
 
-std::string const& Property::getName() const { return this->name; }
+std::string const& Property::getName() const {
+    return this->name;
+}
 
-std::string const& Property::getComment() const { return this->comment; }
+std::string const& Property::getComment() const {
+    return this->comment;
+}
 
 std::string Property::asPrismSyntax() const {
     std::stringstream stream;
@@ -73,15 +77,25 @@ Property Property::substituteRewardModelNames(std::map<std::string, std::string>
     return Property(name, filterExpression.substituteRewardModelNames(rewardModelNameSubstitution), undefinedConstants, comment);
 }
 
-Property Property::clone() const { return Property(name, filterExpression.clone(), undefinedConstants, comment); }
+Property Property::clone() const {
+    return Property(name, filterExpression.clone(), undefinedConstants, comment);
+}
 
-FilterExpression const& Property::getFilter() const { return this->filterExpression; }
+FilterExpression const& Property::getFilter() const {
+    return this->filterExpression;
+}
 
-std::shared_ptr<storm::logic::Formula const> Property::getRawFormula() const { return this->filterExpression.getFormula(); }
+std::shared_ptr<storm::logic::Formula const> Property::getRawFormula() const {
+    return this->filterExpression.getFormula();
+}
 
-std::set<storm::expressions::Variable> const& Property::getUndefinedConstants() const { return undefinedConstants; }
+std::set<storm::expressions::Variable> const& Property::getUndefinedConstants() const {
+    return undefinedConstants;
+}
 
-bool Property::containsUndefinedConstants() const { return !undefinedConstants.empty(); }
+bool Property::containsUndefinedConstants() const {
+    return !undefinedConstants.empty();
+}
 
 std::set<storm::expressions::Variable> Property::getUsedVariablesAndConstants() const {
     auto res = getUndefinedConstants();
@@ -108,7 +122,9 @@ void Property::gatherReferencedRewardModels(std::set<std::string>& rewardModelNa
     getFilter().getStatesFormula()->gatherReferencedRewardModels(rewardModelNames);
 }
 
-std::ostream& operator<<(std::ostream& os, Property const& p) { return os << "(" << p.getName() << "): " << p.getFilter(); }
+std::ostream& operator<<(std::ostream& os, Property const& p) {
+    return os << "(" << p.getName() << "): " << p.getFilter();
+}
 
 }  // namespace jani
 }  // namespace storm

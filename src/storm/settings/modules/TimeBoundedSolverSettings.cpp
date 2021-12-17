@@ -50,11 +50,17 @@ TimeBoundedSolverSettings::TimeBoundedSolverSettings() : ModuleSettings(moduleNa
             .build());
 }
 
-bool TimeBoundedSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool TimeBoundedSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double TimeBoundedSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double TimeBoundedSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool TimeBoundedSolverSettings::isRelativePrecision() const { return !this->getOption(absoluteOptionName).getHasOptionBeenSet(); }
+bool TimeBoundedSolverSettings::isRelativePrecision() const {
+    return !this->getOption(absoluteOptionName).getHasOptionBeenSet();
+}
 
 storm::solver::MaBoundedReachabilityMethod TimeBoundedSolverSettings::getMaMethod() const {
     std::string techniqueAsString = this->getOption(maMethodOptionName).getArgumentByName("name").getValueAsString();
@@ -69,7 +75,9 @@ bool TimeBoundedSolverSettings::isMaMethodSetFromDefaultValue() const {
            this->getOption(maMethodOptionName).getArgumentByName("name").wasSetFromDefaultValue();
 }
 
-double TimeBoundedSolverSettings::getUnifPlusKappa() const { return this->getOption(unifPlusKappaOptionName).getArgumentByName("kappa").getValueAsDouble(); }
+double TimeBoundedSolverSettings::getUnifPlusKappa() const {
+    return this->getOption(unifPlusKappaOptionName).getArgumentByName("kappa").getValueAsDouble();
+}
 
 }  // namespace modules
 }  // namespace settings

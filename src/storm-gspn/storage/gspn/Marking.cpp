@@ -16,7 +16,9 @@ Marking::Marking(uint_fast64_t const& numberOfPlaces, std::map<uint_fast64_t, ui
     this->marking = bitvector;
 }
 
-uint_fast64_t Marking::getNumberOfPlaces() const { return this->numberOfPlaces; }
+uint_fast64_t Marking::getNumberOfPlaces() const {
+    return this->numberOfPlaces;
+}
 
 void Marking::setNumberOfTokensAt(uint_fast64_t const& place, uint_fast64_t const& numberOfTokens) {
     uint_fast64_t index = 0;

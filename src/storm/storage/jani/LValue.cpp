@@ -17,15 +17,25 @@ LValue::LValue(storm::jani::Variable const& variable, std::vector<storm::express
     // Intentionally left empty
 }
 
-bool LValue::isVariable() const { return arrayIndexVector.empty(); }
+bool LValue::isVariable() const {
+    return arrayIndexVector.empty();
+}
 
-bool LValue::isArray() const { return variable->getType().isArrayType(); }
+bool LValue::isArray() const {
+    return variable->getType().isArrayType();
+}
 
-storm::jani::Variable const& LValue::getVariable() const { return *variable; }
+storm::jani::Variable const& LValue::getVariable() const {
+    return *variable;
+}
 
-bool LValue::isArrayAccess() const { return !isVariable(); }
+bool LValue::isArrayAccess() const {
+    return !isVariable();
+}
 
-bool LValue::isFullArrayAccess() const { return isArrayAccess() && variable->getType().asArrayType().getNestingDegree() == arrayIndexVector.size(); }
+bool LValue::isFullArrayAccess() const {
+    return isArrayAccess() && variable->getType().asArrayType().getNestingDegree() == arrayIndexVector.size();
+}
 
 std::vector<storm::expressions::Expression>& LValue::getArrayIndexVector() {
     STORM_LOG_ASSERT(isArray(), "Tried to get the array index of an LValue that does not refer to an array.");
@@ -57,7 +67,9 @@ void LValue::addArrayAccessIndex(storm::expressions::Expression const& index) {
     arrayIndexVector.push_back(index);
 }
 
-bool LValue::isTransient() const { return variable->isTransient(); }
+bool LValue::isTransient() const {
+    return variable->isTransient();
+}
 
 LValue LValue::changeAssignmentVariables(std::map<Variable const*, std::reference_wrapper<Variable const>> const& remapping) const {
     auto it = remapping.find(variable);

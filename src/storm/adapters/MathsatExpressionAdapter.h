@@ -24,7 +24,9 @@ namespace std {
 // Define hashing operator for MathSAT's declarations.
 template<>
 struct hash<msat_decl> {
-    size_t operator()(msat_decl const& declaration) const { return hash<void*>()(declaration.repr); }
+    size_t operator()(msat_decl const& declaration) const {
+        return hash<void*>()(declaration.repr);
+    }
 };
 }  // namespace std
 
@@ -83,12 +85,16 @@ class MathsatExpressionAdapter : public storm::expressions::ExpressionVisitor {
         return msat_make_constant(env, variableExpressionPair->second);
     }
 
-    bool hasAdditionalConstraints() const { return !additionalConstraints.empty(); }
+    bool hasAdditionalConstraints() const {
+        return !additionalConstraints.empty();
+    }
 
     /*!
      * Retrieves additional constraints that were created because of encodings using auxiliary variables.
      */
-    std::vector<msat_term> const& getAdditionalConstraints() const { return additionalConstraints; }
+    std::vector<msat_term> const& getAdditionalConstraints() const {
+        return additionalConstraints;
+    }
 
     /*!
      * Retrieves the variable that is associated with the given MathSAT variable declaration.
@@ -102,7 +108,9 @@ class MathsatExpressionAdapter : public storm::expressions::ExpressionVisitor {
         return declarationVariablePair->second;
     }
 
-    std::unordered_map<storm::expressions::Variable, msat_decl> const& getAllDeclaredVariables() const { return variableToDeclarationMapping; }
+    std::unordered_map<storm::expressions::Variable, msat_decl> const& getAllDeclaredVariables() const {
+        return variableToDeclarationMapping;
+    }
 
     virtual boost::any visit(storm::expressions::BinaryBooleanFunctionExpression const& expression, boost::any const& data) override {
         msat_term leftResult = boost::any_cast<msat_term>(expression.getFirstOperand()->accept(*this, data));

@@ -2,7 +2,9 @@
 
 namespace storm {
 namespace expressions {
-std::string ToExprtkStringVisitor::toString(Expression const& expression) { return toString(expression.getBaseExpressionPointer().get()); }
+std::string ToExprtkStringVisitor::toString(Expression const& expression) {
+    return toString(expression.getBaseExpressionPointer().get());
+}
 
 std::string ToExprtkStringVisitor::toString(BaseExpression const* expression) {
     stream.str("");

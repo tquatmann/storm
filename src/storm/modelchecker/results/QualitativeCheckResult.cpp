@@ -17,6 +17,8 @@ void QualitativeCheckResult::complement() {
     STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Unable to perform logical 'not' on the check result.");
 }
 
-bool QualitativeCheckResult::isQualitative() const { return true; }
+bool QualitativeCheckResult::isQualitative() const {
+    return true;
+}
 }  // namespace modelchecker
 }  // namespace storm

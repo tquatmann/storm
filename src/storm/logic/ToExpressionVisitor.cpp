@@ -15,7 +15,9 @@ storm::expressions::Expression ToExpressionVisitor::toExpression(Formula const& 
     return boost::any_cast<storm::expressions::Expression>(result);
 }
 
-boost::any ToExpressionVisitor::visit(AtomicExpressionFormula const& f, boost::any const&) const { return f.getExpression(); }
+boost::any ToExpressionVisitor::visit(AtomicExpressionFormula const& f, boost::any const&) const {
+    return f.getExpression();
+}
 
 boost::any ToExpressionVisitor::visit(AtomicLabelFormula const& f, boost::any const&) const {
     STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException,

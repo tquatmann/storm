@@ -8,7 +8,9 @@ InitialConstruct::InitialConstruct(storm::expressions::Expression initialStatesE
     // Intentionally left empty.
 }
 
-storm::expressions::Expression InitialConstruct::getInitialStatesExpression() const { return this->initialStatesExpression; }
+storm::expressions::Expression InitialConstruct::getInitialStatesExpression() const {
+    return this->initialStatesExpression;
+}
 
 InitialConstruct InitialConstruct::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     return InitialConstruct(this->getInitialStatesExpression().substitute(substitution));

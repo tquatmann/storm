@@ -11,31 +11,57 @@ BoundedType::BoundedType(const BaseType& type, storm::expressions::Expression co
     // Intentionally left empty
 }
 
-bool BoundedType::isBoundedType() const { return true; }
+bool BoundedType::isBoundedType() const {
+    return true;
+}
 
-BoundedType::BaseType const& BoundedType::getBaseType() const { return type; }
+BoundedType::BaseType const& BoundedType::getBaseType() const {
+    return type;
+}
 
-bool BoundedType::isIntegerType() const { return type == BaseType::Int; }
+bool BoundedType::isIntegerType() const {
+    return type == BaseType::Int;
+}
 
-bool BoundedType::isRealType() const { return type == BaseType::Real; }
+bool BoundedType::isRealType() const {
+    return type == BaseType::Real;
+}
 
-bool BoundedType::isNumericalType() const { return true; }
+bool BoundedType::isNumericalType() const {
+    return true;
+}
 
-void BoundedType::setLowerBound(storm::expressions::Expression const& expression) { this->lowerBound = expression; }
+void BoundedType::setLowerBound(storm::expressions::Expression const& expression) {
+    this->lowerBound = expression;
+}
 
-void BoundedType::setUpperBound(storm::expressions::Expression const& expression) { this->upperBound = expression; }
+void BoundedType::setUpperBound(storm::expressions::Expression const& expression) {
+    this->upperBound = expression;
+}
 
-bool BoundedType::hasLowerBound() const { return this->lowerBound.isInitialized(); }
+bool BoundedType::hasLowerBound() const {
+    return this->lowerBound.isInitialized();
+}
 
-bool BoundedType::hasUpperBound() const { return this->upperBound.isInitialized(); }
+bool BoundedType::hasUpperBound() const {
+    return this->upperBound.isInitialized();
+}
 
-storm::expressions::Expression& BoundedType::getLowerBound() { return this->lowerBound; }
+storm::expressions::Expression& BoundedType::getLowerBound() {
+    return this->lowerBound;
+}
 
-storm::expressions::Expression& BoundedType::getUpperBound() { return this->upperBound; }
+storm::expressions::Expression& BoundedType::getUpperBound() {
+    return this->upperBound;
+}
 
-storm::expressions::Expression const& BoundedType::getLowerBound() const { return this->lowerBound; }
+storm::expressions::Expression const& BoundedType::getLowerBound() const {
+    return this->lowerBound;
+}
 
-storm::expressions::Expression const& BoundedType::getUpperBound() const { return this->upperBound; }
+storm::expressions::Expression const& BoundedType::getUpperBound() const {
+    return this->upperBound;
+}
 
 void BoundedType::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     JaniType::substitute(substitution);
@@ -57,7 +83,9 @@ std::string BoundedType::getStringRepresentation() const {
     STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled bounded type.");
 }
 
-std::unique_ptr<JaniType> BoundedType::clone() const { return std::make_unique<BoundedType>(*this); }
+std::unique_ptr<JaniType> BoundedType::clone() const {
+    return std::make_unique<BoundedType>(*this);
+}
 
 }  // namespace jani
 }  // namespace storm

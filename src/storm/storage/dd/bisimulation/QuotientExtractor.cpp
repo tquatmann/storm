@@ -309,7 +309,9 @@ class InternalSparseQuotientExtractorBase {
         }
     }
 
-    storm::storage::BitVector extractSetAll(storm::dd::Bdd<DdType> const& set) { return (set && representatives).toVector(this->odd); }
+    storm::storage::BitVector extractSetAll(storm::dd::Bdd<DdType> const& set) {
+        return (set && representatives).toVector(this->odd);
+    }
 
     storm::storage::BitVector extractSetExists(storm::dd::Bdd<DdType> const& set) {
         return ((set && partitionBdd).existsAbstract(model.getRowVariables()) && partitionBdd && representatives)
@@ -370,7 +372,9 @@ class InternalSparseQuotientExtractorBase {
         return builder.build();
     }
 
-    void addMatrixEntry(uint64_t row, uint64_t column, ExportValueType const& value) { this->matrixEntries[row].emplace_back(column, value); }
+    void addMatrixEntry(uint64_t row, uint64_t column, ExportValueType const& value) {
+        this->matrixEntries[row].emplace_back(column, value);
+    }
 
     void createMatrixEntryStorage() {
         if (matrixEntriesCreated) {
@@ -385,7 +389,9 @@ class InternalSparseQuotientExtractorBase {
         }
     }
 
-    void assignRowToState(uint64_t row, uint64_t state) { rowToState[row] = state; }
+    void assignRowToState(uint64_t row, uint64_t state) {
+        rowToState[row] = state;
+    }
 
     storm::models::symbolic::Model<DdType, ValueType> const& model;
 

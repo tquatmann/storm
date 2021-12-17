@@ -111,7 +111,9 @@ boost::any LinearityCheckVisitor::visit(BinaryRelationExpression const& expressi
     }
 }
 
-boost::any LinearityCheckVisitor::visit(VariableExpression const&, boost::any const&) { return LinearityStatus::LinearContainsVariables; }
+boost::any LinearityCheckVisitor::visit(VariableExpression const&, boost::any const&) {
+    return LinearityStatus::LinearContainsVariables;
+}
 
 boost::any LinearityCheckVisitor::visit(UnaryBooleanFunctionExpression const& expression, boost::any const& data) {
     bool booleanIsLinear = boost::any_cast<bool>(data);
@@ -147,8 +149,12 @@ boost::any LinearityCheckVisitor::visit(BooleanLiteralExpression const&, boost::
     }
 }
 
-boost::any LinearityCheckVisitor::visit(IntegerLiteralExpression const&, boost::any const&) { return LinearityStatus::LinearWithoutVariables; }
+boost::any LinearityCheckVisitor::visit(IntegerLiteralExpression const&, boost::any const&) {
+    return LinearityStatus::LinearWithoutVariables;
+}
 
-boost::any LinearityCheckVisitor::visit(RationalLiteralExpression const&, boost::any const&) { return LinearityStatus::LinearWithoutVariables; }
+boost::any LinearityCheckVisitor::visit(RationalLiteralExpression const&, boost::any const&) {
+    return LinearityStatus::LinearWithoutVariables;
+}
 }  // namespace expressions
 }  // namespace storm

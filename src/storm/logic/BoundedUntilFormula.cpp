@@ -57,11 +57,17 @@ BoundedUntilFormula::BoundedUntilFormula(std::vector<std::shared_ptr<Formula con
     }
 }
 
-bool BoundedUntilFormula::isBoundedUntilFormula() const { return true; }
+bool BoundedUntilFormula::isBoundedUntilFormula() const {
+    return true;
+}
 
-bool BoundedUntilFormula::isProbabilityPathFormula() const { return true; }
+bool BoundedUntilFormula::isProbabilityPathFormula() const {
+    return true;
+}
 
-boost::any BoundedUntilFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BoundedUntilFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void BoundedUntilFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     if (hasMultiDimensionalSubformulas()) {
@@ -128,9 +134,13 @@ void BoundedUntilFormula::gatherUsedVariables(std::set<storm::expressions::Varia
     }
 }
 
-bool BoundedUntilFormula::hasQualitativeResult() const { return false; }
+bool BoundedUntilFormula::hasQualitativeResult() const {
+    return false;
+}
 
-bool BoundedUntilFormula::hasQuantitativeResult() const { return true; }
+bool BoundedUntilFormula::hasQuantitativeResult() const {
+    return true;
+}
 
 bool BoundedUntilFormula::isMultiDimensional() const {
     assert(timeBoundReference.size() != 0);
@@ -143,7 +153,9 @@ bool BoundedUntilFormula::hasMultiDimensionalSubformulas() const {
     return leftSubformula.size() > 1;
 }
 
-unsigned BoundedUntilFormula::getDimension() const { return timeBoundReference.size(); }
+unsigned BoundedUntilFormula::getDimension() const {
+    return timeBoundReference.size();
+}
 
 Formula const& BoundedUntilFormula::getLeftSubformula() const {
     STORM_LOG_ASSERT(leftSubformula.size() == 1, "The left subformula is not unique.");
@@ -193,7 +205,9 @@ bool BoundedUntilFormula::hasLowerBound() const {
     return false;
 }
 
-bool BoundedUntilFormula::hasLowerBound(unsigned i) const { return static_cast<bool>(lowerBound.at(i)); }
+bool BoundedUntilFormula::hasLowerBound(unsigned i) const {
+    return static_cast<bool>(lowerBound.at(i));
+}
 
 bool BoundedUntilFormula::hasIntegerLowerBound(unsigned i) const {
     if (!hasLowerBound(i)) {
@@ -202,7 +216,9 @@ bool BoundedUntilFormula::hasIntegerLowerBound(unsigned i) const {
     return lowerBound.at(i).get().getBound().hasIntegerType();
 }
 
-bool BoundedUntilFormula::isUpperBoundStrict(unsigned i) const { return upperBound.at(i).get().isStrict(); }
+bool BoundedUntilFormula::isUpperBoundStrict(unsigned i) const {
+    return upperBound.at(i).get().isStrict();
+}
 
 bool BoundedUntilFormula::hasUpperBound() const {
     for (auto const& ub : upperBound) {
@@ -213,13 +229,21 @@ bool BoundedUntilFormula::hasUpperBound() const {
     return false;
 }
 
-bool BoundedUntilFormula::hasUpperBound(unsigned i) const { return static_cast<bool>(upperBound.at(i)); }
+bool BoundedUntilFormula::hasUpperBound(unsigned i) const {
+    return static_cast<bool>(upperBound.at(i));
+}
 
-bool BoundedUntilFormula::hasIntegerUpperBound(unsigned i) const { return upperBound.at(i).get().getBound().hasIntegerType(); }
+bool BoundedUntilFormula::hasIntegerUpperBound(unsigned i) const {
+    return upperBound.at(i).get().getBound().hasIntegerType();
+}
 
-storm::expressions::Expression const& BoundedUntilFormula::getLowerBound(unsigned i) const { return lowerBound.at(i).get().getBound(); }
+storm::expressions::Expression const& BoundedUntilFormula::getLowerBound(unsigned i) const {
+    return lowerBound.at(i).get().getBound();
+}
 
-storm::expressions::Expression const& BoundedUntilFormula::getUpperBound(unsigned i) const { return upperBound.at(i).get().getBound(); }
+storm::expressions::Expression const& BoundedUntilFormula::getUpperBound(unsigned i) const {
+    return upperBound.at(i).get().getBound();
+}
 
 template<>
 double BoundedUntilFormula::getLowerBound(unsigned i) const {

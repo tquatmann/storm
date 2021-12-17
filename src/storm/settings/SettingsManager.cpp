@@ -661,9 +661,13 @@ std::map<std::string, std::vector<std::string>> SettingsManager::parseConfigFile
     return result;
 }
 
-SettingsManager const& manager() { return SettingsManager::manager(); }
+SettingsManager const& manager() {
+    return SettingsManager::manager();
+}
 
-SettingsManager& mutableManager() { return SettingsManager::manager(); }
+SettingsManager& mutableManager() {
+    return SettingsManager::manager();
+}
 
 storm::settings::modules::BuildSettings& mutableBuildSettings() {
     return dynamic_cast<storm::settings::modules::BuildSettings&>(mutableManager().getModule(storm::settings::modules::BuildSettings::moduleName));

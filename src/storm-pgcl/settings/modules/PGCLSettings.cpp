@@ -58,35 +58,55 @@ PGCLSettings::PGCLSettings() : ModuleSettings(moduleName) {
             .build());
 }
 
-bool PGCLSettings::isPgclFileSet() const { return this->getOption(pgclFileOptionName).getHasOptionBeenSet(); }
+bool PGCLSettings::isPgclFileSet() const {
+    return this->getOption(pgclFileOptionName).getHasOptionBeenSet();
+}
 
-std::string PGCLSettings::getPgclFilename() const { return this->getOption(pgclFileOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string PGCLSettings::getPgclFilename() const {
+    return this->getOption(pgclFileOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool PGCLSettings::isToJaniSet() const { return this->getOption(pgclToJaniOptionName).getHasOptionBeenSet(); }
+bool PGCLSettings::isToJaniSet() const {
+    return this->getOption(pgclToJaniOptionName).getHasOptionBeenSet();
+}
 
-std::string PGCLSettings::getWriteToJaniFilename() const { return this->getOption(pgclToJaniOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string PGCLSettings::getWriteToJaniFilename() const {
+    return this->getOption(pgclToJaniOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool PGCLSettings::isProgramGraphToDotSet() const { return this->getOption(programGraphToDotOptionName).getHasOptionBeenSet(); }
+bool PGCLSettings::isProgramGraphToDotSet() const {
+    return this->getOption(programGraphToDotOptionName).getHasOptionBeenSet();
+}
 
 std::string PGCLSettings::getProgramGraphDotOutputFilename() const {
     return this->getOption(programGraphToDotOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool PGCLSettings::isProgramVariableRestrictionSet() const { return this->getOption(programVariableRestrictionsOptionName).getHasOptionBeenSet(); }
+bool PGCLSettings::isProgramVariableRestrictionSet() const {
+    return this->getOption(programVariableRestrictionsOptionName).getHasOptionBeenSet();
+}
 
 std::string PGCLSettings::getProgramVariableRestrictions() const {
     return this->getOption(programVariableRestrictionsOptionName).getArgumentByName("description").getValueAsString();
 }
 
-bool PGCLSettings::isPropertyInputSet() const { return this->getOption(propertyOptionName).getHasOptionBeenSet(); }
+bool PGCLSettings::isPropertyInputSet() const {
+    return this->getOption(propertyOptionName).getHasOptionBeenSet();
+}
 
-std::string PGCLSettings::getPropertyInput() const { return this->getOption(propertyOptionName).getArgumentByName("property or filename").getValueAsString(); }
+std::string PGCLSettings::getPropertyInput() const {
+    return this->getOption(propertyOptionName).getArgumentByName("property or filename").getValueAsString();
+}
 
-std::string PGCLSettings::getPropertyInputFilter() const { return this->getOption(propertyOptionName).getArgumentByName("filter").getValueAsString(); }
+std::string PGCLSettings::getPropertyInputFilter() const {
+    return this->getOption(propertyOptionName).getArgumentByName("filter").getValueAsString();
+}
 
 void PGCLSettings::finalize() {}
 
-bool PGCLSettings::check() const { return true; }
+bool PGCLSettings::check() const {
+    return true;
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

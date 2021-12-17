@@ -22,15 +22,25 @@ CumulativeRewardFormula::CumulativeRewardFormula(std::vector<TimeBound> const& b
     STORM_LOG_ASSERT(!this->timeBoundReferences.empty(), "No time bounds given.");
 }
 
-bool CumulativeRewardFormula::isCumulativeRewardFormula() const { return true; }
+bool CumulativeRewardFormula::isCumulativeRewardFormula() const {
+    return true;
+}
 
-bool CumulativeRewardFormula::isRewardPathFormula() const { return true; }
+bool CumulativeRewardFormula::isRewardPathFormula() const {
+    return true;
+}
 
-bool CumulativeRewardFormula::isMultiDimensional() const { return getDimension() > 1; }
+bool CumulativeRewardFormula::isMultiDimensional() const {
+    return getDimension() > 1;
+}
 
-unsigned CumulativeRewardFormula::getDimension() const { return timeBoundReferences.size(); }
+unsigned CumulativeRewardFormula::getDimension() const {
+    return timeBoundReferences.size();
+}
 
-boost::any CumulativeRewardFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any CumulativeRewardFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void CumulativeRewardFormula::gatherReferencedRewardModels(std::set<std::string>& referencedRewardModels) const {
     for (unsigned i = 0; i < this->getDimension(); ++i) {
@@ -51,28 +61,36 @@ TimeBoundReference const& CumulativeRewardFormula::getTimeBoundReference() const
     return getTimeBoundReference(0);
 }
 
-TimeBoundReference const& CumulativeRewardFormula::getTimeBoundReference(unsigned i) const { return timeBoundReferences.at(i); }
+TimeBoundReference const& CumulativeRewardFormula::getTimeBoundReference(unsigned i) const {
+    return timeBoundReferences.at(i);
+}
 
 bool CumulativeRewardFormula::isBoundStrict() const {
     STORM_LOG_ASSERT(!isMultiDimensional(), "Cumulative Reward Formula is multi-dimensional.");
     return isBoundStrict(0);
 }
 
-bool CumulativeRewardFormula::isBoundStrict(unsigned i) const { return bounds.at(i).isStrict(); }
+bool CumulativeRewardFormula::isBoundStrict(unsigned i) const {
+    return bounds.at(i).isStrict();
+}
 
 bool CumulativeRewardFormula::hasIntegerBound() const {
     STORM_LOG_ASSERT(!isMultiDimensional(), "Cumulative Reward Formula is multi-dimensional.");
     return hasIntegerBound(0);
 }
 
-bool CumulativeRewardFormula::hasIntegerBound(unsigned i) const { return bounds.at(i).getBound().hasIntegerType(); }
+bool CumulativeRewardFormula::hasIntegerBound(unsigned i) const {
+    return bounds.at(i).getBound().hasIntegerType();
+}
 
 storm::expressions::Expression const& CumulativeRewardFormula::getBound() const {
     STORM_LOG_ASSERT(!isMultiDimensional(), "Cumulative Reward Formula is multi-dimensional.");
     return getBound(0);
 }
 
-storm::expressions::Expression const& CumulativeRewardFormula::getBound(unsigned i) const { return bounds.at(i).getBound(); }
+storm::expressions::Expression const& CumulativeRewardFormula::getBound(unsigned i) const {
+    return bounds.at(i).getBound();
+}
 
 template<typename ValueType>
 ValueType CumulativeRewardFormula::getBound() const {
@@ -121,16 +139,22 @@ uint64_t CumulativeRewardFormula::getNonStrictBound() const {
     }
 }
 
-std::vector<TimeBound> const& CumulativeRewardFormula::getBounds() const { return bounds; }
+std::vector<TimeBound> const& CumulativeRewardFormula::getBounds() const {
+    return bounds;
+}
 
 void CumulativeRewardFormula::checkNoVariablesInBound(storm::expressions::Expression const& bound) {
     STORM_LOG_THROW(!bound.containsVariables(), storm::exceptions::InvalidOperationException,
                     "Cannot evaluate time-bound '" << bound << "' as it contains undefined constants.");
 }
 
-bool CumulativeRewardFormula::hasRewardAccumulation() const { return rewardAccumulation.is_initialized(); }
+bool CumulativeRewardFormula::hasRewardAccumulation() const {
+    return rewardAccumulation.is_initialized();
+}
 
-RewardAccumulation const& CumulativeRewardFormula::getRewardAccumulation() const { return rewardAccumulation.get(); }
+RewardAccumulation const& CumulativeRewardFormula::getRewardAccumulation() const {
+    return rewardAccumulation.get();
+}
 
 std::shared_ptr<CumulativeRewardFormula const> CumulativeRewardFormula::stripRewardAccumulation() const {
     return std::make_shared<CumulativeRewardFormula const>(bounds, timeBoundReferences);

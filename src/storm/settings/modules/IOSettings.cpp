@@ -261,15 +261,25 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool IOSettings::isExportDotSet() const { return this->getOption(exportDotOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportDotSet() const {
+    return this->getOption(exportDotOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExportDotFilename() const { return this->getOption(exportDotOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getExportDotFilename() const {
+    return this->getOption(exportDotOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-size_t IOSettings::getExportDotMaxWidth() const { return this->getOption(exportDotMaxWidthOptionName).getArgumentByName("width").getValueAsUnsignedInteger(); }
+size_t IOSettings::getExportDotMaxWidth() const {
+    return this->getOption(exportDotMaxWidthOptionName).getArgumentByName("width").getValueAsUnsignedInteger();
+}
 
-bool IOSettings::isExportBuildSet() const { return this->getOption(exportBuildOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportBuildSet() const {
+    return this->getOption(exportBuildOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExportBuildFilename() const { return this->getOption(exportBuildOptionName).getArgumentByName("file").getValueAsString(); }
+std::string IOSettings::getExportBuildFilename() const {
+    return this->getOption(exportBuildOptionName).getArgumentByName("file").getValueAsString();
+}
 
 storm::exporter::ModelExportFormat IOSettings::getExportBuildFormat() const {
     auto format = this->getOption(exportBuildOptionName).getArgumentByName("format").getValueAsString();
@@ -280,21 +290,37 @@ storm::exporter::ModelExportFormat IOSettings::getExportBuildFormat() const {
     }
 }
 
-bool IOSettings::isExportJaniDotSet() const { return this->getOption(exportJaniDotOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportJaniDotSet() const {
+    return this->getOption(exportJaniDotOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExportJaniDotFilename() const { return this->getOption(exportJaniDotOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getExportJaniDotFilename() const {
+    return this->getOption(exportJaniDotOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isExportExplicitSet() const { return this->getOption(exportExplicitOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportExplicitSet() const {
+    return this->getOption(exportExplicitOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExportExplicitFilename() const { return this->getOption(exportExplicitOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getExportExplicitFilename() const {
+    return this->getOption(exportExplicitOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isExplicitExportPlaceholdersDisabled() const { return this->getOption(preventDRNPlaceholderOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExplicitExportPlaceholdersDisabled() const {
+    return this->getOption(preventDRNPlaceholderOptionName).getHasOptionBeenSet();
+}
 
-bool IOSettings::isExportDdSet() const { return this->getOption(exportDdOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportDdSet() const {
+    return this->getOption(exportDdOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExportDdFilename() const { return this->getOption(exportDdOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getExportDdFilename() const {
+    return this->getOption(exportDdOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isExportCdfSet() const { return this->getOption(exportCdfOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportCdfSet() const {
+    return this->getOption(exportCdfOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getExportCdfDirectory() const {
     std::string result = this->getOption(exportCdfOptionName).getArgumentByName("directory").getValueAsString();
@@ -304,67 +330,109 @@ std::string IOSettings::getExportCdfDirectory() const {
     return result;
 }
 
-bool IOSettings::isExportSchedulerSet() const { return this->getOption(exportSchedulerOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportSchedulerSet() const {
+    return this->getOption(exportSchedulerOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getExportSchedulerFilename() const {
     return this->getOption(exportSchedulerOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool IOSettings::isExportCheckResultSet() const { return this->getOption(exportCheckResultOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExportCheckResultSet() const {
+    return this->getOption(exportCheckResultOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getExportCheckResultFilename() const {
     return this->getOption(exportCheckResultOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool IOSettings::isExplicitSet() const { return this->getOption(explicitOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExplicitSet() const {
+    return this->getOption(explicitOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getTransitionFilename() const {
     return this->getOption(explicitOptionName).getArgumentByName("transition filename").getValueAsString();
 }
 
-std::string IOSettings::getLabelingFilename() const { return this->getOption(explicitOptionName).getArgumentByName("labeling filename").getValueAsString(); }
+std::string IOSettings::getLabelingFilename() const {
+    return this->getOption(explicitOptionName).getArgumentByName("labeling filename").getValueAsString();
+}
 
-bool IOSettings::isExplicitDRNSet() const { return this->getOption(explicitDrnOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExplicitDRNSet() const {
+    return this->getOption(explicitDrnOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getExplicitDRNFilename() const { return this->getOption(explicitDrnOptionName).getArgumentByName("drn filename").getValueAsString(); }
+std::string IOSettings::getExplicitDRNFilename() const {
+    return this->getOption(explicitDrnOptionName).getArgumentByName("drn filename").getValueAsString();
+}
 
-bool IOSettings::isExplicitIMCASet() const { return this->getOption(explicitImcaOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isExplicitIMCASet() const {
+    return this->getOption(explicitImcaOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getExplicitIMCAFilename() const {
     return this->getOption(explicitImcaOptionName).getArgumentByName("imca filename").getValueAsString();
 }
 
-bool IOSettings::isPrismInputSet() const { return this->getOption(prismInputOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isPrismInputSet() const {
+    return this->getOption(prismInputOptionName).getHasOptionBeenSet();
+}
 
-bool IOSettings::isPrismOrJaniInputSet() const { return isJaniInputSet() || isPrismInputSet(); }
+bool IOSettings::isPrismOrJaniInputSet() const {
+    return isJaniInputSet() || isPrismInputSet();
+}
 
-bool IOSettings::isPrismToJaniSet() const { return this->getOption(prismToJaniOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isPrismToJaniSet() const {
+    return this->getOption(prismToJaniOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getPrismInputFilename() const { return this->getOption(prismInputOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getPrismInputFilename() const {
+    return this->getOption(prismInputOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isJaniInputSet() const { return this->getOption(janiInputOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isJaniInputSet() const {
+    return this->getOption(janiInputOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getJaniInputFilename() const { return this->getOption(janiInputOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getJaniInputFilename() const {
+    return this->getOption(janiInputOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isTransitionRewardsSet() const { return this->getOption(transitionRewardsOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isTransitionRewardsSet() const {
+    return this->getOption(transitionRewardsOptionName).getHasOptionBeenSet();
+}
 
 std::string IOSettings::getTransitionRewardsFilename() const {
     return this->getOption(transitionRewardsOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool IOSettings::isStateRewardsSet() const { return this->getOption(stateRewardsOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isStateRewardsSet() const {
+    return this->getOption(stateRewardsOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getStateRewardsFilename() const { return this->getOption(stateRewardsOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getStateRewardsFilename() const {
+    return this->getOption(stateRewardsOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isChoiceLabelingSet() const { return this->getOption(choiceLabelingOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isChoiceLabelingSet() const {
+    return this->getOption(choiceLabelingOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getChoiceLabelingFilename() const { return this->getOption(choiceLabelingOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string IOSettings::getChoiceLabelingFilename() const {
+    return this->getOption(choiceLabelingOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool IOSettings::isConstantsSet() const { return this->getOption(constantsOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isConstantsSet() const {
+    return this->getOption(constantsOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getConstantDefinitionString() const { return this->getOption(constantsOptionName).getArgumentByName("values").getValueAsString(); }
+std::string IOSettings::getConstantDefinitionString() const {
+    return this->getOption(constantsOptionName).getArgumentByName("values").getValueAsString();
+}
 
-bool IOSettings::isJaniPropertiesSet() const { return this->getOption(janiPropertyOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isJaniPropertiesSet() const {
+    return this->getOption(janiPropertyOptionName).getHasOptionBeenSet();
+}
 
 bool IOSettings::areJaniPropertiesSelected() const {
     return this->getOption(janiPropertyOptionName).getHasOptionBeenSet() &&
@@ -375,19 +443,33 @@ std::vector<std::string> IOSettings::getSelectedJaniProperties() const {
     return storm::parser::parseCommaSeperatedValues(this->getOption(janiPropertyOptionName).getArgumentByName("values").getValueAsString());
 }
 
-bool IOSettings::isPropertySet() const { return this->getOption(propertyOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isPropertySet() const {
+    return this->getOption(propertyOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getProperty() const { return this->getOption(propertyOptionName).getArgumentByName("property or filename").getValueAsString(); }
+std::string IOSettings::getProperty() const {
+    return this->getOption(propertyOptionName).getArgumentByName("property or filename").getValueAsString();
+}
 
-std::string IOSettings::getPropertyFilter() const { return this->getOption(propertyOptionName).getArgumentByName("filter").getValueAsString(); }
+std::string IOSettings::getPropertyFilter() const {
+    return this->getOption(propertyOptionName).getArgumentByName("filter").getValueAsString();
+}
 
-bool IOSettings::isComputeSteadyStateDistributionSet() const { return this->getOption(steadyStateDistrOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isComputeSteadyStateDistributionSet() const {
+    return this->getOption(steadyStateDistrOptionName).getHasOptionBeenSet();
+}
 
-bool IOSettings::isComputeExpectedVisitingTimesSet() const { return this->getOption(expectedVisitingTimesOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isComputeExpectedVisitingTimesSet() const {
+    return this->getOption(expectedVisitingTimesOptionName).getHasOptionBeenSet();
+}
 
-bool IOSettings::isQvbsInputSet() const { return this->getOption(qvbsInputOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isQvbsInputSet() const {
+    return this->getOption(qvbsInputOptionName).getHasOptionBeenSet();
+}
 
-std::string IOSettings::getQvbsModelName() const { return this->getOption(qvbsInputOptionName).getArgumentByName("model").getValueAsString(); }
+std::string IOSettings::getQvbsModelName() const {
+    return this->getOption(qvbsInputOptionName).getArgumentByName("model").getValueAsString();
+}
 
 uint64_t IOSettings::getQvbsInstanceIndex() const {
     return this->getOption(qvbsInputOptionName).getArgumentByName("instance-index").getValueAsUnsignedInteger();
@@ -415,7 +497,9 @@ std::string IOSettings::getQvbsRoot() const {
     return path.getValueAsString();
 }
 
-bool IOSettings::isPropertiesAsMultiSet() const { return this->getOption(propertiesAsMultiOptionName).getHasOptionBeenSet(); }
+bool IOSettings::isPropertiesAsMultiSet() const {
+    return this->getOption(propertiesAsMultiOptionName).getHasOptionBeenSet();
+}
 
 void IOSettings::finalize() {
     STORM_LOG_WARN_COND(!isExportDdSet(), "Option '--" << moduleName << ":" << exportDdOptionName << "' is depreciated. Use '--" << moduleName << ":"

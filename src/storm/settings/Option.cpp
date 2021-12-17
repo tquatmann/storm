@@ -62,7 +62,9 @@ bool Option::isCompatibleWith(Option const& other) {
     return true;
 }
 
-uint_fast64_t Option::getArgumentCount() const { return this->arguments.size(); }
+uint_fast64_t Option::getArgumentCount() const {
+    return this->arguments.size();
+}
 
 ArgumentBase const& Option::getArgument(uint_fast64_t argumentIndex) const {
     STORM_LOG_THROW(argumentIndex < this->getArgumentCount(), storm::exceptions::IllegalArgumentException, "Index of argument is out of bounds.");
@@ -88,25 +90,45 @@ ArgumentBase& Option::getArgumentByName(std::string const& argumentName) {
     return *argumentIterator->second;
 }
 
-std::string const& Option::getLongName() const { return this->longName; }
+std::string const& Option::getLongName() const {
+    return this->longName;
+}
 
-bool Option::getHasShortName() const { return this->hasShortName; }
+bool Option::getHasShortName() const {
+    return this->hasShortName;
+}
 
-std::string const& Option::getShortName() const { return this->shortName; }
+std::string const& Option::getShortName() const {
+    return this->shortName;
+}
 
-std::string const& Option::getDescription() const { return this->description; }
+std::string const& Option::getDescription() const {
+    return this->description;
+}
 
-std::string const& Option::getModuleName() const { return this->moduleName; }
+std::string const& Option::getModuleName() const {
+    return this->moduleName;
+}
 
-bool Option::getIsRequired() const { return this->isRequired; }
+bool Option::getIsRequired() const {
+    return this->isRequired;
+}
 
-bool Option::getRequiresModulePrefix() const { return this->requireModulePrefix; }
+bool Option::getRequiresModulePrefix() const {
+    return this->requireModulePrefix;
+}
 
-bool Option::getIsAdvanced() const { return this->isAdvanced; }
+bool Option::getIsAdvanced() const {
+    return this->isAdvanced;
+}
 
-bool Option::getHasOptionBeenSet() const { return this->hasBeenSet; }
+bool Option::getHasOptionBeenSet() const {
+    return this->hasBeenSet;
+}
 
-bool Option::getHasOptionBeenSetWithModulePrefix() const { return this->hasBeenSetWithModulePrefix; }
+bool Option::getHasOptionBeenSetWithModulePrefix() const {
+    return this->hasBeenSetWithModulePrefix;
+}
 
 Option::Option(std::string const& moduleName, std::string const& longOptionName, std::string const& shortOptionName, bool hasShortOptionName,
                std::string const& optionDescription, bool isOptionRequired, bool requireModulePrefix, bool isAdvanced,
@@ -144,9 +166,13 @@ Option::Option(std::string const& moduleName, std::string const& longOptionName,
     }
 }
 
-void Option::setHasOptionBeenSet(bool newValue) { this->hasBeenSet = newValue; }
+void Option::setHasOptionBeenSet(bool newValue) {
+    this->hasBeenSet = newValue;
+}
 
-void Option::setHasOptionBeenSetWithModulePrefix(bool newValue) { this->hasBeenSetWithModulePrefix = newValue; }
+void Option::setHasOptionBeenSetWithModulePrefix(bool newValue) {
+    this->hasBeenSetWithModulePrefix = newValue;
+}
 
 uint_fast64_t Option::getPrintLength() const {
     uint_fast64_t length = 2;
@@ -167,7 +193,9 @@ uint_fast64_t Option::getPrintLength() const {
     return length;
 }
 
-std::vector<std::shared_ptr<ArgumentBase>> const& Option::getArguments() const { return this->arguments; }
+std::vector<std::shared_ptr<ArgumentBase>> const& Option::getArguments() const {
+    return this->arguments;
+}
 
 std::ostream& operator<<(std::ostream& out, Option const& option) {
     uint_fast64_t width = static_cast<uint_fast64_t>(out.width());

@@ -44,14 +44,18 @@ inline void openFile(std::string const& filepath, std::ifstream& filestream) {
  *
  * @param stream Contains the file handler to close.
  */
-inline void closeFile(std::ofstream& stream) { stream.close(); }
+inline void closeFile(std::ofstream& stream) {
+    stream.close();
+}
 
 /*!
  * Close the given file after reading.
  *
  * @param stream Contains the file handler to close.
  */
-inline void closeFile(std::ifstream& stream) { stream.close(); }
+inline void closeFile(std::ifstream& stream) {
+    stream.close();
+}
 
 /*!
  * Tests whether the given file exists and is readable.

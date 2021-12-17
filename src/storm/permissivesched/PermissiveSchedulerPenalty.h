@@ -12,7 +12,9 @@ class PermissiveSchedulerPenalties {
     std::unordered_map<storage::StateActionPair, double> mPenalties;
 
    public:
-    double get(uint_fast64_t state, uint_fast64_t action) const { return get(storage::StateActionPair(state, action)); }
+    double get(uint_fast64_t state, uint_fast64_t action) const {
+        return get(storage::StateActionPair(state, action));
+    }
 
     double get(storage::StateActionPair const& sap) const {
         auto it = mPenalties.find(sap);
@@ -35,7 +37,9 @@ class PermissiveSchedulerPenalties {
         }
     }
 
-    void clear() { mPenalties.clear(); }
+    void clear() {
+        mPenalties.clear();
+    }
 };
 }  // namespace ps
 }  // namespace storm

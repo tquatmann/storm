@@ -20,19 +20,33 @@ Odd::Odd(std::shared_ptr<Odd> elseNode, uint_fast64_t elseOffset, std::shared_pt
     STORM_LOG_ASSERT(this != elseNode.get() && this != thenNode.get(), "Cyclic ODD.");
 }
 
-Odd const& Odd::getThenSuccessor() const { return *this->thenNode; }
+Odd const& Odd::getThenSuccessor() const {
+    return *this->thenNode;
+}
 
-Odd const& Odd::getElseSuccessor() const { return *this->elseNode; }
+Odd const& Odd::getElseSuccessor() const {
+    return *this->elseNode;
+}
 
-uint_fast64_t Odd::getElseOffset() const { return this->elseOffset; }
+uint_fast64_t Odd::getElseOffset() const {
+    return this->elseOffset;
+}
 
-void Odd::setElseOffset(uint_fast64_t newOffset) { this->elseOffset = newOffset; }
+void Odd::setElseOffset(uint_fast64_t newOffset) {
+    this->elseOffset = newOffset;
+}
 
-uint_fast64_t Odd::getThenOffset() const { return this->thenOffset; }
+uint_fast64_t Odd::getThenOffset() const {
+    return this->thenOffset;
+}
 
-void Odd::setThenOffset(uint_fast64_t newOffset) { this->thenOffset = newOffset; }
+void Odd::setThenOffset(uint_fast64_t newOffset) {
+    this->thenOffset = newOffset;
+}
 
-uint_fast64_t Odd::getTotalOffset() const { return this->elseOffset + this->thenOffset; }
+uint_fast64_t Odd::getTotalOffset() const {
+    return this->elseOffset + this->thenOffset;
+}
 
 uint_fast64_t Odd::getNodeCount() const {
     // If the ODD contains a constant (and thus has no children), the size is 1.
@@ -57,7 +71,9 @@ uint_fast64_t Odd::getHeight() const {
     }
 }
 
-bool Odd::isTerminalNode() const { return this->elseNode == nullptr && this->thenNode == nullptr; }
+bool Odd::isTerminalNode() const {
+    return this->elseNode == nullptr && this->thenNode == nullptr;
+}
 
 template<typename ValueType>
 void Odd::expandExplicitVector(storm::dd::Odd const& newOdd, std::vector<ValueType> const& oldValues, std::vector<ValueType>& newValues) const {
@@ -151,7 +167,9 @@ void Odd::exportToDot(std::string const& filename) const {
     storm::utility::closeFile(dotFile);
 }
 
-void Odd::exportToText(std::string const& filename) const { STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Operation not supported"); }
+void Odd::exportToText(std::string const& filename) const {
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Operation not supported");
+}
 
 void getEncodingRec(Odd const& odd, uint64_t index, uint64_t offset, storm::storage::BitVector& result) {
     if (odd.isTerminalNode()) {

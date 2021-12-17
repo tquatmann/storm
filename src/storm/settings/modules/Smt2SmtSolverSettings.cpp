@@ -34,11 +34,17 @@ Smt2SmtSolverSettings::Smt2SmtSolverSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool Smt2SmtSolverSettings::isSolverCommandSet() const { return this->getOption(solverCommandOption).getHasOptionBeenSet(); }
+bool Smt2SmtSolverSettings::isSolverCommandSet() const {
+    return this->getOption(solverCommandOption).getHasOptionBeenSet();
+}
 
-std::string Smt2SmtSolverSettings::getSolverCommand() const { return this->getOption(solverCommandOption).getArgumentByName("command").getValueAsString(); }
+std::string Smt2SmtSolverSettings::getSolverCommand() const {
+    return this->getOption(solverCommandOption).getArgumentByName("command").getValueAsString();
+}
 
-bool Smt2SmtSolverSettings::isExportSmtLibScriptSet() const { return this->getOption(exportScriptOption).getHasOptionBeenSet(); }
+bool Smt2SmtSolverSettings::isExportSmtLibScriptSet() const {
+    return this->getOption(exportScriptOption).getHasOptionBeenSet();
+}
 
 std::string Smt2SmtSolverSettings::getExportSmtLibScriptPath() const {
     return this->getOption(exportScriptOption).getArgumentByName("path").getValueAsString();

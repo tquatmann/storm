@@ -29,11 +29,17 @@ MaximalEndComponent& MaximalEndComponent::operator=(MaximalEndComponent&& other)
     return *this;
 }
 
-void MaximalEndComponent::addState(uint_fast64_t state, set_type const& choices) { stateToChoicesMapping[state] = choices; }
+void MaximalEndComponent::addState(uint_fast64_t state, set_type const& choices) {
+    stateToChoicesMapping[state] = choices;
+}
 
-void MaximalEndComponent::addState(uint_fast64_t state, set_type&& choices) { stateToChoicesMapping.emplace(state, std::move(choices)); }
+void MaximalEndComponent::addState(uint_fast64_t state, set_type&& choices) {
+    stateToChoicesMapping.emplace(state, std::move(choices));
+}
 
-std::size_t MaximalEndComponent::size() const { return stateToChoicesMapping.size(); }
+std::size_t MaximalEndComponent::size() const {
+    return stateToChoicesMapping.size();
+}
 
 MaximalEndComponent::set_type const& MaximalEndComponent::getChoicesForState(uint_fast64_t state) const {
     auto stateChoicePair = stateToChoicesMapping.find(state);
@@ -118,12 +124,20 @@ std::ostream& operator<<(std::ostream& out, MaximalEndComponent const& component
     return out;
 }
 
-MaximalEndComponent::iterator MaximalEndComponent::begin() { return stateToChoicesMapping.begin(); }
+MaximalEndComponent::iterator MaximalEndComponent::begin() {
+    return stateToChoicesMapping.begin();
+}
 
-MaximalEndComponent::iterator MaximalEndComponent::end() { return stateToChoicesMapping.end(); }
+MaximalEndComponent::iterator MaximalEndComponent::end() {
+    return stateToChoicesMapping.end();
+}
 
-MaximalEndComponent::const_iterator MaximalEndComponent::begin() const { return stateToChoicesMapping.begin(); }
+MaximalEndComponent::const_iterator MaximalEndComponent::begin() const {
+    return stateToChoicesMapping.begin();
+}
 
-MaximalEndComponent::const_iterator MaximalEndComponent::end() const { return stateToChoicesMapping.end(); }
+MaximalEndComponent::const_iterator MaximalEndComponent::end() const {
+    return stateToChoicesMapping.end();
+}
 }  // namespace storage
 }  // namespace storm

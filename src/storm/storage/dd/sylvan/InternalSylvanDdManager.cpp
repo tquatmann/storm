@@ -25,9 +25,13 @@ namespace dd {
 #pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
 
-VOID_TASK_0(gc_start) { STORM_LOG_TRACE("Starting sylvan garbage collection..."); }
+VOID_TASK_0(gc_start) {
+    STORM_LOG_TRACE("Starting sylvan garbage collection...");
+}
 
-VOID_TASK_0(gc_end) { STORM_LOG_TRACE("Sylvan garbage collection done."); }
+VOID_TASK_0(gc_end) {
+    STORM_LOG_TRACE("Sylvan garbage collection done.");
+}
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -121,7 +125,9 @@ InternalDdManager<DdType::Sylvan>::~InternalDdManager() {
     }
 }
 
-InternalBdd<DdType::Sylvan> InternalDdManager<DdType::Sylvan>::getBddOne() const { return InternalBdd<DdType::Sylvan>(this, sylvan::Bdd::bddOne()); }
+InternalBdd<DdType::Sylvan> InternalDdManager<DdType::Sylvan>::getBddOne() const {
+    return InternalBdd<DdType::Sylvan>(this, sylvan::Bdd::bddOne());
+}
 
 template<>
 InternalAdd<DdType::Sylvan, double> InternalDdManager<DdType::Sylvan>::getAddOne() const {
@@ -146,7 +152,9 @@ InternalAdd<DdType::Sylvan, storm::RationalFunction> InternalDdManager<DdType::S
 }
 #endif
 
-InternalBdd<DdType::Sylvan> InternalDdManager<DdType::Sylvan>::getBddZero() const { return InternalBdd<DdType::Sylvan>(this, sylvan::Bdd::bddZero()); }
+InternalBdd<DdType::Sylvan> InternalDdManager<DdType::Sylvan>::getBddZero() const {
+    return InternalBdd<DdType::Sylvan>(this, sylvan::Bdd::bddZero());
+}
 
 InternalBdd<DdType::Sylvan> InternalDdManager<DdType::Sylvan>::getBddEncodingLessOrEqualThan(uint64_t bound, InternalBdd<DdType::Sylvan> const& cube,
                                                                                              uint64_t numberOfDdVariables) const {
@@ -239,7 +247,9 @@ std::vector<InternalBdd<DdType::Sylvan>> InternalDdManager<DdType::Sylvan>::crea
     return result;
 }
 
-bool InternalDdManager<DdType::Sylvan>::supportsOrderedInsertion() const { return false; }
+bool InternalDdManager<DdType::Sylvan>::supportsOrderedInsertion() const {
+    return false;
+}
 
 void InternalDdManager<DdType::Sylvan>::allowDynamicReordering(bool) {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Operation is not supported by sylvan.");
@@ -257,7 +267,9 @@ void InternalDdManager<DdType::Sylvan>::debugCheck() const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Operation is not supported by sylvan.");
 }
 
-uint_fast64_t InternalDdManager<DdType::Sylvan>::getNumberOfDdVariables() const { return nextFreeVariableIndex; }
+uint_fast64_t InternalDdManager<DdType::Sylvan>::getNumberOfDdVariables() const {
+    return nextFreeVariableIndex;
+}
 
 template InternalAdd<DdType::Sylvan, double> InternalDdManager<DdType::Sylvan>::getAddUndefined() const;
 template InternalAdd<DdType::Sylvan, uint_fast64_t> InternalDdManager<DdType::Sylvan>::getAddUndefined() const;

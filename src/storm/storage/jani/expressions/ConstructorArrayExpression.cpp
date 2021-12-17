@@ -53,7 +53,9 @@ void ConstructorArrayExpression::printToStream(std::ostream& stream) const {
     stream << "array[ " << *elementExpression << " | " << indexVar.getExpression() << " < " << *sizeExpression << " ]";
 }
 
-std::shared_ptr<BaseExpression const> ConstructorArrayExpression::size() const { return sizeExpression; }
+std::shared_ptr<BaseExpression const> ConstructorArrayExpression::size() const {
+    return sizeExpression;
+}
 
 std::shared_ptr<BaseExpression const> ConstructorArrayExpression::at(uint64_t i) const {
     std::map<storm::expressions::Variable, storm::expressions::Expression> substitution;
@@ -61,9 +63,13 @@ std::shared_ptr<BaseExpression const> ConstructorArrayExpression::at(uint64_t i)
     return storm::jani::substituteJaniExpression(elementExpression->toExpression(), substitution).getBaseExpressionPointer();
 }
 
-std::shared_ptr<BaseExpression const> const& ConstructorArrayExpression::getElementExpression() const { return elementExpression; }
+std::shared_ptr<BaseExpression const> const& ConstructorArrayExpression::getElementExpression() const {
+    return elementExpression;
+}
 
-storm::expressions::Variable const& ConstructorArrayExpression::getIndexVar() const { return indexVar; }
+storm::expressions::Variable const& ConstructorArrayExpression::getIndexVar() const {
+    return indexVar;
+}
 
 }  // namespace expressions
 }  // namespace storm

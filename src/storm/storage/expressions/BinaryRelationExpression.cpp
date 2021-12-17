@@ -122,11 +122,17 @@ std::shared_ptr<BaseExpression const> BinaryRelationExpression::simplify() const
     }
 }
 
-boost::any BinaryRelationExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any BinaryRelationExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool BinaryRelationExpression::isBinaryRelationExpression() const { return true; }
+bool BinaryRelationExpression::isBinaryRelationExpression() const {
+    return true;
+}
 
-BinaryRelationExpression::RelationType BinaryRelationExpression::getRelationType() const { return this->relationType; }
+BinaryRelationExpression::RelationType BinaryRelationExpression::getRelationType() const {
+    return this->relationType;
+}
 
 void BinaryRelationExpression::printToStream(std::ostream& stream) const {
     stream << "(" << *this->getFirstOperand();

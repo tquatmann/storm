@@ -22,13 +22,21 @@ LabelOrExpression::LabelOrExpression(std::string const& label) : labelOrExpressi
     // Intentionally left empty.
 }
 
-bool LabelOrExpression::isLabel() const { return labelOrExpression.which() == 0; }
+bool LabelOrExpression::isLabel() const {
+    return labelOrExpression.which() == 0;
+}
 
-std::string const& LabelOrExpression::getLabel() const { return boost::get<std::string>(labelOrExpression); }
+std::string const& LabelOrExpression::getLabel() const {
+    return boost::get<std::string>(labelOrExpression);
+}
 
-bool LabelOrExpression::isExpression() const { return labelOrExpression.which() == 1; }
+bool LabelOrExpression::isExpression() const {
+    return labelOrExpression.which() == 1;
+}
 
-storm::expressions::Expression const& LabelOrExpression::getExpression() const { return boost::get<storm::expressions::Expression>(labelOrExpression); }
+storm::expressions::Expression const& LabelOrExpression::getExpression() const {
+    return boost::get<storm::expressions::Expression>(labelOrExpression);
+}
 
 BuilderOptions::BuilderOptions(bool buildAllRewardModels, bool buildAllLabels)
     : buildAllRewardModels(buildAllRewardModels),
@@ -109,52 +117,94 @@ void BuilderOptions::setTerminalStatesFromFormula(storm::logic::Formula const& f
         [this](std::string const& label, bool inverted) { this->addTerminalLabel(label, inverted); });
 }
 
-std::set<std::string> const& BuilderOptions::getRewardModelNames() const { return rewardModelNames; }
+std::set<std::string> const& BuilderOptions::getRewardModelNames() const {
+    return rewardModelNames;
+}
 
-std::set<std::string> const& BuilderOptions::getLabelNames() const { return labelNames; }
+std::set<std::string> const& BuilderOptions::getLabelNames() const {
+    return labelNames;
+}
 
-std::vector<std::pair<std::string, storm::expressions::Expression>> const& BuilderOptions::getExpressionLabels() const { return expressionLabels; }
+std::vector<std::pair<std::string, storm::expressions::Expression>> const& BuilderOptions::getExpressionLabels() const {
+    return expressionLabels;
+}
 
-std::vector<std::pair<LabelOrExpression, bool>> const& BuilderOptions::getTerminalStates() const { return terminalStates; }
+std::vector<std::pair<LabelOrExpression, bool>> const& BuilderOptions::getTerminalStates() const {
+    return terminalStates;
+}
 
-bool BuilderOptions::hasTerminalStates() const { return !terminalStates.empty(); }
+bool BuilderOptions::hasTerminalStates() const {
+    return !terminalStates.empty();
+}
 
-void BuilderOptions::clearTerminalStates() { terminalStates.clear(); }
+void BuilderOptions::clearTerminalStates() {
+    terminalStates.clear();
+}
 
-bool BuilderOptions::isApplyMaximalProgressAssumptionSet() const { return applyMaximalProgressAssumption; }
+bool BuilderOptions::isApplyMaximalProgressAssumptionSet() const {
+    return applyMaximalProgressAssumption;
+}
 
-bool BuilderOptions::isBuildChoiceLabelsSet() const { return buildChoiceLabels; }
+bool BuilderOptions::isBuildChoiceLabelsSet() const {
+    return buildChoiceLabels;
+}
 
-bool BuilderOptions::isBuildStateValuationsSet() const { return buildStateValuations; }
+bool BuilderOptions::isBuildStateValuationsSet() const {
+    return buildStateValuations;
+}
 
-bool BuilderOptions::isBuildObservationValuationsSet() const { return buildObservationValuations; }
+bool BuilderOptions::isBuildObservationValuationsSet() const {
+    return buildObservationValuations;
+}
 
-bool BuilderOptions::isBuildChoiceOriginsSet() const { return buildChoiceOrigins; }
+bool BuilderOptions::isBuildChoiceOriginsSet() const {
+    return buildChoiceOrigins;
+}
 
-bool BuilderOptions::isBuildAllRewardModelsSet() const { return buildAllRewardModels; }
+bool BuilderOptions::isBuildAllRewardModelsSet() const {
+    return buildAllRewardModels;
+}
 
-bool BuilderOptions::isBuildAllLabelsSet() const { return buildAllLabels; }
+bool BuilderOptions::isBuildAllLabelsSet() const {
+    return buildAllLabels;
+}
 
-bool BuilderOptions::isInferObservationsFromActionsSet() const { return inferObservationsFromActions; }
+bool BuilderOptions::isInferObservationsFromActionsSet() const {
+    return inferObservationsFromActions;
+}
 
-bool BuilderOptions::isScaleAndLiftTransitionRewardsSet() const { return scaleAndLiftTransitionRewards; }
+bool BuilderOptions::isScaleAndLiftTransitionRewardsSet() const {
+    return scaleAndLiftTransitionRewards;
+}
 
-bool BuilderOptions::isAddOutOfBoundsStateSet() const { return addOutOfBoundsState; }
+bool BuilderOptions::isAddOutOfBoundsStateSet() const {
+    return addOutOfBoundsState;
+}
 
-uint64_t BuilderOptions::getReservedBitsForUnboundedVariables() const { return reservedBitsForUnboundedVariables; }
+uint64_t BuilderOptions::getReservedBitsForUnboundedVariables() const {
+    return reservedBitsForUnboundedVariables;
+}
 
-bool BuilderOptions::isAddOverlappingGuardLabelSet() const { return addOverlappingGuardsLabel; }
+bool BuilderOptions::isAddOverlappingGuardLabelSet() const {
+    return addOverlappingGuardsLabel;
+}
 
 BuilderOptions& BuilderOptions::setBuildAllRewardModels(bool newValue) {
     buildAllRewardModels = newValue;
     return *this;
 }
 
-bool BuilderOptions::isExplorationChecksSet() const { return explorationChecks; }
+bool BuilderOptions::isExplorationChecksSet() const {
+    return explorationChecks;
+}
 
-bool BuilderOptions::isShowProgressSet() const { return showProgress; }
+bool BuilderOptions::isShowProgressSet() const {
+    return showProgress;
+}
 
-uint64_t BuilderOptions::getShowProgressDelay() const { return showProgressDelay; }
+uint64_t BuilderOptions::getShowProgressDelay() const {
+    return showProgressDelay;
+}
 
 BuilderOptions& BuilderOptions::setExplorationChecks(bool newValue) {
     explorationChecks = newValue;

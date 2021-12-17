@@ -8,11 +8,17 @@ GloballyFormula::GloballyFormula(std::shared_ptr<Formula const> const& subformul
     // Intentionally left empty.
 }
 
-bool GloballyFormula::isGloballyFormula() const { return true; }
+bool GloballyFormula::isGloballyFormula() const {
+    return true;
+}
 
-bool GloballyFormula::isProbabilityPathFormula() const { return true; }
+bool GloballyFormula::isProbabilityPathFormula() const {
+    return true;
+}
 
-boost::any GloballyFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any GloballyFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 std::ostream& GloballyFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

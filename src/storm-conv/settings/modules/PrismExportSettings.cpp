@@ -24,13 +24,19 @@ PrismExportSettings::PrismExportSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, exportSimplifyOptionName, false, "Applies static analysis to simplify the program.").build());
 }
 
-bool PrismExportSettings::isExportFlattenedSet() const { return this->getOption(exportFlattenOptionName).getHasOptionBeenSet(); }
+bool PrismExportSettings::isExportFlattenedSet() const {
+    return this->getOption(exportFlattenOptionName).getHasOptionBeenSet();
+}
 
-bool PrismExportSettings::isSimplifySet() const { return this->getOption(exportSimplifyOptionName).getHasOptionBeenSet(); }
+bool PrismExportSettings::isSimplifySet() const {
+    return this->getOption(exportSimplifyOptionName).getHasOptionBeenSet();
+}
 
 void PrismExportSettings::finalize() {}
 
-bool PrismExportSettings::check() const { return true; }
+bool PrismExportSettings::check() const {
+    return true;
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

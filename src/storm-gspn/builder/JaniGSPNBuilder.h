@@ -17,7 +17,9 @@ class JaniGSPNBuilder {
 
     storm::jani::Model* build(std::string const& automatonName = "gspn_automaton");
 
-    storm::jani::Variable const& getPlaceVariable(uint64_t placeId) const { return *vars.at(placeId); }
+    storm::jani::Variable const& getPlaceVariable(uint64_t placeId) const {
+        return *vars.at(placeId);
+    }
 
     /*!
      * Get standard properties (reachability, time bounded reachability, expected time) for a given atomic formula.

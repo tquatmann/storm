@@ -2,13 +2,21 @@
 
 namespace storm {
 namespace models {
-ModelType ModelBase::getType() const { return modelType; }
+ModelType ModelBase::getType() const {
+    return modelType;
+}
 
-bool ModelBase::isSparseModel() const { return false; }
+bool ModelBase::isSparseModel() const {
+    return false;
+}
 
-bool ModelBase::isSymbolicModel() const { return false; }
+bool ModelBase::isSymbolicModel() const {
+    return false;
+}
 
-bool ModelBase::isOfType(storm::models::ModelType const& modelType) const { return this->getType() == modelType; }
+bool ModelBase::isOfType(storm::models::ModelType const& modelType) const {
+    return this->getType() == modelType;
+}
 
 bool ModelBase::isNondeterministicModel() const {
     for (auto const& type :
@@ -29,12 +37,20 @@ bool ModelBase::isDiscreteTimeModel() const {
     return false;
 }
 
-bool ModelBase::isPartiallyObservable() const { return false; }
+bool ModelBase::isPartiallyObservable() const {
+    return false;
+}
 
-bool ModelBase::supportsParameters() const { return false; }
+bool ModelBase::supportsParameters() const {
+    return false;
+}
 
-bool ModelBase::hasParameters() const { return false; }
+bool ModelBase::hasParameters() const {
+    return false;
+}
 
-bool ModelBase::isExact() const { return false; }
+bool ModelBase::isExact() const {
+    return false;
+}
 }  // namespace models
 }  // namespace storm

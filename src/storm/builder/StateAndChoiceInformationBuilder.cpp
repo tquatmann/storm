@@ -8,9 +8,13 @@ StateAndChoiceInformationBuilder::StateAndChoiceInformationBuilder()
     // Intentionally left empty
 }
 
-void StateAndChoiceInformationBuilder::setBuildChoiceLabels(bool value) { _buildChoiceLabels = value; }
+void StateAndChoiceInformationBuilder::setBuildChoiceLabels(bool value) {
+    _buildChoiceLabels = value;
+}
 
-bool StateAndChoiceInformationBuilder::isBuildChoiceLabels() const { return _buildChoiceLabels; }
+bool StateAndChoiceInformationBuilder::isBuildChoiceLabels() const {
+    return _buildChoiceLabels;
+}
 
 void StateAndChoiceInformationBuilder::addChoiceLabel(std::string const& label, uint_fast64_t choiceIndex) {
     STORM_LOG_ASSERT(_buildChoiceLabels, "Building ChoiceLabels was not enabled.");
@@ -28,9 +32,13 @@ storm::models::sparse::ChoiceLabeling StateAndChoiceInformationBuilder::buildCho
     return result;
 }
 
-void StateAndChoiceInformationBuilder::setBuildChoiceOrigins(bool value) { _buildChoiceOrigins = value; }
+void StateAndChoiceInformationBuilder::setBuildChoiceOrigins(bool value) {
+    _buildChoiceOrigins = value;
+}
 
-bool StateAndChoiceInformationBuilder::isBuildChoiceOrigins() const { return _buildChoiceOrigins; }
+bool StateAndChoiceInformationBuilder::isBuildChoiceOrigins() const {
+    return _buildChoiceOrigins;
+}
 
 void StateAndChoiceInformationBuilder::addChoiceOriginData(boost::any const& originData, uint_fast64_t choiceIndex) {
     STORM_LOG_ASSERT(_buildChoiceOrigins, "Building ChoiceOrigins was not enabled.");
@@ -48,9 +56,13 @@ std::vector<boost::any> StateAndChoiceInformationBuilder::buildDataOfChoiceOrigi
     return std::move(_dataOfChoiceOrigins);
 }
 
-void StateAndChoiceInformationBuilder::setBuildStatePlayerIndications(bool value) { _buildStatePlayerIndications = value; }
+void StateAndChoiceInformationBuilder::setBuildStatePlayerIndications(bool value) {
+    _buildStatePlayerIndications = value;
+}
 
-bool StateAndChoiceInformationBuilder::isBuildStatePlayerIndications() const { return _buildStatePlayerIndications; }
+bool StateAndChoiceInformationBuilder::isBuildStatePlayerIndications() const {
+    return _buildStatePlayerIndications;
+}
 
 void StateAndChoiceInformationBuilder::addStatePlayerIndication(storm::storage::PlayerIndex player, uint_fast64_t stateIndex) {
     STORM_LOG_ASSERT(_buildStatePlayerIndications, "Building StatePlayerIndications was not enabled.");
@@ -74,9 +86,13 @@ std::vector<storm::storage::PlayerIndex> StateAndChoiceInformationBuilder::build
     return std::move(_statePlayerIndications);
 }
 
-void StateAndChoiceInformationBuilder::setBuildMarkovianStates(bool value) { _buildMarkovianStates = value; }
+void StateAndChoiceInformationBuilder::setBuildMarkovianStates(bool value) {
+    _buildMarkovianStates = value;
+}
 
-bool StateAndChoiceInformationBuilder::isBuildMarkovianStates() const { return _buildMarkovianStates; }
+bool StateAndChoiceInformationBuilder::isBuildMarkovianStates() const {
+    return _buildMarkovianStates;
+}
 
 void StateAndChoiceInformationBuilder::addMarkovianState(uint_fast64_t markovianStateIndex) {
     STORM_LOG_ASSERT(_buildMarkovianStates, "Building MarkovianStates was not enabled.");
@@ -90,9 +106,13 @@ storm::storage::BitVector StateAndChoiceInformationBuilder::buildMarkovianStates
     return _markovianStates;
 }
 
-void StateAndChoiceInformationBuilder::setBuildStateValuations(bool value) { _buildStateValuations = value; }
+void StateAndChoiceInformationBuilder::setBuildStateValuations(bool value) {
+    _buildStateValuations = value;
+}
 
-bool StateAndChoiceInformationBuilder::isBuildStateValuations() const { return _buildStateValuations; }
+bool StateAndChoiceInformationBuilder::isBuildStateValuations() const {
+    return _buildStateValuations;
+}
 
 storm::storage::sparse::StateValuationsBuilder& StateAndChoiceInformationBuilder::stateValuationsBuilder() {
     STORM_LOG_ASSERT(_buildStateValuations, "Building StateValuations was not enabled.");

@@ -30,9 +30,13 @@ ReuseWrapper::ReuseWrapper(bool value) : value(value) {
     // Intentionally left empty.
 }
 
-bool ReuseWrapper::isReused() const { return value; }
+bool ReuseWrapper::isReused() const {
+    return value;
+}
 
-void ReuseWrapper::setReused() { value = true; }
+void ReuseWrapper::setReused() {
+    value = true;
+}
 
 }  // namespace bisimulation
 }  // namespace dd

@@ -8,7 +8,9 @@ ExplicitQualitativeGameResult::ExplicitQualitativeGameResult(storm::utility::gra
     // Intentionally left empty.
 }
 
-storm::storage::BitVector const& ExplicitQualitativeGameResult::getStates() const { return this->getPlayer1States(); }
+storm::storage::BitVector const& ExplicitQualitativeGameResult::getStates() const {
+    return this->getPlayer1States();
+}
 
 }  // namespace abstraction
 }  // namespace storm

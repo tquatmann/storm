@@ -70,11 +70,17 @@ CuddSettings::CuddSettings() : ModuleSettings(moduleName) {
             .build());
 }
 
-double CuddSettings::getConstantPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double CuddSettings::getConstantPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-uint_fast64_t CuddSettings::getMaximalMemory() const { return this->getOption(maximalMemoryOptionName).getArgumentByName("value").getValueAsUnsignedInteger(); }
+uint_fast64_t CuddSettings::getMaximalMemory() const {
+    return this->getOption(maximalMemoryOptionName).getArgumentByName("value").getValueAsUnsignedInteger();
+}
 
-bool CuddSettings::isReorderingEnabled() const { return this->getOption(reorderOptionName).getHasOptionBeenSet(); }
+bool CuddSettings::isReorderingEnabled() const {
+    return this->getOption(reorderOptionName).getHasOptionBeenSet();
+}
 
 CuddSettings::ReorderingTechnique CuddSettings::getReorderingTechnique() const {
     std::string reorderingTechniqueAsString = this->getOption(reorderTechniqueOptionName).getArgumentByName("method").getValueAsString();

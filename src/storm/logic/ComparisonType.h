@@ -10,9 +10,13 @@ namespace storm {
 namespace logic {
 enum class ComparisonType { Less, LessEqual, Greater, GreaterEqual };
 
-inline bool isStrict(ComparisonType t) { return (t == ComparisonType::Less || t == ComparisonType::Greater); }
+inline bool isStrict(ComparisonType t) {
+    return (t == ComparisonType::Less || t == ComparisonType::Greater);
+}
 
-inline bool isLowerBound(ComparisonType t) { return (t == ComparisonType::Greater || t == ComparisonType::GreaterEqual); }
+inline bool isLowerBound(ComparisonType t) {
+    return (t == ComparisonType::Greater || t == ComparisonType::GreaterEqual);
+}
 
 inline ComparisonType invert(ComparisonType t) {
     switch (t) {

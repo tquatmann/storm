@@ -160,9 +160,15 @@ class LraDtmcPrctlModelCheckerTest : public ::testing::Test {
    public:
     typedef typename TestType::ValueType ValueType;
     LraDtmcPrctlModelCheckerTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
-    ValueType parseNumber(std::string const& input) const { return storm::utility::convertNumber<ValueType>(input); }
-    ValueType precision() const { return TestType::isExact ? parseNumber("0") : parseNumber("1e-6"); }
+    storm::Environment const& env() const {
+        return _environment;
+    }
+    ValueType parseNumber(std::string const& input) const {
+        return storm::utility::convertNumber<ValueType>(input);
+    }
+    ValueType precision() const {
+        return TestType::isExact ? parseNumber("0") : parseNumber("1e-6");
+    }
 
    private:
     storm::Environment _environment;

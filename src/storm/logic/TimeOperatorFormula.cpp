@@ -14,11 +14,17 @@ TimeOperatorFormula::TimeOperatorFormula(std::shared_ptr<Formula const> const& s
     // Intentionally left empty.
 }
 
-bool TimeOperatorFormula::isTimeOperatorFormula() const { return true; }
+bool TimeOperatorFormula::isTimeOperatorFormula() const {
+    return true;
+}
 
-boost::any TimeOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any TimeOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-RewardMeasureType TimeOperatorFormula::getMeasureType() const { return rewardMeasureType; }
+RewardMeasureType TimeOperatorFormula::getMeasureType() const {
+    return rewardMeasureType;
+}
 
 std::ostream& TimeOperatorFormula::writeToStream(std::ostream& out, bool /* allowParentheses */) const {
     // No parentheses necessary

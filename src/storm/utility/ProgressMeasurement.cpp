@@ -51,24 +51,38 @@ bool ProgressMeasurement::updateProgress(uint64_t count, std::ostream& outstream
     return false;
 }
 
-bool ProgressMeasurement::isMaxCountSet() const { return this->maxCount < std::numeric_limits<uint64_t>::max(); }
+bool ProgressMeasurement::isMaxCountSet() const {
+    return this->maxCount < std::numeric_limits<uint64_t>::max();
+}
 
 uint64_t ProgressMeasurement::getMaxCount() const {
     STORM_LOG_ASSERT(this->isMaxCountSet(), "Tried to get the maximal count but it was not set before.");
     return this->maxCount;
 }
 
-void ProgressMeasurement::setMaxCount(uint64_t maxCount) { this->maxCount = maxCount; }
+void ProgressMeasurement::setMaxCount(uint64_t maxCount) {
+    this->maxCount = maxCount;
+}
 
-void ProgressMeasurement::unsetMaxCount() { this->maxCount = std::numeric_limits<uint64_t>::max(); }
+void ProgressMeasurement::unsetMaxCount() {
+    this->maxCount = std::numeric_limits<uint64_t>::max();
+}
 
-uint64_t ProgressMeasurement::getShowProgressDelay() const { return this->delay; }
+uint64_t ProgressMeasurement::getShowProgressDelay() const {
+    return this->delay;
+}
 
-void ProgressMeasurement::setShowProgressDelay(uint64_t delay) { this->delay = delay; }
+void ProgressMeasurement::setShowProgressDelay(uint64_t delay) {
+    this->delay = delay;
+}
 
-std::string const& ProgressMeasurement::getItemName() const { return this->itemName; }
+std::string const& ProgressMeasurement::getItemName() const {
+    return this->itemName;
+}
 
-void ProgressMeasurement::setItemName(std::string const& name) { this->itemName = name; }
+void ProgressMeasurement::setItemName(std::string const& name) {
+    this->itemName = name;
+}
 
 }  // namespace utility
 }  // namespace storm

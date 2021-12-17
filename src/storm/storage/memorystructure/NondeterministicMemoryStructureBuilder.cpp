@@ -49,7 +49,9 @@ NondeterministicMemoryStructure NondeterministicMemoryStructureBuilder::build(No
     STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "Unhandled pattern.");
 }
 
-NondeterministicMemoryStructure NondeterministicMemoryStructureBuilder::buildTrivialMemory() const { return buildFullyConnectedMemory(1); }
+NondeterministicMemoryStructure NondeterministicMemoryStructureBuilder::buildTrivialMemory() const {
+    return buildFullyConnectedMemory(1);
+}
 
 NondeterministicMemoryStructure NondeterministicMemoryStructureBuilder::buildFixedCountingMemory(uint64_t numStates) const {
     std::vector<storm::storage::BitVector> transitions(numStates, storm::storage::BitVector(numStates, false));

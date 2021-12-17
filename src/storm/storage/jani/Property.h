@@ -23,9 +23,13 @@ struct PropertyInterval {
     storm::expressions::Expression upperBound;
     bool upperBoundStrict = false;
 
-    bool hasLowerBound() const { return lowerBound.isInitialized(); }
+    bool hasLowerBound() const {
+        return lowerBound.isInitialized();
+    }
 
-    bool hasUpperBound() const { return upperBound.isInitialized(); }
+    bool hasUpperBound() const {
+        return upperBound.isInitialized();
+    }
 };
 
 class FilterExpression {
@@ -40,13 +44,21 @@ class FilterExpression {
                         "Can only filter by propositional formula.");
     }
 
-    std::shared_ptr<storm::logic::Formula const> const& getFormula() const { return formula; }
+    std::shared_ptr<storm::logic::Formula const> const& getFormula() const {
+        return formula;
+    }
 
-    std::shared_ptr<storm::logic::Formula const> const& getStatesFormula() const { return statesFormula; }
+    std::shared_ptr<storm::logic::Formula const> const& getStatesFormula() const {
+        return statesFormula;
+    }
 
-    storm::modelchecker::FilterType getFilterType() const { return ft; }
+    storm::modelchecker::FilterType getFilterType() const {
+        return ft;
+    }
 
-    bool isDefault() const { return (ft == storm::modelchecker::FilterType::VALUES) && statesFormula && statesFormula->isInitialFormula(); }
+    bool isDefault() const {
+        return (ft == storm::modelchecker::FilterType::VALUES) && statesFormula && statesFormula->isInitialFormula();
+    }
 
     FilterExpression substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
         return FilterExpression(formula->substitute(substitution), ft, statesFormula->substitute(substitution));

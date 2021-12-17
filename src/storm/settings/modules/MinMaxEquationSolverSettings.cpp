@@ -103,19 +103,29 @@ bool MinMaxEquationSolverSettings::isMinMaxEquationSolvingMethodSetFromDefaultVa
            this->getOption(solvingMethodOptionName).getArgumentByName("name").wasSetFromDefaultValue();
 }
 
-bool MinMaxEquationSolverSettings::isMinMaxEquationSolvingMethodSet() const { return this->getOption(solvingMethodOptionName).getHasOptionBeenSet(); }
+bool MinMaxEquationSolverSettings::isMinMaxEquationSolvingMethodSet() const {
+    return this->getOption(solvingMethodOptionName).getHasOptionBeenSet();
+}
 
-bool MinMaxEquationSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool MinMaxEquationSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t MinMaxEquationSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool MinMaxEquationSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool MinMaxEquationSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double MinMaxEquationSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double MinMaxEquationSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
-bool MinMaxEquationSolverSettings::isConvergenceCriterionSet() const { return this->getOption(absoluteOptionName).getHasOptionBeenSet(); }
+bool MinMaxEquationSolverSettings::isConvergenceCriterionSet() const {
+    return this->getOption(absoluteOptionName).getHasOptionBeenSet();
+}
 
 MinMaxEquationSolverSettings::ConvergenceCriterion MinMaxEquationSolverSettings::getConvergenceCriterion() const {
     return this->getOption(absoluteOptionName).getHasOptionBeenSet() ? MinMaxEquationSolverSettings::ConvergenceCriterion::Absolute

@@ -42,9 +42,13 @@ class HOAConsumerDA : public HOAConsumerDAHeader {
         solver = factory.create(*expressionManager);
     }
 
-    ~HOAConsumerDA() { delete helper; }
+    ~HOAConsumerDA() {
+        delete helper;
+    }
 
-    DeterministicAutomaton::ptr getDA() { return da; }
+    DeterministicAutomaton::ptr getDA() {
+        return da;
+    }
 
     /**
      * Called by the parser to notify that the BODY of the automaton has started [mandatory, once].
@@ -164,7 +168,9 @@ class HOAConsumerDA : public HOAConsumerDAHeader {
      * Called by the parser to notify the consumer that the definition for state `stateId`
      * has ended [multiple].
      */
-    virtual void notifyEndOfState(unsigned int stateId) { helper->endOfState(); }
+    virtual void notifyEndOfState(unsigned int stateId) {
+        helper->endOfState();
+    }
 
     /**
      * Called by the parser to notify the consumer that the automata definition has ended [mandatory, once].
@@ -178,7 +184,9 @@ class HOAConsumerDA : public HOAConsumerDAHeader {
      * Called by the parser to notify the consumer that an "ABORT" message has been encountered
      * (at any time, indicating error, the automaton should be discarded).
      */
-    virtual void notifyAbort() { throw std::runtime_error("Parsing deterministic automaton: Automaton is incomplete (abort)"); }
+    virtual void notifyAbort() {
+        throw std::runtime_error("Parsing deterministic automaton: Automaton is incomplete (abort)");
+    }
 
     /**
      * Is called whenever a condition is encountered that merits a (non-fatal) warning.
@@ -212,9 +220,13 @@ class HOAConsumerDA : public HOAConsumerDAHeader {
         throw std::runtime_error("Unknown label expression operator");
     }
 
-    bool alreadyHaveEdge(std::size_t stateId, std::size_t edgeIndex) { return seenEdges.get(stateId * helper->getEdgesPerState() + edgeIndex); }
+    bool alreadyHaveEdge(std::size_t stateId, std::size_t edgeIndex) {
+        return seenEdges.get(stateId * helper->getEdgesPerState() + edgeIndex);
+    }
 
-    void markEdgeAsSeen(std::size_t stateId, std::size_t edgeIndex) { seenEdges.set(stateId * helper->getEdgesPerState() + edgeIndex); }
+    void markEdgeAsSeen(std::size_t stateId, std::size_t edgeIndex) {
+        seenEdges.set(stateId * helper->getEdgesPerState() + edgeIndex);
+    }
 };
 
 }  // namespace automata

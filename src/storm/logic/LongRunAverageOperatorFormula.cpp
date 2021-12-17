@@ -12,9 +12,13 @@ LongRunAverageOperatorFormula::LongRunAverageOperatorFormula(std::shared_ptr<For
     // Intentionally left empty.
 }
 
-bool LongRunAverageOperatorFormula::isLongRunAverageOperatorFormula() const { return true; }
+bool LongRunAverageOperatorFormula::isLongRunAverageOperatorFormula() const {
+    return true;
+}
 
-boost::any LongRunAverageOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any LongRunAverageOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 std::ostream& LongRunAverageOperatorFormula::writeToStream(std::ostream& out, bool /* allowParentheses */) const {
     // No parentheses necessary

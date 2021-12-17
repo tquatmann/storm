@@ -9,41 +9,77 @@ PgclBlock::PgclBlock(vector const& statements, std::shared_ptr<storm::expression
                      bool hasObserve)
     : sequenceOfStatements(statements), expressions(expressions), loop(hasLoop), nondet(hasNondet), observe(hasObserve) {}
 
-iterator PgclBlock::begin() { return this->sequenceOfStatements.begin(); }
+iterator PgclBlock::begin() {
+    return this->sequenceOfStatements.begin();
+}
 
-const_iterator PgclBlock::begin() const { return this->sequenceOfStatements.begin(); }
+const_iterator PgclBlock::begin() const {
+    return this->sequenceOfStatements.begin();
+}
 
-iterator PgclBlock::end() { return this->sequenceOfStatements.end(); }
+iterator PgclBlock::end() {
+    return this->sequenceOfStatements.end();
+}
 
-const_iterator PgclBlock::end() const { return this->sequenceOfStatements.end(); }
+const_iterator PgclBlock::end() const {
+    return this->sequenceOfStatements.end();
+}
 
-bool PgclBlock::empty() { return this->sequenceOfStatements.empty(); }
+bool PgclBlock::empty() {
+    return this->sequenceOfStatements.empty();
+}
 
-element PgclBlock::front() { return this->sequenceOfStatements.front(); }
+element PgclBlock::front() {
+    return this->sequenceOfStatements.front();
+}
 
-element PgclBlock::back() { return this->sequenceOfStatements.back(); }
+element PgclBlock::back() {
+    return this->sequenceOfStatements.back();
+}
 
-unsigned long PgclBlock::size() { return this->sequenceOfStatements.size(); }
+unsigned long PgclBlock::size() {
+    return this->sequenceOfStatements.size();
+}
 
-element PgclBlock::at(size_type n) { return this->sequenceOfStatements.at(n); }
+element PgclBlock::at(size_type n) {
+    return this->sequenceOfStatements.at(n);
+}
 
-iterator PgclBlock::insert(iterator position, const element& statement) { return this->sequenceOfStatements.insert(position, statement); }
+iterator PgclBlock::insert(iterator position, const element& statement) {
+    return this->sequenceOfStatements.insert(position, statement);
+}
 
-void PgclBlock::clear() { this->sequenceOfStatements.clear(); }
+void PgclBlock::clear() {
+    this->sequenceOfStatements.clear();
+}
 
-std::shared_ptr<storm::expressions::ExpressionManager> const& PgclBlock::getExpressionManager() const { return this->expressions; }
+std::shared_ptr<storm::expressions::ExpressionManager> const& PgclBlock::getExpressionManager() const {
+    return this->expressions;
+}
 
-std::vector<storm::expressions::Variable> PgclBlock::getParameters() { return this->parameters; }
+std::vector<storm::expressions::Variable> PgclBlock::getParameters() {
+    return this->parameters;
+}
 
-bool PgclBlock::hasParameters() const { return !(this->parameters.empty()); }
+bool PgclBlock::hasParameters() const {
+    return !(this->parameters.empty());
+}
 
-bool PgclBlock::hasObserve() const { return this->observe; }
+bool PgclBlock::hasObserve() const {
+    return this->observe;
+}
 
-bool PgclBlock::hasNondet() const { return this->nondet; }
+bool PgclBlock::hasNondet() const {
+    return this->nondet;
+}
 
-bool PgclBlock::hasLoop() const { return this->loop; }
+bool PgclBlock::hasLoop() const {
+    return this->loop;
+}
 
-iterator PgclBlock::find(element& statement) { return std::find(this->sequenceOfStatements.begin(), this->sequenceOfStatements.end(), statement); }
+iterator PgclBlock::find(element& statement) {
+    return std::find(this->sequenceOfStatements.begin(), this->sequenceOfStatements.end(), statement);
+}
 
 }  // namespace pgcl
 }  // namespace storm

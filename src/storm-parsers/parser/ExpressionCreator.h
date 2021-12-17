@@ -45,9 +45,13 @@ class ExpressionCreator {
      */
     void unsetIdentifierMapping();
 
-    bool getAcceptDoubleLiterals() const { return acceptDoubleLiterals; }
+    bool getAcceptDoubleLiterals() const {
+        return acceptDoubleLiterals;
+    }
 
-    void setAcceptDoubleLiterals(bool set = true) { acceptDoubleLiterals = set; }
+    void setAcceptDoubleLiterals(bool set = true) {
+        acceptDoubleLiterals = set;
+    }
 
     storm::expressions::Expression createIteExpression(storm::expressions::Expression const& e1, storm::expressions::Expression const& e2,
                                                        storm::expressions::Expression const& e3, bool& pass) const;

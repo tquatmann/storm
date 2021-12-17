@@ -10,8 +10,12 @@ ProbabilisticBranch::ProbabilisticBranch(storm::expressions::Expression const& p
     leftBranch = left;
 }
 
-storm::expressions::Expression const& ProbabilisticBranch::getProbability() const { return this->probability; }
+storm::expressions::Expression const& ProbabilisticBranch::getProbability() const {
+    return this->probability;
+}
 
-void ProbabilisticBranch::accept(storm::pgcl::AbstractStatementVisitor& visitor) { visitor.visit(*this); }
+void ProbabilisticBranch::accept(storm::pgcl::AbstractStatementVisitor& visitor) {
+    visitor.visit(*this);
+}
 }  // namespace pgcl
 }  // namespace storm

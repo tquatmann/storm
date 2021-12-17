@@ -100,7 +100,9 @@ class FunctionEliminationExpressionVisitor : public storm::expressions::Expressi
         }
     }
 
-    virtual boost::any visit(storm::expressions::VariableExpression const& expression, boost::any const&) override { return expression.getSharedPointer(); }
+    virtual boost::any visit(storm::expressions::VariableExpression const& expression, boost::any const&) override {
+        return expression.getSharedPointer();
+    }
 
     virtual boost::any visit(storm::expressions::UnaryBooleanFunctionExpression const& expression, boost::any const& data) override {
         BaseExprPtr operandExpression = boost::any_cast<BaseExprPtr>(expression.getOperand()->accept(*this, data));

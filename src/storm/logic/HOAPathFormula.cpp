@@ -13,11 +13,17 @@ HOAPathFormula::HOAPathFormula(const std::string& automatonFile, FormulaContext 
     STORM_LOG_THROW(context == FormulaContext::Probability, storm::exceptions::InvalidPropertyException, "Invalid context for formula.");
 }
 
-FormulaContext const& HOAPathFormula::getContext() const { return context; }
+FormulaContext const& HOAPathFormula::getContext() const {
+    return context;
+}
 
-const std::string& HOAPathFormula::getAutomatonFile() const { return automatonFile; }
+const std::string& HOAPathFormula::getAutomatonFile() const {
+    return automatonFile;
+}
 
-const HOAPathFormula::ap_to_formula_map& HOAPathFormula::getAPMapping() const { return apToFormulaMap; }
+const HOAPathFormula::ap_to_formula_map& HOAPathFormula::getAPMapping() const {
+    return apToFormulaMap;
+}
 
 void HOAPathFormula::addAPMapping(const std::string& ap, const std::shared_ptr<Formula const>& formula) {
     STORM_LOG_THROW(apToFormulaMap.find(ap) == apToFormulaMap.end(), storm::exceptions::IllegalArgumentException,
@@ -25,15 +31,25 @@ void HOAPathFormula::addAPMapping(const std::string& ap, const std::shared_ptr<F
     apToFormulaMap[ap] = formula;
 }
 
-bool HOAPathFormula::isProbabilityPathFormula() const { return true; }
+bool HOAPathFormula::isProbabilityPathFormula() const {
+    return true;
+}
 
-bool HOAPathFormula::isHOAPathFormula() const { return true; }
+bool HOAPathFormula::isHOAPathFormula() const {
+    return true;
+}
 
-bool HOAPathFormula::hasQuantitativeResult() const { return true; }
+bool HOAPathFormula::hasQuantitativeResult() const {
+    return true;
+}
 
-bool HOAPathFormula::hasQualitativeResult() const { return false; }
+bool HOAPathFormula::hasQualitativeResult() const {
+    return false;
+}
 
-boost::any HOAPathFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any HOAPathFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void HOAPathFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     for (auto& mapped : getAPMapping()) {

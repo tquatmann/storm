@@ -80,7 +80,9 @@ boost::any RestrictSyntaxVisitor::visit(BinaryRelationExpression const &expressi
     }
 }
 
-boost::any RestrictSyntaxVisitor::visit(VariableExpression const &expression, boost::any const &) { return expression.getSharedPointer(); }
+boost::any RestrictSyntaxVisitor::visit(VariableExpression const &expression, boost::any const &) {
+    return expression.getSharedPointer();
+}
 
 boost::any RestrictSyntaxVisitor::visit(UnaryBooleanFunctionExpression const &expression, boost::any const &data) {
     std::shared_ptr<BaseExpression const> operandExpression =
@@ -131,11 +133,17 @@ boost::any RestrictSyntaxVisitor::visit(PredicateExpression const &expression, b
     return std::const_pointer_cast<BaseExpression const>(finalexpr.getBaseExpressionPointer());
 }
 
-boost::any RestrictSyntaxVisitor::visit(BooleanLiteralExpression const &expression, boost::any const &) { return expression.getSharedPointer(); }
+boost::any RestrictSyntaxVisitor::visit(BooleanLiteralExpression const &expression, boost::any const &) {
+    return expression.getSharedPointer();
+}
 
-boost::any RestrictSyntaxVisitor::visit(IntegerLiteralExpression const &expression, boost::any const &) { return expression.getSharedPointer(); }
+boost::any RestrictSyntaxVisitor::visit(IntegerLiteralExpression const &expression, boost::any const &) {
+    return expression.getSharedPointer();
+}
 
-boost::any RestrictSyntaxVisitor::visit(RationalLiteralExpression const &expression, boost::any const &) { return expression.getSharedPointer(); }
+boost::any RestrictSyntaxVisitor::visit(RationalLiteralExpression const &expression, boost::any const &) {
+    return expression.getSharedPointer();
+}
 
 }  // namespace expressions
 }  // namespace storm

@@ -419,10 +419,12 @@ bool StandardRewardModel<ValueType>::isAllZero() const {
 template<typename ValueType>
 bool StandardRewardModel<ValueType>::isCompatible(uint_fast64_t nrStates, uint_fast64_t nrChoices) const {
     if (hasStateRewards()) {
-        if (optionalStateRewardVector.get().size() != nrStates) return false;
+        if (optionalStateRewardVector.get().size() != nrStates)
+            return false;
     }
     if (hasStateActionRewards()) {
-        if (optionalStateActionRewardVector.get().size() != nrChoices) return false;
+        if (optionalStateActionRewardVector.get().size() != nrChoices)
+            return false;
     }
     return true;
 }

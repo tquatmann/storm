@@ -20,7 +20,9 @@ UnaryNumericalFunctionExpression::UnaryNumericalFunctionExpression(ExpressionMan
     // Intentionally left empty.
 }
 
-UnaryNumericalFunctionExpression::OperatorType UnaryNumericalFunctionExpression::getOperatorType() const { return this->operatorType; }
+UnaryNumericalFunctionExpression::OperatorType UnaryNumericalFunctionExpression::getOperatorType() const {
+    return this->operatorType;
+}
 
 storm::expressions::OperatorType UnaryNumericalFunctionExpression::getOperator() const {
     storm::expressions::OperatorType result = storm::expressions::OperatorType::Minus;
@@ -128,9 +130,13 @@ std::shared_ptr<BaseExpression const> UnaryNumericalFunctionExpression::simplify
     }
 }
 
-boost::any UnaryNumericalFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any UnaryNumericalFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool UnaryNumericalFunctionExpression::isUnaryNumericalFunctionExpression() const { return true; }
+bool UnaryNumericalFunctionExpression::isUnaryNumericalFunctionExpression() const {
+    return true;
+}
 
 void UnaryNumericalFunctionExpression::printToStream(std::ostream& stream) const {
     switch (this->getOperatorType()) {

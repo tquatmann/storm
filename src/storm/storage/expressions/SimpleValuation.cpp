@@ -64,21 +64,37 @@ bool SimpleValuation::operator==(SimpleValuation const& other) const {
            rationalValues == other.rationalValues;
 }
 
-bool SimpleValuation::getBooleanValue(Variable const& booleanVariable) const { return booleanValues[booleanVariable.getOffset()]; }
+bool SimpleValuation::getBooleanValue(Variable const& booleanVariable) const {
+    return booleanValues[booleanVariable.getOffset()];
+}
 
-int_fast64_t SimpleValuation::getIntegerValue(Variable const& integerVariable) const { return integerValues[integerVariable.getOffset()]; }
+int_fast64_t SimpleValuation::getIntegerValue(Variable const& integerVariable) const {
+    return integerValues[integerVariable.getOffset()];
+}
 
-int_fast64_t SimpleValuation::getBitVectorValue(Variable const& bitVectorVariable) const { return integerValues[bitVectorVariable.getOffset()]; }
+int_fast64_t SimpleValuation::getBitVectorValue(Variable const& bitVectorVariable) const {
+    return integerValues[bitVectorVariable.getOffset()];
+}
 
-double SimpleValuation::getRationalValue(Variable const& rationalVariable) const { return rationalValues[rationalVariable.getOffset()]; }
+double SimpleValuation::getRationalValue(Variable const& rationalVariable) const {
+    return rationalValues[rationalVariable.getOffset()];
+}
 
-void SimpleValuation::setBooleanValue(Variable const& booleanVariable, bool value) { booleanValues[booleanVariable.getOffset()] = value; }
+void SimpleValuation::setBooleanValue(Variable const& booleanVariable, bool value) {
+    booleanValues[booleanVariable.getOffset()] = value;
+}
 
-void SimpleValuation::setIntegerValue(Variable const& integerVariable, int_fast64_t value) { integerValues[integerVariable.getOffset()] = value; }
+void SimpleValuation::setIntegerValue(Variable const& integerVariable, int_fast64_t value) {
+    integerValues[integerVariable.getOffset()] = value;
+}
 
-void SimpleValuation::setBitVectorValue(Variable const& bitVectorVariable, int_fast64_t value) { integerValues[bitVectorVariable.getOffset()] = value; }
+void SimpleValuation::setBitVectorValue(Variable const& bitVectorVariable, int_fast64_t value) {
+    integerValues[bitVectorVariable.getOffset()] = value;
+}
 
-void SimpleValuation::setRationalValue(Variable const& rationalVariable, double value) { rationalValues[rationalVariable.getOffset()] = value; }
+void SimpleValuation::setRationalValue(Variable const& rationalVariable, double value) {
+    rationalValues[rationalVariable.getOffset()] = value;
+}
 
 std::string SimpleValuation::toPrettyString(std::set<storm::expressions::Variable> const& selectedVariables) const {
     std::vector<std::string> assignments;

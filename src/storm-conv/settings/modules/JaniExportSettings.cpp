@@ -78,11 +78,17 @@ JaniExportSettings::JaniExportSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool JaniExportSettings::isAllowEdgeAssignmentsSet() const { return this->getOption(edgeAssignmentsOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isAllowEdgeAssignmentsSet() const {
+    return this->getOption(edgeAssignmentsOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isExportFlattenedSet() const { return this->getOption(exportFlattenOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isExportFlattenedSet() const {
+    return this->getOption(exportFlattenOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isLocationVariablesSet() const { return this->getOption(locationVariablesOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isLocationVariablesSet() const {
+    return this->getOption(locationVariablesOptionName).getHasOptionBeenSet();
+}
 
 std::vector<std::pair<std::string, std::string>> JaniExportSettings::getLocationVariables() const {
     std::vector<std::pair<std::string, std::string>> result;
@@ -101,23 +107,37 @@ std::vector<std::pair<std::string, std::string>> JaniExportSettings::getLocation
     return result;
 }
 
-bool JaniExportSettings::isGlobalVarsSet() const { return this->getOption(globalVariablesOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isGlobalVarsSet() const {
+    return this->getOption(globalVariablesOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isLocalVarsSet() const { return this->getOption(localVariablesOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isLocalVarsSet() const {
+    return this->getOption(localVariablesOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isCompactJsonSet() const { return this->getOption(compactJsonOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isCompactJsonSet() const {
+    return this->getOption(compactJsonOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isEliminateArraysSet() const { return this->getOption(eliminateArraysOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isEliminateArraysSet() const {
+    return this->getOption(eliminateArraysOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isEliminateFunctionsSet() const { return this->getOption(eliminateFunctionsOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isEliminateFunctionsSet() const {
+    return this->getOption(eliminateFunctionsOptionName).getHasOptionBeenSet();
+}
 
 bool JaniExportSettings::isReplaceUnassignedVariablesWithConstantsSet() const {
     return this->getOption(replaceUnassignedVariablesWithConstantsOptionName).getHasOptionBeenSet();
 }
 
-bool JaniExportSettings::isSimplifyCompositionSet() const { return this->getOption(simplifyCompositionOptionName).getHasOptionBeenSet(); }
+bool JaniExportSettings::isSimplifyCompositionSet() const {
+    return this->getOption(simplifyCompositionOptionName).getHasOptionBeenSet();
+}
 
-bool JaniExportSettings::isLocationEliminationSet() const { return this->getOption(performLocationElimination).getHasOptionBeenSet(); }
+bool JaniExportSettings::isLocationEliminationSet() const {
+    return this->getOption(performLocationElimination).getHasOptionBeenSet();
+}
 
 uint64_t JaniExportSettings::getLocationEliminationLocationHeuristic() const {
     return this->getOption(performLocationElimination).getArgumentByName("location-heuristic").getValueAsUnsignedInteger();
@@ -129,7 +149,9 @@ uint64_t JaniExportSettings::getLocationEliminationEdgesHeuristic() const {
 
 void JaniExportSettings::finalize() {}
 
-bool JaniExportSettings::check() const { return true; }
+bool JaniExportSettings::check() const {
+    return true;
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

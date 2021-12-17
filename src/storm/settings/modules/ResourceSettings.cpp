@@ -37,11 +37,17 @@ ResourceSettings::ResourceSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool ResourceSettings::isTimeoutSet() const { return this->getOption(timeoutOptionName).getHasOptionBeenSet(); }
+bool ResourceSettings::isTimeoutSet() const {
+    return this->getOption(timeoutOptionName).getHasOptionBeenSet();
+}
 
-uint_fast64_t ResourceSettings::getTimeoutInSeconds() const { return this->getOption(timeoutOptionName).getArgumentByName("time").getValueAsUnsignedInteger(); }
+uint_fast64_t ResourceSettings::getTimeoutInSeconds() const {
+    return this->getOption(timeoutOptionName).getArgumentByName("time").getValueAsUnsignedInteger();
+}
 
-bool ResourceSettings::isPrintTimeAndMemorySet() const { return this->getOption(printTimeAndMemoryOptionName).getHasOptionBeenSet(); }
+bool ResourceSettings::isPrintTimeAndMemorySet() const {
+    return this->getOption(printTimeAndMemoryOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t ResourceSettings::getSignalWaitingTimeInSeconds() const {
     return this->getOption(signalWaitingTimeOptionName).getArgumentByName("time").getValueAsUnsignedInteger();

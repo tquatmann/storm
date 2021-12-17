@@ -11,20 +11,30 @@ BinaryExpression::BinaryExpression(ExpressionManager const& manager, Type const&
     // Intentionally left empty.
 }
 
-bool BinaryExpression::isFunctionApplication() const { return true; }
+bool BinaryExpression::isFunctionApplication() const {
+    return true;
+}
 
-bool BinaryExpression::containsVariables() const { return this->getFirstOperand()->containsVariables() || this->getSecondOperand()->containsVariables(); }
+bool BinaryExpression::containsVariables() const {
+    return this->getFirstOperand()->containsVariables() || this->getSecondOperand()->containsVariables();
+}
 
 void BinaryExpression::gatherVariables(std::set<storm::expressions::Variable>& variables) const {
     this->getFirstOperand()->gatherVariables(variables);
     this->getSecondOperand()->gatherVariables(variables);
 }
 
-std::shared_ptr<BaseExpression const> const& BinaryExpression::getFirstOperand() const { return this->firstOperand; }
+std::shared_ptr<BaseExpression const> const& BinaryExpression::getFirstOperand() const {
+    return this->firstOperand;
+}
 
-std::shared_ptr<BaseExpression const> const& BinaryExpression::getSecondOperand() const { return this->secondOperand; }
+std::shared_ptr<BaseExpression const> const& BinaryExpression::getSecondOperand() const {
+    return this->secondOperand;
+}
 
-uint_fast64_t BinaryExpression::getArity() const { return 2; }
+uint_fast64_t BinaryExpression::getArity() const {
+    return 2;
+}
 
 std::shared_ptr<BaseExpression const> BinaryExpression::getOperand(uint_fast64_t operandIndex) const {
     STORM_LOG_THROW(operandIndex < 2, storm::exceptions::InvalidAccessException, "Unable to access operand " << operandIndex << " in expression of arity 2.");

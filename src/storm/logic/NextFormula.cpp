@@ -8,11 +8,17 @@ NextFormula::NextFormula(std::shared_ptr<Formula const> const& subformula) : Una
     // Intentionally left empty.
 }
 
-bool NextFormula::isNextFormula() const { return true; }
+bool NextFormula::isNextFormula() const {
+    return true;
+}
 
-bool NextFormula::isProbabilityPathFormula() const { return true; }
+bool NextFormula::isProbabilityPathFormula() const {
+    return true;
+}
 
-boost::any NextFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any NextFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 std::ostream& NextFormula::writeToStream(std::ostream& out, bool allowParentheses) const {
     if (allowParentheses) {

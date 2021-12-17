@@ -20,9 +20,13 @@ DeterministicAutomaton::DeterministicAutomaton(APSet apSet, std::size_t numberOf
     successors.resize(numberOfEdges);
 }
 
-std::size_t DeterministicAutomaton::getInitialState() const { return initialState; }
+std::size_t DeterministicAutomaton::getInitialState() const {
+    return initialState;
+}
 
-const APSet& DeterministicAutomaton::getAPSet() const { return apSet; }
+const APSet& DeterministicAutomaton::getAPSet() const {
+    return apSet;
+}
 
 std::size_t DeterministicAutomaton::getSuccessor(std::size_t from, APSet::alphabet_element label) const {
     std::size_t index = from * edgesPerState + label;
@@ -34,11 +38,17 @@ void DeterministicAutomaton::setSuccessor(std::size_t from, APSet::alphabet_elem
     successors.at(index) = successor;
 }
 
-std::size_t DeterministicAutomaton::getNumberOfStates() const { return numberOfStates; }
+std::size_t DeterministicAutomaton::getNumberOfStates() const {
+    return numberOfStates;
+}
 
-std::size_t DeterministicAutomaton::getNumberOfEdgesPerState() const { return edgesPerState; }
+std::size_t DeterministicAutomaton::getNumberOfEdgesPerState() const {
+    return edgesPerState;
+}
 
-AcceptanceCondition::ptr DeterministicAutomaton::getAcceptance() const { return acceptance; }
+AcceptanceCondition::ptr DeterministicAutomaton::getAcceptance() const {
+    return acceptance;
+}
 
 void DeterministicAutomaton::printHOA(std::ostream& out) const {
     out << "HOA: v1\n";
@@ -64,7 +74,8 @@ void DeterministicAutomaton::printHOA(std::ostream& out) const {
         bool first = true;
         for (unsigned int i = 0; i < acceptance->getNumberOfAcceptanceSets(); i++) {
             if (acceptance->getAcceptanceSet(i).get(s)) {
-                if (!first) out << " ";
+                if (!first)
+                    out << " ";
                 first = false;
                 out << i;
             }

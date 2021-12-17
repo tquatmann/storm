@@ -30,30 +30,47 @@ class ProgramLocation {
         return edgeGroups.back();
     }
 
-    bool isInitial() const { return init; }
+    bool isInitial() const {
+        return init;
+    }
 
-    size_t nrOutgoingEdgeGroups() const { return edgeGroups.size(); }
+    size_t nrOutgoingEdgeGroups() const {
+        return edgeGroups.size();
+    }
 
     bool hasNonDeterminism() const {
         for (auto const& eg : edgeGroups) {
-            if (eg->nrEdges() > 1) return true;
+            if (eg->nrEdges() > 1)
+                return true;
         }
         return false;
     }
 
-    bool hasUniqueSuccessor() const { return nrOutgoingEdgeGroups() == 1 && !hasNonDeterminism(); }
+    bool hasUniqueSuccessor() const {
+        return nrOutgoingEdgeGroups() == 1 && !hasNonDeterminism();
+    }
 
-    const_iterator begin() const { return edgeGroups.begin(); }
+    const_iterator begin() const {
+        return edgeGroups.begin();
+    }
 
-    const_iterator end() const { return edgeGroups.end(); }
+    const_iterator end() const {
+        return edgeGroups.end();
+    }
 
     // Todo rename?
-    EdgeGroupIterator getOutgoingEdgeGroupBegin() { return edgeGroups.begin(); }
+    EdgeGroupIterator getOutgoingEdgeGroupBegin() {
+        return edgeGroups.begin();
+    }
 
     // Todo rename?
-    EdgeGroupIterator getOutgoingEdgeGroupEnd() { return edgeGroups.end(); }
+    EdgeGroupIterator getOutgoingEdgeGroupEnd() {
+        return edgeGroups.end();
+    }
 
-    ProgramLocationIdentifier id() const { return locId; }
+    ProgramLocationIdentifier id() const {
+        return locId;
+    }
 
    private:
     ProgramGraph* graph;

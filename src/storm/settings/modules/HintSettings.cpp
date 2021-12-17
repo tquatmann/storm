@@ -20,11 +20,17 @@ HintSettings::HintSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool HintSettings::isNumberStatesSet() const { return this->getOption(stateHintOption).getHasOptionBeenSet(); }
+bool HintSettings::isNumberStatesSet() const {
+    return this->getOption(stateHintOption).getHasOptionBeenSet();
+}
 
-uint64_t HintSettings::getNumberStates() const { return this->getOption(stateHintOption).getArgumentByName("number").getValueAsUnsignedInteger(); }
+uint64_t HintSettings::getNumberStates() const {
+    return this->getOption(stateHintOption).getArgumentByName("number").getValueAsUnsignedInteger();
+}
 
-bool HintSettings::check() const { return true; }
+bool HintSettings::check() const {
+    return true;
+}
 
 void HintSettings::finalize() {
     // Intentionally left empty

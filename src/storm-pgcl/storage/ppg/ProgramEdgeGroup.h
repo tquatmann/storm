@@ -34,23 +34,41 @@ class ProgramEdgeGroup {
         return edges.back();
     }
 
-    iterator begin() { return edges.begin(); }
+    iterator begin() {
+        return edges.begin();
+    }
 
-    iterator end() { return edges.end(); }
+    iterator end() {
+        return edges.end();
+    }
 
-    const_iterator begin() const { return edges.begin(); }
+    const_iterator begin() const {
+        return edges.begin();
+    }
 
-    const_iterator end() const { return edges.end(); }
+    const_iterator end() const {
+        return edges.end();
+    }
 
-    size_t nrEdges() const { return edges.size(); }
+    size_t nrEdges() const {
+        return edges.size();
+    }
 
-    storm::expressions::Expression const& getProbability() const { return probability; }
+    storm::expressions::Expression const& getProbability() const {
+        return probability;
+    }
 
-    ProgramGraph const& getGraph() const { return *graph; }
+    ProgramGraph const& getGraph() const {
+        return *graph;
+    }
 
-    ProgramLocationIdentifier getSourceId() const { return sourceId; }
+    ProgramLocationIdentifier getSourceId() const {
+        return sourceId;
+    }
 
-    ProgramEdgeGroupIdentifier getId() const { return groupId; }
+    ProgramEdgeGroupIdentifier getId() const {
+        return groupId;
+    }
 
    private:
     /// Pointer to the graph; not owned.

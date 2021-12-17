@@ -50,7 +50,9 @@ struct Path {
         return predecessorK < rhs.predecessorK;
     }
 
-    bool operator==(const Path<T>& rhs) const { return (predecessorNode == rhs.predecessorNode) && (predecessorK == rhs.predecessorK); }
+    bool operator==(const Path<T>& rhs) const {
+        return (predecessorNode == rhs.predecessorNode) && (predecessorK == rhs.predecessorK);
+    }
 };
 
 template<typename T>
@@ -182,9 +184,13 @@ class ShortestPathsGenerator {
 
     // --- tiny helper fcts ---
 
-    inline bool isInitialState(state_t node) const { return find(initialStates.begin(), initialStates.end(), node) != initialStates.end(); }
+    inline bool isInitialState(state_t node) const {
+        return find(initialStates.begin(), initialStates.end(), node) != initialStates.end();
+    }
 
-    inline bool isMetaTargetPredecessor(state_t node) const { return targetProbMap.count(node) == 1; }
+    inline bool isMetaTargetPredecessor(state_t node) const {
+        return targetProbMap.count(node) == 1;
+    }
 
     // I dislike this. But it is necessary if we want to handle those ugly I-P matrices
     inline T convertDistance(state_t tailNode, state_t headNode, T distance) const {

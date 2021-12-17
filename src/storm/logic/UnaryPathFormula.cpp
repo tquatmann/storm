@@ -6,9 +6,13 @@ UnaryPathFormula::UnaryPathFormula(std::shared_ptr<Formula const> const& subform
     // Intentionally left empty.
 }
 
-bool UnaryPathFormula::isUnaryPathFormula() const { return true; }
+bool UnaryPathFormula::isUnaryPathFormula() const {
+    return true;
+}
 
-Formula const& UnaryPathFormula::getSubformula() const { return *subformula; }
+Formula const& UnaryPathFormula::getSubformula() const {
+    return *subformula;
+}
 
 void UnaryPathFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     this->getSubformula().gatherAtomicExpressionFormulas(atomicExpressionFormulas);
@@ -26,9 +30,13 @@ void UnaryPathFormula::gatherUsedVariables(std::set<storm::expressions::Variable
     this->getSubformula().gatherUsedVariables(usedVariables);
 }
 
-bool UnaryPathFormula::hasQualitativeResult() const { return false; }
+bool UnaryPathFormula::hasQualitativeResult() const {
+    return false;
+}
 
-bool UnaryPathFormula::hasQuantitativeResult() const { return true; }
+bool UnaryPathFormula::hasQuantitativeResult() const {
+    return true;
+}
 
 }  // namespace logic
 }  // namespace storm

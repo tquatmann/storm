@@ -31,33 +31,57 @@ MinMaxSolverEnvironment::~MinMaxSolverEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::MinMaxMethod const& MinMaxSolverEnvironment::getMethod() const { return minMaxMethod; }
+storm::solver::MinMaxMethod const& MinMaxSolverEnvironment::getMethod() const {
+    return minMaxMethod;
+}
 
-bool const& MinMaxSolverEnvironment::isMethodSetFromDefault() const { return methodSetFromDefault; }
+bool const& MinMaxSolverEnvironment::isMethodSetFromDefault() const {
+    return methodSetFromDefault;
+}
 
 void MinMaxSolverEnvironment::setMethod(storm::solver::MinMaxMethod value, bool isSetFromDefault) {
     methodSetFromDefault = isSetFromDefault;
     minMaxMethod = value;
 }
 
-uint64_t const& MinMaxSolverEnvironment::getMaximalNumberOfIterations() const { return maxIterationCount; }
+uint64_t const& MinMaxSolverEnvironment::getMaximalNumberOfIterations() const {
+    return maxIterationCount;
+}
 
-void MinMaxSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) { maxIterationCount = value; }
+void MinMaxSolverEnvironment::setMaximalNumberOfIterations(uint64_t value) {
+    maxIterationCount = value;
+}
 
-storm::RationalNumber const& MinMaxSolverEnvironment::getPrecision() const { return precision; }
+storm::RationalNumber const& MinMaxSolverEnvironment::getPrecision() const {
+    return precision;
+}
 
-void MinMaxSolverEnvironment::setPrecision(storm::RationalNumber value) { precision = value; }
+void MinMaxSolverEnvironment::setPrecision(storm::RationalNumber value) {
+    precision = value;
+}
 
-bool const& MinMaxSolverEnvironment::getRelativeTerminationCriterion() const { return considerRelativeTerminationCriterion; }
+bool const& MinMaxSolverEnvironment::getRelativeTerminationCriterion() const {
+    return considerRelativeTerminationCriterion;
+}
 
-void MinMaxSolverEnvironment::setRelativeTerminationCriterion(bool value) { considerRelativeTerminationCriterion = value; }
+void MinMaxSolverEnvironment::setRelativeTerminationCriterion(bool value) {
+    considerRelativeTerminationCriterion = value;
+}
 
-storm::solver::MultiplicationStyle const& MinMaxSolverEnvironment::getMultiplicationStyle() const { return multiplicationStyle; }
+storm::solver::MultiplicationStyle const& MinMaxSolverEnvironment::getMultiplicationStyle() const {
+    return multiplicationStyle;
+}
 
-void MinMaxSolverEnvironment::setMultiplicationStyle(storm::solver::MultiplicationStyle value) { multiplicationStyle = value; }
+void MinMaxSolverEnvironment::setMultiplicationStyle(storm::solver::MultiplicationStyle value) {
+    multiplicationStyle = value;
+}
 
-bool MinMaxSolverEnvironment::isSymmetricUpdatesSet() const { return symmetricUpdates; }
+bool MinMaxSolverEnvironment::isSymmetricUpdatesSet() const {
+    return symmetricUpdates;
+}
 
-void MinMaxSolverEnvironment::setSymmetricUpdates(bool value) { symmetricUpdates = value; }
+void MinMaxSolverEnvironment::setSymmetricUpdates(bool value) {
+    symmetricUpdates = value;
+}
 
 }  // namespace storm

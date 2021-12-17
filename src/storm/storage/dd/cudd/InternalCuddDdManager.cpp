@@ -81,14 +81,18 @@ InternalDdManager<DdType::CUDD>::~InternalDdManager() {
     // Intentionally left empty.
 }
 
-InternalBdd<DdType::CUDD> InternalDdManager<DdType::CUDD>::getBddOne() const { return InternalBdd<DdType::CUDD>(this, cuddManager.bddOne()); }
+InternalBdd<DdType::CUDD> InternalDdManager<DdType::CUDD>::getBddOne() const {
+    return InternalBdd<DdType::CUDD>(this, cuddManager.bddOne());
+}
 
 template<typename ValueType>
 InternalAdd<DdType::CUDD, ValueType> InternalDdManager<DdType::CUDD>::getAddOne() const {
     return InternalAdd<DdType::CUDD, ValueType>(this, cuddManager.addOne());
 }
 
-InternalBdd<DdType::CUDD> InternalDdManager<DdType::CUDD>::getBddZero() const { return InternalBdd<DdType::CUDD>(this, cuddManager.bddZero()); }
+InternalBdd<DdType::CUDD> InternalDdManager<DdType::CUDD>::getBddZero() const {
+    return InternalBdd<DdType::CUDD>(this, cuddManager.bddZero());
+}
 
 InternalBdd<DdType::CUDD> InternalDdManager<DdType::CUDD>::getBddEncodingLessOrEqualThan(uint64_t bound, InternalBdd<DdType::CUDD> const& cube,
                                                                                          uint64_t numberOfDdVariables) const {
@@ -171,7 +175,9 @@ std::vector<InternalBdd<DdType::CUDD>> InternalDdManager<DdType::CUDD>::createDd
     return result;
 }
 
-bool InternalDdManager<DdType::CUDD>::supportsOrderedInsertion() const { return true; }
+bool InternalDdManager<DdType::CUDD>::supportsOrderedInsertion() const {
+    return true;
+}
 
 void InternalDdManager<DdType::CUDD>::allowDynamicReordering(bool value) {
     if (value) {
@@ -186,18 +192,26 @@ bool InternalDdManager<DdType::CUDD>::isDynamicReorderingAllowed() const {
     return this->getCuddManager().ReorderingStatus(&type);
 }
 
-void InternalDdManager<DdType::CUDD>::triggerReordering() { this->getCuddManager().ReduceHeap(this->reorderingTechnique, 0); }
+void InternalDdManager<DdType::CUDD>::triggerReordering() {
+    this->getCuddManager().ReduceHeap(this->reorderingTechnique, 0);
+}
 
 void InternalDdManager<DdType::CUDD>::debugCheck() const {
     this->getCuddManager().CheckKeys();
     this->getCuddManager().DebugCheck();
 }
 
-cudd::Cudd& InternalDdManager<DdType::CUDD>::getCuddManager() { return cuddManager; }
+cudd::Cudd& InternalDdManager<DdType::CUDD>::getCuddManager() {
+    return cuddManager;
+}
 
-cudd::Cudd const& InternalDdManager<DdType::CUDD>::getCuddManager() const { return cuddManager; }
+cudd::Cudd const& InternalDdManager<DdType::CUDD>::getCuddManager() const {
+    return cuddManager;
+}
 
-uint_fast64_t InternalDdManager<DdType::CUDD>::getNumberOfDdVariables() const { return numberOfDdVariables; }
+uint_fast64_t InternalDdManager<DdType::CUDD>::getNumberOfDdVariables() const {
+    return numberOfDdVariables;
+}
 
 template InternalAdd<DdType::CUDD, double> InternalDdManager<DdType::CUDD>::getAddOne() const;
 template InternalAdd<DdType::CUDD, uint_fast64_t> InternalDdManager<DdType::CUDD>::getAddOne() const;

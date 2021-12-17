@@ -541,7 +541,9 @@ class InternalBdd<DdType::Sylvan> {
 namespace std {
 template<>
 struct hash<storm::dd::InternalBdd<storm::dd::DdType::Sylvan>> {
-    std::size_t operator()(storm::dd::InternalBdd<storm::dd::DdType::Sylvan> const& key) const { return static_cast<std::size_t>(key.sylvanBdd.GetBDD()); }
+    std::size_t operator()(storm::dd::InternalBdd<storm::dd::DdType::Sylvan> const& key) const {
+        return static_cast<std::size_t>(key.sylvanBdd.GetBDD());
+    }
 };
 }  // namespace std
 

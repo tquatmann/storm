@@ -29,15 +29,25 @@ MemoryStructure::MemoryStructure(TransitionMatrix&& transitionMatrix, storm::mod
     // intentionally left empty
 }
 
-bool MemoryStructure::isOnlyInitialStatesRelevantSet() const { return onlyInitialStatesRelevant; }
+bool MemoryStructure::isOnlyInitialStatesRelevantSet() const {
+    return onlyInitialStatesRelevant;
+}
 
-MemoryStructure::TransitionMatrix const& MemoryStructure::getTransitionMatrix() const { return transitions; }
+MemoryStructure::TransitionMatrix const& MemoryStructure::getTransitionMatrix() const {
+    return transitions;
+}
 
-storm::models::sparse::StateLabeling const& MemoryStructure::getStateLabeling() const { return stateLabeling; }
+storm::models::sparse::StateLabeling const& MemoryStructure::getStateLabeling() const {
+    return stateLabeling;
+}
 
-std::vector<uint_fast64_t> const& MemoryStructure::getInitialMemoryStates() const { return initialMemoryStates; }
+std::vector<uint_fast64_t> const& MemoryStructure::getInitialMemoryStates() const {
+    return initialMemoryStates;
+}
 
-uint_fast64_t MemoryStructure::getNumberOfStates() const { return transitions.size(); }
+uint_fast64_t MemoryStructure::getNumberOfStates() const {
+    return transitions.size();
+}
 
 uint_fast64_t MemoryStructure::getSuccessorMemoryState(uint_fast64_t const& currentMemoryState, uint_fast64_t const& modelTransitionIndex) const {
     for (uint_fast64_t successorMemState = 0; successorMemState < getNumberOfStates(); ++successorMemState) {

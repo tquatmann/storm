@@ -250,7 +250,9 @@ AbstractionSettings::SolveMode AbstractionSettings::getSolveMode() const {
     return SolveMode::Sparse;
 }
 
-bool AbstractionSettings::isAddAllGuardsSet() const { return this->getOption(addAllGuardsOptionName).getArgumentByName("value").getValueAsString() == "on"; }
+bool AbstractionSettings::isAddAllGuardsSet() const {
+    return this->getOption(addAllGuardsOptionName).getArgumentByName("value").getValueAsString() == "on";
+}
 
 bool AbstractionSettings::isAddAllInitialExpressionsSet() const {
     return this->getOption(addInitialExpressionsOptionName).getArgumentByName("value").getValueAsString() == "on";
@@ -272,7 +274,9 @@ bool AbstractionSettings::isRestrictToRelevantStatesSet() const {
     return this->getOption(restrictToRelevantStatesOptionName).getArgumentByName("value").getValueAsString() == "on";
 }
 
-double AbstractionSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double AbstractionSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
 bool AbstractionSettings::getRelativeTerminationCriterion() const {
     return this->getOption(relativeOptionName).getArgumentByName("value").getValueAsString() == "on";
@@ -312,7 +316,9 @@ bool AbstractionSettings::isRankRefinementPredicatesSet() const {
     return this->getOption(rankRefinementPredicatesOptionName).getArgumentByName("value").getValueAsString() == "on";
 }
 
-bool AbstractionSettings::isConstraintsSet() const { return this->getOption(constraintsOptionName).getHasOptionBeenSet(); }
+bool AbstractionSettings::isConstraintsSet() const {
+    return this->getOption(constraintsOptionName).getHasOptionBeenSet();
+}
 
 std::string AbstractionSettings::getConstraintString() const {
     return this->getOption(constraintsOptionName).getArgumentByName("constraints").getValueAsString();
@@ -322,9 +328,13 @@ bool AbstractionSettings::isUseEagerRefinementSet() const {
     return this->getOption(useEagerRefinementOptionName).getArgumentByName("value").getValueAsString() == "on";
 }
 
-bool AbstractionSettings::isDebugSet() const { return this->getOption(debugOptionName).getArgumentByName("value").getValueAsString() == "on"; }
+bool AbstractionSettings::isDebugSet() const {
+    return this->getOption(debugOptionName).getArgumentByName("value").getValueAsString() == "on";
+}
 
-bool AbstractionSettings::isInjectRefinementPredicatesSet() const { return this->getOption(injectRefinementPredicatesOptionName).getHasOptionBeenSet(); }
+bool AbstractionSettings::isInjectRefinementPredicatesSet() const {
+    return this->getOption(injectRefinementPredicatesOptionName).getHasOptionBeenSet();
+}
 
 std::string AbstractionSettings::getInjectedRefinementPredicates() const {
     return this->getOption(injectRefinementPredicatesOptionName).getArgumentByName("predicates").getValueAsString();

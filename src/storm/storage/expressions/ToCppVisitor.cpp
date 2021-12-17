@@ -16,11 +16,17 @@ ToCppTranslationOptions::ToCppTranslationOptions(std::unordered_map<storm::expre
     // Intentionally left empty.
 }
 
-std::unordered_map<storm::expressions::Variable, std::string> const& ToCppTranslationOptions::getPrefixes() const { return prefixes.get(); }
+std::unordered_map<storm::expressions::Variable, std::string> const& ToCppTranslationOptions::getPrefixes() const {
+    return prefixes.get();
+}
 
-std::unordered_map<storm::expressions::Variable, std::string> const& ToCppTranslationOptions::getNames() const { return names.get(); }
+std::unordered_map<storm::expressions::Variable, std::string> const& ToCppTranslationOptions::getNames() const {
+    return names.get();
+}
 
-ToCppTranslationMode const& ToCppTranslationOptions::getMode() const { return mode; }
+ToCppTranslationMode const& ToCppTranslationOptions::getMode() const {
+    return mode;
+}
 
 std::string ToCppVisitor::translate(storm::expressions::Expression const& expression, ToCppTranslationOptions const& options) {
     expression.accept(*this, options);

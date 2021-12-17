@@ -112,7 +112,9 @@ boost::any VariableSetPredicateSplitter::visit(BinaryBooleanFunctionExpression c
     return boost::any();
 }
 
-boost::any VariableSetPredicateSplitter::visit(BinaryNumericalFunctionExpression const&, boost::any const&) { return boost::any(); }
+boost::any VariableSetPredicateSplitter::visit(BinaryNumericalFunctionExpression const&, boost::any const&) {
+    return boost::any();
+}
 
 boost::any VariableSetPredicateSplitter::visit(BinaryRelationExpression const& expression, boost::any const&) {
     std::set<storm::expressions::Variable> leftContainedVariables;
@@ -173,13 +175,21 @@ boost::any VariableSetPredicateSplitter::visit(UnaryBooleanFunctionExpression co
     return boost::any();
 }
 
-boost::any VariableSetPredicateSplitter::visit(UnaryNumericalFunctionExpression const&, boost::any const&) { return boost::any(); }
+boost::any VariableSetPredicateSplitter::visit(UnaryNumericalFunctionExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any VariableSetPredicateSplitter::visit(BooleanLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any VariableSetPredicateSplitter::visit(BooleanLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any VariableSetPredicateSplitter::visit(IntegerLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any VariableSetPredicateSplitter::visit(IntegerLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any VariableSetPredicateSplitter::visit(RationalLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any VariableSetPredicateSplitter::visit(RationalLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
 }  // namespace expressions
 }  // namespace storm

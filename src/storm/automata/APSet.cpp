@@ -13,9 +13,13 @@ APSet::APSet() {
     // intentionally left blank
 }
 
-unsigned int APSet::size() const { return index_to_ap.size(); }
+unsigned int APSet::size() const {
+    return index_to_ap.size();
+}
 
-std::size_t APSet::alphabetSize() const { return 1L << size(); }
+std::size_t APSet::alphabetSize() const {
+    return 1L << size();
+}
 
 void APSet::add(const std::string& ap) {
     STORM_LOG_THROW(size() < MAX_APS, storm::exceptions::UnexpectedException, "Set of atomic proposition size is limited to " << std::to_string(MAX_APS));
@@ -37,11 +41,17 @@ const std::string& APSet::getAP(unsigned int index) const {
     return index_to_ap.at(index);
 }
 
-const std::vector<std::string>& APSet::getAPs() const { return index_to_ap; }
+const std::vector<std::string>& APSet::getAPs() const {
+    return index_to_ap;
+}
 
-bool APSet::contains(const std::string& ap) const { return ap_to_index.find(ap) != ap_to_index.end(); }
+bool APSet::contains(const std::string& ap) const {
+    return ap_to_index.find(ap) != ap_to_index.end();
+}
 
-APSet::alphabet_element APSet::elementAllFalse() const { return 0; }
+APSet::alphabet_element APSet::elementAllFalse() const {
+    return 0;
+}
 
 APSet::alphabet_element APSet::elementAddAP(alphabet_element element, unsigned int ap) const {
     STORM_LOG_THROW(ap < size(), storm::exceptions::UnexpectedException, "AP out of range");

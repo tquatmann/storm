@@ -29,11 +29,17 @@ ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool ModelCheckerSettings::isFilterRewZeroSet() const { return this->getOption(filterRewZeroOptionName).getHasOptionBeenSet(); }
+bool ModelCheckerSettings::isFilterRewZeroSet() const {
+    return this->getOption(filterRewZeroOptionName).getHasOptionBeenSet();
+}
 
-bool ModelCheckerSettings::isLtl2daToolSet() const { return this->getOption(ltl2daToolOptionName).getHasOptionBeenSet(); }
+bool ModelCheckerSettings::isLtl2daToolSet() const {
+    return this->getOption(ltl2daToolOptionName).getHasOptionBeenSet();
+}
 
-std::string ModelCheckerSettings::getLtl2daTool() const { return this->getOption(ltl2daToolOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string ModelCheckerSettings::getLtl2daTool() const {
+    return this->getOption(ltl2daToolOptionName).getArgumentByName("filename").getValueAsString();
+}
 
 }  // namespace modules
 }  // namespace settings

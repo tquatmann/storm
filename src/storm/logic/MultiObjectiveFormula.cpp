@@ -15,7 +15,9 @@ MultiObjectiveFormula::~MultiObjectiveFormula() {
     // Intentionally left empty
 }
 
-bool MultiObjectiveFormula::isMultiObjectiveFormula() const { return true; }
+bool MultiObjectiveFormula::isMultiObjectiveFormula() const {
+    return true;
+}
 
 bool MultiObjectiveFormula::hasQualitativeResult() const {
     for (auto const& subformula : this->subformulas) {
@@ -26,7 +28,9 @@ bool MultiObjectiveFormula::hasQualitativeResult() const {
     return true;
 }
 
-bool MultiObjectiveFormula::hasQuantitativeResult() const { return !hasQualitativeResult(); }
+bool MultiObjectiveFormula::hasQuantitativeResult() const {
+    return !hasQualitativeResult();
+}
 
 bool MultiObjectiveFormula::hasNumericalResult() const {
     bool hasExactlyOneQuantitativeSubformula = false;
@@ -41,7 +45,9 @@ bool MultiObjectiveFormula::hasNumericalResult() const {
     return hasExactlyOneQuantitativeSubformula;
 }
 
-bool MultiObjectiveFormula::hasParetoCurveResult() const { return hasQuantitativeResult() && !hasNumericalResult(); }
+bool MultiObjectiveFormula::hasParetoCurveResult() const {
+    return hasQuantitativeResult() && !hasNumericalResult();
+}
 
 Formula const& MultiObjectiveFormula::getSubformula(uint_fast64_t index) const {
     STORM_LOG_THROW(index < getNumberOfSubformulas(), storm::exceptions::InvalidArgumentException,
@@ -49,11 +55,17 @@ Formula const& MultiObjectiveFormula::getSubformula(uint_fast64_t index) const {
     return *this->subformulas[index];
 }
 
-uint_fast64_t MultiObjectiveFormula::getNumberOfSubformulas() const { return this->subformulas.size(); }
+uint_fast64_t MultiObjectiveFormula::getNumberOfSubformulas() const {
+    return this->subformulas.size();
+}
 
-std::vector<std::shared_ptr<Formula const>> const& MultiObjectiveFormula::getSubformulas() const { return this->subformulas; }
+std::vector<std::shared_ptr<Formula const>> const& MultiObjectiveFormula::getSubformulas() const {
+    return this->subformulas;
+}
 
-boost::any MultiObjectiveFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any MultiObjectiveFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
 void MultiObjectiveFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     for (auto const& subformula : this->subformulas) {

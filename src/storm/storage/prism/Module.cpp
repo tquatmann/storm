@@ -45,9 +45,13 @@ bool Module::hasUnboundedVariables() const {
     return false;
 }
 
-std::size_t Module::getNumberOfBooleanVariables() const { return this->booleanVariables.size(); }
+std::size_t Module::getNumberOfBooleanVariables() const {
+    return this->booleanVariables.size();
+}
 
-std::size_t Module::getNumberOfIntegerVariables() const { return this->integerVariables.size(); }
+std::size_t Module::getNumberOfIntegerVariables() const {
+    return this->integerVariables.size();
+}
 
 storm::prism::BooleanVariable const& Module::getBooleanVariable(std::string const& variableName) const {
     auto const& nameIndexPair = this->booleanVariableToIndexMap.find(variableName);
@@ -56,7 +60,9 @@ storm::prism::BooleanVariable const& Module::getBooleanVariable(std::string cons
     return this->getBooleanVariables()[nameIndexPair->second];
 }
 
-std::vector<storm::prism::BooleanVariable> const& Module::getBooleanVariables() const { return this->booleanVariables; }
+std::vector<storm::prism::BooleanVariable> const& Module::getBooleanVariables() const {
+    return this->booleanVariables;
+}
 
 storm::prism::IntegerVariable const& Module::getIntegerVariable(std::string const& variableName) const {
     auto const& nameIndexPair = this->integerVariableToIndexMap.find(variableName);
@@ -65,9 +71,13 @@ storm::prism::IntegerVariable const& Module::getIntegerVariable(std::string cons
     return this->getIntegerVariables()[nameIndexPair->second];
 }
 
-std::vector<storm::prism::IntegerVariable> const& Module::getIntegerVariables() const { return this->integerVariables; }
+std::vector<storm::prism::IntegerVariable> const& Module::getIntegerVariables() const {
+    return this->integerVariables;
+}
 
-std::size_t Module::getNumberOfClockVariables() const { return this->clockVariables.size(); }
+std::size_t Module::getNumberOfClockVariables() const {
+    return this->clockVariables.size();
+}
 
 storm::prism::ClockVariable const& Module::getClockVariable(std::string const& variableName) const {
     auto const& nameIndexPair = this->clockVariableToIndexMap.find(variableName);
@@ -76,7 +86,9 @@ storm::prism::ClockVariable const& Module::getClockVariable(std::string const& v
     return this->getClockVariables()[nameIndexPair->second];
 }
 
-std::vector<storm::prism::ClockVariable> const& Module::getClockVariables() const { return this->clockVariables; }
+std::vector<storm::prism::ClockVariable> const& Module::getClockVariables() const {
+    return this->clockVariables;
+}
 
 std::set<storm::expressions::Variable> Module::getAllExpressionVariables() const {
     std::set<storm::expressions::Variable> result;
@@ -102,7 +114,9 @@ std::vector<storm::expressions::Expression> Module::getAllRangeExpressions() con
     return result;
 }
 
-std::size_t Module::getNumberOfCommands() const { return this->commands.size(); }
+std::size_t Module::getNumberOfCommands() const {
+    return this->commands.size();
+}
 
 std::size_t Module::getNumberOfUpdates() const {
     std::size_t result = 0;
@@ -112,15 +126,25 @@ std::size_t Module::getNumberOfUpdates() const {
     return result;
 }
 
-storm::prism::Command const& Module::getCommand(uint_fast64_t index) const { return this->commands[index]; }
+storm::prism::Command const& Module::getCommand(uint_fast64_t index) const {
+    return this->commands[index];
+}
 
-std::vector<storm::prism::Command> const& Module::getCommands() const { return this->commands; }
+std::vector<storm::prism::Command> const& Module::getCommands() const {
+    return this->commands;
+}
 
-std::vector<storm::prism::Command>& Module::getCommands() { return this->commands; }
+std::vector<storm::prism::Command>& Module::getCommands() {
+    return this->commands;
+}
 
-std::string const& Module::getName() const { return this->moduleName; }
+std::string const& Module::getName() const {
+    return this->moduleName;
+}
 
-std::set<uint_fast64_t> const& Module::getSynchronizingActionIndices() const { return this->synchronizingActionIndices; }
+std::set<uint_fast64_t> const& Module::getSynchronizingActionIndices() const {
+    return this->synchronizingActionIndices;
+}
 
 bool Module::hasActionIndex(uint_fast64_t actionIndex) const {
     return this->actionIndicesToCommandIndexMap.find(actionIndex) != this->actionIndicesToCommandIndexMap.end();
@@ -136,7 +160,9 @@ uint64_t Module::getNumberOfUnlabeledCommands() const {
     return result;
 }
 
-bool Module::isRenamedFromModule() const { return this->renamedFromModule != ""; }
+bool Module::isRenamedFromModule() const {
+    return this->renamedFromModule != "";
+}
 
 std::string const& Module::getBaseModule() const {
     STORM_LOG_THROW(this->isRenamedFromModule(), storm::exceptions::InvalidAccessException,
@@ -343,9 +369,13 @@ void Module::createMissingInitialValues() {
     }
 }
 
-bool Module::hasInvariant() const { return this->invariant.isInitialized(); }
+bool Module::hasInvariant() const {
+    return this->invariant.isInitialized();
+}
 
-storm::expressions::Expression const& Module::getInvariant() const { return this->invariant; }
+storm::expressions::Expression const& Module::getInvariant() const {
+    return this->invariant;
+}
 
 std::ostream& operator<<(std::ostream& stream, Module const& module) {
     stream << "module " << module.getName() << std::endl;

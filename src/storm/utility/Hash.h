@@ -11,7 +11,9 @@ namespace utility {
 template<class T>
 class Hash {
    public:
-    static std::size_t getHash(std::vector<T> const& target) { return boost::hash_range(target.begin(), target.end()); }
+    static std::size_t getHash(std::vector<T> const& target) {
+        return boost::hash_range(target.begin(), target.end());
+    }
 
    private:
     Hash() {}

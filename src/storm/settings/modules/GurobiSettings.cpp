@@ -56,17 +56,29 @@ GurobiSettings::GurobiSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool GurobiSettings::isIntegerToleranceSet() const { return this->getOption(integerToleranceOption).getHasOptionBeenSet(); }
+bool GurobiSettings::isIntegerToleranceSet() const {
+    return this->getOption(integerToleranceOption).getHasOptionBeenSet();
+}
 
-double GurobiSettings::getIntegerTolerance() const { return this->getOption(integerToleranceOption).getArgumentByName("value").getValueAsDouble(); }
+double GurobiSettings::getIntegerTolerance() const {
+    return this->getOption(integerToleranceOption).getArgumentByName("value").getValueAsDouble();
+}
 
-bool GurobiSettings::isNumberOfThreadsSet() const { return this->getOption(threadsOption).getHasOptionBeenSet(); }
+bool GurobiSettings::isNumberOfThreadsSet() const {
+    return this->getOption(threadsOption).getHasOptionBeenSet();
+}
 
-uint_fast64_t GurobiSettings::getNumberOfThreads() const { return this->getOption(threadsOption).getArgumentByName("count").getValueAsUnsignedInteger(); }
+uint_fast64_t GurobiSettings::getNumberOfThreads() const {
+    return this->getOption(threadsOption).getArgumentByName("count").getValueAsUnsignedInteger();
+}
 
-bool GurobiSettings::isOutputSet() const { return this->getOption(outputOption).getHasOptionBeenSet(); }
+bool GurobiSettings::isOutputSet() const {
+    return this->getOption(outputOption).getHasOptionBeenSet();
+}
 
-uint_fast64_t GurobiSettings::getMIPFocus() const { return this->getOption(mipFocusOption).getArgumentByName("value").getValueAsUnsignedInteger(); }
+uint_fast64_t GurobiSettings::getMIPFocus() const {
+    return this->getOption(mipFocusOption).getArgumentByName("value").getValueAsUnsignedInteger();
+}
 
 uint_fast64_t GurobiSettings::getNumberOfConcurrentMipThreads() const {
     return this->getOption(concurrentMipThreadsOption).getArgumentByName("value").getValueAsUnsignedInteger();

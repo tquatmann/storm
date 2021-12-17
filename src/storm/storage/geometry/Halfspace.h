@@ -30,7 +30,9 @@ class Halfspace {
     /*
      * Returns true iff the given point is contained in this halfspace, i.e., normalVector*point <= offset holds.
      */
-    bool contains(std::vector<ValueType> const& point) const { return storm::utility::vector::dotProduct(point, normalVector()) <= offset(); }
+    bool contains(std::vector<ValueType> const& point) const {
+        return storm::utility::vector::dotProduct(point, normalVector()) <= offset();
+    }
 
     /*
      * Returns the (scaled) distance of the given point from this halfspace.
@@ -55,7 +57,9 @@ class Halfspace {
     /*
      * Returns true iff the given point lies on the boundary of this halfspace (i.e., on the hyperplane given by normalVector()*x =offset
      */
-    bool isPointOnBoundary(std::vector<ValueType> const& point) const { return storm::utility::vector::dotProduct(point, normalVector()) == offset(); }
+    bool isPointOnBoundary(std::vector<ValueType> const& point) const {
+        return storm::utility::vector::dotProduct(point, normalVector()) == offset();
+    }
 
     /*
      * Returns the inverted Halfspace of this which represents the set (R^n \ this) union { x | x is on the boundary of this}
@@ -105,13 +109,21 @@ class Halfspace {
         return lhs <= manager.rational(offset());
     }
 
-    std::vector<ValueType> const& normalVector() const { return mNormalVector; }
+    std::vector<ValueType> const& normalVector() const {
+        return mNormalVector;
+    }
 
-    std::vector<ValueType>& normalVector() { return mNormalVector; }
+    std::vector<ValueType>& normalVector() {
+        return mNormalVector;
+    }
 
-    ValueType const& offset() const { return mOffset; }
+    ValueType const& offset() const {
+        return mOffset;
+    }
 
-    ValueType& offset() { return mOffset; }
+    ValueType& offset() {
+        return mOffset;
+    }
 
    private:
     std::vector<ValueType> mNormalVector;

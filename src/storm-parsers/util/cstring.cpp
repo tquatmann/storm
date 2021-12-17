@@ -71,7 +71,9 @@ char const* trimWhitespaces(char const* buf) {
 /*!
  * @brief Encapsulates the usage of function @strcspn to forward to the end of the line (next char is the newline character).
  */
-char const* forwardToLineEnd(char const* buffer) { return buffer + strcspn(buffer, "\n\r\0"); }
+char const* forwardToLineEnd(char const* buffer) {
+    return buffer + strcspn(buffer, "\n\r\0");
+}
 
 /*!
  * @brief Encapsulates the usage of function @strchr to forward to the next line

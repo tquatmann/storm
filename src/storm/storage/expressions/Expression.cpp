@@ -54,41 +54,77 @@ Expression Expression::substitute(std::unordered_map<Variable, Expression> const
     return SubstitutionVisitor<std::unordered_map<Variable, Expression>>(identifierToExpressionMap).substitute(*this);
 }
 
-Expression Expression::substituteNonStandardPredicates() const { return RestrictSyntaxVisitor().substitute(*this); }
+Expression Expression::substituteNonStandardPredicates() const {
+    return RestrictSyntaxVisitor().substitute(*this);
+}
 
-bool Expression::evaluateAsBool(Valuation const* valuation) const { return this->getBaseExpression().evaluateAsBool(valuation); }
+bool Expression::evaluateAsBool(Valuation const* valuation) const {
+    return this->getBaseExpression().evaluateAsBool(valuation);
+}
 
-int_fast64_t Expression::evaluateAsInt(Valuation const* valuation) const { return this->getBaseExpression().evaluateAsInt(valuation); }
+int_fast64_t Expression::evaluateAsInt(Valuation const* valuation) const {
+    return this->getBaseExpression().evaluateAsInt(valuation);
+}
 
-double Expression::evaluateAsDouble(Valuation const* valuation) const { return this->getBaseExpression().evaluateAsDouble(valuation); }
+double Expression::evaluateAsDouble(Valuation const* valuation) const {
+    return this->getBaseExpression().evaluateAsDouble(valuation);
+}
 
-storm::RationalNumber Expression::evaluateAsRational() const { return this->getBaseExpression().evaluateAsRational(); }
+storm::RationalNumber Expression::evaluateAsRational() const {
+    return this->getBaseExpression().evaluateAsRational();
+}
 
-Expression Expression::simplify() const { return Expression(this->getBaseExpression().simplify()); }
+Expression Expression::simplify() const {
+    return Expression(this->getBaseExpression().simplify());
+}
 
-Expression Expression::reduceNesting() const { return Expression(this->getBaseExpression().reduceNesting()); }
+Expression Expression::reduceNesting() const {
+    return Expression(this->getBaseExpression().reduceNesting());
+}
 
-OperatorType Expression::getOperator() const { return this->getBaseExpression().getOperator(); }
+OperatorType Expression::getOperator() const {
+    return this->getBaseExpression().getOperator();
+}
 
-bool Expression::isFunctionApplication() const { return this->getBaseExpression().isFunctionApplication(); }
+bool Expression::isFunctionApplication() const {
+    return this->getBaseExpression().isFunctionApplication();
+}
 
-uint_fast64_t Expression::getArity() const { return this->getBaseExpression().getArity(); }
+uint_fast64_t Expression::getArity() const {
+    return this->getBaseExpression().getArity();
+}
 
-Expression Expression::getOperand(uint_fast64_t operandIndex) const { return Expression(this->getBaseExpression().getOperand(operandIndex)); }
+Expression Expression::getOperand(uint_fast64_t operandIndex) const {
+    return Expression(this->getBaseExpression().getOperand(operandIndex));
+}
 
-std::string const& Expression::getIdentifier() const { return this->getBaseExpression().getIdentifier(); }
+std::string const& Expression::getIdentifier() const {
+    return this->getBaseExpression().getIdentifier();
+}
 
-bool Expression::containsVariables() const { return this->getBaseExpression().containsVariables(); }
+bool Expression::containsVariables() const {
+    return this->getBaseExpression().containsVariables();
+}
 
-bool Expression::isLiteral() const { return this->getBaseExpression().isLiteral(); }
+bool Expression::isLiteral() const {
+    return this->getBaseExpression().isLiteral();
+}
 
-bool Expression::isVariable() const { return this->getBaseExpression().isVariable(); }
+bool Expression::isVariable() const {
+    return this->getBaseExpression().isVariable();
+}
 
-bool Expression::isTrue() const { return this->getBaseExpression().isTrue(); }
+bool Expression::isTrue() const {
+    return this->getBaseExpression().isTrue();
+}
 
-bool Expression::isFalse() const { return this->getBaseExpression().isFalse(); }
+bool Expression::isFalse() const {
+    return this->getBaseExpression().isFalse();
+}
 
-bool Expression::areSame(storm::expressions::Expression const& other) const { return this->expressionPtr == other.expressionPtr; }
+bool Expression::areSame(storm::expressions::Expression const& other) const {
+    return this->expressionPtr == other.expressionPtr;
+}
 
 std::set<storm::expressions::Variable> Expression::getVariables() const {
     std::set<storm::expressions::Variable> result;
@@ -96,7 +132,9 @@ std::set<storm::expressions::Variable> Expression::getVariables() const {
     return result;
 }
 
-void Expression::gatherVariables(std::set<storm::expressions::Variable>& variables) const { this->getBaseExpression().gatherVariables(variables); }
+void Expression::gatherVariables(std::set<storm::expressions::Variable>& variables) const {
+    this->getBaseExpression().gatherVariables(variables);
+}
 
 bool Expression::containsVariable(std::set<storm::expressions::Variable> const& variables) const {
     std::set<storm::expressions::Variable> appearingVariables = this->getVariables();
@@ -123,27 +161,49 @@ bool Expression::isRelationalExpression() const {
            this->getOperator() == OperatorType::GreaterOrEqual;
 }
 
-bool Expression::isLinear() const { return LinearityCheckVisitor().check(*this); }
+bool Expression::isLinear() const {
+    return LinearityCheckVisitor().check(*this);
+}
 
-BaseExpression const& Expression::getBaseExpression() const { return *this->expressionPtr; }
+BaseExpression const& Expression::getBaseExpression() const {
+    return *this->expressionPtr;
+}
 
-std::shared_ptr<BaseExpression const> const& Expression::getBaseExpressionPointer() const { return this->expressionPtr; }
+std::shared_ptr<BaseExpression const> const& Expression::getBaseExpressionPointer() const {
+    return this->expressionPtr;
+}
 
-ExpressionManager const& Expression::getManager() const { return this->getBaseExpression().getManager(); }
+ExpressionManager const& Expression::getManager() const {
+    return this->getBaseExpression().getManager();
+}
 
-Type const& Expression::getType() const { return this->getBaseExpression().getType(); }
+Type const& Expression::getType() const {
+    return this->getBaseExpression().getType();
+}
 
-bool Expression::hasNumericalType() const { return this->getBaseExpression().hasNumericalType(); }
+bool Expression::hasNumericalType() const {
+    return this->getBaseExpression().hasNumericalType();
+}
 
-bool Expression::hasRationalType() const { return this->getBaseExpression().hasRationalType(); }
+bool Expression::hasRationalType() const {
+    return this->getBaseExpression().hasRationalType();
+}
 
-bool Expression::hasBooleanType() const { return this->getBaseExpression().hasBooleanType(); }
+bool Expression::hasBooleanType() const {
+    return this->getBaseExpression().hasBooleanType();
+}
 
-bool Expression::hasIntegerType() const { return this->getBaseExpression().hasIntegerType(); }
+bool Expression::hasIntegerType() const {
+    return this->getBaseExpression().hasIntegerType();
+}
 
-bool Expression::hasBitVectorType() const { return this->getBaseExpression().hasBitVectorType(); }
+bool Expression::hasBitVectorType() const {
+    return this->getBaseExpression().hasBitVectorType();
+}
 
-boost::any Expression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return this->getBaseExpression().accept(visitor, data); }
+boost::any Expression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return this->getBaseExpression().accept(visitor, data);
+}
 
 bool Expression::isInitialized() const {
     if (this->getBaseExpressionPointer()) {
@@ -160,11 +220,17 @@ bool Expression::isSyntacticallyEqual(storm::expressions::Expression const& othe
     return checker.isSyntacticallyEqual(*this, other);
 }
 
-bool Expression::hasCompiledExpression() const { return static_cast<bool>(compiledExpression); }
+bool Expression::hasCompiledExpression() const {
+    return static_cast<bool>(compiledExpression);
+}
 
-void Expression::setCompiledExpression(std::shared_ptr<CompiledExpression> const& compiledExpression) const { this->compiledExpression = compiledExpression; }
+void Expression::setCompiledExpression(std::shared_ptr<CompiledExpression> const& compiledExpression) const {
+    this->compiledExpression = compiledExpression;
+}
 
-CompiledExpression const& Expression::getCompiledExpression() const { return *compiledExpression; }
+CompiledExpression const& Expression::getCompiledExpression() const {
+    return *compiledExpression;
+}
 
 std::string Expression::toString() const {
     std::stringstream stream;
@@ -193,7 +259,9 @@ Expression operator+(Expression const& first, int64_t second) {
     return first + Expression(std::shared_ptr<BaseExpression>(new IntegerLiteralExpression(first.getBaseExpression().getManager(), second)));
 }
 
-Expression operator+(int64_t first, Expression const& second) { return second + first; }
+Expression operator+(int64_t first, Expression const& second) {
+    return second + first;
+}
 
 Expression operator-(Expression const& first, Expression const& second) {
     assertSameManager(first.getBaseExpression(), second.getBaseExpression());

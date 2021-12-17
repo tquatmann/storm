@@ -13,7 +13,9 @@ OrderedAssignments::OrderedAssignments(std::vector<Assignment> const& assignment
     }
 }
 
-OrderedAssignments::OrderedAssignments(Assignment const& assignment) { add(assignment); }
+OrderedAssignments::OrderedAssignments(Assignment const& assignment) {
+    add(assignment);
+}
 
 OrderedAssignments OrderedAssignments::clone() const {
     OrderedAssignments result;
@@ -101,7 +103,9 @@ void OrderedAssignments::clear() {
     nonTransientAssignments.clear();
 }
 
-std::size_t OrderedAssignments::getNumberOfAssignments() const { return allAssignments.size(); }
+std::size_t OrderedAssignments::getNumberOfAssignments() const {
+    return allAssignments.size();
+}
 
 int64_t OrderedAssignments::getLowestLevel(bool onlyTransient) const {
     auto const& as = onlyTransient ? transientAssignments : allAssignments;
@@ -181,7 +185,9 @@ OrderedAssignments OrderedAssignments::simplifyLevels(bool synchronous, Variable
     }
 }
 
-detail::ConstAssignments OrderedAssignments::getAllAssignments() const { return detail::ConstAssignments(allAssignments.begin(), allAssignments.end()); }
+detail::ConstAssignments OrderedAssignments::getAllAssignments() const {
+    return detail::ConstAssignments(allAssignments.begin(), allAssignments.end());
+}
 
 detail::ConstAssignments OrderedAssignments::getTransientAssignments() const {
     return detail::ConstAssignments(transientAssignments.begin(), transientAssignments.end());
@@ -192,8 +198,12 @@ detail::ConstAssignments OrderedAssignments::getNonTransientAssignments() const 
 }
 
 struct AssignmentLevelToLevelComparator {
-    bool operator()(std::shared_ptr<Assignment> const& left, int64_t const& right) const { return left->getLevel() < right; }
-    bool operator()(int64_t const& left, std::shared_ptr<Assignment> const& right) const { return left < right->getLevel(); }
+    bool operator()(std::shared_ptr<Assignment> const& left, int64_t const& right) const {
+        return left->getLevel() < right;
+    }
+    bool operator()(int64_t const& left, std::shared_ptr<Assignment> const& right) const {
+        return left < right->getLevel();
+    }
 };
 
 detail::ConstAssignments OrderedAssignments::getTransientAssignments(int64_t assignmentLevel) const {
@@ -208,15 +218,25 @@ detail::ConstAssignments OrderedAssignments::getNonTransientAssignments(int64_t 
     return detail::ConstAssignments(begin, end);
 }
 
-bool OrderedAssignments::hasTransientAssignment() const { return !transientAssignments.empty(); }
+bool OrderedAssignments::hasTransientAssignment() const {
+    return !transientAssignments.empty();
+}
 
-detail::Assignments::iterator OrderedAssignments::begin() { return detail::Assignments::make_iterator(allAssignments.begin()); }
+detail::Assignments::iterator OrderedAssignments::begin() {
+    return detail::Assignments::make_iterator(allAssignments.begin());
+}
 
-detail::ConstAssignments::iterator OrderedAssignments::begin() const { return detail::ConstAssignments::make_iterator(allAssignments.begin()); }
+detail::ConstAssignments::iterator OrderedAssignments::begin() const {
+    return detail::ConstAssignments::make_iterator(allAssignments.begin());
+}
 
-detail::Assignments::iterator OrderedAssignments::end() { return detail::Assignments::make_iterator(allAssignments.end()); }
+detail::Assignments::iterator OrderedAssignments::end() {
+    return detail::Assignments::make_iterator(allAssignments.end());
+}
 
-detail::ConstAssignments::iterator OrderedAssignments::end() const { return detail::ConstAssignments::make_iterator(allAssignments.end()); }
+detail::ConstAssignments::iterator OrderedAssignments::end() const {
+    return detail::ConstAssignments::make_iterator(allAssignments.end());
+}
 
 void OrderedAssignments::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     for (auto& assignment : allAssignments) {

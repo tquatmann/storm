@@ -23,23 +23,41 @@ void TemplateEdgeDestination::changeAssignmentVariables(std::map<Variable const*
     assignments.changeAssignmentVariables(remapping);
 }
 
-OrderedAssignments const& TemplateEdgeDestination::getOrderedAssignments() const { return assignments; }
+OrderedAssignments const& TemplateEdgeDestination::getOrderedAssignments() const {
+    return assignments;
+}
 
-OrderedAssignments& TemplateEdgeDestination::getOrderedAssignments() { return assignments; }
+OrderedAssignments& TemplateEdgeDestination::getOrderedAssignments() {
+    return assignments;
+}
 
-bool TemplateEdgeDestination::removeAssignment(Assignment const& assignment) { return assignments.remove(assignment); }
+bool TemplateEdgeDestination::removeAssignment(Assignment const& assignment) {
+    return assignments.remove(assignment);
+}
 
-void TemplateEdgeDestination::addAssignment(Assignment const& assignment, bool addToExisting) { assignments.add(assignment, addToExisting); }
+void TemplateEdgeDestination::addAssignment(Assignment const& assignment, bool addToExisting) {
+    assignments.add(assignment, addToExisting);
+}
 
-bool TemplateEdgeDestination::hasAssignment(Assignment const& assignment) const { return assignments.contains(assignment); }
+bool TemplateEdgeDestination::hasAssignment(Assignment const& assignment) const {
+    return assignments.contains(assignment);
+}
 
-bool TemplateEdgeDestination::hasTransientAssignment() const { return assignments.hasTransientAssignment(); }
+bool TemplateEdgeDestination::hasTransientAssignment() const {
+    return assignments.hasTransientAssignment();
+}
 
-bool TemplateEdgeDestination::usesAssignmentLevels(bool onlyTransient) const { return assignments.hasMultipleLevels(onlyTransient); }
+bool TemplateEdgeDestination::usesAssignmentLevels(bool onlyTransient) const {
+    return assignments.hasMultipleLevels(onlyTransient);
+}
 
-bool TemplateEdgeDestination::isLinear() const { return assignments.areLinear(); }
+bool TemplateEdgeDestination::isLinear() const {
+    return assignments.areLinear();
+}
 
-bool TemplateEdgeDestination::hasAssignments() const { return !(assignments.empty()); }
+bool TemplateEdgeDestination::hasAssignments() const {
+    return !(assignments.empty());
+}
 
 TemplateEdgeDestination TemplateEdgeDestination::simplifyIndexedAssignments(bool syncronized, VariableSet const& localVars) const {
     return TemplateEdgeDestination(assignments.simplifyLevels(syncronized, localVars));

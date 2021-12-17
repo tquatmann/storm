@@ -38,7 +38,9 @@ struct ElementLess {
 };
 
 struct DoubleLess {
-    bool operator()(double a, double b) const { return (a == 0.0 && b > 0.0) || (b - a > 1e-17); }
+    bool operator()(double a, double b) const {
+        return (a == 0.0 && b > 0.0) || (b - a > 1e-17);
+    }
 };
 
 template<>
@@ -52,7 +54,9 @@ struct ElementGreater {
 };
 
 struct DoubleGreater {
-    bool operator()(double a, double b) const { return (b == 0.0 && a > 0.0) || (a - b > 1e-17); }
+    bool operator()(double a, double b) const {
+        return (b == 0.0 && a > 0.0) || (a - b > 1e-17);
+    }
 };
 
 template<>

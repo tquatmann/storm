@@ -266,7 +266,9 @@ namespace std {
 // Provide a hashing operator, so we can put types in unordered collections.
 template<>
 struct hash<storm::expressions::Type> {
-    std::size_t operator()(storm::expressions::Type const& type) const { return std::hash<uint64_t>()(type.getMask()); }
+    std::size_t operator()(storm::expressions::Type const& type) const {
+        return std::hash<uint64_t>()(type.getMask());
+    }
 };
 }  // namespace std
 

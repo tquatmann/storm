@@ -49,21 +49,37 @@ GSPNSettings::GSPNSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool GSPNSettings::isGspnFileSet() const { return this->getOption(gspnFileOptionName).getHasOptionBeenSet(); }
+bool GSPNSettings::isGspnFileSet() const {
+    return this->getOption(gspnFileOptionName).getHasOptionBeenSet();
+}
 
-std::string GSPNSettings::getGspnFilename() const { return this->getOption(gspnFileOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string GSPNSettings::getGspnFilename() const {
+    return this->getOption(gspnFileOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool GSPNSettings::isCapacitiesFileSet() const { return this->getOption(capacitiesFileOptionName).getHasOptionBeenSet(); }
+bool GSPNSettings::isCapacitiesFileSet() const {
+    return this->getOption(capacitiesFileOptionName).getHasOptionBeenSet();
+}
 
-std::string GSPNSettings::getCapacitiesFilename() const { return this->getOption(capacitiesFileOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string GSPNSettings::getCapacitiesFilename() const {
+    return this->getOption(capacitiesFileOptionName).getArgumentByName("filename").getValueAsString();
+}
 
-bool GSPNSettings::isCapacitySet() const { return this->getOption(capacityOptionName).getHasOptionBeenSet(); }
+bool GSPNSettings::isCapacitySet() const {
+    return this->getOption(capacityOptionName).getHasOptionBeenSet();
+}
 
-uint64_t GSPNSettings::getCapacity() const { return this->getOption(capacityOptionName).getArgumentByName("value").getValueAsUnsignedInteger(); }
+uint64_t GSPNSettings::getCapacity() const {
+    return this->getOption(capacityOptionName).getArgumentByName("value").getValueAsUnsignedInteger();
+}
 
-bool GSPNSettings::isConstantsSet() const { return this->getOption(constantsOptionName).getHasOptionBeenSet(); }
+bool GSPNSettings::isConstantsSet() const {
+    return this->getOption(constantsOptionName).getHasOptionBeenSet();
+}
 
-std::string GSPNSettings::getConstantDefinitionString() const { return this->getOption(constantsOptionName).getArgumentByName("values").getValueAsString(); }
+std::string GSPNSettings::getConstantDefinitionString() const {
+    return this->getOption(constantsOptionName).getArgumentByName("values").getValueAsString();
+}
 
 void GSPNSettings::finalize() {}
 

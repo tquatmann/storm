@@ -24,11 +24,17 @@ class Product {
     Product(Product<Model>&& product) = default;
     Product& operator=(Product<Model>&& product) = default;
 
-    Model& getProductModel() { return productModel; }
+    Model& getProductModel() {
+        return productModel;
+    }
 
-    state_type getModelState(state_type productStateIndex) const { return productIndexToProductState.at(productStateIndex).first; }
+    state_type getModelState(state_type productStateIndex) const {
+        return productIndexToProductState.at(productStateIndex).first;
+    }
 
-    state_type getAutomatonState(state_type productStateIndex) const { return productIndexToProductState.at(productStateIndex).second; }
+    state_type getAutomatonState(state_type productStateIndex) const {
+        return productIndexToProductState.at(productStateIndex).second;
+    }
 
     state_type getProductStateIndex(state_type modelState, state_type automatonState) const {
         return productStateToProductIndex.at(product_state_type(modelState, automatonState));
@@ -75,7 +81,9 @@ class Product {
         return origValues;
     }
 
-    const storm::storage::BitVector& getStatesOfInterest() const { return productModel.getStates(productStateOfInterestLabel); }
+    const storm::storage::BitVector& getStatesOfInterest() const {
+        return productModel.getStates(productStateOfInterestLabel);
+    }
 
     void printMapping(std::ostream& out) const {
         out << "Mapping index -> product state\n";

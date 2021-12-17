@@ -12,11 +12,17 @@ RefinementCommand::RefinementCommand(std::vector<storm::expressions::Expression>
     // Intentionally left empty.
 }
 
-bool RefinementCommand::refersToPlayer1Choice() const { return static_cast<bool>(referencedPlayer1Choice); }
+bool RefinementCommand::refersToPlayer1Choice() const {
+    return static_cast<bool>(referencedPlayer1Choice);
+}
 
-uint64_t RefinementCommand::getReferencedPlayer1Choice() const { return referencedPlayer1Choice.get(); }
+uint64_t RefinementCommand::getReferencedPlayer1Choice() const {
+    return referencedPlayer1Choice.get();
+}
 
-std::vector<storm::expressions::Expression> const& RefinementCommand::getPredicates() const { return predicates; }
+std::vector<storm::expressions::Expression> const& RefinementCommand::getPredicates() const {
+    return predicates;
+}
 
 }  // namespace abstraction
 }  // namespace storm

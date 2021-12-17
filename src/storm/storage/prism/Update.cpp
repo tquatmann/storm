@@ -28,13 +28,21 @@ Update::Update(uint_fast64_t globalIndex, storm::expressions::Expression const& 
     this->createAssignmentMapping();
 }
 
-storm::expressions::Expression const& Update::getLikelihoodExpression() const { return likelihoodExpression; }
+storm::expressions::Expression const& Update::getLikelihoodExpression() const {
+    return likelihoodExpression;
+}
 
-std::size_t Update::getNumberOfAssignments() const { return this->assignments.size(); }
+std::size_t Update::getNumberOfAssignments() const {
+    return this->assignments.size();
+}
 
-std::vector<storm::prism::Assignment> const& Update::getAssignments() const { return this->assignments; }
+std::vector<storm::prism::Assignment> const& Update::getAssignments() const {
+    return this->assignments;
+}
 
-std::vector<storm::prism::Assignment>& Update::getAssignments() { return this->assignments; }
+std::vector<storm::prism::Assignment>& Update::getAssignments() {
+    return this->assignments;
+}
 
 storm::prism::Assignment const& Update::getAssignment(std::string const& variableName) const {
     auto const& variableIndexPair = this->variableToAssignmentIndexMap.find(variableName);
@@ -53,7 +61,9 @@ std::map<storm::expressions::Variable, storm::expressions::Expression> Update::g
     return result;
 }
 
-uint_fast64_t Update::getGlobalIndex() const { return this->globalIndex; }
+uint_fast64_t Update::getGlobalIndex() const {
+    return this->globalIndex;
+}
 
 void Update::createAssignmentMapping() {
     this->variableToAssignmentIndexMap.clear();

@@ -13,15 +13,25 @@ RewardOperatorFormula::RewardOperatorFormula(std::shared_ptr<Formula const> cons
     // Intentionally left empty.
 }
 
-bool RewardOperatorFormula::isRewardOperatorFormula() const { return true; }
+bool RewardOperatorFormula::isRewardOperatorFormula() const {
+    return true;
+}
 
-boost::any RewardOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any RewardOperatorFormula::accept(FormulaVisitor const& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-std::string const& RewardOperatorFormula::getRewardModelName() const { return this->rewardModelName.get(); }
+std::string const& RewardOperatorFormula::getRewardModelName() const {
+    return this->rewardModelName.get();
+}
 
-bool RewardOperatorFormula::hasRewardModelName() const { return static_cast<bool>(rewardModelName); }
+bool RewardOperatorFormula::hasRewardModelName() const {
+    return static_cast<bool>(rewardModelName);
+}
 
-boost::optional<std::string> const& RewardOperatorFormula::getOptionalRewardModelName() const { return this->rewardModelName; }
+boost::optional<std::string> const& RewardOperatorFormula::getOptionalRewardModelName() const {
+    return this->rewardModelName;
+}
 
 void RewardOperatorFormula::gatherReferencedRewardModels(std::set<std::string>& referencedRewardModels) const {
     if (this->hasRewardModelName()) {
@@ -32,7 +42,9 @@ void RewardOperatorFormula::gatherReferencedRewardModels(std::set<std::string>& 
     this->getSubformula().gatherReferencedRewardModels(referencedRewardModels);
 }
 
-RewardMeasureType RewardOperatorFormula::getMeasureType() const { return rewardMeasureType; }
+RewardMeasureType RewardOperatorFormula::getMeasureType() const {
+    return rewardMeasureType;
+}
 
 std::ostream& RewardOperatorFormula::writeToStream(std::ostream& out, bool /* allowParentheses */) const {
     // No parentheses necessary

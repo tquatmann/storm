@@ -22,11 +22,19 @@ Environment& Environment::operator=(Environment const& other) {
     return *this;
 }
 
-SolverEnvironment& Environment::solver() { return internalEnv.get().solverEnvironment.get(); }
+SolverEnvironment& Environment::solver() {
+    return internalEnv.get().solverEnvironment.get();
+}
 
-SolverEnvironment const& Environment::solver() const { return internalEnv.get().solverEnvironment.get(); }
+SolverEnvironment const& Environment::solver() const {
+    return internalEnv.get().solverEnvironment.get();
+}
 
-ModelCheckerEnvironment& Environment::modelchecker() { return internalEnv.get().modelcheckerEnvironment.get(); }
+ModelCheckerEnvironment& Environment::modelchecker() {
+    return internalEnv.get().modelcheckerEnvironment.get();
+}
 
-ModelCheckerEnvironment const& Environment::modelchecker() const { return internalEnv.get().modelcheckerEnvironment.get(); }
+ModelCheckerEnvironment const& Environment::modelchecker() const {
+    return internalEnv.get().modelcheckerEnvironment.get();
+}
 }  // namespace storm

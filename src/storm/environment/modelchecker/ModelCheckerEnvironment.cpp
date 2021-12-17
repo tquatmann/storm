@@ -22,16 +22,28 @@ ModelCheckerEnvironment::~ModelCheckerEnvironment() {
     // Intentionally left empty
 }
 
-MultiObjectiveModelCheckerEnvironment& ModelCheckerEnvironment::multi() { return multiObjectiveModelCheckerEnvironment.get(); }
+MultiObjectiveModelCheckerEnvironment& ModelCheckerEnvironment::multi() {
+    return multiObjectiveModelCheckerEnvironment.get();
+}
 
-MultiObjectiveModelCheckerEnvironment const& ModelCheckerEnvironment::multi() const { return multiObjectiveModelCheckerEnvironment.get(); }
+MultiObjectiveModelCheckerEnvironment const& ModelCheckerEnvironment::multi() const {
+    return multiObjectiveModelCheckerEnvironment.get();
+}
 
-bool ModelCheckerEnvironment::isLtl2daToolSet() const { return ltl2daTool.is_initialized(); }
+bool ModelCheckerEnvironment::isLtl2daToolSet() const {
+    return ltl2daTool.is_initialized();
+}
 
-std::string const& ModelCheckerEnvironment::getLtl2daTool() const { return ltl2daTool.get(); }
+std::string const& ModelCheckerEnvironment::getLtl2daTool() const {
+    return ltl2daTool.get();
+}
 
-void ModelCheckerEnvironment::setLtl2daTool(std::string const& value) { ltl2daTool = value; }
+void ModelCheckerEnvironment::setLtl2daTool(std::string const& value) {
+    ltl2daTool = value;
+}
 
-void ModelCheckerEnvironment::unsetLtl2daTool() { ltl2daTool = boost::none; }
+void ModelCheckerEnvironment::unsetLtl2daTool() {
+    ltl2daTool = boost::none;
+}
 
 }  // namespace storm

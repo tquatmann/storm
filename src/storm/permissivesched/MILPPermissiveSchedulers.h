@@ -81,7 +81,9 @@ class MilpPermissiveSchedulerComputation : public PermissiveSchedulerComputation
         filestream.close();
     }
 
-    void dumpLpToFile(std::string const& filename) { solver.writeModelToFile(filename); }
+    void dumpLpToFile(std::string const& filename) {
+        solver.writeModelToFile(filename);
+    }
 
    private:
     /**

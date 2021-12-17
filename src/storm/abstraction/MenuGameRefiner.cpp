@@ -37,9 +37,13 @@ RefinementPredicates::RefinementPredicates(Source const& source, std::vector<sto
     // Intentionally left empty.
 }
 
-RefinementPredicates::Source RefinementPredicates::getSource() const { return source; }
+RefinementPredicates::Source RefinementPredicates::getSource() const {
+    return source;
+}
 
-std::vector<storm::expressions::Expression> const& RefinementPredicates::getPredicates() const { return predicates; }
+std::vector<storm::expressions::Expression> const& RefinementPredicates::getPredicates() const {
+    return predicates;
+}
 
 void RefinementPredicates::addPredicates(std::vector<storm::expressions::Expression> const& newPredicates) {
     this->predicates.insert(this->predicates.end(), newPredicates.begin(), newPredicates.end());
@@ -1693,7 +1697,9 @@ bool MenuGameRefiner<Type, ValueType>::refine(storm::abstraction::MenuGame<Type,
 }
 
 struct VariableSetHash {
-    std::size_t operator()(std::set<storm::expressions::Variable> const& set) const { return set.size(); }
+    std::size_t operator()(std::set<storm::expressions::Variable> const& set) const {
+        return set.size();
+    }
 };
 
 template<storm::dd::DdType Type, typename ValueType>

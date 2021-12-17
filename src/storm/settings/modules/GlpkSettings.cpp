@@ -32,13 +32,21 @@ GlpkSettings::GlpkSettings() : ModuleSettings(moduleName) {
                         .build());
 }
 
-bool GlpkSettings::isOutputSet() const { return this->getOption(outputOptionName).getHasOptionBeenSet(); }
+bool GlpkSettings::isOutputSet() const {
+    return this->getOption(outputOptionName).getHasOptionBeenSet();
+}
 
-bool GlpkSettings::isMILPPresolverEnabled() const { return !this->getOption(noMilpPresolverOptionName).getHasOptionBeenSet(); }
+bool GlpkSettings::isMILPPresolverEnabled() const {
+    return !this->getOption(noMilpPresolverOptionName).getHasOptionBeenSet();
+}
 
-bool GlpkSettings::isIntegerToleranceSet() const { return this->getOption(integerToleranceOption).getHasOptionBeenSet(); }
+bool GlpkSettings::isIntegerToleranceSet() const {
+    return this->getOption(integerToleranceOption).getHasOptionBeenSet();
+}
 
-double GlpkSettings::getIntegerTolerance() const { return this->getOption(integerToleranceOption).getArgumentByName("value").getValueAsDouble(); }
+double GlpkSettings::getIntegerTolerance() const {
+    return this->getOption(integerToleranceOption).getArgumentByName("value").getValueAsDouble();
+}
 
 bool GlpkSettings::check() const {
     if (isOutputSet() || isIntegerToleranceSet()) {

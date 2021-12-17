@@ -127,9 +127,15 @@ class MinMaxLinearEquationSolverTest : public ::testing::Test {
    public:
     typedef typename TestType::ValueType ValueType;
     MinMaxLinearEquationSolverTest() : _environment(TestType::createEnvironment()) {}
-    storm::Environment const& env() const { return _environment; }
-    ValueType precision() const { return TestType::isExact ? parseNumber("0") : parseNumber("1e-6"); }
-    ValueType parseNumber(std::string const& input) const { return storm::utility::convertNumber<ValueType>(input); }
+    storm::Environment const& env() const {
+        return _environment;
+    }
+    ValueType precision() const {
+        return TestType::isExact ? parseNumber("0") : parseNumber("1e-6");
+    }
+    ValueType parseNumber(std::string const& input) const {
+        return storm::utility::convertNumber<ValueType>(input);
+    }
 
    private:
     storm::Environment _environment;

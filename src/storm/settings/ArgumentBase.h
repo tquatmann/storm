@@ -48,14 +48,18 @@ class ArgumentBase {
      *
      * @return The name of the argument.
      */
-    std::string const& getName() const { return this->name; }
+    std::string const& getName() const {
+        return this->name;
+    }
 
     /*!
      * Retrieves the description of the argument.
      *
      * @return The description of the argument.
      */
-    std::string const& getDescription() const { return this->description; }
+    std::string const& getDescription() const {
+        return this->description;
+    }
 
     /*!
      * Retrieves whether the argument has a default value.
@@ -69,7 +73,9 @@ class ArgumentBase {
      *
      * @return True iff the argument has been set.
      */
-    virtual bool getHasBeenSet() const { return this->hasBeenSet; }
+    virtual bool getHasBeenSet() const {
+        return this->hasBeenSet;
+    }
 
     /*!
      * Sets the value of the argument from the default value.

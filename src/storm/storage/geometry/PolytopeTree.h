@@ -72,7 +72,9 @@ class PolytopeTree {
      * @param point the given point
      * @param offset coordinates that are added to the point before taking its downward closure
      */
-    void substractDownwardClosure(std::vector<ValueType> const& point) { setMinus(Polytope<ValueType>::createDownwardClosure({point})); }
+    void substractDownwardClosure(std::vector<ValueType> const& point) {
+        setMinus(Polytope<ValueType>::createDownwardClosure({point}));
+    }
 
     /*!
      * Substracts the downward closure of the given point from this set.
@@ -89,7 +91,9 @@ class PolytopeTree {
     /*!
      * Returns true if this is the empty set.
      */
-    bool isEmpty() const { return polytope == nullptr; }
+    bool isEmpty() const {
+        return polytope == nullptr;
+    }
 
     /*!
      * Clears all contents of this set, making it the empty set.
@@ -102,12 +106,16 @@ class PolytopeTree {
     /*!
      * Gets the polytope at this node
      */
-    std::shared_ptr<Polytope<ValueType>>& getPolytope() { return polytope; }
+    std::shared_ptr<Polytope<ValueType>>& getPolytope() {
+        return polytope;
+    }
 
     /*!
      * Gets the children at this node.
      */
-    std::vector<PolytopeTree>& getChildren() { return children; }
+    std::vector<PolytopeTree>& getChildren() {
+        return children;
+    }
 
     std::string toId() {
         if (isEmpty()) {

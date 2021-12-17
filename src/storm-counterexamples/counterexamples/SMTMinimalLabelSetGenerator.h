@@ -306,7 +306,8 @@ class SMTMinimalLabelSetGenerator {
                     storm::expressions::Expression alternativeExpression = variableInformation.manager->boolean(true);
 
                     // If the current synchSet is the same as left-hand side of the implication, we can to skip it.
-                    if (synchSet == labelSet) continue;
+                    if (synchSet == labelSet)
+                        continue;
 
                     // Build labels that are missing for this synchronization option.
                     std::set<uint_fast64_t> unknownSynchSetLabels;
@@ -390,7 +391,8 @@ class SMTMinimalLabelSetGenerator {
                 for (auto const& entry : transitionMatrix.getRow(currentChoice)) {
                     if (relevancyInformation.relevantStates.get(entry.getColumn())) {
                         for (auto relevantChoice : relevancyInformation.relevantChoicesForRelevantStates.at(entry.getColumn())) {
-                            if (labelSets[currentChoice] == labelSets[relevantChoice]) continue;
+                            if (labelSets[currentChoice] == labelSets[relevantChoice])
+                                continue;
 
                             followingLabels[labelSets[currentChoice]].insert(labelSets[relevantChoice]);
                         }
@@ -542,7 +544,8 @@ class SMTMinimalLabelSetGenerator {
 
                     // Now check the possible preceding label sets for the essential ones.
                     for (auto const& precedingLabelSet : labelSetAndPrecedingLabelSetsPair.second) {
-                        if (labelSetAndPrecedingLabelSetsPair.first == precedingLabelSet) continue;
+                        if (labelSetAndPrecedingLabelSetsPair.first == precedingLabelSet)
+                            continue;
 
                         // std::cout << "push" << std::endl;
                         // Create a restore point so we can easily pop-off all weakest precondition expressions.

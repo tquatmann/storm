@@ -8,7 +8,9 @@ struct TransitionPartition {
     std::vector<uint64_t> transitions;
     uint64_t priority;
 
-    uint64_t nrTransitions() const { return transitions.size(); }
+    uint64_t nrTransitions() const {
+        return transitions.size();
+    }
 };
 
 }  // namespace gspn

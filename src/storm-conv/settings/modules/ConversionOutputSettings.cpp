@@ -32,9 +32,13 @@ ConversionOutputSettings::ConversionOutputSettings() : ModuleSettings(moduleName
                         .build());
 }
 
-bool ConversionOutputSettings::isStdOutOutputEnabled() const { return this->getOption(stdoutOptionName).getHasOptionBeenSet(); }
+bool ConversionOutputSettings::isStdOutOutputEnabled() const {
+    return this->getOption(stdoutOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionOutputSettings::isJaniOutputSet() const { return this->getOption(janiOutputOptionName).getHasOptionBeenSet(); }
+bool ConversionOutputSettings::isJaniOutputSet() const {
+    return this->getOption(janiOutputOptionName).getHasOptionBeenSet();
+}
 
 bool ConversionOutputSettings::isJaniOutputFilenameSet() const {
     return isJaniOutputSet() && !this->getOption(janiOutputOptionName).getArgumentByName("filename").wasSetFromDefaultValue() &&
@@ -47,7 +51,9 @@ std::string ConversionOutputSettings::getJaniOutputFilename() const {
     return this->getOption(janiOutputOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool ConversionOutputSettings::isPrismOutputSet() const { return this->getOption(prismOutputOptionName).getHasOptionBeenSet(); }
+bool ConversionOutputSettings::isPrismOutputSet() const {
+    return this->getOption(prismOutputOptionName).getHasOptionBeenSet();
+}
 
 bool ConversionOutputSettings::isPrismOutputFilenameSet() const {
     return isPrismOutputSet() && !this->getOption(prismOutputOptionName).getArgumentByName("filename").wasSetFromDefaultValue() &&

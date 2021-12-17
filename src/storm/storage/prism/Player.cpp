@@ -9,11 +9,17 @@ Player::Player(std::string const& playerName, std::unordered_set<std::string> co
     // Nothing to do here.
 }
 
-std::string const& Player::getName() const { return this->playerName; }
+std::string const& Player::getName() const {
+    return this->playerName;
+}
 
-std::unordered_set<std::string> const& Player::getModules() const { return this->controlledModules; }
+std::unordered_set<std::string> const& Player::getModules() const {
+    return this->controlledModules;
+}
 
-std::unordered_set<std::string> const& Player::getActions() const { return this->controlledActions; }
+std::unordered_set<std::string> const& Player::getActions() const {
+    return this->controlledActions;
+}
 
 std::ostream& operator<<(std::ostream& stream, Player const& player) {
     stream << "player";

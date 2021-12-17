@@ -17,7 +17,9 @@ boost::any ToPrefixStringVisitor::visit(AtomicExpressionFormula const&, boost::a
     STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Can not convert to prefix string");
 }
 
-boost::any ToPrefixStringVisitor::visit(AtomicLabelFormula const& f, boost::any const&) const { return std::string("\"" + f.getLabel() + "\""); }
+boost::any ToPrefixStringVisitor::visit(AtomicLabelFormula const& f, boost::any const&) const {
+    return std::string("\"" + f.getLabel() + "\"");
+}
 
 boost::any ToPrefixStringVisitor::visit(BinaryBooleanStateFormula const& f, boost::any const& data) const {
     std::string left = boost::any_cast<std::string>(f.getLeftSubformula().accept(*this, data));

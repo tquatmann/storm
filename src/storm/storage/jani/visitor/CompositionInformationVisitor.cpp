@@ -17,7 +17,9 @@ void CompositionInformation::increaseAutomatonMultiplicity(std::string const& au
     automatonNameToMultiplicity[automatonName] += count;
 }
 
-std::map<std::string, uint64_t> const& CompositionInformation::getAutomatonToMultiplicityMap() const { return automatonNameToMultiplicity; }
+std::map<std::string, uint64_t> const& CompositionInformation::getAutomatonToMultiplicityMap() const {
+    return automatonNameToMultiplicity;
+}
 
 void CompositionInformation::addMultiplicityMap(std::map<std::string, uint64_t> const& multiplicityMap) {
     automatonNameToMultiplicity = joinMultiplicityMaps(automatonNameToMultiplicity, multiplicityMap);
@@ -32,33 +34,61 @@ std::map<std::string, uint64_t> CompositionInformation::joinMultiplicityMaps(std
     return result;
 }
 
-void CompositionInformation::setContainsNonStandardParallelComposition(bool value) { nonStandardParallelComposition = value; }
+void CompositionInformation::setContainsNonStandardParallelComposition(bool value) {
+    nonStandardParallelComposition = value;
+}
 
-bool CompositionInformation::containsNonStandardParallelComposition() const { return nonStandardParallelComposition; }
+bool CompositionInformation::containsNonStandardParallelComposition() const {
+    return nonStandardParallelComposition;
+}
 
-void CompositionInformation::setContainsNestedParallelComposition(bool value) { nestedParallelComposition = value; }
+void CompositionInformation::setContainsNestedParallelComposition(bool value) {
+    nestedParallelComposition = value;
+}
 
-bool CompositionInformation::containsNestedParallelComposition() const { return nestedParallelComposition; }
+bool CompositionInformation::containsNestedParallelComposition() const {
+    return nestedParallelComposition;
+}
 
-void CompositionInformation::setContainsParallelComposition(bool value) { parallelComposition = value; }
+void CompositionInformation::setContainsParallelComposition(bool value) {
+    parallelComposition = value;
+}
 
-bool CompositionInformation::containsParallelComposition() const { return parallelComposition; }
+bool CompositionInformation::containsParallelComposition() const {
+    return parallelComposition;
+}
 
-std::string const& CompositionInformation::getActionName(uint64_t index) const { return indexToNameMap.at(index); }
+std::string const& CompositionInformation::getActionName(uint64_t index) const {
+    return indexToNameMap.at(index);
+}
 
-uint64_t CompositionInformation::getActionIndex(std::string const& name) const { return nameToIndexMap.at(name); }
+uint64_t CompositionInformation::getActionIndex(std::string const& name) const {
+    return nameToIndexMap.at(name);
+}
 
-void CompositionInformation::addNonSilentActionIndex(uint64_t index) { nonSilentActionIndices.insert(index); }
+void CompositionInformation::addNonSilentActionIndex(uint64_t index) {
+    nonSilentActionIndices.insert(index);
+}
 
-void CompositionInformation::addNonSilentActionIndices(std::set<uint64_t> const& indices) { nonSilentActionIndices.insert(indices.begin(), indices.end()); }
+void CompositionInformation::addNonSilentActionIndices(std::set<uint64_t> const& indices) {
+    nonSilentActionIndices.insert(indices.begin(), indices.end());
+}
 
-bool CompositionInformation::hasNonSilentActionIndex(uint64_t index) { return nonSilentActionIndices.find(index) != nonSilentActionIndices.end(); }
+bool CompositionInformation::hasNonSilentActionIndex(uint64_t index) {
+    return nonSilentActionIndices.find(index) != nonSilentActionIndices.end();
+}
 
-void CompositionInformation::addInputEnabledActionIndex(uint64_t index) { inputEnabledActionIndices.insert(index); }
+void CompositionInformation::addInputEnabledActionIndex(uint64_t index) {
+    inputEnabledActionIndices.insert(index);
+}
 
-std::set<uint64_t> const& CompositionInformation::getNonSilentActionIndices() const { return nonSilentActionIndices; }
+std::set<uint64_t> const& CompositionInformation::getNonSilentActionIndices() const {
+    return nonSilentActionIndices;
+}
 
-std::set<uint64_t> const& CompositionInformation::getInputEnabledActionIndices() const { return inputEnabledActionIndices; }
+std::set<uint64_t> const& CompositionInformation::getInputEnabledActionIndices() const {
+    return inputEnabledActionIndices;
+}
 
 void CompositionInformation::setMappings(std::map<uint64_t, std::string> const& indexToNameMap, std::map<std::string, uint64_t> const& nameToIndexMap) {
     this->indexToNameMap = indexToNameMap;

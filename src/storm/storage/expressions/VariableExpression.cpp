@@ -10,9 +10,13 @@ VariableExpression::VariableExpression(Variable const& variable) : BaseExpressio
     // Intentionally left empty.
 }
 
-std::string const& VariableExpression::getVariableName() const { return variable.getName(); }
+std::string const& VariableExpression::getVariableName() const {
+    return variable.getName();
+}
 
-Variable const& VariableExpression::getVariable() const { return variable; }
+Variable const& VariableExpression::getVariable() const {
+    return variable;
+}
 
 bool VariableExpression::evaluateAsBool(Valuation const* valuation) const {
     STORM_LOG_ASSERT(valuation != nullptr, "Evaluating expressions with unknowns without valuation.");
@@ -39,20 +43,36 @@ double VariableExpression::evaluateAsDouble(Valuation const* valuation) const {
     }
 }
 
-std::string const& VariableExpression::getIdentifier() const { return this->getVariableName(); }
+std::string const& VariableExpression::getIdentifier() const {
+    return this->getVariableName();
+}
 
-bool VariableExpression::containsVariables() const { return true; }
+bool VariableExpression::containsVariables() const {
+    return true;
+}
 
-bool VariableExpression::isVariable() const { return true; }
+bool VariableExpression::isVariable() const {
+    return true;
+}
 
-void VariableExpression::gatherVariables(std::set<storm::expressions::Variable>& variables) const { variables.insert(this->getVariable()); }
+void VariableExpression::gatherVariables(std::set<storm::expressions::Variable>& variables) const {
+    variables.insert(this->getVariable());
+}
 
-std::shared_ptr<BaseExpression const> VariableExpression::simplify() const { return this->shared_from_this(); }
+std::shared_ptr<BaseExpression const> VariableExpression::simplify() const {
+    return this->shared_from_this();
+}
 
-boost::any VariableExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any VariableExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool VariableExpression::isVariableExpression() const { return true; }
+bool VariableExpression::isVariableExpression() const {
+    return true;
+}
 
-void VariableExpression::printToStream(std::ostream& stream) const { stream << this->getVariableName(); }
+void VariableExpression::printToStream(std::ostream& stream) const {
+    stream << this->getVariableName();
+}
 }  // namespace expressions
 }  // namespace storm

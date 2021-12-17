@@ -24,11 +24,17 @@ PrismChoiceOrigins::PrismChoiceOrigins(std::shared_ptr<storm::prism::Program con
                     "The given command set for the choices without origin is non-empty");
 }
 
-bool PrismChoiceOrigins::isPrismChoiceOrigins() const { return true; }
+bool PrismChoiceOrigins::isPrismChoiceOrigins() const {
+    return true;
+}
 
-uint_fast64_t PrismChoiceOrigins::getNumberOfIdentifiers() const { return identifierToCommandSet.size(); }
+uint_fast64_t PrismChoiceOrigins::getNumberOfIdentifiers() const {
+    return identifierToCommandSet.size();
+}
 
-storm::prism::Program const& PrismChoiceOrigins::getProgram() const { return *program; }
+storm::prism::Program const& PrismChoiceOrigins::getProgram() const {
+    return *program;
+}
 
 PrismChoiceOrigins::CommandSet const& PrismChoiceOrigins::getCommandSet(uint_fast64_t choiceIndex) const {
     return identifierToCommandSet[this->getIdentifier(choiceIndex)];
@@ -157,7 +163,9 @@ void PrismChoiceOrigins::computeIdentifierJson() const {
     }
 }
 
-std::size_t PrismChoiceOrigins::hash() const { return 0; }
+std::size_t PrismChoiceOrigins::hash() const {
+    return 0;
+}
 }  // namespace sparse
 }  // namespace storage
 }  // namespace storm

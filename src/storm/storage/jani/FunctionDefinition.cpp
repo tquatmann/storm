@@ -13,13 +13,21 @@ FunctionDefinition::FunctionDefinition(std::string const& name, storm::expressio
     // Intentionally left empty.
 }
 
-std::string const& FunctionDefinition::getName() const { return name; }
+std::string const& FunctionDefinition::getName() const {
+    return name;
+}
 
-storm::expressions::Type const& FunctionDefinition::getType() const { return type; }
+storm::expressions::Type const& FunctionDefinition::getType() const {
+    return type;
+}
 
-std::vector<storm::expressions::Variable> const& FunctionDefinition::getParameters() const { return parameters; }
+std::vector<storm::expressions::Variable> const& FunctionDefinition::getParameters() const {
+    return parameters;
+}
 
-storm::expressions::Expression const& FunctionDefinition::getFunctionBody() const { return functionBody; }
+storm::expressions::Expression const& FunctionDefinition::getFunctionBody() const {
+    return functionBody;
+}
 
 storm::expressions::Expression FunctionDefinition::call(std::vector<std::shared_ptr<storm::expressions::BaseExpression const>> const& arguments) const {
     // substitute the parameters in the function body
@@ -36,6 +44,8 @@ void FunctionDefinition::substitute(std::map<storm::expressions::Variable, storm
     this->setFunctionBody(substituteJaniExpression(this->getFunctionBody(), substitution));
 }
 
-void FunctionDefinition::setFunctionBody(storm::expressions::Expression const& body) { functionBody = body; }
+void FunctionDefinition::setFunctionBody(storm::expressions::Expression const& body) {
+    functionBody = body;
+}
 }  // namespace jani
 }  // namespace storm

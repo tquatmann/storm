@@ -30,9 +30,13 @@ EpochManager::EpochManager(uint64_t dimensionCount) : dimensionCount(dimensionCo
     }
 }
 
-typename EpochManager::Epoch EpochManager::getBottomEpoch() const { return relevantBitsMask; }
+typename EpochManager::Epoch EpochManager::getBottomEpoch() const {
+    return relevantBitsMask;
+}
 
-typename EpochManager::Epoch EpochManager::getZeroEpoch() const { return 0; }
+typename EpochManager::Epoch EpochManager::getZeroEpoch() const {
+    return 0;
+}
 
 uint64_t const& EpochManager::getDimensionCount() const {
     STORM_LOG_ASSERT(dimensionCount > 0, "Invoked EpochManager with zero dimension count.");

@@ -119,19 +119,29 @@ class ProgramGraph {
         return result;
     }
 
-    std::vector<std::string> getLabels(ProgramLocationIdentifier loc) const { return locationLabels.at(loc); }
+    std::vector<std::string> getLabels(ProgramLocationIdentifier loc) const {
+        return locationLabels.at(loc);
+    }
 
     bool hasLabel(ProgramLocationIdentifier loc, std::string const& label) const {
         return std::find(locationLabels.at(loc).begin(), locationLabels.at(loc).end(), label) != locationLabels.at(loc).end();
     }
 
-    bool hasSuccessfulTerminationLabel(ProgramLocationIdentifier loc) const { return hasLabel(loc, succesfulTerminationLabel); }
+    bool hasSuccessfulTerminationLabel(ProgramLocationIdentifier loc) const {
+        return hasLabel(loc, succesfulTerminationLabel);
+    }
 
-    bool hasAbortLabel(ProgramLocationIdentifier loc) const { return hasLabel(loc, abortLabel); }
+    bool hasAbortLabel(ProgramLocationIdentifier loc) const {
+        return hasLabel(loc, abortLabel);
+    }
 
-    bool hasTerminationLabel(ProgramLocationIdentifier loc) const { return hasSuccessfulTerminationLabel(loc) || hasAbortLabel(loc); }
+    bool hasTerminationLabel(ProgramLocationIdentifier loc) const {
+        return hasSuccessfulTerminationLabel(loc) || hasAbortLabel(loc);
+    }
 
-    ProgramActionIdentifier getNoActionId() const { return noActionId; }
+    ProgramActionIdentifier getNoActionId() const {
+        return noActionId;
+    }
 
     std::vector<ProgramEdge*> addProgramEdgeToAllGroups(ProgramLocationIdentifier sourceId, ProgramActionIdentifier action,
                                                         storm::expressions::Expression const& condition, ProgramLocationIdentifier targetId) {
@@ -150,7 +160,9 @@ class ProgramGraph {
         return 0;
     }
 
-    std::string const& getVariableName(ProgramVariableIdentifier id) const { return variables.at(id).getName(); }
+    std::string const& getVariableName(ProgramVariableIdentifier id) const {
+        return variables.at(id).getName();
+    }
 
     bool hasVariable(std::string const& varName) const {
         for (auto const& v : variables) {
@@ -161,9 +173,13 @@ class ProgramGraph {
         return false;
     }
 
-    bool hasLocation(ProgramLocationIdentifier id) const { return locations.count(id) == 1; }
+    bool hasLocation(ProgramLocationIdentifier id) const {
+        return locations.count(id) == 1;
+    }
 
-    bool hasAction(ProgramActionIdentifier id) const { return deterministicActions.count(id) == 1 || probabilisticActions.count(id); }
+    bool hasAction(ProgramActionIdentifier id) const {
+        return deterministicActions.count(id) == 1 || probabilisticActions.count(id);
+    }
 
     ProgramAction const& getAction(ProgramActionIdentifier id) const {
         assert(hasAction(id));
@@ -179,23 +195,39 @@ class ProgramGraph {
         return probabilisticActions.count(id) == 0;
     }
 
-    size_t nrLocations() const { return locations.size(); }
+    size_t nrLocations() const {
+        return locations.size();
+    }
 
-    size_t nrVariables() const { return variables.size(); }
+    size_t nrVariables() const {
+        return variables.size();
+    }
 
-    size_t nrActions() const { return variables.size(); }
+    size_t nrActions() const {
+        return variables.size();
+    }
 
-    storm::expressions::Expression getInitialValue(ProgramVariableIdentifier v) const { return initialValues.at(v); }
+    storm::expressions::Expression getInitialValue(ProgramVariableIdentifier v) const {
+        return initialValues.at(v);
+    }
 
     void collectInitialValues();
 
-    ConstLocationIterator locationBegin() const { return locations.begin(); }
+    ConstLocationIterator locationBegin() const {
+        return locations.begin();
+    }
 
-    ConstLocationIterator locationEnd() const { return locations.end(); }
+    ConstLocationIterator locationEnd() const {
+        return locations.end();
+    }
 
-    std::unordered_map<ProgramVariableIdentifier, storm::expressions::Variable> const& getVariables() const { return variables; }
+    std::unordered_map<ProgramVariableIdentifier, storm::expressions::Variable> const& getVariables() const {
+        return variables;
+    }
 
-    std::shared_ptr<storm::expressions::ExpressionManager> const& getExpressionManager() const { return expManager; }
+    std::shared_ptr<storm::expressions::ExpressionManager> const& getExpressionManager() const {
+        return expManager;
+    }
 
     std::vector<ProgramVariableIdentifier> noeffectVariables() const;
 
@@ -236,18 +268,28 @@ class ProgramGraph {
     std::pair<bool, bool> checkIfRewardVariableHelper(storm::expressions::Variable const& var,
                                                       std::unordered_map<ProgramActionIdentifier, DeterministicProgramAction> const& detActions) const;
 
-    ProgramLocation& getLocation(ProgramLocationIdentifier id) { return locations.at(id); }
+    ProgramLocation& getLocation(ProgramLocationIdentifier id) {
+        return locations.at(id);
+    }
 
     /**
      * Gets a free location index (based on whatever scheme we are using).
      */
-    ProgramLocationIdentifier freeLocationIndex() { return newLocationId++; }
+    ProgramLocationIdentifier freeLocationIndex() {
+        return newLocationId++;
+    }
 
-    ProgramActionIdentifier freeActionIndex() { return newActionId++; }
+    ProgramActionIdentifier freeActionIndex() {
+        return newActionId++;
+    }
 
-    ProgramEdgeIdentifier freeEdgeIndex() { return newEdgeId++; }
+    ProgramEdgeIdentifier freeEdgeIndex() {
+        return newEdgeId++;
+    }
 
-    ProgramEdgeGroupIdentifier freeEdgeGroupIndex() { return newEdgeGroupId++; }
+    ProgramEdgeGroupIdentifier freeEdgeGroupIndex() {
+        return newEdgeGroupId++;
+    }
 
     std::unordered_map<ProgramActionIdentifier, DeterministicProgramAction> deterministicActions;
     std::unordered_map<ProgramActionIdentifier, ProbabilisticProgramAction> probabilisticActions;

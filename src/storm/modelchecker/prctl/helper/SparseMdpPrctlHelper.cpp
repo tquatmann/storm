@@ -185,35 +185,65 @@ struct SparseMdpHintType {
         // Intentionally left empty.
     }
 
-    bool hasSchedulerHint() const { return static_cast<bool>(schedulerHint); }
+    bool hasSchedulerHint() const {
+        return static_cast<bool>(schedulerHint);
+    }
 
-    bool hasValueHint() const { return static_cast<bool>(valueHint); }
+    bool hasValueHint() const {
+        return static_cast<bool>(valueHint);
+    }
 
-    bool hasLowerResultBound() const { return static_cast<bool>(lowerResultBound); }
+    bool hasLowerResultBound() const {
+        return static_cast<bool>(lowerResultBound);
+    }
 
-    ValueType const& getLowerResultBound() const { return lowerResultBound.get(); }
+    ValueType const& getLowerResultBound() const {
+        return lowerResultBound.get();
+    }
 
-    bool hasUpperResultBound() const { return static_cast<bool>(upperResultBound); }
+    bool hasUpperResultBound() const {
+        return static_cast<bool>(upperResultBound);
+    }
 
-    bool hasUpperResultBounds() const { return static_cast<bool>(upperResultBounds); }
+    bool hasUpperResultBounds() const {
+        return static_cast<bool>(upperResultBounds);
+    }
 
-    ValueType const& getUpperResultBound() const { return upperResultBound.get(); }
+    ValueType const& getUpperResultBound() const {
+        return upperResultBound.get();
+    }
 
-    std::vector<ValueType>& getUpperResultBounds() { return upperResultBounds.get(); }
+    std::vector<ValueType>& getUpperResultBounds() {
+        return upperResultBounds.get();
+    }
 
-    std::vector<ValueType> const& getUpperResultBounds() const { return upperResultBounds.get(); }
+    std::vector<ValueType> const& getUpperResultBounds() const {
+        return upperResultBounds.get();
+    }
 
-    std::vector<uint64_t>& getSchedulerHint() { return schedulerHint.get(); }
+    std::vector<uint64_t>& getSchedulerHint() {
+        return schedulerHint.get();
+    }
 
-    std::vector<ValueType>& getValueHint() { return valueHint.get(); }
+    std::vector<ValueType>& getValueHint() {
+        return valueHint.get();
+    }
 
-    bool getEliminateEndComponents() const { return eliminateEndComponents; }
+    bool getEliminateEndComponents() const {
+        return eliminateEndComponents;
+    }
 
-    bool getComputeUpperBounds() { return computeUpperBounds; }
+    bool getComputeUpperBounds() {
+        return computeUpperBounds;
+    }
 
-    bool hasUniqueSolution() const { return uniqueSolution; }
+    bool hasUniqueSolution() const {
+        return uniqueSolution;
+    }
 
-    bool hasNoEndComponents() const { return noEndComponents; }
+    bool hasNoEndComponents() const {
+        return noEndComponents;
+    }
 
     boost::optional<std::vector<uint64_t>> schedulerHint;
     boost::optional<std::vector<ValueType>> valueHint;
@@ -374,11 +404,17 @@ struct MaybeStateResult {
         // Intentionally left empty.
     }
 
-    bool hasScheduler() const { return static_cast<bool>(scheduler); }
+    bool hasScheduler() const {
+        return static_cast<bool>(scheduler);
+    }
 
-    std::vector<uint64_t> const& getScheduler() const { return scheduler.get(); }
+    std::vector<uint64_t> const& getScheduler() const {
+        return scheduler.get();
+    }
 
-    std::vector<ValueType> const& getValues() const { return values; }
+    std::vector<ValueType> const& getValues() const {
+        return values;
+    }
 
     std::vector<ValueType> values;
     boost::optional<std::vector<uint64_t>> scheduler;

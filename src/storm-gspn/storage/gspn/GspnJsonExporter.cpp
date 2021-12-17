@@ -12,7 +12,9 @@ namespace gspn {
 // Prevent some magic constants
 static constexpr const uint64_t scaleFactor = 50;
 
-void GspnJsonExporter::toStream(storm::gspn::GSPN const& gspn, std::ostream& os) { os << translate(gspn).dump(4) << std::endl; }
+void GspnJsonExporter::toStream(storm::gspn::GSPN const& gspn, std::ostream& os) {
+    os << translate(gspn).dump(4) << std::endl;
+}
 
 typename GspnJsonExporter::Json GspnJsonExporter::translate(storm::gspn::GSPN const& gspn) {
     Json jsonGspn;

@@ -5,9 +5,13 @@
 namespace storm {
 namespace modelchecker {
 
-bool ModelCheckerHint::isEmpty() const { return true; }
+bool ModelCheckerHint::isEmpty() const {
+    return true;
+}
 
-bool ModelCheckerHint::isExplicitModelCheckerHint() const { return false; }
+bool ModelCheckerHint::isExplicitModelCheckerHint() const {
+    return false;
+}
 
 template<typename ValueType>
 ExplicitModelCheckerHint<ValueType> const& ModelCheckerHint::asExplicitModelCheckerHint() const {

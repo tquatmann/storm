@@ -8,7 +8,9 @@
 
 namespace storm {
 namespace gspn {
-void GspnBuilder::setGspnName(std::string const& name) { gspnName = name; }
+void GspnBuilder::setGspnName(std::string const& name) {
+    gspnName = name;
+}
 
 uint_fast64_t GspnBuilder::addPlace(boost::optional<uint64_t> const& capacity, uint_fast64_t const& initialTokens, std::string const& name) {
     auto newId = places.size();
@@ -21,9 +23,13 @@ uint_fast64_t GspnBuilder::addPlace(boost::optional<uint64_t> const& capacity, u
     return newId;
 }
 
-void GspnBuilder::setPlaceLayoutInfo(uint64_t placeId, LayoutInfo const& layoutInfo) { placeLayout[placeId] = layoutInfo; }
+void GspnBuilder::setPlaceLayoutInfo(uint64_t placeId, LayoutInfo const& layoutInfo) {
+    placeLayout[placeId] = layoutInfo;
+}
 
-void GspnBuilder::setTransitionLayoutInfo(uint64_t transitionId, LayoutInfo const& layoutInfo) { transitionLayout[transitionId] = layoutInfo; }
+void GspnBuilder::setTransitionLayoutInfo(uint64_t transitionId, LayoutInfo const& layoutInfo) {
+    transitionLayout[transitionId] = layoutInfo;
+}
 
 uint_fast64_t GspnBuilder::addImmediateTransition(uint_fast64_t const& priority, double const& weight, std::string const& name) {
     auto trans = storm::gspn::ImmediateTransition<double>();

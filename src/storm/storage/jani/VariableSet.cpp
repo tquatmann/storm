@@ -13,7 +13,9 @@ VariableSet::VariableSet() {
     // Intentionally left empty.
 }
 
-detail::Variables<Variable> VariableSet::getBooleanVariables() { return detail::Variables<Variable>(booleanVariables.begin(), booleanVariables.end()); }
+detail::Variables<Variable> VariableSet::getBooleanVariables() {
+    return detail::Variables<Variable>(booleanVariables.begin(), booleanVariables.end());
+}
 
 detail::ConstVariables<Variable> VariableSet::getBooleanVariables() const {
     return detail::ConstVariables<Variable>(booleanVariables.begin(), booleanVariables.end());
@@ -35,17 +37,25 @@ detail::ConstVariables<Variable> VariableSet::getUnboundedIntegerVariables() con
     return detail::ConstVariables<Variable>(unboundedIntegerVariables.begin(), unboundedIntegerVariables.end());
 }
 
-detail::Variables<Variable> VariableSet::getRealVariables() { return detail::Variables<Variable>(realVariables.begin(), realVariables.end()); }
+detail::Variables<Variable> VariableSet::getRealVariables() {
+    return detail::Variables<Variable>(realVariables.begin(), realVariables.end());
+}
 
-detail::ConstVariables<Variable> VariableSet::getRealVariables() const { return detail::ConstVariables<Variable>(realVariables.begin(), realVariables.end()); }
+detail::ConstVariables<Variable> VariableSet::getRealVariables() const {
+    return detail::ConstVariables<Variable>(realVariables.begin(), realVariables.end());
+}
 
-detail::Variables<Variable> VariableSet::getArrayVariables() { return detail::Variables<Variable>(arrayVariables.begin(), arrayVariables.end()); }
+detail::Variables<Variable> VariableSet::getArrayVariables() {
+    return detail::Variables<Variable>(arrayVariables.begin(), arrayVariables.end());
+}
 
 detail::ConstVariables<Variable> VariableSet::getArrayVariables() const {
     return detail::ConstVariables<Variable>(arrayVariables.begin(), arrayVariables.end());
 }
 
-detail::Variables<Variable> VariableSet::getClockVariables() { return detail::Variables<Variable>(clockVariables.begin(), clockVariables.end()); }
+detail::Variables<Variable> VariableSet::getClockVariables() {
+    return detail::Variables<Variable>(clockVariables.begin(), clockVariables.end());
+}
 
 detail::ConstVariables<Variable> VariableSet::getClockVariables() const {
     return detail::ConstVariables<Variable>(clockVariables.begin(), clockVariables.end());
@@ -129,9 +139,13 @@ std::vector<std::shared_ptr<Variable>> VariableSet::dropAllArrayVariables() {
     return result;
 }
 
-bool VariableSet::hasVariable(std::string const& name) const { return nameToVariable.find(name) != nameToVariable.end(); }
+bool VariableSet::hasVariable(std::string const& name) const {
+    return nameToVariable.find(name) != nameToVariable.end();
+}
 
-bool VariableSet::hasVariable(Variable const& var) const { return hasVariable(var.getName()); }
+bool VariableSet::hasVariable(Variable const& var) const {
+    return hasVariable(var.getName());
+}
 
 Variable const& VariableSet::getVariable(std::string const& name) const {
     auto it = nameToVariable.find(name);
@@ -165,13 +179,21 @@ std::shared_ptr<Variable> VariableSet::eraseVariable(storm::expressions::Variabl
     return janiVar;
 }
 
-typename detail::Variables<Variable>::iterator VariableSet::begin() { return detail::Variables<Variable>::make_iterator(variables.begin()); }
+typename detail::Variables<Variable>::iterator VariableSet::begin() {
+    return detail::Variables<Variable>::make_iterator(variables.begin());
+}
 
-typename detail::ConstVariables<Variable>::iterator VariableSet::begin() const { return detail::ConstVariables<Variable>::make_iterator(variables.begin()); }
+typename detail::ConstVariables<Variable>::iterator VariableSet::begin() const {
+    return detail::ConstVariables<Variable>::make_iterator(variables.begin());
+}
 
-typename detail::Variables<Variable>::iterator VariableSet::end() { return detail::Variables<Variable>::make_iterator(variables.end()); }
+typename detail::Variables<Variable>::iterator VariableSet::end() {
+    return detail::Variables<Variable>::make_iterator(variables.end());
+}
 
-detail::ConstVariables<Variable>::iterator VariableSet::end() const { return detail::ConstVariables<Variable>::make_iterator(variables.end()); }
+detail::ConstVariables<Variable>::iterator VariableSet::end() const {
+    return detail::ConstVariables<Variable>::make_iterator(variables.end());
+}
 
 Variable const& VariableSet::getVariable(storm::expressions::Variable const& variable) const {
     auto it = variableToVariable.find(variable);
@@ -180,7 +202,9 @@ Variable const& VariableSet::getVariable(storm::expressions::Variable const& var
     return *it->second;
 }
 
-bool VariableSet::hasVariable(storm::expressions::Variable const& variable) const { return variableToVariable.find(variable) != variableToVariable.end(); }
+bool VariableSet::hasVariable(storm::expressions::Variable const& variable) const {
+    return variableToVariable.find(variable) != variableToVariable.end();
+}
 
 bool VariableSet::hasTransientVariable() const {
     for (auto const& variable : variables) {
@@ -191,19 +215,33 @@ bool VariableSet::hasTransientVariable() const {
     return false;
 }
 
-bool VariableSet::containsBooleanVariable() const { return !booleanVariables.empty(); }
+bool VariableSet::containsBooleanVariable() const {
+    return !booleanVariables.empty();
+}
 
-bool VariableSet::containsBoundedIntegerVariable() const { return !boundedIntegerVariables.empty(); }
+bool VariableSet::containsBoundedIntegerVariable() const {
+    return !boundedIntegerVariables.empty();
+}
 
-bool VariableSet::containsUnboundedIntegerVariables() const { return !unboundedIntegerVariables.empty(); }
+bool VariableSet::containsUnboundedIntegerVariables() const {
+    return !unboundedIntegerVariables.empty();
+}
 
-bool VariableSet::containsRealVariables() const { return !realVariables.empty(); }
+bool VariableSet::containsRealVariables() const {
+    return !realVariables.empty();
+}
 
-bool VariableSet::containsArrayVariables() const { return !arrayVariables.empty(); }
+bool VariableSet::containsArrayVariables() const {
+    return !arrayVariables.empty();
+}
 
-bool VariableSet::containsClockVariables() const { return !clockVariables.empty(); }
+bool VariableSet::containsClockVariables() const {
+    return !clockVariables.empty();
+}
 
-bool VariableSet::containsContinuousVariables() const { return !continuousVariables.empty(); }
+bool VariableSet::containsContinuousVariables() const {
+    return !continuousVariables.empty();
+}
 
 bool VariableSet::containsNonTransientRealVariables() const {
     for (auto const& variable : realVariables) {
@@ -228,9 +266,13 @@ bool VariableSet::empty() const {
              containsArrayVariables() || containsClockVariables());
 }
 
-uint64_t VariableSet::getNumberOfVariables() const { return variables.size(); }
+uint64_t VariableSet::getNumberOfVariables() const {
+    return variables.size();
+}
 
-uint64_t VariableSet::getNumberOfNontransientVariables() const { return getNumberOfVariables() - getNumberOfTransientVariables(); }
+uint64_t VariableSet::getNumberOfNontransientVariables() const {
+    return getNumberOfVariables() - getNumberOfTransientVariables();
+}
 
 uint_fast64_t VariableSet::getNumberOfTransientVariables() const {
     uint_fast64_t result = 0;

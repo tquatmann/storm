@@ -90,13 +90,17 @@ EliminationSettings::EliminationOrder EliminationSettings::getEliminationOrder()
     }
 }
 
-bool EliminationSettings::isEliminateEntryStatesLastSet() const { return this->getOption(entryStatesLastOptionName).getHasOptionBeenSet(); }
+bool EliminationSettings::isEliminateEntryStatesLastSet() const {
+    return this->getOption(entryStatesLastOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t EliminationSettings::getMaximalSccSize() const {
     return this->getOption(maximalSccSizeOptionName).getArgumentByName("maxsize").getValueAsUnsignedInteger();
 }
 
-bool EliminationSettings::isUseDedicatedModelCheckerSet() const { return this->getOption(useDedicatedModelCheckerOptionName).getHasOptionBeenSet(); }
+bool EliminationSettings::isUseDedicatedModelCheckerSet() const {
+    return this->getOption(useDedicatedModelCheckerOptionName).getHasOptionBeenSet();
+}
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

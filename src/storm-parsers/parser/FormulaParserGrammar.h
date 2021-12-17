@@ -44,13 +44,17 @@ class FormulaParserGrammar : public qi::grammar<Iterator, std::vector<storm::jan
     void initialize();
 
     struct keywordsStruct : qi::symbols<char, uint_fast64_t> {
-        keywordsStruct() { add("true", 1)("false", 2)("min", 3)("max", 4)("F", 5)("G", 6)("X", 7)("U", 8)("C", 9)("I", 10)("P", 11)("R", 12)("S", 13); }
+        keywordsStruct() {
+            add("true", 1)("false", 2)("min", 3)("max", 4)("F", 5)("G", 6)("X", 7)("U", 8)("C", 9)("I", 10)("P", 11)("R", 12)("S", 13);
+        }
     };
     // A parser used for recognizing the standard keywords (that also apply to e.g. PRISM). These shall not coincide with expression variables
     keywordsStruct keywords_;
 
     struct nonStandardKeywordsStruct : qi::symbols<char, uint_fast64_t> {
-        nonStandardKeywordsStruct() { add("T", 1)("LRA", 2)("MP", 3)("multi", 4)("quantile", 5)("HOA", 6); }
+        nonStandardKeywordsStruct() {
+            add("T", 1)("LRA", 2)("MP", 3)("multi", 4)("quantile", 5)("HOA", 6);
+        }
     };
     // A parser used for recognizing non-standard Storm-specific keywords.
     // For compatibility, we still try to parse expression variables whose identifier is such a keyword and just issue a warning.
@@ -67,14 +71,18 @@ class FormulaParserGrammar : public qi::grammar<Iterator, std::vector<storm::jan
     relationalOperatorStruct relationalOperator_;
 
     struct optimalityOperatorStruct : qi::symbols<char, storm::OptimizationDirection> {
-        optimalityOperatorStruct() { add("min", storm::OptimizationDirection::Minimize)("max", storm::OptimizationDirection::Maximize); }
+        optimalityOperatorStruct() {
+            add("min", storm::OptimizationDirection::Minimize)("max", storm::OptimizationDirection::Maximize);
+        }
     };
 
     // A parser used for recognizing the optimality operators.
     optimalityOperatorStruct optimalityOperator_;
 
     struct rewardMeasureTypeStruct : qi::symbols<char, storm::logic::RewardMeasureType> {
-        rewardMeasureTypeStruct() { add("exp", storm::logic::RewardMeasureType::Expectation)("var", storm::logic::RewardMeasureType::Variance); }
+        rewardMeasureTypeStruct() {
+            add("exp", storm::logic::RewardMeasureType::Expectation)("var", storm::logic::RewardMeasureType::Variance);
+        }
     };
 
     // A parser used for recognizing the reward measure types.

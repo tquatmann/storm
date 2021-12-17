@@ -48,29 +48,45 @@ ConversionGeneralSettings::ConversionGeneralSettings() : ModuleSettings(moduleNa
             .build());
 }
 
-bool ConversionGeneralSettings::isHelpSet() const { return this->getOption(helpOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isHelpSet() const {
+    return this->getOption(helpOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionGeneralSettings::isVersionSet() const { return this->getOption(versionOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isVersionSet() const {
+    return this->getOption(versionOptionName).getHasOptionBeenSet();
+}
 
 std::string ConversionGeneralSettings::getHelpFilterExpression() const {
     return this->getOption(helpOptionName).getArgumentByName("filter").getValueAsString();
 }
 
-bool ConversionGeneralSettings::isVerboseSet() const { return this->getOption(verboseOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isVerboseSet() const {
+    return this->getOption(verboseOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionGeneralSettings::isDebugOutputSet() const { return this->getOption(debugOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isDebugOutputSet() const {
+    return this->getOption(debugOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionGeneralSettings::isTraceOutputSet() const { return this->getOption(traceOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isTraceOutputSet() const {
+    return this->getOption(traceOptionName).getHasOptionBeenSet();
+}
 
-bool ConversionGeneralSettings::isConfigSet() const { return this->getOption(configOptionName).getHasOptionBeenSet(); }
+bool ConversionGeneralSettings::isConfigSet() const {
+    return this->getOption(configOptionName).getHasOptionBeenSet();
+}
 
-std::string ConversionGeneralSettings::getConfigFilename() const { return this->getOption(configOptionName).getArgumentByName("filename").getValueAsString(); }
+std::string ConversionGeneralSettings::getConfigFilename() const {
+    return this->getOption(configOptionName).getArgumentByName("filename").getValueAsString();
+}
 
 void ConversionGeneralSettings::finalize() {
     // Intentionally left empty.
 }
 
-bool ConversionGeneralSettings::check() const { return true; }
+bool ConversionGeneralSettings::check() const {
+    return true;
+}
 
 }  // namespace modules
 }  // namespace settings

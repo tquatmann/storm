@@ -70,7 +70,9 @@ EigenEquationSolverSettings::EigenEquationSolverSettings() : ModuleSettings(modu
                         .build());
 }
 
-bool EigenEquationSolverSettings::isLinearEquationSystemMethodSet() const { return this->getOption(techniqueOptionName).getHasOptionBeenSet(); }
+bool EigenEquationSolverSettings::isLinearEquationSystemMethodSet() const {
+    return this->getOption(techniqueOptionName).getHasOptionBeenSet();
+}
 
 bool EigenEquationSolverSettings::isLinearEquationSystemMethodSetFromDefault() const {
     return !this->getOption(techniqueOptionName).getHasOptionBeenSet() ||
@@ -92,7 +94,9 @@ storm::solver::EigenLinearEquationSolverMethod EigenEquationSolverSettings::getL
                     "Unknown solution technique '" << linearEquationSystemTechniqueAsString << "' selected.");
 }
 
-bool EigenEquationSolverSettings::isPreconditioningMethodSet() const { return this->getOption(preconditionOptionName).getHasOptionBeenSet(); }
+bool EigenEquationSolverSettings::isPreconditioningMethodSet() const {
+    return this->getOption(preconditionOptionName).getHasOptionBeenSet();
+}
 
 storm::solver::EigenLinearEquationSolverPreconditioner EigenEquationSolverSettings::getPreconditioningMethod() const {
     std::string PreconditioningMethodAsString = this->getOption(preconditionOptionName).getArgumentByName("name").getValueAsString();
@@ -107,21 +111,29 @@ storm::solver::EigenLinearEquationSolverPreconditioner EigenEquationSolverSettin
                     "Unknown preconditioning technique '" << PreconditioningMethodAsString << "' selected.");
 }
 
-bool EigenEquationSolverSettings::isRestartIterationCountSet() const { return this->getOption(restartOptionName).getHasOptionBeenSet(); }
+bool EigenEquationSolverSettings::isRestartIterationCountSet() const {
+    return this->getOption(restartOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t EigenEquationSolverSettings::getRestartIterationCount() const {
     return this->getOption(restartOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool EigenEquationSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool EigenEquationSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t EigenEquationSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool EigenEquationSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool EigenEquationSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double EigenEquationSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double EigenEquationSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
 bool EigenEquationSolverSettings::check() const {
     // This list does not include the precision, because this option is shared with other modules.

@@ -27,9 +27,13 @@ Constant::Constant(std::string const& name, storm::expressions::Variable const& 
     }
 }
 
-std::string const& Constant::getName() const { return name; }
+std::string const& Constant::getName() const {
+    return name;
+}
 
-bool Constant::isDefined() const { return definingExpression.isInitialized(); }
+bool Constant::isDefined() const {
+    return definingExpression.isInitialized();
+}
 
 void Constant::define(storm::expressions::Expression const& expression) {
     if (hasConstraint()) {
@@ -40,22 +44,34 @@ void Constant::define(storm::expressions::Expression const& expression) {
     this->definingExpression = expression;
 }
 
-storm::expressions::Type const& Constant::getType() const { return variable.getType(); }
+storm::expressions::Type const& Constant::getType() const {
+    return variable.getType();
+}
 
-bool Constant::isBooleanConstant() const { return getType().isBooleanType(); }
+bool Constant::isBooleanConstant() const {
+    return getType().isBooleanType();
+}
 
-bool Constant::isIntegerConstant() const { return getType().isIntegerType(); }
+bool Constant::isIntegerConstant() const {
+    return getType().isIntegerType();
+}
 
-bool Constant::isRealConstant() const { return getType().isRationalType(); }
+bool Constant::isRealConstant() const {
+    return getType().isRationalType();
+}
 
-storm::expressions::Variable const& Constant::getExpressionVariable() const { return variable; }
+storm::expressions::Variable const& Constant::getExpressionVariable() const {
+    return variable;
+}
 
 storm::expressions::Expression const& Constant::getExpression() const {
     STORM_LOG_ASSERT(isDefined(), "Tried to get the constant definition of undefined constant '" << variable.getName() << "'.");
     return definingExpression;
 }
 
-bool Constant::hasConstraint() const { return constraintExpression.isInitialized(); }
+bool Constant::hasConstraint() const {
+    return constraintExpression.isInitialized();
+}
 
 storm::expressions::Expression const& Constant::getConstraintExpression() const {
     STORM_LOG_ASSERT(hasConstraint(), "Tried to get the constant constraint of unconstrained constant '" << variable.getName() << "'.");

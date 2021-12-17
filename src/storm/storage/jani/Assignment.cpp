@@ -26,23 +26,41 @@ bool Assignment::operator==(Assignment const& other) const {
            this->getAssignedExpression().isSyntacticallyEqual(other.getAssignedExpression()) && this->getLevel() == other.getLevel();
 }
 
-bool Assignment::lValueIsVariable() const { return lValue.isVariable(); }
+bool Assignment::lValueIsVariable() const {
+    return lValue.isVariable();
+}
 
-bool Assignment::lValueIsArrayAccess() const { return lValue.isArrayAccess(); }
+bool Assignment::lValueIsArrayAccess() const {
+    return lValue.isArrayAccess();
+}
 
-storm::jani::LValue& Assignment::getLValue() { return lValue; }
+storm::jani::LValue& Assignment::getLValue() {
+    return lValue;
+}
 
-storm::jani::LValue const& Assignment::getLValue() const { return lValue; }
+storm::jani::LValue const& Assignment::getLValue() const {
+    return lValue;
+}
 
-storm::jani::Variable const& Assignment::getVariable() const { return lValue.getVariable(); }
+storm::jani::Variable const& Assignment::getVariable() const {
+    return lValue.getVariable();
+}
 
-storm::expressions::Variable const& Assignment::getExpressionVariable() const { return getVariable().getExpressionVariable(); }
+storm::expressions::Variable const& Assignment::getExpressionVariable() const {
+    return getVariable().getExpressionVariable();
+}
 
-storm::expressions::Expression const& Assignment::getAssignedExpression() const { return expression; }
+storm::expressions::Expression const& Assignment::getAssignedExpression() const {
+    return expression;
+}
 
-void Assignment::setAssignedExpression(storm::expressions::Expression const& expression) { this->expression = expression; }
+void Assignment::setAssignedExpression(storm::expressions::Expression const& expression) {
+    this->expression = expression;
+}
 
-bool Assignment::isTransient() const { return lValue.isTransient(); }
+bool Assignment::isTransient() const {
+    return lValue.isTransient();
+}
 
 void Assignment::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     this->setAssignedExpression(substituteJaniExpression(this->getAssignedExpression(), substitution).simplify());
@@ -56,9 +74,13 @@ void Assignment::substitute(std::map<storm::expressions::Variable, storm::expres
     }
 }
 
-int64_t Assignment::getLevel() const { return level; }
+int64_t Assignment::getLevel() const {
+    return level;
+}
 
-void Assignment::setLevel(int64_t level) { this->level = level; }
+void Assignment::setLevel(int64_t level) {
+    this->level = level;
+}
 
 bool Assignment::isLinear() const {
     storm::expressions::LinearityCheckVisitor linearityChecker;

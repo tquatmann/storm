@@ -11,7 +11,9 @@ PgclProgram::PgclProgram(std::vector<VariableDeclaration> variables, vector cons
     // Intentionally left empty.
 }
 
-vector PgclProgram::getLocationToStatementVector() { return this->locationToStatement; }
+vector PgclProgram::getLocationToStatementVector() {
+    return this->locationToStatement;
+}
 
 std::vector<storm::expressions::Variable> PgclProgram::getVariables() const {
     std::vector<storm::expressions::Variable> vars;
@@ -22,7 +24,9 @@ std::vector<storm::expressions::Variable> PgclProgram::getVariables() const {
     return vars;
 }
 
-std::vector<storm::pgcl::VariableDeclaration> const& PgclProgram::getVariableDeclarations() const { return variables; }
+std::vector<storm::pgcl::VariableDeclaration> const& PgclProgram::getVariableDeclarations() const {
+    return variables;
+}
 
 std::ostream& operator<<(std::ostream& stream, PgclProgram& program) {
     storm::pgcl::StatementPrinterVisitor printer(stream);

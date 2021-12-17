@@ -171,7 +171,9 @@ std::shared_ptr<Formula> ExtractMaximalStateFormulasVisitor::extract(std::shared
     return std::make_shared<storm::logic::AtomicLabelFormula>(label);
 }
 
-void ExtractMaximalStateFormulasVisitor::incrementNestingLevel() const { const_cast<std::size_t&>(nestingLevel)++; }
+void ExtractMaximalStateFormulasVisitor::incrementNestingLevel() const {
+    const_cast<std::size_t&>(nestingLevel)++;
+}
 void ExtractMaximalStateFormulasVisitor::decrementNestingLevel() const {
     STORM_LOG_ASSERT(nestingLevel > 0, "Illegal nesting level decrement");
     const_cast<std::size_t&>(nestingLevel)--;

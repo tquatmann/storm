@@ -15,13 +15,21 @@ Constant::Constant(storm::expressions::Variable const& variable, std::string con
     // Intentionally left empty.
 }
 
-std::string const& Constant::getName() const { return this->variable.getName(); }
+std::string const& Constant::getName() const {
+    return this->variable.getName();
+}
 
-storm::expressions::Type const& Constant::getType() const { return this->getExpressionVariable().getType(); }
+storm::expressions::Type const& Constant::getType() const {
+    return this->getExpressionVariable().getType();
+}
 
-storm::expressions::Variable const& Constant::getExpressionVariable() const { return this->variable; }
+storm::expressions::Variable const& Constant::getExpressionVariable() const {
+    return this->variable;
+}
 
-bool Constant::isDefined() const { return this->expression.isInitialized(); }
+bool Constant::isDefined() const {
+    return this->expression.isInitialized();
+}
 
 storm::expressions::Expression const& Constant::getExpression() const {
     STORM_LOG_THROW(this->isDefined(), storm::exceptions::IllegalFunctionCallException, "Unable to retrieve defining expression for undefined constant.");

@@ -23,9 +23,13 @@ class HOAConsumerDAHeader : public cpphoafparser::HOAConsumer {
 
     struct header_parsing_done : public std::exception {};
 
-    HOAHeader& getHeader() { return header; }
+    HOAHeader& getHeader() {
+        return header;
+    }
 
-    virtual bool parserResolvesAliases() { return true; }
+    virtual bool parserResolvesAliases() {
+        return true;
+    }
 
     /** Called by the parser for the "HOA: version" item [mandatory, once]. */
     virtual void notifyHeaderStart(const std::string& /*version*/) {
@@ -33,7 +37,9 @@ class HOAConsumerDAHeader : public cpphoafparser::HOAConsumer {
     }
 
     /** Called by the parser for the "States: int(numberOfStates)" item [optional, once]. */
-    virtual void setNumberOfStates(unsigned int numberOfStates) { header.numberOfStates = numberOfStates; }
+    virtual void setNumberOfStates(unsigned int numberOfStates) {
+        header.numberOfStates = numberOfStates;
+    }
 
     /**
      * Called by the parser for each "Start: state-conj" item [optional, multiple].
@@ -128,7 +134,9 @@ class HOAConsumerDAHeader : public cpphoafparser::HOAConsumer {
     /**
      * Called by the parser to notify that the BODY of the automaton has started [mandatory, once].
      */
-    virtual void notifyBodyStart() { throw header_parsing_done(); }
+    virtual void notifyBodyStart() {
+        throw header_parsing_done();
+    }
 
     /**
      * Called by the parser for each "State: ..." item [multiple].
@@ -189,7 +197,9 @@ class HOAConsumerDAHeader : public cpphoafparser::HOAConsumer {
      * Called by the parser to notify the consumer that an "ABORT" message has been encountered
      * (at any time, indicating error, the automaton should be discarded).
      */
-    virtual void notifyAbort() { throw std::runtime_error("Parsing deterministic automaton: Automaton is incomplete (abort)"); }
+    virtual void notifyAbort() {
+        throw std::runtime_error("Parsing deterministic automaton: Automaton is incomplete (abort)");
+    }
 
     /**
      * Is called whenever a condition is encountered that merits a (non-fatal) warning.

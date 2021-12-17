@@ -41,9 +41,13 @@ StateValuations::StateValueIterator::StateValueIterator(typename std::map<storm:
     // Intentionally left empty.
 }
 
-bool StateValuations::StateValueIterator::isVariableAssignment() const { return variableIt != variableEnd; }
+bool StateValuations::StateValueIterator::isVariableAssignment() const {
+    return variableIt != variableEnd;
+}
 
-bool StateValuations::StateValueIterator::isLabelAssignment() const { return variableIt == variableEnd; }
+bool StateValuations::StateValueIterator::isLabelAssignment() const {
+    return variableIt == variableEnd;
+}
 
 storm::expressions::Variable const& StateValuations::StateValueIterator::getVariable() const {
     STORM_LOG_ASSERT(isVariableAssignment(), "Does not point to a variable");
@@ -53,9 +57,15 @@ std::string const& StateValuations::StateValueIterator::getLabel() const {
     STORM_LOG_ASSERT(isLabelAssignment(), "Does not point to a label");
     return labelIt->first;
 }
-bool StateValuations::StateValueIterator::isBoolean() const { return isVariableAssignment() && getVariable().hasBooleanType(); }
-bool StateValuations::StateValueIterator::isInteger() const { return isVariableAssignment() && getVariable().hasIntegerType(); }
-bool StateValuations::StateValueIterator::isRational() const { return isVariableAssignment() && getVariable().hasRationalType(); }
+bool StateValuations::StateValueIterator::isBoolean() const {
+    return isVariableAssignment() && getVariable().hasBooleanType();
+}
+bool StateValuations::StateValueIterator::isInteger() const {
+    return isVariableAssignment() && getVariable().hasIntegerType();
+}
+bool StateValuations::StateValueIterator::isRational() const {
+    return isVariableAssignment() && getVariable().hasRationalType();
+}
 
 std::string const& StateValuations::StateValueIterator::getName() const {
     if (isVariableAssignment()) {
@@ -91,7 +101,9 @@ bool StateValuations::StateValueIterator::operator==(StateValueIterator const& o
     STORM_LOG_ASSERT(valuation == valuation, "Comparing iterators for different states");
     return variableIt == other.variableIt && labelIt == other.labelIt;
 }
-bool StateValuations::StateValueIterator::operator!=(StateValueIterator const& other) { return !(*this == other); }
+bool StateValuations::StateValueIterator::operator!=(StateValueIterator const& other) {
+    return !(*this == other);
+}
 
 typename StateValuations::StateValueIterator& StateValuations::StateValueIterator::operator++() {
     if (variableIt != variableEnd) {
@@ -286,9 +298,13 @@ typename StateValuations::StateValueIteratorRange StateValuations::at(state_type
     return StateValueIteratorRange({variableToIndexMap, observationLabels, &(valuations[state])});
 }
 
-uint_fast64_t StateValuations::getNumberOfStates() const { return valuations.size(); }
+uint_fast64_t StateValuations::getNumberOfStates() const {
+    return valuations.size();
+}
 
-std::size_t StateValuations::hash() const { return 0; }
+std::size_t StateValuations::hash() const {
+    return 0;
+}
 
 StateValuations StateValuations::selectStates(storm::storage::BitVector const& selectedStates) const {
     return StateValuations(variableToIndexMap, storm::utility::vector::filterVector(valuations, selectedStates));
@@ -333,7 +349,9 @@ void StateValuationsBuilder::addVariable(storm::expressions::Variable const& var
     }
 }
 
-void StateValuationsBuilder::addObservationLabel(const std::string& label) { currentStateValuations.observationLabels[label] = labelCount++; }
+void StateValuationsBuilder::addObservationLabel(const std::string& label) {
+    currentStateValuations.observationLabels[label] = labelCount++;
+}
 
 void StateValuationsBuilder::addState(storm::storage::sparse::state_type const& state, std::vector<bool>&& booleanValues, std::vector<int64_t>&& integerValues,
                                       std::vector<storm::RationalNumber>&& rationalValues, std::vector<int64_t>&& observationLabelValues) {
@@ -350,11 +368,17 @@ void StateValuationsBuilder::addState(storm::storage::sparse::state_type const& 
     }
 }
 
-uint64_t StateValuationsBuilder::getBooleanVarCount() const { return booleanVarCount; }
+uint64_t StateValuationsBuilder::getBooleanVarCount() const {
+    return booleanVarCount;
+}
 
-uint64_t StateValuationsBuilder::getIntegerVarCount() const { return integerVarCount; }
+uint64_t StateValuationsBuilder::getIntegerVarCount() const {
+    return integerVarCount;
+}
 
-uint64_t StateValuationsBuilder::getLabelCount() const { return labelCount; }
+uint64_t StateValuationsBuilder::getLabelCount() const {
+    return labelCount;
+}
 
 StateValuations StateValuationsBuilder::build(std::size_t totalStateCount) {
     return std::move(currentStateValuations);

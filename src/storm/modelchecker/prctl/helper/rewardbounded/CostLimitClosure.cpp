@@ -12,7 +12,9 @@ CostLimit::CostLimit(uint64_t const& costLimit) : value(costLimit) {
     // Intentionally left empty
 }
 
-bool CostLimit::isInfinity() const { return value == std::numeric_limits<uint64_t>::max(); }
+bool CostLimit::isInfinity() const {
+    return value == std::numeric_limits<uint64_t>::max();
+}
 
 uint64_t const& CostLimit::get() const {
     STORM_LOG_ASSERT(!isInfinity(), "Tried to get an infinite cost limit as int.");
@@ -29,9 +31,13 @@ bool CostLimit::operator<(CostLimit const& other) const {
     return value < other.value;
 }
 
-bool CostLimit::operator==(CostLimit const& other) const { return value == other.value; }
+bool CostLimit::operator==(CostLimit const& other) const {
+    return value == other.value;
+}
 
-CostLimit CostLimit::infinity() { return CostLimit(std::numeric_limits<uint64_t>::max()); }
+CostLimit CostLimit::infinity() {
+    return CostLimit(std::numeric_limits<uint64_t>::max());
+}
 
 bool CostLimitClosure::CostLimitsCompare::operator()(storm::modelchecker::helper::rewardbounded::CostLimits const& lhs,
                                                      storm::modelchecker::helper::rewardbounded::CostLimits const& rhs) const {
@@ -92,7 +98,9 @@ bool CostLimitClosure::containsUpwardClosure(CostLimits const& costLimits) const
     return contains(infinityProjection);
 }
 
-bool CostLimitClosure::empty() const { return generator.empty(); }
+bool CostLimitClosure::empty() const {
+    return generator.empty();
+}
 
 bool CostLimitClosure::full() const {
     CostLimits p(dimension(), CostLimit(0));
@@ -127,9 +135,13 @@ std::vector<CostLimits> CostLimitClosure::getDominatingCostLimits(CostLimits con
     return result;
 }
 
-typename CostLimitClosure::GeneratorType const& CostLimitClosure::getGenerator() const { return generator; }
+typename CostLimitClosure::GeneratorType const& CostLimitClosure::getGenerator() const {
+    return generator;
+}
 
-uint64_t CostLimitClosure::dimension() const { return downwardDimensions.size(); }
+uint64_t CostLimitClosure::dimension() const {
+    return downwardDimensions.size();
+}
 
 bool CostLimitClosure::unionFull(CostLimitClosure const& first, CostLimitClosure const& second) {
     assert(first.dimension() == second.dimension());

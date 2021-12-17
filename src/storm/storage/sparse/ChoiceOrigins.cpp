@@ -18,26 +18,42 @@ ChoiceOrigins::ChoiceOrigins(std::vector<uint_fast64_t>&& indexToIdentifierMappi
     // Intentionally left empty
 }
 
-bool ChoiceOrigins::isPrismChoiceOrigins() const { return false; }
+bool ChoiceOrigins::isPrismChoiceOrigins() const {
+    return false;
+}
 
-bool ChoiceOrigins::isJaniChoiceOrigins() const { return false; }
+bool ChoiceOrigins::isJaniChoiceOrigins() const {
+    return false;
+}
 
-PrismChoiceOrigins& ChoiceOrigins::asPrismChoiceOrigins() { return dynamic_cast<PrismChoiceOrigins&>(*this); }
+PrismChoiceOrigins& ChoiceOrigins::asPrismChoiceOrigins() {
+    return dynamic_cast<PrismChoiceOrigins&>(*this);
+}
 
-PrismChoiceOrigins const& ChoiceOrigins::asPrismChoiceOrigins() const { return dynamic_cast<PrismChoiceOrigins const&>(*this); }
+PrismChoiceOrigins const& ChoiceOrigins::asPrismChoiceOrigins() const {
+    return dynamic_cast<PrismChoiceOrigins const&>(*this);
+}
 
-JaniChoiceOrigins& ChoiceOrigins::asJaniChoiceOrigins() { return dynamic_cast<JaniChoiceOrigins&>(*this); }
+JaniChoiceOrigins& ChoiceOrigins::asJaniChoiceOrigins() {
+    return dynamic_cast<JaniChoiceOrigins&>(*this);
+}
 
-JaniChoiceOrigins const& ChoiceOrigins::asJaniChoiceOrigins() const { return dynamic_cast<JaniChoiceOrigins const&>(*this); }
+JaniChoiceOrigins const& ChoiceOrigins::asJaniChoiceOrigins() const {
+    return dynamic_cast<JaniChoiceOrigins const&>(*this);
+}
 
 uint_fast64_t ChoiceOrigins::getIdentifier(uint_fast64_t choiceIndex) const {
     STORM_LOG_ASSERT(choiceIndex < indexToIdentifier.size(), "Invalid choice index: " << choiceIndex);
     return indexToIdentifier[choiceIndex];
 }
 
-uint_fast64_t ChoiceOrigins::getNumberOfChoices() const { return indexToIdentifier.size(); }
+uint_fast64_t ChoiceOrigins::getNumberOfChoices() const {
+    return indexToIdentifier.size();
+}
 
-uint_fast64_t ChoiceOrigins::getIdentifierForChoicesWithNoOrigin() { return 0; }
+uint_fast64_t ChoiceOrigins::getIdentifierForChoicesWithNoOrigin() {
+    return 0;
+}
 
 std::string const& ChoiceOrigins::getIdentifierInfo(uint_fast64_t identifier) const {
     STORM_LOG_ASSERT(identifier < this->getNumberOfIdentifiers(), "Invalid choice origin identifier: " << identifier);
@@ -47,7 +63,9 @@ std::string const& ChoiceOrigins::getIdentifierInfo(uint_fast64_t identifier) co
     return identifierToInfo[identifier];
 }
 
-std::string const& ChoiceOrigins::getChoiceInfo(uint_fast64_t choiceIndex) const { return getIdentifierInfo(getIdentifier(choiceIndex)); }
+std::string const& ChoiceOrigins::getChoiceInfo(uint_fast64_t choiceIndex) const {
+    return getIdentifierInfo(getIdentifier(choiceIndex));
+}
 
 typename ChoiceOrigins::Json const& ChoiceOrigins::getIdentifierAsJson(uint_fast64_t identifier) const {
     STORM_LOG_ASSERT(identifier < this->getNumberOfIdentifiers(), "Invalid choice origin identifier: " << identifier);
@@ -57,7 +75,9 @@ typename ChoiceOrigins::Json const& ChoiceOrigins::getIdentifierAsJson(uint_fast
     return identifierToJson[identifier];
 }
 
-typename ChoiceOrigins::Json const& ChoiceOrigins::getChoiceAsJson(uint_fast64_t choiceIndex) const { return getIdentifierAsJson(getIdentifier(choiceIndex)); }
+typename ChoiceOrigins::Json const& ChoiceOrigins::getChoiceAsJson(uint_fast64_t choiceIndex) const {
+    return getIdentifierAsJson(getIdentifier(choiceIndex));
+}
 
 std::shared_ptr<ChoiceOrigins> ChoiceOrigins::selectChoices(storm::storage::BitVector const& selectedChoices) const {
     std::vector<uint_fast64_t> indexToIdentifierMapping(selectedChoices.getNumberOfSetBits());
@@ -65,7 +85,9 @@ std::shared_ptr<ChoiceOrigins> ChoiceOrigins::selectChoices(storm::storage::BitV
     return cloneWithNewIndexToIdentifierMapping(std::move(indexToIdentifierMapping));
 }
 
-void ChoiceOrigins::clearOriginOfChoice(uint_fast64_t choiceIndex) { indexToIdentifier[choiceIndex] = getIdentifierForChoicesWithNoOrigin(); }
+void ChoiceOrigins::clearOriginOfChoice(uint_fast64_t choiceIndex) {
+    indexToIdentifier[choiceIndex] = getIdentifierForChoicesWithNoOrigin();
+}
 
 std::shared_ptr<ChoiceOrigins> ChoiceOrigins::selectChoices(std::vector<uint_fast64_t> const& selectedChoices) const {
     std::vector<uint_fast64_t> indexToIdentifierMapping;

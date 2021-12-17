@@ -19,26 +19,42 @@ Variable::~Variable() {
     // Intentionally left empty.
 }
 
-std::unique_ptr<Variable> Variable::clone() const { return std::make_unique<Variable>(name, *type, variable, init, transient); }
+std::unique_ptr<Variable> Variable::clone() const {
+    return std::make_unique<Variable>(name, *type, variable, init, transient);
+}
 
-storm::expressions::Variable const& Variable::getExpressionVariable() const { return variable; }
+storm::expressions::Variable const& Variable::getExpressionVariable() const {
+    return variable;
+}
 
-void Variable::setExpressionVariable(storm::expressions::Variable const& newVariable) { variable = newVariable; }
+void Variable::setExpressionVariable(storm::expressions::Variable const& newVariable) {
+    variable = newVariable;
+}
 
-std::string const& Variable::getName() const { return name; }
+std::string const& Variable::getName() const {
+    return name;
+}
 
-void Variable::setName(std::string const& newName) { name = newName; }
+void Variable::setName(std::string const& newName) {
+    name = newName;
+}
 
-bool Variable::isTransient() const { return transient; }
+bool Variable::isTransient() const {
+    return transient;
+}
 
-bool Variable::hasInitExpression() const { return init.isInitialized(); }
+bool Variable::hasInitExpression() const {
+    return init.isInitialized();
+}
 
 storm::expressions::Expression const& Variable::getInitExpression() const {
     STORM_LOG_ASSERT(hasInitExpression(), "Tried to get the init expression of a variable that doesn't have any.");
     return this->init;
 }
 
-void Variable::setInitExpression(storm::expressions::Expression const& initialExpression) { this->init = initialExpression; }
+void Variable::setInitExpression(storm::expressions::Expression const& initialExpression) {
+    this->init = initialExpression;
+}
 
 void Variable::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) {
     if (this->hasInitExpression()) {
@@ -47,9 +63,13 @@ void Variable::substitute(std::map<storm::expressions::Variable, storm::expressi
     type->substitute(substitution);
 }
 
-JaniType& Variable::getType() { return *type; }
+JaniType& Variable::getType() {
+    return *type;
+}
 
-JaniType const& Variable::getType() const { return *type; }
+JaniType const& Variable::getType() const {
+    return *type;
+}
 
 storm::expressions::Expression Variable::getRangeExpression() const {
     storm::expressions::Expression range;
@@ -141,8 +161,12 @@ std::shared_ptr<Variable> Variable::makeContinuousVariable(std::string const& na
     return makeVariable(name, ContinuousType(), variable, initValue, transient);
 }
 
-bool operator==(Variable const& lhs, Variable const& rhs) { return lhs.getExpressionVariable() == rhs.getExpressionVariable(); }
+bool operator==(Variable const& lhs, Variable const& rhs) {
+    return lhs.getExpressionVariable() == rhs.getExpressionVariable();
+}
 
-bool operator!=(Variable const& lhs, Variable const& rhs) { return !(lhs == rhs); }
+bool operator!=(Variable const& lhs, Variable const& rhs) {
+    return !(lhs == rhs);
+}
 }  // namespace jani
 }  // namespace storm

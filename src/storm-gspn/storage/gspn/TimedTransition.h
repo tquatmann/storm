@@ -8,14 +8,18 @@ namespace gspn {
 template<typename RateType>
 class TimedTransition : public storm::gspn::Transition {
    public:
-    TimedTransition() { setSingleServerSemantics(); }
+    TimedTransition() {
+        setSingleServerSemantics();
+    }
 
     /*!
      * Sets the rate of this transition to the given value.
      *
      * @param rate The new rate for this transition.
      */
-    void setRate(RateType const& rate) { this->rate = rate; }
+    void setRate(RateType const& rate) {
+        this->rate = rate;
+    }
 
     /*!
      * Sets the semantics of this transition
@@ -25,18 +29,28 @@ class TimedTransition : public storm::gspn::Transition {
         nServers = k;
     }
 
-    void setSingleServerSemantics() { nServers = 1; }
+    void setSingleServerSemantics() {
+        nServers = 1;
+    }
 
-    void setInfiniteServerSemantics() { nServers = 0; }
+    void setInfiniteServerSemantics() {
+        nServers = 0;
+    }
 
     /*!
      * Retrieves the semantics of this transition
      */
-    bool hasKServerSemantics() const { return nServers > 0; }
+    bool hasKServerSemantics() const {
+        return nServers > 0;
+    }
 
-    bool hasSingleServerSemantics() const { return nServers == 1; }
+    bool hasSingleServerSemantics() const {
+        return nServers == 1;
+    }
 
-    bool hasInfiniteServerSemantics() const { return nServers == 0; }
+    bool hasInfiniteServerSemantics() const {
+        return nServers == 0;
+    }
 
     uint64_t getNumberOfServers() const {
         STORM_LOG_ASSERT(hasKServerSemantics(), "Tried to get the number of servers of a timed transition although it does not have K-Server-Semantics.");
@@ -48,7 +62,9 @@ class TimedTransition : public storm::gspn::Transition {
      *
      * @return The rate of this transition.
      */
-    RateType getRate() const { return this->rate; }
+    RateType getRate() const {
+        return this->rate;
+    }
 
    private:
     // the rate of the transition

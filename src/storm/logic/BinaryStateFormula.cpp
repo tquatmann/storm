@@ -7,11 +7,17 @@ BinaryStateFormula::BinaryStateFormula(std::shared_ptr<Formula const> const& lef
     // Intentionally left empty.
 }
 
-bool BinaryStateFormula::isBinaryStateFormula() const { return true; }
+bool BinaryStateFormula::isBinaryStateFormula() const {
+    return true;
+}
 
-Formula const& BinaryStateFormula::getLeftSubformula() const { return *leftSubformula; }
+Formula const& BinaryStateFormula::getLeftSubformula() const {
+    return *leftSubformula;
+}
 
-Formula const& BinaryStateFormula::getRightSubformula() const { return *rightSubformula; }
+Formula const& BinaryStateFormula::getRightSubformula() const {
+    return *rightSubformula;
+}
 
 void BinaryStateFormula::gatherAtomicExpressionFormulas(std::vector<std::shared_ptr<AtomicExpressionFormula const>>& atomicExpressionFormulas) const {
     this->getLeftSubformula().gatherAtomicExpressionFormulas(atomicExpressionFormulas);

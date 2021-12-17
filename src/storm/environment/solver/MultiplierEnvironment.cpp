@@ -17,9 +17,13 @@ MultiplierEnvironment::~MultiplierEnvironment() {
     // Intentionally left empty
 }
 
-storm::solver::MultiplierType const& MultiplierEnvironment::getType() const { return type; }
+storm::solver::MultiplierType const& MultiplierEnvironment::getType() const {
+    return type;
+}
 
-bool const& MultiplierEnvironment::isTypeSetFromDefault() const { return typeSetFromDefault; }
+bool const& MultiplierEnvironment::isTypeSetFromDefault() const {
+    return typeSetFromDefault;
+}
 
 void MultiplierEnvironment::setType(storm::solver::MultiplierType value, bool isSetFromDefault) {
     type = value;

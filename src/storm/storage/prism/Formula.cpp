@@ -17,13 +17,21 @@ Formula::Formula(std::string const& name, std::string const& filename, uint_fast
     // Intentionally left empty.
 }
 
-std::string const& Formula::getName() const { return this->name; }
+std::string const& Formula::getName() const {
+    return this->name;
+}
 
-bool Formula::hasExpressionVariable() const { return this->variable.is_initialized(); }
+bool Formula::hasExpressionVariable() const {
+    return this->variable.is_initialized();
+}
 
-storm::expressions::Variable const& Formula::getExpressionVariable() const { return this->variable.get(); }
+storm::expressions::Variable const& Formula::getExpressionVariable() const {
+    return this->variable.get();
+}
 
-storm::expressions::Expression const& Formula::getExpression() const { return this->expression; }
+storm::expressions::Expression const& Formula::getExpression() const {
+    return this->expression;
+}
 
 storm::expressions::Type const& Formula::getType() const {
     assert(this->getExpression().isInitialized());

@@ -87,9 +87,13 @@ BDD InternalBdd<DdType::Sylvan>::fromVectorRec(uint_fast64_t& currentOffset, uin
     }
 }
 
-bool InternalBdd<DdType::Sylvan>::operator==(InternalBdd<DdType::Sylvan> const& other) const { return sylvanBdd == other.sylvanBdd; }
+bool InternalBdd<DdType::Sylvan>::operator==(InternalBdd<DdType::Sylvan> const& other) const {
+    return sylvanBdd == other.sylvanBdd;
+}
 
-bool InternalBdd<DdType::Sylvan>::operator!=(InternalBdd<DdType::Sylvan> const& other) const { return sylvanBdd != other.sylvanBdd; }
+bool InternalBdd<DdType::Sylvan>::operator!=(InternalBdd<DdType::Sylvan> const& other) const {
+    return sylvanBdd != other.sylvanBdd;
+}
 
 InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::relationalProduct(InternalBdd<DdType::Sylvan> const& relation,
                                                                            std::vector<InternalBdd<DdType::Sylvan>> const&,
@@ -156,7 +160,9 @@ InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::implies(InternalBdd<DdT
     return InternalBdd<DdType::Sylvan>(ddManager, (!this->sylvanBdd) | other.sylvanBdd);
 }
 
-InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::operator!() const { return InternalBdd<DdType::Sylvan>(ddManager, !this->sylvanBdd); }
+InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::operator!() const {
+    return InternalBdd<DdType::Sylvan>(ddManager, !this->sylvanBdd);
+}
 
 InternalBdd<DdType::Sylvan>& InternalBdd<DdType::Sylvan>::complement() {
     this->sylvanBdd = !this->sylvanBdd;
@@ -200,7 +206,9 @@ InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::swapVariables(std::vect
     return InternalBdd<DdType::Sylvan>(ddManager, this->sylvanBdd.Permute(fromIndices, toIndices));
 }
 
-InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::getSupport() const { return InternalBdd<DdType::Sylvan>(ddManager, this->sylvanBdd.Support()); }
+InternalBdd<DdType::Sylvan> InternalBdd<DdType::Sylvan>::getSupport() const {
+    return InternalBdd<DdType::Sylvan>(ddManager, this->sylvanBdd.Support());
+}
 
 uint_fast64_t InternalBdd<DdType::Sylvan>::getNonZeroCount(uint_fast64_t numberOfDdVariables) const {
     if (numberOfDdVariables == 0) {
@@ -220,13 +228,21 @@ uint_fast64_t InternalBdd<DdType::Sylvan>::getNodeCount() const {
     return static_cast<uint_fast64_t>(this->sylvanBdd.NodeCount());
 }
 
-bool InternalBdd<DdType::Sylvan>::isOne() const { return this->sylvanBdd.isOne(); }
+bool InternalBdd<DdType::Sylvan>::isOne() const {
+    return this->sylvanBdd.isOne();
+}
 
-bool InternalBdd<DdType::Sylvan>::isZero() const { return this->sylvanBdd.isZero(); }
+bool InternalBdd<DdType::Sylvan>::isZero() const {
+    return this->sylvanBdd.isZero();
+}
 
-uint_fast64_t InternalBdd<DdType::Sylvan>::getIndex() const { return static_cast<uint_fast64_t>(this->sylvanBdd.TopVar()); }
+uint_fast64_t InternalBdd<DdType::Sylvan>::getIndex() const {
+    return static_cast<uint_fast64_t>(this->sylvanBdd.TopVar());
+}
 
-uint_fast64_t InternalBdd<DdType::Sylvan>::getLevel() const { return this->getIndex(); }
+uint_fast64_t InternalBdd<DdType::Sylvan>::getLevel() const {
+    return this->getIndex();
+}
 
 void InternalBdd<DdType::Sylvan>::exportToDot(std::string const& filename, std::vector<std::string> const&, bool) const {
     FILE* filePointer = fopen(filename.c_str(), "a+");
@@ -250,9 +266,13 @@ void InternalBdd<DdType::Sylvan>::exportToText(std::string const& filename) cons
     }
 }
 
-sylvan::Bdd& InternalBdd<DdType::Sylvan>::getSylvanBdd() { return sylvanBdd; }
+sylvan::Bdd& InternalBdd<DdType::Sylvan>::getSylvanBdd() {
+    return sylvanBdd;
+}
 
-sylvan::Bdd const& InternalBdd<DdType::Sylvan>::getSylvanBdd() const { return sylvanBdd; }
+sylvan::Bdd const& InternalBdd<DdType::Sylvan>::getSylvanBdd() const {
+    return sylvanBdd;
+}
 
 template<typename ValueType>
 InternalAdd<DdType::Sylvan, ValueType> InternalBdd<DdType::Sylvan>::toAdd() const {

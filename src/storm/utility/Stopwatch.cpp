@@ -26,9 +26,13 @@ Stopwatch::MilisecondType Stopwatch::getTimeInMilliseconds() const {
     return std::chrono::duration_cast<std::chrono::milliseconds>(time).count();
 }
 
-Stopwatch::NanosecondType Stopwatch::getTimeInNanoseconds() const { return accumulatedTime.count(); }
+Stopwatch::NanosecondType Stopwatch::getTimeInNanoseconds() const {
+    return accumulatedTime.count();
+}
 
-void Stopwatch::addToTime(std::chrono::nanoseconds timeNanoseconds) { accumulatedTime += timeNanoseconds; }
+void Stopwatch::addToTime(std::chrono::nanoseconds timeNanoseconds) {
+    accumulatedTime += timeNanoseconds;
+}
 
 void Stopwatch::add(Stopwatch const& other) {
     STORM_LOG_WARN_COND(other.stopped(), "Expected stopped watch.");
@@ -57,7 +61,9 @@ void Stopwatch::restart() {
     start();
 }
 
-bool Stopwatch::stopped() const { return isStopped; }
+bool Stopwatch::stopped() const {
+    return isStopped;
+}
 
 std::ostream& operator<<(std::ostream& out, Stopwatch const& stopwatch) {
     char oldFillChar = out.fill('0');

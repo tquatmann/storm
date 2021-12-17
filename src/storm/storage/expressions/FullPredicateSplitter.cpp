@@ -39,7 +39,9 @@ boost::any FullPredicateSplitter::visit(BinaryBooleanFunctionExpression const& e
     return boost::any();
 }
 
-boost::any FullPredicateSplitter::visit(BinaryNumericalFunctionExpression const&, boost::any const&) { return boost::any(); }
+boost::any FullPredicateSplitter::visit(BinaryNumericalFunctionExpression const&, boost::any const&) {
+    return boost::any();
+}
 
 boost::any FullPredicateSplitter::visit(BinaryRelationExpression const& expression, boost::any const&) {
     atomicExpressions.push_back(expression.toExpression());
@@ -58,13 +60,21 @@ boost::any FullPredicateSplitter::visit(UnaryBooleanFunctionExpression const& ex
     return boost::any();
 }
 
-boost::any FullPredicateSplitter::visit(UnaryNumericalFunctionExpression const&, boost::any const&) { return boost::any(); }
+boost::any FullPredicateSplitter::visit(UnaryNumericalFunctionExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any FullPredicateSplitter::visit(BooleanLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any FullPredicateSplitter::visit(BooleanLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any FullPredicateSplitter::visit(IntegerLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any FullPredicateSplitter::visit(IntegerLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
-boost::any FullPredicateSplitter::visit(RationalLiteralExpression const&, boost::any const&) { return boost::any(); }
+boost::any FullPredicateSplitter::visit(RationalLiteralExpression const&, boost::any const&) {
+    return boost::any();
+}
 
 }  // namespace expressions
 }  // namespace storm

@@ -52,7 +52,9 @@ void JaniTraverser::traverse(Constant& constant, boost::any const& data) {
     }
 }
 
-void JaniTraverser::traverse(FunctionDefinition& functionDefinition, boost::any const& data) { traverse(functionDefinition.getFunctionBody(), data); }
+void JaniTraverser::traverse(FunctionDefinition& functionDefinition, boost::any const& data) {
+    traverse(functionDefinition.getFunctionBody(), data);
+}
 
 void JaniTraverser::traverse(VariableSet& variableSet, boost::any const& data) {
     for (auto& v : variableSet) {
@@ -118,7 +120,9 @@ void JaniTraverser::traverse(Edge& edge, boost::any const& data) {
     }
 }
 
-void JaniTraverser::traverse(EdgeDestination& edgeDestination, boost::any const& data) { traverse(edgeDestination.getProbability(), data); }
+void JaniTraverser::traverse(EdgeDestination& edgeDestination, boost::any const& data) {
+    traverse(edgeDestination.getProbability(), data);
+}
 
 void JaniTraverser::traverse(OrderedAssignments& orderedAssignments, boost::any const& data) {
     for (auto& assignment : orderedAssignments) {
@@ -261,7 +265,9 @@ void ConstJaniTraverser::traverse(Edge const& edge, boost::any const& data) {
     }
 }
 
-void ConstJaniTraverser::traverse(EdgeDestination const& edgeDestination, boost::any const& data) { traverse(edgeDestination.getProbability(), data); }
+void ConstJaniTraverser::traverse(EdgeDestination const& edgeDestination, boost::any const& data) {
+    traverse(edgeDestination.getProbability(), data);
+}
 
 void ConstJaniTraverser::traverse(OrderedAssignments const& orderedAssignments, boost::any const& data) {
     for (auto const& assignment : orderedAssignments) {

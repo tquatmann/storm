@@ -37,7 +37,9 @@ class FunctionCallExpressionFinderExpressionVisitor : public storm::expressions:
         return boost::any();
     }
 
-    virtual boost::any visit(storm::expressions::VariableExpression const&, boost::any const&) override { return boost::any(); }
+    virtual boost::any visit(storm::expressions::VariableExpression const&, boost::any const&) override {
+        return boost::any();
+    }
 
     virtual boost::any visit(storm::expressions::UnaryBooleanFunctionExpression const& expression, boost::any const& data) override {
         expression.getOperand()->accept(*this, data);
@@ -49,11 +51,17 @@ class FunctionCallExpressionFinderExpressionVisitor : public storm::expressions:
         return boost::any();
     }
 
-    virtual boost::any visit(storm::expressions::BooleanLiteralExpression const&, boost::any const&) override { return boost::any(); }
+    virtual boost::any visit(storm::expressions::BooleanLiteralExpression const&, boost::any const&) override {
+        return boost::any();
+    }
 
-    virtual boost::any visit(storm::expressions::IntegerLiteralExpression const&, boost::any const&) override { return boost::any(); }
+    virtual boost::any visit(storm::expressions::IntegerLiteralExpression const&, boost::any const&) override {
+        return boost::any();
+    }
 
-    virtual boost::any visit(storm::expressions::RationalLiteralExpression const&, boost::any const&) override { return boost::any(); }
+    virtual boost::any visit(storm::expressions::RationalLiteralExpression const&, boost::any const&) override {
+        return boost::any();
+    }
 
     virtual boost::any visit(storm::expressions::ValueArrayExpression const& expression, boost::any const& data) override {
         STORM_LOG_ASSERT(expression.size()->isIntegerLiteralExpression(),
@@ -89,7 +97,9 @@ class FunctionCallExpressionFinderExpressionVisitor : public storm::expressions:
 
 class FunctionCallExpressionFinderTraverser : public ConstJaniTraverser {
    public:
-    virtual void traverse(Model const& model, boost::any const& data) override { ConstJaniTraverser::traverse(model, data); }
+    virtual void traverse(Model const& model, boost::any const& data) override {
+        ConstJaniTraverser::traverse(model, data);
+    }
 
     virtual void traverse(storm::expressions::Expression const& expression, boost::any const& data) override {
         auto& res = *boost::any_cast<bool*>(data);

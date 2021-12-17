@@ -12,7 +12,9 @@ UnaryBooleanFunctionExpression::UnaryBooleanFunctionExpression(ExpressionManager
     // Intentionally left empty.
 }
 
-UnaryBooleanFunctionExpression::OperatorType UnaryBooleanFunctionExpression::getOperatorType() const { return this->operatorType; }
+UnaryBooleanFunctionExpression::OperatorType UnaryBooleanFunctionExpression::getOperatorType() const {
+    return this->operatorType;
+}
 
 storm::expressions::OperatorType UnaryBooleanFunctionExpression::getOperator() const {
     storm::expressions::OperatorType result = storm::expressions::OperatorType::Not;
@@ -54,10 +56,16 @@ std::shared_ptr<BaseExpression const> UnaryBooleanFunctionExpression::simplify()
     }
 }
 
-boost::any UnaryBooleanFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const { return visitor.visit(*this, data); }
+boost::any UnaryBooleanFunctionExpression::accept(ExpressionVisitor& visitor, boost::any const& data) const {
+    return visitor.visit(*this, data);
+}
 
-bool UnaryBooleanFunctionExpression::isUnaryBooleanFunctionExpression() const { return true; }
+bool UnaryBooleanFunctionExpression::isUnaryBooleanFunctionExpression() const {
+    return true;
+}
 
-void UnaryBooleanFunctionExpression::printToStream(std::ostream& stream) const { stream << "!(" << *this->getOperand() << ")"; }
+void UnaryBooleanFunctionExpression::printToStream(std::ostream& stream) const {
+    stream << "!(" << *this->getOperand() << ")";
+}
 }  // namespace expressions
 }  // namespace storm

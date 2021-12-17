@@ -26,7 +26,9 @@ namespace generator {
 struct BooleanVariableInformation {
     BooleanVariableInformation(storm::expressions::Variable const& variable, uint_fast64_t bitOffset, bool global, bool observable);
 
-    std::string const& getName() const { return variable.getName(); }
+    std::string const& getName() const {
+        return variable.getName();
+    }
 
     // The boolean variable.
     storm::expressions::Variable variable;
@@ -46,7 +48,9 @@ struct IntegerVariableInformation {
     IntegerVariableInformation(storm::expressions::Variable const& variable, int_fast64_t lowerBound, int_fast64_t upperBound, uint_fast64_t bitOffset,
                                uint_fast64_t bitWidth, bool global = false, bool observable = true, bool forceOutOfBoundsCheck = false);
 
-    std::string const& getName() const { return variable.getName(); }
+    std::string const& getName() const {
+        return variable.getName();
+    }
 
     // The integer variable.
     storm::expressions::Variable variable;

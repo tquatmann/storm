@@ -39,7 +39,9 @@ boost::any CheckIfThenElseGuardVisitor::visit(BinaryRelationExpression const& ex
            boost::any_cast<bool>(expression.getSecondOperand()->accept(*this, data));
 }
 
-boost::any CheckIfThenElseGuardVisitor::visit(VariableExpression const&, boost::any const&) { return false; }
+boost::any CheckIfThenElseGuardVisitor::visit(VariableExpression const&, boost::any const&) {
+    return false;
+}
 
 boost::any CheckIfThenElseGuardVisitor::visit(UnaryBooleanFunctionExpression const& expression, boost::any const& data) {
     return expression.getOperand()->accept(*this, data);
@@ -49,11 +51,17 @@ boost::any CheckIfThenElseGuardVisitor::visit(UnaryNumericalFunctionExpression c
     return expression.getOperand()->accept(*this, data);
 }
 
-boost::any CheckIfThenElseGuardVisitor::visit(BooleanLiteralExpression const&, boost::any const&) { return false; }
+boost::any CheckIfThenElseGuardVisitor::visit(BooleanLiteralExpression const&, boost::any const&) {
+    return false;
+}
 
-boost::any CheckIfThenElseGuardVisitor::visit(IntegerLiteralExpression const&, boost::any const&) { return false; }
+boost::any CheckIfThenElseGuardVisitor::visit(IntegerLiteralExpression const&, boost::any const&) {
+    return false;
+}
 
-boost::any CheckIfThenElseGuardVisitor::visit(RationalLiteralExpression const&, boost::any const&) { return false; }
+boost::any CheckIfThenElseGuardVisitor::visit(RationalLiteralExpression const&, boost::any const&) {
+    return false;
+}
 
 }  // namespace expressions
 }  // namespace storm

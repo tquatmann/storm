@@ -13,21 +13,37 @@ RewardModel::RewardModel(std::string const& rewardModelName, std::vector<storm::
     // Nothing to do here.
 }
 
-std::string const& RewardModel::getName() const { return this->rewardModelName; }
+std::string const& RewardModel::getName() const {
+    return this->rewardModelName;
+}
 
-bool RewardModel::empty() const { return !this->hasStateRewards() && !this->hasTransitionRewards(); }
+bool RewardModel::empty() const {
+    return !this->hasStateRewards() && !this->hasTransitionRewards();
+}
 
-bool RewardModel::hasStateRewards() const { return !this->stateRewards.empty(); }
+bool RewardModel::hasStateRewards() const {
+    return !this->stateRewards.empty();
+}
 
-std::vector<storm::prism::StateReward> const& RewardModel::getStateRewards() const { return this->stateRewards; }
+std::vector<storm::prism::StateReward> const& RewardModel::getStateRewards() const {
+    return this->stateRewards;
+}
 
-bool RewardModel::hasStateActionRewards() const { return !this->stateActionRewards.empty(); }
+bool RewardModel::hasStateActionRewards() const {
+    return !this->stateActionRewards.empty();
+}
 
-std::vector<storm::prism::StateActionReward> const& RewardModel::getStateActionRewards() const { return this->stateActionRewards; }
+std::vector<storm::prism::StateActionReward> const& RewardModel::getStateActionRewards() const {
+    return this->stateActionRewards;
+}
 
-bool RewardModel::hasTransitionRewards() const { return !this->transitionRewards.empty(); }
+bool RewardModel::hasTransitionRewards() const {
+    return !this->transitionRewards.empty();
+}
 
-std::vector<storm::prism::TransitionReward> const& RewardModel::getTransitionRewards() const { return this->transitionRewards; }
+std::vector<storm::prism::TransitionReward> const& RewardModel::getTransitionRewards() const {
+    return this->transitionRewards;
+}
 
 RewardModel RewardModel::substitute(std::map<storm::expressions::Variable, storm::expressions::Expression> const& substitution) const {
     std::vector<StateReward> newStateRewards;

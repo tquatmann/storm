@@ -70,7 +70,9 @@ GmmxxEquationSolverSettings::GmmxxEquationSolverSettings() : ModuleSettings(modu
                         .build());
 }
 
-bool GmmxxEquationSolverSettings::isLinearEquationSystemMethodSet() const { return this->getOption(techniqueOptionName).getHasOptionBeenSet(); }
+bool GmmxxEquationSolverSettings::isLinearEquationSystemMethodSet() const {
+    return this->getOption(techniqueOptionName).getHasOptionBeenSet();
+}
 
 storm::solver::GmmxxLinearEquationSolverMethod GmmxxEquationSolverSettings::getLinearEquationSystemMethod() const {
     std::string linearEquationSystemTechniqueAsString = this->getOption(techniqueOptionName).getArgumentByName("name").getValueAsString();
@@ -85,7 +87,9 @@ storm::solver::GmmxxLinearEquationSolverMethod GmmxxEquationSolverSettings::getL
                     "Unknown solution technique '" << linearEquationSystemTechniqueAsString << "' selected.");
 }
 
-bool GmmxxEquationSolverSettings::isPreconditioningMethodSet() const { return this->getOption(preconditionOptionName).getHasOptionBeenSet(); }
+bool GmmxxEquationSolverSettings::isPreconditioningMethodSet() const {
+    return this->getOption(preconditionOptionName).getHasOptionBeenSet();
+}
 
 storm::solver::GmmxxLinearEquationSolverPreconditioner GmmxxEquationSolverSettings::getPreconditioningMethod() const {
     std::string preconditioningMethodAsString = this->getOption(preconditionOptionName).getArgumentByName("name").getValueAsString();
@@ -100,21 +104,29 @@ storm::solver::GmmxxLinearEquationSolverPreconditioner GmmxxEquationSolverSettin
                     "Unknown preconditioning technique '" << preconditioningMethodAsString << "' selected.");
 }
 
-bool GmmxxEquationSolverSettings::isRestartIterationCountSet() const { return this->getOption(restartOptionName).getHasOptionBeenSet(); }
+bool GmmxxEquationSolverSettings::isRestartIterationCountSet() const {
+    return this->getOption(restartOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t GmmxxEquationSolverSettings::getRestartIterationCount() const {
     return this->getOption(restartOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool GmmxxEquationSolverSettings::isMaximalIterationCountSet() const { return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet(); }
+bool GmmxxEquationSolverSettings::isMaximalIterationCountSet() const {
+    return this->getOption(maximalIterationsOptionName).getHasOptionBeenSet();
+}
 
 uint_fast64_t GmmxxEquationSolverSettings::getMaximalIterationCount() const {
     return this->getOption(maximalIterationsOptionName).getArgumentByName("count").getValueAsUnsignedInteger();
 }
 
-bool GmmxxEquationSolverSettings::isPrecisionSet() const { return this->getOption(precisionOptionName).getHasOptionBeenSet(); }
+bool GmmxxEquationSolverSettings::isPrecisionSet() const {
+    return this->getOption(precisionOptionName).getHasOptionBeenSet();
+}
 
-double GmmxxEquationSolverSettings::getPrecision() const { return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble(); }
+double GmmxxEquationSolverSettings::getPrecision() const {
+    return this->getOption(precisionOptionName).getArgumentByName("value").getValueAsDouble();
+}
 
 bool GmmxxEquationSolverSettings::check() const {
     // This list does not include the precision, because this option is shared with other modules.

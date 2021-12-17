@@ -59,8 +59,12 @@ class StandardMaPcaaWeightVectorChecker : public StandardPcaaWeightVectorChecker
 
         std::vector<ValueType> auxChoiceValues;  // stores auxiliary values for every choice
 
-        uint_fast64_t getNumberOfStates() const { return toMS.getRowGroupCount(); };
-        uint_fast64_t getNumberOfChoices() const { return toMS.getRowCount(); };
+        uint_fast64_t getNumberOfStates() const {
+            return toMS.getRowGroupCount();
+        };
+        uint_fast64_t getNumberOfChoices() const {
+            return toMS.getRowCount();
+        };
     };
 
     /*

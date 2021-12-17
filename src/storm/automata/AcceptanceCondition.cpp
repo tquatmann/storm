@@ -14,15 +14,25 @@ AcceptanceCondition::AcceptanceCondition(std::size_t numberOfStates, unsigned in
     }
 }
 
-unsigned int AcceptanceCondition::getNumberOfAcceptanceSets() const { return numberOfAcceptanceSets; }
+unsigned int AcceptanceCondition::getNumberOfAcceptanceSets() const {
+    return numberOfAcceptanceSets;
+}
 
-storm::storage::BitVector& AcceptanceCondition::getAcceptanceSet(unsigned int index) { return acceptanceSets.at(index); }
+storm::storage::BitVector& AcceptanceCondition::getAcceptanceSet(unsigned int index) {
+    return acceptanceSets.at(index);
+}
 
-const storm::storage::BitVector& AcceptanceCondition::getAcceptanceSet(unsigned int index) const { return acceptanceSets.at(index); }
+const storm::storage::BitVector& AcceptanceCondition::getAcceptanceSet(unsigned int index) const {
+    return acceptanceSets.at(index);
+}
 
-AcceptanceCondition::acceptance_expr::ptr AcceptanceCondition::getAcceptanceExpression() const { return acceptance; }
+AcceptanceCondition::acceptance_expr::ptr AcceptanceCondition::getAcceptanceExpression() const {
+    return acceptance;
+}
 
-bool AcceptanceCondition::isAccepting(const storm::storage::StateBlock& scc) const { return isAccepting(scc, acceptance); }
+bool AcceptanceCondition::isAccepting(const storm::storage::StateBlock& scc) const {
+    return isAccepting(scc, acceptance);
+}
 
 bool AcceptanceCondition::isAccepting(const storm::storage::StateBlock& scc, acceptance_expr::ptr expr) const {
     switch (expr->getType()) {
