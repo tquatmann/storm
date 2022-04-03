@@ -233,6 +233,13 @@ std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::comput
             std::unique_ptr<storm::solver::LinearEquationSolver<ValueType>> solver =
                 storm::solver::configureLinearEquationSolver(env, std::move(goal), linearEquationSolverFactory, std::move(submatrix));
             solver->setBounds(storm::utility::zero<ValueType>(), storm::utility::one<ValueType>());
+
+            std::vector<ValueType> oneStepTargetProbabilities;
+            if (env.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Topological) {  // TODO: Make this check better
+                oneStepTargetProbabilities = transitionMatrix.getConstrainedRowSumVector(maybeStates, ~maybeStates);
+                solver->setOneMinusRowSumVector(oneStepTargetProbabilities);
+            }
+
             solver->solveEquations(env, x, b);
 
             // Set values of resulting vector according to result.
@@ -506,10 +513,10 @@ std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::comput
             storm::solver::LinearEquationSolverRequirements requirements = linearEquationSolverFactory.getRequirements(env);
             boost::optional<std::vector<ValueType>> upperRewardBounds;
             requirements.clearLowerBounds();
-            if (requirements.upperBounds()) {
+            if (requirements.upperBounds() && env.solver().getLinearEquationSolverType() != storm::solver::EquationSolverType::Topological) {
                 upperRewardBounds = computeUpperRewardBounds(submatrix, b, transitionMatrix.getConstrainedRowSumVector(maybeStates, rew0States));
-                requirements.clearUpperBounds();
             }
+            requirements.clearUpperBounds();
             STORM_LOG_THROW(!requirements.hasEnabledCriticalRequirement(), storm::exceptions::UncheckedRequirementException,
                             "Solver requirements " + requirements.getEnabledRequirementsAsString() + " not checked.");
 
@@ -526,6 +533,16 @@ std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::comput
             solver->setLowerBound(storm::utility::zero<ValueType>());
             if (upperRewardBounds) {
                 solver->setUpperBounds(std::move(upperRewardBounds.get()));
+            }
+
+            std::vector<ValueType> oneStepTargetProbabilities;
+            if (env.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Topological) {  // TODO: Make this check better
+                oneStepTargetProbabilities = transitionMatrix.getConstrainedRowSumVector(maybeStates, ~maybeStates);
+                solver->setOneMinusRowSumVector(oneStepTargetProbabilities);
+            }
+
+            if (storm::settings::getModule<storm::settings::modules::ModelCheckerSettings>().isScrambleSignOptionSet()) {
+                for (uint64_t i = 0; i < b.size(); i += 2) b[i] = -b[i];
             }
 
             // Now solve the resulting equation system.

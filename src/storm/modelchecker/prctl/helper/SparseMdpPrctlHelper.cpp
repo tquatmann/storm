@@ -422,8 +422,9 @@ struct MaybeStateResult {
 
 template<typename ValueType>
 MaybeStateResult<ValueType> computeValuesForMaybeStates(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,
-                                                        storm::storage::SparseMatrix<ValueType>&& submatrix, std::vector<ValueType> const& b,
-                                                        bool produceScheduler, SparseMdpHintType<ValueType>& hint) {
+                                                        storm::storage::SparseMatrix<ValueType>&& submatrix, std::vector<ValueType>& b, bool produceScheduler,
+                                                        SparseMdpHintType<ValueType>& hint,
+                                                        boost::optional<std::vector<ValueType>> const& oneStepTargetProbabilities) {
     // Initialize the solution vector.
     std::vector<ValueType> x =
         hint.hasValueHint()
@@ -450,6 +451,14 @@ MaybeStateResult<ValueType> computeValuesForMaybeStates(Environment const& env, 
         solver->setInitialScheduler(std::move(hint.getSchedulerHint()));
     }
     solver->setTrackScheduler(produceScheduler);
+
+    if (oneStepTargetProbabilities) {
+        solver->setOneMinusRowSumVector(*oneStepTargetProbabilities);
+    }
+
+    if (storm::settings::getModule<storm::settings::modules::ModelCheckerSettings>().isScrambleSignOptionSet()) {
+        for (uint64_t i = 0; i < b.size(); i += 2) b[i] = -b[i];
+    }
 
     // Solve the corresponding system of equations.
     solver->solveEquations(env, x, b);
@@ -579,7 +588,8 @@ void extendScheduler(storm::storage::Scheduler<ValueType>& scheduler, storm::sol
 template<typename ValueType>
 void computeFixedPointSystemUntilProbabilities(storm::solver::SolveGoal<ValueType>& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                QualitativeStateSetsUntilProbabilities const& qualitativeStateSets,
-                                               storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b) {
+                                               storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b,
+                                               boost::optional<std::vector<ValueType>>& oneStepTargetProbabilities) {
     // First, we can eliminate the rows and columns from the original transition probability matrix for states
     // whose probabilities are already known.
     submatrix = transitionMatrix.getSubmatrix(true, qualitativeStateSets.maybeStates, qualitativeStateSets.maybeStates, false);
@@ -590,13 +600,18 @@ void computeFixedPointSystemUntilProbabilities(storm::solver::SolveGoal<ValueTyp
 
     // If the solve goal has relevant values, we need to adjust them.
     goal.restrictRelevantValues(qualitativeStateSets.maybeStates);
+
+    if (oneStepTargetProbabilities) {
+        (*oneStepTargetProbabilities) = transitionMatrix.getConstrainedRowGroupSumVector(qualitativeStateSets.maybeStates, ~qualitativeStateSets.maybeStates);
+    }
 }
 
 template<typename ValueType>
 boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSystemUntilProbabilitiesEliminateEndComponents(
     storm::solver::SolveGoal<ValueType>& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     storm::storage::SparseMatrix<ValueType> const& backwardTransitions, QualitativeStateSetsUntilProbabilities const& qualitativeStateSets,
-    storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b, bool produceScheduler) {
+    storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b, bool produceScheduler,
+    boost::optional<std::vector<ValueType>>& oneStepTargetProbabilities) {
     // Get the set of states that (under some scheduler) can stay in the set of maybestates forever
     storm::storage::BitVector candidateStates = storm::utility::graph::performProb0E(
         transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions, qualitativeStateSets.maybeStates, ~qualitativeStateSets.maybeStates);
@@ -612,9 +627,20 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
     // Only do more work if there are actually end-components.
     if (doDecomposition && !endComponentDecomposition.empty()) {
         STORM_LOG_DEBUG("Eliminating " << endComponentDecomposition.size() << " EC(s).");
+        std::vector<ValueType> origOneStepTargetProbs;
+        std::vector<ValueType>* origOneStepTargetProbsPtr{nullptr};
+        std::vector<ValueType>* oneStepTargetProbsPtr{nullptr};
+        if (oneStepTargetProbabilities) {
+            origOneStepTargetProbs.reserve(transitionMatrix.getRowCount());
+            for (uint64_t row = 0; row < transitionMatrix.getRowCount(); ++row) {
+                origOneStepTargetProbs.push_back(transitionMatrix.getConstrainedRowSum(row, qualitativeStateSets.maybeStates));
+            }
+            origOneStepTargetProbsPtr = &origOneStepTargetProbs;
+            oneStepTargetProbsPtr = &oneStepTargetProbabilities.get();
+        }
         SparseMdpEndComponentInformation<ValueType> result = SparseMdpEndComponentInformation<ValueType>::eliminateEndComponents(
-            endComponentDecomposition, transitionMatrix, qualitativeStateSets.maybeStates, &qualitativeStateSets.statesWithProbability1, nullptr, nullptr,
-            submatrix, &b, nullptr, produceScheduler);
+            endComponentDecomposition, transitionMatrix, qualitativeStateSets.maybeStates, &qualitativeStateSets.statesWithProbability1, nullptr,
+            origOneStepTargetProbsPtr, submatrix, &b, oneStepTargetProbsPtr, produceScheduler);
 
         // If the solve goal has relevant values, we need to adjust them.
         if (goal.hasRelevantValues()) {
@@ -632,7 +658,7 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
         return result;
     } else {
         STORM_LOG_DEBUG("Not eliminating ECs as there are none.");
-        computeFixedPointSystemUntilProbabilities(goal, transitionMatrix, qualitativeStateSets, submatrix, b);
+        computeFixedPointSystemUntilProbabilities(goal, transitionMatrix, qualitativeStateSets, submatrix, b, oneStepTargetProbabilities);
 
         return boost::none;
     }
@@ -693,19 +719,24 @@ MDPSparseModelCheckingHelperReturnType<ValueType> SparseMdpPrctlHelper<ValueType
             storm::storage::SparseMatrix<ValueType> submatrix;
             std::vector<ValueType> b;
 
+            boost::optional<std::vector<ValueType>> oneStepTargetProbabilities;
+            if (env.solver().minMax().getMethod() == storm::solver::MinMaxMethod::Topological) {
+                oneStepTargetProbabilities = std::vector<ValueType>();
+            }
+
             // If the hint information tells us that we have to eliminate MECs, we do so now.
             boost::optional<SparseMdpEndComponentInformation<ValueType>> ecInformation;
             if (hintInformation.getEliminateEndComponents()) {
-                ecInformation = computeFixedPointSystemUntilProbabilitiesEliminateEndComponents(goal, transitionMatrix, backwardTransitions,
-                                                                                                qualitativeStateSets, submatrix, b, produceScheduler);
+                ecInformation = computeFixedPointSystemUntilProbabilitiesEliminateEndComponents(
+                    goal, transitionMatrix, backwardTransitions, qualitativeStateSets, submatrix, b, produceScheduler, oneStepTargetProbabilities);
             } else {
                 // Otherwise, we compute the standard equations.
-                computeFixedPointSystemUntilProbabilities(goal, transitionMatrix, qualitativeStateSets, submatrix, b);
+                computeFixedPointSystemUntilProbabilities(goal, transitionMatrix, qualitativeStateSets, submatrix, b, oneStepTargetProbabilities);
             }
 
             // Now compute the results for the maybe states.
             MaybeStateResult<ValueType> resultForMaybeStates =
-                computeValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, produceScheduler, hintInformation);
+                computeValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, produceScheduler, hintInformation, oneStepTargetProbabilities);
 
             // If we eliminated end components, we need to extract the result differently.
             if (ecInformation && ecInformation.get().getEliminatedEndComponents()) {
@@ -1272,7 +1303,7 @@ MDPSparseModelCheckingHelperReturnType<ValueType> SparseMdpPrctlHelper<ValueType
             // If we need to compute upper bounds on the reward values, we need the one step probabilities
             // to a target state.
             boost::optional<std::vector<ValueType>> oneStepTargetProbabilities;
-            if (hintInformation.getComputeUpperBounds()) {
+            if (hintInformation.getComputeUpperBounds() || env.solver().minMax().getMethod() == storm::solver::MinMaxMethod::Topological) {
                 oneStepTargetProbabilities = std::vector<ValueType>();
             }
 
@@ -1289,14 +1320,14 @@ MDPSparseModelCheckingHelperReturnType<ValueType> SparseMdpPrctlHelper<ValueType
             }
 
             // If we need to compute upper bounds, do so now.
-            if (hintInformation.getComputeUpperBounds()) {
+            if (hintInformation.getComputeUpperBounds() && env.solver().minMax().getMethod() != storm::solver::MinMaxMethod::Topological) {
                 STORM_LOG_ASSERT(oneStepTargetProbabilities, "Expecting one step target probability vector to be available.");
                 computeUpperRewardBounds(hintInformation, goal.direction(), submatrix, b, oneStepTargetProbabilities.get());
             }
 
             // Now compute the results for the maybe states.
             MaybeStateResult<ValueType> resultForMaybeStates =
-                computeValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, produceScheduler, hintInformation);
+                computeValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, produceScheduler, hintInformation, oneStepTargetProbabilities);
 
             // If we eliminated end components, we need to extract the result differently.
             if (ecInformation && ecInformation.get().getEliminatedEndComponents()) {

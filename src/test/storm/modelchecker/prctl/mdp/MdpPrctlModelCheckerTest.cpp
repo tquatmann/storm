@@ -30,7 +30,7 @@ namespace {
 
 enum class MdpEngine { PrismSparse, JaniSparse, JitSparse, Hybrid, PrismDd, JaniDd };
 
-class SparseDoubleValueIterationGmmxxGaussSeidelMultEnvironment {
+class SparseDoubleValueIterationEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // Unused for sparse models
     static const MdpEngine engine = MdpEngine::PrismSparse;
@@ -41,59 +41,6 @@ class SparseDoubleValueIterationGmmxxGaussSeidelMultEnvironment {
         storm::Environment env;
         env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration);
         env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-10));
-        env.solver().minMax().setMultiplicationStyle(storm::solver::MultiplicationStyle::GaussSeidel);
-        env.solver().multiplier().setType(storm::solver::MultiplierType::Gmmxx);
-        return env;
-    }
-};
-
-class SparseDoubleValueIterationGmmxxRegularMultEnvironment {
-   public:
-    static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // Unused for sparse models
-    static const MdpEngine engine = MdpEngine::PrismSparse;
-    static const bool isExact = false;
-    typedef double ValueType;
-    typedef storm::models::sparse::Mdp<ValueType> ModelType;
-    static storm::Environment createEnvironment() {
-        storm::Environment env;
-        env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration);
-        env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-10));
-        env.solver().minMax().setMultiplicationStyle(storm::solver::MultiplicationStyle::Regular);
-        env.solver().multiplier().setType(storm::solver::MultiplierType::Gmmxx);
-        return env;
-    }
-};
-
-class SparseDoubleValueIterationNativeGaussSeidelMultEnvironment {
-   public:
-    static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // Unused for sparse models
-    static const MdpEngine engine = MdpEngine::PrismSparse;
-    static const bool isExact = false;
-    typedef double ValueType;
-    typedef storm::models::sparse::Mdp<ValueType> ModelType;
-    static storm::Environment createEnvironment() {
-        storm::Environment env;
-        env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration);
-        env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-10));
-        env.solver().minMax().setMultiplicationStyle(storm::solver::MultiplicationStyle::GaussSeidel);
-        env.solver().multiplier().setType(storm::solver::MultiplierType::Native);
-        return env;
-    }
-};
-
-class SparseDoubleValueIterationNativeRegularMultEnvironment {
-   public:
-    static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // Unused for sparse models
-    static const MdpEngine engine = MdpEngine::PrismSparse;
-    static const bool isExact = false;
-    typedef double ValueType;
-    typedef storm::models::sparse::Mdp<ValueType> ModelType;
-    static storm::Environment createEnvironment() {
-        storm::Environment env;
-        env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration);
-        env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-10));
-        env.solver().minMax().setMultiplicationStyle(storm::solver::MultiplicationStyle::Regular);
-        env.solver().multiplier().setType(storm::solver::MultiplierType::Native);
         return env;
     }
 };
@@ -514,10 +461,8 @@ class MdpPrctlModelCheckerTest : public ::testing::Test {
     }
 };
 
-typedef ::testing::Types<SparseDoubleValueIterationGmmxxGaussSeidelMultEnvironment, SparseDoubleValueIterationGmmxxRegularMultEnvironment,
-                         SparseDoubleValueIterationNativeGaussSeidelMultEnvironment, SparseDoubleValueIterationNativeRegularMultEnvironment,
-                         JaniSparseDoubleValueIterationEnvironment, JitSparseDoubleValueIterationEnvironment, SparseDoubleIntervalIterationEnvironment,
-                         SparseDoubleSoundValueIterationEnvironment, SparseDoubleOptimisticValueIterationEnvironment,
+typedef ::testing::Types<SparseDoubleValueIterationEnvironment, JaniSparseDoubleValueIterationEnvironment, JitSparseDoubleValueIterationEnvironment,
+                         SparseDoubleIntervalIterationEnvironment, SparseDoubleSoundValueIterationEnvironment, SparseDoubleOptimisticValueIterationEnvironment,
                          SparseDoubleTopologicalValueIterationEnvironment, SparseDoubleTopologicalSoundValueIterationEnvironment,
                          SparseRationalPolicyIterationEnvironment, SparseRationalViToPiEnvironment, SparseRationalRationalSearchEnvironment,
                          HybridCuddDoubleValueIterationEnvironment, HybridSylvanDoubleValueIterationEnvironment, HybridCuddDoubleSoundValueIterationEnvironment,

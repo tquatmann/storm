@@ -35,6 +35,8 @@ class ModelCheckerSettings : public ModuleSettings {
      */
     std::string getLtl2daTool() const;
 
+    bool isScrambleSignOptionSet() const;
+
     // The name of the module.
     static const std::string moduleName;
 
@@ -42,6 +44,7 @@ class ModelCheckerSettings : public ModuleSettings {
     // Define the string names of the options as constants.
     static const std::string filterRewZeroOptionName;
     static const std::string ltl2daToolOptionName;
+    static const std::string scrambleSignOptionName;
 };
 
 }  // namespace modules
