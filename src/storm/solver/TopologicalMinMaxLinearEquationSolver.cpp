@@ -1,5 +1,6 @@
 #include "storm/solver/TopologicalMinMaxLinearEquationSolver.h"
 
+#include <algorithm>
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/environment/solver/TopologicalSolverEnvironment.h"
 
@@ -7,6 +8,7 @@
 #include "storm/exceptions/InvalidStateException.h"
 #include "storm/exceptions/UncheckedRequirementException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/solver/helper/LowerUpperBoundsComputer.h"
 #include "storm/utility/ProgressMeasurement.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/Stopwatch.h"
@@ -80,7 +82,15 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(En
     bool returnValue = true;
     if (this->sortedSccDecomposition->size() == 1 && (!this->choiceFixedForRowGroup || this->choiceFixedForRowGroup.get().empty())) {
         // Handle the case where there is just one large SCC, as there are no fixed choices for states, we solve it like this
-        returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, dir, x, b);
+        if (auto const& scc = *this->sortedSccDecomposition->begin(); scc.size() == 1) {
+            // Catch the trivial case where the whole system is just a single state.
+            if (this->isTrackSchedulerSet()) {
+                this->schedulerChoices = std::vector<uint64_t>(1);
+            }
+            returnValue = solveTrivialScc(*scc.begin(), dir, x, b);
+        } else {
+            returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, dir, x, b);
+        }
     } else {
         // Solve each SCC individually
         if (this->isTrackSchedulerSet()) {
@@ -251,13 +261,19 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveFullyConnectedEquati
     this->sccSolver->setMatrix(*this->A);
     this->sccSolver->setHasUniqueSolution(this->hasUniqueSolution());
     this->sccSolver->setHasNoEndComponents(this->hasNoEndComponents());
-    this->sccSolver->setBoundsFromOtherSolver(*this);
     this->sccSolver->setTrackScheduler(this->isTrackSchedulerSet());
     if (this->hasInitialScheduler()) {
         auto choices = this->getInitialScheduler();
         this->sccSolver->setInitialScheduler(std::move(choices));
     }
     auto req = this->sccSolver->getRequirements(sccSolverEnvironment, dir);
+    if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
+        helper::computeLowerUpperBounds(*this->sccSolver, *this->A, b, *this->oneMinusRowSumVector, req.lowerBounds(), req.upperBounds(), dir);
+        req.clearUpperBounds();
+        req.clearLowerBounds();
+    } else {
+        this->sccSolver->setBoundsFromOtherSolver(*this);
+    }
     if (req.upperBounds() && this->hasUpperBound()) {
         req.clearUpperBounds();
     }
@@ -319,8 +335,6 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveScc(storm::Environme
         }
     }
 
-    this->sccSolver->setMatrix(std::move(sccA));
-
     // x Vector
     auto sccX = storm::utility::vector::filterVector(globalX, sccRowGroups);
 
@@ -337,26 +351,33 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveScc(storm::Environme
         sccB.push_back(std::move(bi));
     }
 
-    // lower/upper bounds
-    if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
-        this->sccSolver->setLowerBound(this->getLowerBound());
-    } else if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
-        this->sccSolver->setLowerBounds(storm::utility::vector::filterVector(this->getLowerBounds(), sccRowGroups));
-    }
-    if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
-        this->sccSolver->setUpperBound(this->getUpperBound());
-    } else if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
-        this->sccSolver->setUpperBounds(storm::utility::vector::filterVector(this->getUpperBounds(), sccRowGroups));
+    auto req = this->sccSolver->getRequirements(sccSolverEnvironment, dir);
+    if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
+        helper::computeLowerUpperBounds(*this->sccSolver, sccA, sccB, computeSccExitProbabilities(sccRowGroups, sccRows), req.lowerBounds(), req.upperBounds(),
+                                        dir);
+        req.clearUpperBounds();
+        req.clearLowerBounds();
+    } else {
+        // lower/upper bounds
+        if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
+            this->sccSolver->setLowerBound(this->getLowerBound());
+            req.clearLowerBounds();
+        } else if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
+            this->sccSolver->setLowerBounds(storm::utility::vector::filterVector(this->getLowerBounds(), sccRowGroups));
+            req.clearLowerBounds();
+        }
+        if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
+            this->sccSolver->setUpperBound(this->getUpperBound());
+            req.clearUpperBounds();
+        } else if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
+            this->sccSolver->setUpperBounds(storm::utility::vector::filterVector(this->getUpperBounds(), sccRowGroups));
+            req.clearUpperBounds();
+        }
     }
 
+    this->sccSolver->setMatrix(std::move(sccA));
+
     // Requirements
-    auto req = this->sccSolver->getRequirements(sccSolverEnvironment, dir);
-    if (req.upperBounds() && this->hasUpperBound()) {
-        req.clearUpperBounds();
-    }
-    if (req.lowerBounds() && this->hasLowerBound()) {
-        req.clearLowerBounds();
-    }
     if (req.validInitialScheduler() && this->hasInitialScheduler()) {
         req.clearValidInitialScheduler();
     }

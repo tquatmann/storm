@@ -3,7 +3,6 @@
 #include "storm/solver/LinearEquationSolver.h"
 
 #include "storm/solver/SolverSelectionOptions.h"
-#include "storm/solver/multiplier/NativeMultiplier.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
 
 namespace storm {
@@ -27,6 +26,10 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
 
     virtual void clearCache() const override;
 
+    virtual void setOneMinusRowSumVector(std::vector<ValueType> const& oneMinusRowSum) override {
+        oneMinusRowSumVector = &oneMinusRowSum;
+    }
+
    protected:
     virtual bool internalSolveEquations(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const override;
 
@@ -48,6 +51,22 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
     bool solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::BitVector const& scc, std::vector<ValueType>& globalX,
                   std::vector<ValueType> const& globalB) const;
 
+    std::vector<ValueType> computeSccExitProbabilities(storm::storage::BitVector const& sccRowGroups, storm::storage::BitVector const& sccRows) const {
+        assert(this->oneMinusRowSumVector);
+        std::vector<ValueType> result;
+        result.reserve(sccRows.size());
+        for (auto rowIndex : sccRows) {
+            ValueType exitProb = (*oneMinusRowSumVector)[rowIndex];
+            for (auto const& entry : this->A->getRow(rowIndex)) {
+                if (!sccRowGroups.get(entry.getColumn())) {
+                    exitProb += entry.getValue();
+                }
+            }
+            result.push_back(exitProb);
+        }
+        return result;
+    }
+
     // If the solver takes posession of the matrix, we store the moved matrix in this member, so it gets deleted
     // when the solver is destructed.
     std::unique_ptr<storm::storage::SparseMatrix<ValueType>> localA;
@@ -55,6 +74,7 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
     // A pointer to the original sparse matrix given to this solver. If the solver takes posession of the matrix
     // the pointer refers to localA.
     storm::storage::SparseMatrix<ValueType> const* A;
+    std::vector<ValueType> const* oneMinusRowSumVector{nullptr};
 
     // cached auxiliary data
     mutable std::unique_ptr<storm::storage::StronglyConnectedComponentDecomposition<ValueType>> sortedSccDecomposition;

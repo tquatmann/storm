@@ -30,6 +30,10 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
     virtual bool internalSolveEquations(storm::Environment const& env, OptimizationDirection d, std::vector<ValueType>& x,
                                         std::vector<ValueType> const& b) const override;
 
+    virtual void setOneMinusRowSumVector(std::vector<ValueType> const& oneMinusRowSum) override {
+        oneMinusRowSumVector = &oneMinusRowSum;
+    }
+
    private:
     storm::Environment getEnvironmentForUnderlyingSolver(storm::Environment const& env, bool adaptPrecision = false) const;
 
@@ -46,9 +50,26 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
     bool solveScc(storm::Environment const& sccSolverEnvironment, OptimizationDirection d, storm::storage::BitVector const& sccRowGroups,
                   storm::storage::BitVector const& sccRows, std::vector<ValueType>& globalX, std::vector<ValueType> const& globalB) const;
 
+    std::vector<ValueType> computeSccExitProbabilities(storm::storage::BitVector const& sccRowGroups, storm::storage::BitVector const& sccRows) const {
+        assert(this->oneMinusRowSumVector);
+        std::vector<ValueType> result;
+        result.reserve(sccRows.size());
+        for (auto rowIndex : sccRows) {
+            ValueType exitProb = (*oneMinusRowSumVector)[rowIndex];
+            for (auto const& entry : this->A->getRow(rowIndex)) {
+                if (!sccRowGroups.get(entry.getColumn())) {
+                    exitProb += entry.getValue();
+                }
+            }
+            result.push_back(exitProb);
+        }
+        return result;
+    }
+
     // cached auxiliary data
     mutable std::unique_ptr<storm::storage::StronglyConnectedComponentDecomposition<ValueType>> sortedSccDecomposition;
     mutable boost::optional<uint64_t> longestSccChainSize;
+    std::vector<ValueType> const* oneMinusRowSumVector{nullptr};
     mutable std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> sccSolver;
     mutable std::unique_ptr<std::vector<ValueType>> auxiliaryRowGroupVector;  // A.rowGroupCount() entries
 };

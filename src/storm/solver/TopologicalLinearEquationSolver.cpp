@@ -5,6 +5,7 @@
 #include "storm/exceptions/InvalidEnvironmentException.h"
 #include "storm/exceptions/InvalidStateException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/solver/helper/LowerUpperBoundsComputer.h"
 #include "storm/utility/ProgressMeasurement.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/Stopwatch.h"
@@ -88,7 +89,12 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
     // Handle the case where there is just one large SCC
     bool returnValue = true;
     if (this->sortedSccDecomposition->size() == 1) {
-        returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, x, b);
+        if (auto const& scc = *this->sortedSccDecomposition->begin(); scc.size() == 1) {
+            // Catch the trivial case where the whole system is just a single state.
+            returnValue = solveTrivialScc(*scc.begin(), x, b);
+        } else {
+            returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, x, b);
+        }
     } else {
         // Solve each SCC individually
         storm::storage::BitVector sccAsBitVector(x.size(), false);
@@ -168,7 +174,6 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
     if (!this->sccSolver) {
         this->sccSolver = GeneralLinearEquationSolverFactory<ValueType>().create(sccSolverEnvironment);
         this->sccSolver->setCachingEnabled(true);
-        this->sccSolver->setBoundsFromOtherSolver(*this);
         if (this->sccSolver->getEquationProblemFormat(sccSolverEnvironment) == LinearEquationSolverProblemFormat::EquationSystem) {
             // Convert the matrix to an equation system. Note that we need to insert diagonal entries.
             storm::storage::SparseMatrix<ValueType> eqSysA(*this->A, true);
@@ -177,6 +182,14 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
         } else {
             this->sccSolver->setMatrix(*this->A);
         }
+    }
+    auto req = this->sccSolver->getRequirements(sccSolverEnvironment);
+    if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
+        helper::computeLowerUpperBounds(*sccSolver, *this->A, b, *this->oneMinusRowSumVector, req.lowerBounds(), req.upperBounds());
+        req.clearUpperBounds();
+        req.clearLowerBounds();
+    } else {
+        this->sccSolver->setBoundsFromOtherSolver(*this);
     }
     return this->sccSolver->solveEquations(sccSolverEnvironment, x, b);
 }
@@ -196,7 +209,6 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
     if (asEquationSystem) {
         sccA.convertToEquationSystem();
     }
-    this->sccSolver->setMatrix(std::move(sccA));
 
     // x Vector
     auto sccX = storm::utility::vector::filterVector(globalX, scc);
@@ -213,18 +225,30 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
         }
         sccB.push_back(std::move(bi));
     }
-
     // lower/upper bounds
-    if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
-        this->sccSolver->setLowerBound(this->getLowerBound());
-    } else if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
-        this->sccSolver->setLowerBounds(storm::utility::vector::filterVector(this->getLowerBounds(), scc));
+
+    auto req = this->sccSolver->getRequirements(sccSolverEnvironment);
+    if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
+        helper::computeLowerUpperBounds(*this->sccSolver, sccA, sccB, computeSccExitProbabilities(scc, scc), req.lowerBounds(), req.upperBounds());
+        req.clearUpperBounds();
+        req.clearLowerBounds();
+    } else {
+        if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
+            this->sccSolver->setLowerBound(this->getLowerBound());
+            req.clearLowerBounds();
+        } else if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
+            this->sccSolver->setLowerBounds(storm::utility::vector::filterVector(this->getLowerBounds(), scc));
+            req.clearLowerBounds();
+        }
+        if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
+            this->sccSolver->setUpperBound(this->getUpperBound());
+            req.clearUpperBounds();
+        } else if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
+            this->sccSolver->setUpperBounds(storm::utility::vector::filterVector(this->getUpperBounds(), scc));
+            req.clearUpperBounds();
+        }
     }
-    if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
-        this->sccSolver->setUpperBound(this->getUpperBound());
-    } else if (this->hasUpperBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Local)) {
-        this->sccSolver->setUpperBounds(storm::utility::vector::filterVector(this->getUpperBounds(), scc));
-    }
+    this->sccSolver->setMatrix(std::move(sccA));
 
     // std::cout << "rhs is " << storm::utility::vector::toString(sccB) << '\n';
     // std::cout << "x is " << storm::utility::vector::toString(sccX) << '\n';

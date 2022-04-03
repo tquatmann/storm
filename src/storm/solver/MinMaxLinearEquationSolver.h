@@ -71,6 +71,10 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
      */
     void unsetOptimizationDirection();
 
+    virtual void setOneMinusRowSumVector(std::vector<ValueType> const& oneMinusRowSum) {
+        STORM_LOG_WARN("this solver does not consider the one minus row sum vectors.");
+    }
+
     /*!
      * Sets the states for which the choices are fixed.
      * @param schedulerFixedForRowGroup bitvector with the states where the choices are fixed.

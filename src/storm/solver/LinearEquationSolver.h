@@ -76,6 +76,10 @@ class LinearEquationSolver : public AbstractEquationSolver<ValueType> {
      */
     virtual void clearCache() const;
 
+    virtual void setOneMinusRowSumVector(std::vector<ValueType> const& oneMinusRowSum) {
+        STORM_LOG_WARN("this solver does not consider the one minus row sum vectors.");
+    }
+
    protected:
     virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const = 0;
 
