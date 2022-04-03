@@ -7,6 +7,7 @@
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
 
 #include "storm/utility/macros.h"
+#include "storm/utility/vector.h"
 
 namespace storm {
 namespace modelchecker {
@@ -15,8 +16,9 @@ namespace helper {
 template<typename ValueType>
 BaierUpperRewardBoundsComputer<ValueType>::BaierUpperRewardBoundsComputer(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                           std::vector<ValueType> const& rewards,
-                                                                          std::vector<ValueType> const& oneStepTargetProbabilities)
-    : _transitionMatrix(transitionMatrix), _rewards(rewards), _oneStepTargetProbabilities(oneStepTargetProbabilities) {
+                                                                          std::vector<ValueType> const& oneStepTargetProbabilities,
+                                                                          std::function<uint64_t(uint64_t)> const& stateToScc)
+    : _transitionMatrix(transitionMatrix), _stateToScc(stateToScc), _rewards(rewards), _oneStepTargetProbabilities(oneStepTargetProbabilities) {
     // Intentionally left empty.
 }
 
@@ -25,7 +27,7 @@ std::vector<ValueType> BaierUpperRewardBoundsComputer<ValueType>::computeUpperBo
     storm::storage::SparseMatrix<ValueType> const& transitionMatrix, std::vector<ValueType> const& oneStepTargetProbabilities) {
     std::vector<uint64_t> stateToScc(transitionMatrix.getRowGroupCount());
     {
-        // Start with an SCC decomposition of the system.
+        // Create an SCC decomposition of the system.
         storm::storage::StronglyConnectedComponentDecomposition<ValueType> sccDecomposition(transitionMatrix);
 
         uint64_t sccIndex = 0;
@@ -36,82 +38,98 @@ std::vector<ValueType> BaierUpperRewardBoundsComputer<ValueType>::computeUpperBo
             ++sccIndex;
         }
     }
+    return computeUpperBoundOnExpectedVisitingTimes(transitionMatrix, oneStepTargetProbabilities, [&stateToScc](uint64_t s) { return stateToScc[s]; });
+}
 
-    // The states that we still need to assign a value.
-    storm::storage::BitVector remainingStates(transitionMatrix.getRowGroupCount(), true);
+template<typename ValueType>
+std::vector<ValueType> BaierUpperRewardBoundsComputer<ValueType>::computeUpperBoundOnExpectedVisitingTimes(
+    storm::storage::SparseMatrix<ValueType> const& transitionMatrix, std::vector<ValueType> const& oneStepTargetProbabilities,
+    std::function<uint64_t(uint64_t)> const& stateToScc) {
+    assert(transitionMatrix.getRowCount() == oneStepTargetProbabilities.size());
+    auto const numStates = transitionMatrix.getRowGroupCount();
 
     // A choice is valid iff it goes to non-remaining states with non-zero probability.
-    storm::storage::BitVector validChoices(transitionMatrix.getRowCount());
-
-    // Initially, mark all choices as valid that have non-zero probability to go to the target states directly.
-    uint64_t index = 0;
-    for (auto const& e : oneStepTargetProbabilities) {
-        if (!storm::utility::isZero(e)) {
-            validChoices.set(index);
+    // Initially, mark all choices as valid that have non-zero probability to go to the target states *or* to a different Scc.
+    auto validChoices = storm::utility::vector::filterGreaterZero(oneStepTargetProbabilities);
+    for (uint64_t state = 0; state < numStates; ++state) {
+        auto const scc = stateToScc(state);
+        for (auto rowIndex = transitionMatrix.getRowGroupIndices()[state], rowEnd = transitionMatrix.getRowGroupIndices()[state + 1]; rowIndex < rowEnd;
+             ++rowIndex) {
+            auto const row = transitionMatrix.getRow(rowIndex);
+            if (std::any_of(row.begin(), row.end(), [&stateToScc, &scc](auto const& entry) { return scc != stateToScc(entry.getColumn()); })) {
+                validChoices.set(rowIndex, true);
+            }
         }
-        ++index;
     }
 
     // Vector that holds the result.
-    std::vector<ValueType> result(transitionMatrix.getRowGroupCount());
+    std::vector<ValueType> result(numStates, storm::utility::one<ValueType>());
 
-    // Process all states as long as there are remaining ones.
-    std::vector<uint64_t> newStates;
-    while (!remainingStates.empty()) {
-        for (auto state : remainingStates) {
-            bool allChoicesValid = true;
-            for (auto row = transitionMatrix.getRowGroupIndices()[state], endRow = transitionMatrix.getRowGroupIndices()[state + 1]; row < endRow; ++row) {
-                if (validChoices.get(row)) {
-                    continue;
-                }
+    // The states that we still need to assign a value.
+    storm::storage::BitVector processedStates(numStates, false);
 
-                bool choiceValid = false;
-                for (auto const& entry : transitionMatrix.getRow(row)) {
-                    if (storm::utility::isZero(entry.getValue())) {
-                        continue;
-                    }
+    auto backwardTransitions = transitionMatrix.transpose(true);
 
-                    if (!remainingStates.get(entry.getColumn())) {
-                        choiceValid = true;
-                        break;
-                    }
-                }
-
-                if (choiceValid) {
-                    validChoices.set(row);
+    // "Over-approximates" set S_i from the paper
+    storm::storage::BitVector currentStates(numStates, true);
+    // "Over-approximates" set S_{i+1}
+    storm::storage::BitVector nextStates(numStates, false);
+    // We usually get the best performance by processing states in inverted order.
+    // This is because in the sparse engine the states are explored with a BFS/DFS
+    // To achive processing in a backwards order, the current and next states are stored with their "inverted" indices.
+    auto const largestIndex = numStates - 1;
+    while (true) {
+        for (auto stateInv : currentStates) {
+            auto state = largestIndex - stateInv;
+            if (processedStates.get(state)) {
+                continue;  // do not process already processed states.
+            }
+            auto const& startRow = transitionMatrix.getRowGroupIndices()[state];
+            auto const& endRow = transitionMatrix.getRowGroupIndices()[state + 1];
+            // update the valid choices at the current states
+            bool canProcessState = true;
+            // Check if state belongs to the set "S_i" from the paper
+            for (auto rowIndex = validChoices.getNextUnsetIndex(startRow); rowIndex < endRow; rowIndex = validChoices.getNextUnsetIndex(rowIndex + 1)) {
+                auto row = transitionMatrix.getRow(rowIndex);
+                if (std::any_of(row.begin(), row.end(), [&processedStates](auto const& entry) { return processedStates.get(entry.getColumn()); })) {
+                    validChoices.set(rowIndex, true);
                 } else {
-                    allChoicesValid = false;
+                    canProcessState = false;
+                    break;
                 }
             }
-
-            if (allChoicesValid) {
-                newStates.push_back(state);
-            }
-        }
-
-        // Compute d_t over the newly found states.
-        for (auto state : newStates) {
-            result[state] = storm::utility::one<ValueType>();
-            for (auto row = transitionMatrix.getRowGroupIndices()[state], endRow = transitionMatrix.getRowGroupIndices()[state + 1]; row < endRow; ++row) {
-                ValueType rowValue = oneStepTargetProbabilities[row];
-                for (auto const& entry : transitionMatrix.getRow(row)) {
-                    if (!remainingStates.get(entry.getColumn())) {
-                        rowValue += entry.getValue() *
-                                    (stateToScc[state] == stateToScc[entry.getColumn()] ? result[entry.getColumn()] : storm::utility::one<ValueType>());
+            if (canProcessState) {
+                // The state is in the set S_i, i.e. we can compute a value for it.
+                auto const scc = stateToScc(state);
+                auto& stateValue = result[state];
+                for (auto rowIndex = startRow; rowIndex < endRow; ++rowIndex) {
+                    ValueType rowValue = oneStepTargetProbabilities[rowIndex];
+                    for (auto const& entry : transitionMatrix.getRow(rowIndex)) {
+                        if (auto successorState = entry.getColumn(); scc != stateToScc(successorState)) {
+                            rowValue += entry.getValue();  // * 1
+                        } else if (processedStates.get(successorState)) {
+                            rowValue += entry.getValue() * result[successorState];
+                        }
                     }
+                    stateValue = std::min(stateValue, rowValue);
                 }
-                STORM_LOG_ASSERT(rowValue > storm::utility::zero<ValueType>(), "Expected entry with value greater 0.");
-                result[state] = std::min(result[state], rowValue);
+                processedStates.set(state);
+
+                // Iterate through predecessors that might become valid in the next run
+                for (auto const& predEntry : backwardTransitions.getRow(state)) {
+                    nextStates.set(largestIndex - predEntry.getColumn());  // Insert inverted index
+                }
             }
         }
+        if (nextStates.empty()) {
+            break;
+        }
+        currentStates.clear();
+        std::swap(nextStates, currentStates);
+    }
 
-        remainingStates.set(newStates.begin(), newStates.end(), false);
-        newStates.clear();
-    }
     // Transform the d_t to an upper bound for zeta(t)
-    for (auto& r : result) {
-        r = storm::utility::one<ValueType>() / r;
-    }
+    storm::utility::vector::applyPointwise(result, result, [](ValueType const& r) -> ValueType { return storm::utility::one<ValueType>() / r; });
     return result;
 }
 
@@ -120,11 +138,14 @@ ValueType BaierUpperRewardBoundsComputer<ValueType>::computeUpperBound() {
     STORM_LOG_TRACE("Computing upper reward bounds using variant-2 of Baier et al.");
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
-    auto expVisits = computeUpperBoundOnExpectedVisitingTimes(_transitionMatrix, _oneStepTargetProbabilities);
+    auto expVisits = _stateToScc ? computeUpperBoundOnExpectedVisitingTimes(_transitionMatrix, _oneStepTargetProbabilities, _stateToScc)
+                                 : computeUpperBoundOnExpectedVisitingTimes(_transitionMatrix, _oneStepTargetProbabilities);
 
     ValueType upperBound = storm::utility::zero<ValueType>();
     for (uint64_t state = 0; state < expVisits.size(); ++state) {
         ValueType maxReward = storm::utility::zero<ValueType>();
+        // By starting the maxReward with zero, negative rewards are essentially ignored which
+        // is necessary to provide a valid upper bound
         for (auto row = _transitionMatrix.getRowGroupIndices()[state], endRow = _transitionMatrix.getRowGroupIndices()[state + 1]; row < endRow; ++row) {
             maxReward = std::max(maxReward, _rewards[row]);
         }
