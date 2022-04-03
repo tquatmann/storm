@@ -1103,6 +1103,12 @@ std::vector<TargetType> convertNumericVector(std::vector<SourceType> const& oldV
     return resultVector;
 }
 
+template<typename TargetType, typename SourceType>
+void convertNumericVector(std::vector<SourceType> const& oldVector, std::vector<TargetType>& targetVector) {
+    assert(oldVector.size() == targetVector.size());
+    applyPointwise(oldVector, targetVector, [](SourceType const& v) { return storm::utility::convertNumber<TargetType>(v); });
+}
+
 /*!
  * Converts the given vector to the given ValueType
  */
