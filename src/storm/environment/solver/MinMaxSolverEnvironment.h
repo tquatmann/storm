@@ -1,8 +1,8 @@
 #pragma once
 
-#include "storm/environment/solver/SolverEnvironment.h"
-
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/environment/solver/MinMaxLpSolverEnvironment.h"
+#include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/solver/MultiplicationStyle.h"
 #include "storm/solver/SolverSelectionOptions.h"
 
@@ -26,6 +26,8 @@ class MinMaxSolverEnvironment {
     void setMultiplicationStyle(storm::solver::MultiplicationStyle value);
     bool isSymmetricUpdatesSet() const;
     void setSymmetricUpdates(bool value);
+    MinMaxLpSolverEnvironment const& getMinMaxLpSolverEnvironment() const;
+    MinMaxLpSolverEnvironment& getMinMaxLpSolverEnvironment();
 
    private:
     storm::solver::MinMaxMethod minMaxMethod;
@@ -35,5 +37,6 @@ class MinMaxSolverEnvironment {
     bool considerRelativeTerminationCriterion;
     storm::solver::MultiplicationStyle multiplicationStyle;
     bool symmetricUpdates;
+    MinMaxLpSolverEnvironment lpEnv;
 };
 }  // namespace storm
