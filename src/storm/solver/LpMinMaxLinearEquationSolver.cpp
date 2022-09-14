@@ -48,7 +48,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     if (optimizeOnlyRelevant) {
         STORM_LOG_TRACE("Relevant values " << this->getRelevantValues());
     } else if (this->hasRelevantValues()) {
-        STORM_LOG_DEBUG("No relevant values set! Optimizing over all states.")
+        STORM_LOG_DEBUG("No relevant values set! Optimizing over all states.");
     }
 
     // Create a variable for each row group
