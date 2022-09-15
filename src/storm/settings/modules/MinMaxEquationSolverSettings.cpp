@@ -173,7 +173,7 @@ bool MinMaxEquationSolverSettings::getLpUseOnlyInitialStateAsObjective() const {
 }
 
 bool MinMaxEquationSolverSettings::getLpUseNonTrivialBounds() const {
-    return this->getOption(lpEqualityForUniqueActionsOptionName).getHasOptionBeenSet();
+    return this->getOption(lpUseNonTrivialBoundsOptionName).getHasOptionBeenSet();
 }
 
 bool MinMaxEquationSolverSettings::getLpUseEqualityForTrivialActions() const {
