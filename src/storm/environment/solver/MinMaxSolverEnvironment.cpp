@@ -1,5 +1,6 @@
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 
+#include "storm/environment/solver/MinMaxLpSolverEnvironment.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/MinMaxEquationSolverSettings.h"
 #include "storm/utility/constants.h"
@@ -25,9 +26,6 @@ MinMaxSolverEnvironment::MinMaxSolverEnvironment() {
                      "Unknown convergence criterion");
     multiplicationStyle = minMaxSettings.getValueIterationMultiplicationStyle();
     symmetricUpdates = minMaxSettings.isForceIntervalIterationSymmetricUpdatesSet();
-    getMinMaxLpSolverEnvironment().setUseNonTrivialBounds(minMaxSettings.getLpUseNonTrivialBounds());
-    getMinMaxLpSolverEnvironment().setOptimizeOnlyForInitialState(minMaxSettings.getLpUseOnlyInitialStateAsObjective());
-    getMinMaxLpSolverEnvironment().setUseEqualityForSingleActions(minMaxSettings.getLpUseEqualityForTrivialActions());
 }
 
 MinMaxSolverEnvironment::~MinMaxSolverEnvironment() {
@@ -80,10 +78,10 @@ void MinMaxSolverEnvironment::setMultiplicationStyle(storm::solver::Multiplicati
 }
 
 MinMaxLpSolverEnvironment const& MinMaxSolverEnvironment::getMinMaxLpSolverEnvironment() const {
-    return lpEnv;
+    return lpEnv.get();
 }
 MinMaxLpSolverEnvironment& MinMaxSolverEnvironment::getMinMaxLpSolverEnvironment() {
-    return lpEnv;
+    return lpEnv.get();
 }
 
 bool MinMaxSolverEnvironment::isSymmetricUpdatesSet() const {

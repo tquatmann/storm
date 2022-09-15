@@ -1,5 +1,6 @@
 #include "storm/solver/LpMinMaxLinearEquationSolver.h"
 
+#include "storm/environment/solver/MinMaxLpSolverEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/exceptions/InvalidEnvironmentException.h"
 #include "storm/exceptions/UnexpectedException.h"

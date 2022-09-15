@@ -3,7 +3,7 @@
 namespace storm {
 class MinMaxLpSolverEnvironment {
    public:
-    MinMaxLpSolverEnvironment() = default;
+    MinMaxLpSolverEnvironment();
     virtual ~MinMaxLpSolverEnvironment() = default;
 
     void setUseEqualityForSingleActions(bool newValue);
