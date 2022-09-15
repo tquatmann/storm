@@ -25,6 +25,9 @@ MinMaxSolverEnvironment::MinMaxSolverEnvironment() {
                      "Unknown convergence criterion");
     multiplicationStyle = minMaxSettings.getValueIterationMultiplicationStyle();
     symmetricUpdates = minMaxSettings.isForceIntervalIterationSymmetricUpdatesSet();
+    getMinMaxLpSolverEnvironment().setUseNonTrivialBounds(minMaxSettings.getLpUseNonTrivialBounds());
+    getMinMaxLpSolverEnvironment().setOptimizeOnlyForInitialState(minMaxSettings.getLpUseOnlyInitialStateAsObjective());
+    getMinMaxLpSolverEnvironment().setUseEqualityForSingleActions(minMaxSettings.getLpUseEqualityForTrivialActions());
 }
 
 MinMaxSolverEnvironment::~MinMaxSolverEnvironment() {
@@ -74,6 +77,13 @@ storm::solver::MultiplicationStyle const& MinMaxSolverEnvironment::getMultiplica
 
 void MinMaxSolverEnvironment::setMultiplicationStyle(storm::solver::MultiplicationStyle value) {
     multiplicationStyle = value;
+}
+
+MinMaxLpSolverEnvironment const& MinMaxSolverEnvironment::getMinMaxLpSolverEnvironment() const {
+    return lpEnv;
+}
+MinMaxLpSolverEnvironment& MinMaxSolverEnvironment::getMinMaxLpSolverEnvironment() {
+    return lpEnv;
 }
 
 bool MinMaxSolverEnvironment::isSymmetricUpdatesSet() const {

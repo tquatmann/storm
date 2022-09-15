@@ -95,18 +95,12 @@ class MinMaxEquationSolverSettings : public ModuleSettings {
      */
     bool isForceIntervalIterationSymmetricUpdatesSet() const;
 
+    bool getLpUseOnlyInitialStateAsObjective() const;
+    bool getLpUseNonTrivialBounds() const;
+    bool getLpUseEqualityForTrivialActions() const;
+
     // The name of the module.
     static const std::string moduleName;
-
-   private:
-    static const std::string solvingMethodOptionName;
-    static const std::string maximalIterationsOptionName;
-    static const std::string maximalIterationsOptionShortName;
-    static const std::string precisionOptionName;
-    static const std::string absoluteOptionName;
-    static const std::string valueIterationMultiplicationStyleOptionName;
-    static const std::string intervalIterationSymmetricUpdatesOptionName;
-    static const std::string forceBoundsOptionName;
 };
 
 }  // namespace modules
