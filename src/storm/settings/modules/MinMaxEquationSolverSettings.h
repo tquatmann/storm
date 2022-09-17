@@ -95,6 +95,8 @@ class MinMaxEquationSolverSettings : public ModuleSettings {
      */
     bool isForceIntervalIterationSymmetricUpdatesSet() const;
 
+    bool isForceUniqueSolutionRequirementSet() const;
+
     bool getLpUseOnlyInitialStateAsObjective() const;
     bool getLpUseNonTrivialBounds() const;
     bool getLpUseEqualityForTrivialActions() const;

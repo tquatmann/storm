@@ -314,7 +314,7 @@ MinMaxLinearEquationSolverRequirements IterativeMinMaxLinearEquationSolver<Value
     if (method == MinMaxMethod::ValueIteration) {
         if (!this->hasUniqueSolution()) {  // Traditional value iteration has no requirements if the solution is unique.
             // Computing a scheduler is only possible if the solution is unique
-            if (this->isTrackSchedulerSet()) {
+            if (env.solver().minMax().isForceRequireUnique() || this->isTrackSchedulerSet()) {
                 requirements.requireUniqueSolution();
             } else {
                 // As we want the smallest (largest) solution for maximizing (minimizing) equation systems, we have to approach the solution from below (above).
@@ -343,12 +343,15 @@ MinMaxLinearEquationSolverRequirements IterativeMinMaxLinearEquationSolver<Value
         // Rational search needs to approach the solution from below.
         requirements.requireLowerBounds();
         // The solution needs to be unique in case of minimizing or in cases where we want a scheduler.
-        if (!this->hasUniqueSolution() && (!direction || direction.get() == OptimizationDirection::Minimize || this->isTrackSchedulerSet())) {
+        if (!this->hasUniqueSolution() &&
+            (env.solver().minMax().isForceRequireUnique() || !direction || direction.get() == OptimizationDirection::Minimize || this->isTrackSchedulerSet())) {
             requirements.requireUniqueSolution();
         }
     } else if (method == MinMaxMethod::PolicyIteration) {
         // The initial scheduler shall not select an end component
-        if (!this->hasNoEndComponents()) {
+        if (!this->hasUniqueSolution() && env.solver().minMax().isForceRequireUnique()) {
+            requirements.requireUniqueSolution();
+        } else if (!this->hasNoEndComponents()) {
             requirements.requireValidInitialScheduler();
         }
     } else if (method == MinMaxMethod::SoundValueIteration) {

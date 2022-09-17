@@ -28,6 +28,8 @@ class MinMaxSolverEnvironment {
     void setMultiplicationStyle(storm::solver::MultiplicationStyle value);
     bool isSymmetricUpdatesSet() const;
     void setSymmetricUpdates(bool value);
+    bool isForceRequireUnique() const;
+    void setForceRequireUnique(bool value);
     MinMaxLpSolverEnvironment const& getMinMaxLpSolverEnvironment() const;
     MinMaxLpSolverEnvironment& getMinMaxLpSolverEnvironment();
 
@@ -39,6 +41,7 @@ class MinMaxSolverEnvironment {
     bool considerRelativeTerminationCriterion;
     storm::solver::MultiplicationStyle multiplicationStyle;
     bool symmetricUpdates;
+    bool forceRequireUnique;
     SubEnvironment<MinMaxLpSolverEnvironment> lpEnv;
 };
 }  // namespace storm

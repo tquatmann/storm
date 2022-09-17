@@ -19,6 +19,7 @@ const std::string precisionOptionName = "precision";
 const std::string absoluteOptionName = "absolute";
 const std::string valueIterationMultiplicationStyleOptionName = "vimult";
 const std::string intervalIterationSymmetricUpdatesOptionName = "symmetricupdates";
+const std::string forceUniqueSolutionRequirementOptionName = "force-require-unique";
 const std::string lpEqualityForUniqueActionsOptionName = "lp-eq-unique-actions";
 const std::string lpUseNonTrivialBoundsOptionName = "lp-use-nontrivial-bounds";
 const std::string lpOptimizeOnlyInitialStateOptionName = "lp-objective-type";
@@ -69,6 +70,11 @@ MinMaxEquationSolverSettings::MinMaxEquationSolverSettings() : ModuleSettings(mo
 
     this->addOption(storm::settings::OptionBuilder(moduleName, intervalIterationSymmetricUpdatesOptionName, false,
                                                    "If set, interval iteration performs an update on both, lower and upper bound in each iteration")
+                        .setIsAdvanced()
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, forceUniqueSolutionRequirementOptionName, false,
+                                                   "If set, a MinMax solver always requires a unique solution for its input.")
                         .setIsAdvanced()
                         .build());
 
@@ -166,6 +172,10 @@ storm::solver::MultiplicationStyle MinMaxEquationSolverSettings::getValueIterati
 
 bool MinMaxEquationSolverSettings::isForceIntervalIterationSymmetricUpdatesSet() const {
     return this->getOption(intervalIterationSymmetricUpdatesOptionName).getHasOptionBeenSet();
+}
+
+bool MinMaxEquationSolverSettings::isForceUniqueSolutionRequirementSet() const {
+    return this->getOption(forceUniqueSolutionRequirementOptionName).getHasOptionBeenSet();
 }
 
 bool MinMaxEquationSolverSettings::getLpUseOnlyInitialStateAsObjective() const {

@@ -26,6 +26,7 @@ MinMaxSolverEnvironment::MinMaxSolverEnvironment() {
                      "Unknown convergence criterion");
     multiplicationStyle = minMaxSettings.getValueIterationMultiplicationStyle();
     symmetricUpdates = minMaxSettings.isForceIntervalIterationSymmetricUpdatesSet();
+    forceRequireUnique = minMaxSettings.isForceUniqueSolutionRequirementSet();
 }
 
 MinMaxSolverEnvironment::~MinMaxSolverEnvironment() {
@@ -90,6 +91,14 @@ bool MinMaxSolverEnvironment::isSymmetricUpdatesSet() const {
 
 void MinMaxSolverEnvironment::setSymmetricUpdates(bool value) {
     symmetricUpdates = value;
+}
+
+bool MinMaxSolverEnvironment::isForceRequireUnique() const {
+    return forceRequireUnique;
+}
+
+void MinMaxSolverEnvironment::setForceRequireUnique(bool value) {
+    forceRequireUnique = value;
 }
 
 }  // namespace storm

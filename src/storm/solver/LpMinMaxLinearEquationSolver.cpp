@@ -178,7 +178,7 @@ MinMaxLinearEquationSolverRequirements LpMinMaxLinearEquationSolver<ValueType>::
     MinMaxLinearEquationSolverRequirements requirements;
 
     // In case we need to retrieve a scheduler, the solution has to be unique
-    if (!this->hasUniqueSolution() && this->isTrackSchedulerSet()) {
+    if (!this->hasUniqueSolution() && (env.solver().minMax().isForceRequireUnique() || this->isTrackSchedulerSet())) {
         requirements.requireUniqueSolution();
     }
 
