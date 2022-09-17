@@ -44,13 +44,14 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     // Set up the LP solver
     std::unique_ptr<storm::solver::LpSolver<ValueType>> solver = lpSolverFactory->create("");
     solver->setOptimizationDirection(invert(dir));
-    bool optimizeOnlyRelevant = this->hasRelevantValues() && env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeOnlyForInitialState();
+    bool const optimizeOnlyRelevant = this->hasRelevantValues() && env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeOnlyForInitialState();
     STORM_LOG_DEBUG("Optimize only for relevant state requested:" << env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeOnlyForInitialState());
     if (optimizeOnlyRelevant) {
         STORM_LOG_TRACE("Relevant values " << this->getRelevantValues());
-    } else if (this->hasRelevantValues()) {
+    } else if (!this->hasRelevantValues()) {
         STORM_LOG_DEBUG("No relevant values set! Optimizing over all states.");
     }
+    bool const useBounds = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseNonTrivialBounds();
 
     // Create a variable for each row group
     std::vector<storm::expressions::Expression> variableExpressions;
@@ -58,7 +59,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
         ValueType objValue =
             optimizeOnlyRelevant && !this->getRelevantValues().get(rowGroup) ? storm::utility::zero<ValueType>() : storm::utility::one<ValueType>();
-        if (this->hasLowerBound()) {
+        if (useBounds && this->hasLowerBound()) {
             ValueType lowerBound = this->getLowerBound(rowGroup);
             if (this->hasUpperBound()) {
                 ValueType upperBound = this->getUpperBound(rowGroup);
@@ -75,7 +76,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                 variableExpressions.emplace_back(solver->addLowerBoundedContinuousVariable("x" + std::to_string(rowGroup), lowerBound, objValue));
             }
         } else {
-            if (this->upperBound) {
+            if (useBounds && this->hasUpperBound()) {
                 variableExpressions.emplace_back(
                     solver->addUpperBoundedContinuousVariable("x" + std::to_string(rowGroup), this->getUpperBound(rowGroup), objValue));
             } else {
@@ -85,6 +86,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     }
     solver->update();
     STORM_LOG_DEBUG("Use eq if there is a single action:" << env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions());
+    bool const useEqualityForSingleAction = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions();
 
     // Add a constraint for each row
     for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
@@ -97,8 +99,8 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
             rowIndex = this->A->getRowGroupIndices()[rowGroup];
             rowGroupEnd = this->A->getRowGroupIndices()[rowGroup + 1];
         }
-        bool singleAction = (rowIndex + 1 == rowGroupEnd);
-        bool useEqualityForSingleAction = singleAction && env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions();
+        bool const singleAction = (rowIndex + 1 == rowGroupEnd);
+        bool const useEquality = useEqualityForSingleAction && singleAction;
         for (; rowIndex < rowGroupEnd; ++rowIndex) {
             auto row = this->A->getRow(rowIndex);
             std::vector<storm::expressions::Expression> summands;
@@ -108,7 +110,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                 summands.push_back(solver->getConstant(entry.getValue()) * variableExpressions[entry.getColumn()]);
             }
             storm::expressions::Expression rowConstraint = storm::expressions::sum(summands);
-            if (useEqualityForSingleAction) {
+            if (useEquality) {
                 rowConstraint = variableExpressions[rowGroup] == rowConstraint;
             } else if (minimize(dir)) {
                 rowConstraint = variableExpressions[rowGroup] <= rowConstraint;
@@ -182,7 +184,9 @@ MinMaxLinearEquationSolverRequirements LpMinMaxLinearEquationSolver<ValueType>::
         requirements.requireUniqueSolution();
     }
 
-    requirements.requireBounds(false);
+    if (env.solver().minMax().getMinMaxLpSolverEnvironment().getUseNonTrivialBounds()) {
+        requirements.requireBounds(false);
+    }
 
     return requirements;
 }
