@@ -279,6 +279,19 @@ uint_fast64_t StronglyConnectedComponentDecomposition<ValueType>::getMaxSccDepth
     return *std::max_element(sccDepths->begin(), sccDepths->end());
 }
 
+template<typename ValueType>
+std::vector<uint64_t> StronglyConnectedComponentDecomposition<ValueType>::computeStateToSccIndexMap(uint64_t numberOfStates) const {
+    std::vector<uint64_t> result(numberOfStates, std::numeric_limits<uint64_t>::max());
+    uint64_t sccIndex = 0;
+    for (auto const& scc : *this) {
+        for (auto const& state : scc) {
+            result[state] = sccIndex;
+        }
+        ++sccIndex;
+    }
+    return result;
+}
+
 // Explicitly instantiate the SCC decomposition.
 template class StronglyConnectedComponentDecomposition<float>;
 template class StronglyConnectedComponentDecomposition<double>;

@@ -23,6 +23,7 @@ namespace modules {
 const std::string TopologicalEquationSolverSettings::moduleName = "topological";
 const std::string TopologicalEquationSolverSettings::underlyingEquationSolverOptionName = "eqsolver";
 const std::string TopologicalEquationSolverSettings::underlyingMinMaxMethodOptionName = "minmax";
+const std::string TopologicalEquationSolverSettings::extendRelevantValuesOptionName = "relevant-values";
 
 TopologicalEquationSolverSettings::TopologicalEquationSolverSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> linearEquationSolver = {"gmm++", "native", "eigen", "elimination"};
@@ -45,6 +46,11 @@ TopologicalEquationSolverSettings::TopologicalEquationSolverSettings() : ModuleS
                                          .setDefaultValueString("value-iteration")
                                          .build())
                         .build());
+
+    this->addOption(
+        storm::settings::OptionBuilder(moduleName, extendRelevantValuesOptionName, true, "Sets whether relevant values are set to the underlying solver.")
+            .setIsAdvanced()
+            .build());
 }
 
 bool TopologicalEquationSolverSettings::isUnderlyingEquationSolverTypeSet() const {
@@ -100,6 +106,10 @@ storm::solver::MinMaxMethod TopologicalEquationSolverSettings::getUnderlyingMinM
     }
 
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown underlying equation solver '" << minMaxEquationSolvingTechnique << "'.");
+}
+
+bool TopologicalEquationSolverSettings::isExtendRelevantValues() const {
+    return this->getOption(extendRelevantValuesOptionName).getHasOptionBeenSet();
 }
 
 bool TopologicalEquationSolverSettings::check() const {

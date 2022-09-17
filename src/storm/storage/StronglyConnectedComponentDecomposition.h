@@ -126,6 +126,14 @@ class StronglyConnectedComponentDecomposition : public Decomposition<StronglyCon
      */
     uint_fast64_t getMaxSccDepth() const;
 
+    /*!
+     * Computes a vector that for each state has the index of the scc of that state in it.
+     * If a state has no SCC in this decomposition (e.g. because we considered a subsystem), they will get SCC index std::numeric_limits<uint64_t>::max()
+     *
+     * @param numberOfStates the total number of states
+     */
+    std::vector<uint64_t> computeStateToSccIndexMap(uint64_t numberOfStates) const;
+
    private:
     /*
      * Performs the SCC decomposition of the given block in the given model. As a side-effect this fills

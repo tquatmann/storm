@@ -56,6 +56,7 @@ class AbstractEquationSolver {
     /*!
      * Sets the relevant values.
      */
+    void setRelevantValues(storm::storage::BitVector const& valuesOfInterest);
     void setRelevantValues(storm::storage::BitVector&& valuesOfInterest);
 
     /*!
