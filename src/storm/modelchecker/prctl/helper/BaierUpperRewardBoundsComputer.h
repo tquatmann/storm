@@ -28,6 +28,9 @@ class BaierUpperRewardBoundsComputer {
      */
     BaierUpperRewardBoundsComputer(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, std::vector<ValueType> const& rewards,
                                    std::vector<ValueType> const& oneStepTargetProbabilities, std::function<uint64_t(uint64_t)> const& stateToScc = {});
+    BaierUpperRewardBoundsComputer(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                   storm::storage::SparseMatrix<ValueType> const& backwardTransitions, std::vector<ValueType> const& rewards,
+                                   std::vector<ValueType> const& oneStepTargetProbabilities, std::function<uint64_t(uint64_t)> const& stateToScc = {});
 
     /*!
      * Computes an upper bound on the expected rewards.
@@ -42,6 +45,9 @@ class BaierUpperRewardBoundsComputer {
      * @param oneStepTargetProbabilities For each choice the probability to go to a goal state in one step.
      */
     static std::vector<ValueType> computeUpperBoundOnExpectedVisitingTimes(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                           storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
+                                                                           std::vector<ValueType> const& oneStepTargetProbabilities);
+    static std::vector<ValueType> computeUpperBoundOnExpectedVisitingTimes(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                            std::vector<ValueType> const& oneStepTargetProbabilities);
 
     /*!
@@ -52,11 +58,13 @@ class BaierUpperRewardBoundsComputer {
      * @param stateToScc Returns the SCC index for each state
      */
     static std::vector<ValueType> computeUpperBoundOnExpectedVisitingTimes(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                           storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                            std::vector<ValueType> const& oneStepTargetProbabilities,
                                                                            std::function<uint64_t(uint64_t)> const& stateToScc);
 
    private:
     storm::storage::SparseMatrix<ValueType> const& _transitionMatrix;
+    storm::storage::SparseMatrix<ValueType> const* _backwardTransitions;
     std::function<uint64_t(uint64_t)> _stateToScc;
     std::vector<ValueType> const& _rewards;
     std::vector<ValueType> const& _oneStepTargetProbabilities;
