@@ -14,10 +14,10 @@
 #include "storm/storage/expressions/Expression.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 
+#include "storm/exceptions/InternalException.h"
 #include "storm/exceptions/InvalidAccessException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/InvalidStateException.h"
-#include "storm/exceptions/InternalException.h"
 #include "storm/exceptions/NotImplementedException.h"
 #include "storm/exceptions/NotSupportedException.h"
 
@@ -274,14 +274,13 @@ void SoplexLpSolver<ValueType, RawMode>::ensureSolved() const {
     }
 }
 
-template<>
-void SoplexLpSolver<double>::writeModelToFile(std::string const& filename) const {
-    solver.writeFileReal(filename.c_str(), NULL, NULL, NULL);
-}
-
 template<typename ValueType, bool RawMode>
 void SoplexLpSolver<ValueType, RawMode>::writeModelToFile(std::string const& filename) const {
-    solver.writeFileRational(filename.c_str(), NULL, NULL, NULL);
+    if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        solver.writeFileRational(filename.c_str(), NULL, NULL, NULL);
+    } else {
+        solver.writeFileReal(filename.c_str(), NULL, NULL, NULL);
+    }
 }
 
 template<typename ValueType, bool RawMode>
