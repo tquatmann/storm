@@ -142,7 +142,7 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
      */
     bool isCachingEnabled() const;
 
-    /*
+    /*!
      * Clears the currently cached data that has been stored during previous calls of the solver.
      */
     virtual void clearCache() const;
