@@ -359,9 +359,9 @@ Expression operator==(Expression const& first, Expression const& second) {
 Expression operator!=(Expression const& first, Expression const& second) {
     assertSameManager(first.getBaseExpression(), second.getBaseExpression());
     if (first.hasNumericalType() && second.hasNumericalType()) {
-        return Expression(std::shared_ptr<BaseExpression>(new BinaryRelationExpression(
-            first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()), first.getBaseExpressionPointer(),
-            second.getBaseExpressionPointer(), RelationType::NotEqual)));
+        return Expression(std::shared_ptr<BaseExpression>(
+            new BinaryRelationExpression(first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()),
+                                         first.getBaseExpressionPointer(), second.getBaseExpressionPointer(), RelationType::NotEqual)));
     } else {
         return Expression(std::shared_ptr<BaseExpression>(new BinaryBooleanFunctionExpression(
             first.getBaseExpression().getManager(), first.getType().logicalConnective(second.getType()), first.getBaseExpressionPointer(),
@@ -378,9 +378,9 @@ Expression operator>(Expression const& first, Expression const& second) {
 
 Expression operator>=(Expression const& first, Expression const& second) {
     assertSameManager(first.getBaseExpression(), second.getBaseExpression());
-    return Expression(std::shared_ptr<BaseExpression>(new BinaryRelationExpression(
-        first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()), first.getBaseExpressionPointer(),
-        second.getBaseExpressionPointer(), RelationType::GreaterOrEqual)));
+    return Expression(std::shared_ptr<BaseExpression>(
+        new BinaryRelationExpression(first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()),
+                                     first.getBaseExpressionPointer(), second.getBaseExpressionPointer(), RelationType::GreaterOrEqual)));
 }
 
 Expression operator<(Expression const& first, Expression const& second) {
@@ -392,9 +392,9 @@ Expression operator<(Expression const& first, Expression const& second) {
 
 Expression operator<=(Expression const& first, Expression const& second) {
     assertSameManager(first.getBaseExpression(), second.getBaseExpression());
-    return Expression(std::shared_ptr<BaseExpression>(new BinaryRelationExpression(
-        first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()), first.getBaseExpressionPointer(),
-        second.getBaseExpressionPointer(), RelationType::LessOrEqual)));
+    return Expression(std::shared_ptr<BaseExpression>(
+        new BinaryRelationExpression(first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()),
+                                     first.getBaseExpressionPointer(), second.getBaseExpressionPointer(), RelationType::LessOrEqual)));
 }
 
 Expression operator<(Expression const& first, int64_t second) {
@@ -561,13 +561,12 @@ Expression apply(std::vector<storm::expressions::Expression> const& expressions,
     return result;
 }
 
-Expression makeBinaryRelationExpression(Expression const& first, Expression const&  second, RelationType const& reltype ) {
+Expression makeBinaryRelationExpression(Expression const& first, Expression const& second, RelationType const& reltype) {
     assertSameManager(first.getBaseExpression(), second.getBaseExpression());
     return Expression(std::shared_ptr<BaseExpression>(
         new BinaryRelationExpression(first.getBaseExpression().getManager(), first.getType().numericalComparison(second.getType()),
                                      first.getBaseExpressionPointer(), second.getBaseExpressionPointer(), reltype)));
 }
-
 
 Expression applyAssociative(std::vector<storm::expressions::Expression> const& expressions,
                             std::function<Expression(Expression const&, Expression const&)> const& function) {

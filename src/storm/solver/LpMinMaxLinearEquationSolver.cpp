@@ -56,8 +56,8 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     std::vector<storm::expressions::Expression> variableExpressions;
     variableExpressions.reserve(this->A->getRowGroupCount());
     for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
-        ValueType objValue =
-            !doOptimize || (optimizeOnlyRelevant && !this->getRelevantValues().get(rowGroup)) ? storm::utility::zero<ValueType>() : storm::utility::one<ValueType>();
+        ValueType objValue = !doOptimize || (optimizeOnlyRelevant && !this->getRelevantValues().get(rowGroup)) ? storm::utility::zero<ValueType>()
+                                                                                                               : storm::utility::one<ValueType>();
         if (useBounds && this->hasLowerBound()) {
             ValueType lowerBound = this->getLowerBound(rowGroup);
             if (this->hasUpperBound()) {
@@ -105,7 +105,8 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
             }
         }
         for (uint64_t entry : this->getRelevantValues()) {
-            storm::expressions::Expression constraint = storm::expressions::makeBinaryRelationExpression(variableExpressions[entry], thresholdConstant, reltype);
+            storm::expressions::Expression constraint =
+                storm::expressions::makeBinaryRelationExpression(variableExpressions[entry], thresholdConstant, reltype);
             STORM_LOG_TRACE("Global bound added: " << constraint);
             solver->addConstraint("", constraint);
         }
@@ -159,7 +160,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     } else {
         // Explicitly nothing to be done here.
     }
-    if(!infeasible) {
+    if (!infeasible) {
         STORM_LOG_THROW(!solver->isUnbounded(), storm::exceptions::UnexpectedException, "The MinMax equation system is unbounded.");
         STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "Unable to find optimal solution for MinMax equation system.");
     }
