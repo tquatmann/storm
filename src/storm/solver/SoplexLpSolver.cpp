@@ -17,6 +17,7 @@
 #include "storm/exceptions/InvalidAccessException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/InvalidStateException.h"
+#include "storm/exceptions/InternalException.h"
 #include "storm/exceptions/NotImplementedException.h"
 #include "storm/exceptions/NotSupportedException.h"
 
@@ -188,6 +189,12 @@ void SoplexLpSolver<ValueType, RawMode>::optimize() const {
     }
 
     status = solver.optimize();
+    STORM_LOG_TRACE("soplex status " << status);
+    if (status == soplex::SPxSolver::ERROR) {
+        STORM_LOG_THROW(false, storm::exceptions::InternalException, "Soplex failed");
+    } else if (status == soplex::SPxSolver::UNKNOWN) {
+        STORM_LOG_THROW(false, storm::exceptions::InternalException, "Soplex gives up on this problem");
+    }
     this->currentModelHasBeenOptimized = true;
 }
 
