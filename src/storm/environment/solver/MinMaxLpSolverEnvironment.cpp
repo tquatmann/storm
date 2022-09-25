@@ -9,6 +9,7 @@ MinMaxLpSolverEnvironment::MinMaxLpSolverEnvironment() {
     useNonTrivialBounds = minMaxSettings.getLpUseNonTrivialBounds();
     optimizeOnlyForInitialState = minMaxSettings.getLpUseOnlyInitialStateAsObjective();
     useEqualityForSingleActions = minMaxSettings.getLpUseEqualityForTrivialActions();
+    optimizeFeasibilityQueries = minMaxSettings.getLpOptimizeFeasibilityQueries();
 }
 
 void MinMaxLpSolverEnvironment::setUseEqualityForSingleActions(bool newValue) {
@@ -20,6 +21,9 @@ void MinMaxLpSolverEnvironment::setOptimizeOnlyForInitialState(bool newValue) {
 void MinMaxLpSolverEnvironment::setUseNonTrivialBounds(bool newValue) {
     useNonTrivialBounds = newValue;
 }
+void MinMaxLpSolverEnvironment::setOptimizeFeasibilityQueries(bool newValue) {
+    optimizeFeasibilityQueries = newValue;
+}
 
 bool MinMaxLpSolverEnvironment::getUseEqualityForSingleActions() const {
     return useEqualityForSingleActions;
@@ -29,5 +33,8 @@ bool MinMaxLpSolverEnvironment::getOptimizeOnlyForInitialState() const {
 }
 bool MinMaxLpSolverEnvironment::getUseNonTrivialBounds() const {
     return useNonTrivialBounds;
+}
+bool MinMaxLpSolverEnvironment::getOptimizeFeasibilityQueries() const {
+    return optimizeFeasibilityQueries;
 }
 }  // namespace storm

@@ -23,6 +23,7 @@ const std::string forceUniqueSolutionRequirementOptionName = "force-require-uniq
 const std::string lpEqualityForUniqueActionsOptionName = "lp-eq-unique-actions";
 const std::string lpUseNonTrivialBoundsOptionName = "lp-use-nontrivial-bounds";
 const std::string lpOptimizeOnlyInitialStateOptionName = "lp-objective-type";
+const std::string lpOptimizeForFeasibilityQueries = "lp-use-optimization-for-feasibility";
 
 MinMaxEquationSolverSettings::MinMaxEquationSolverSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> minMaxSolvingTechniques = {
@@ -96,6 +97,10 @@ MinMaxEquationSolverSettings::MinMaxEquationSolverSettings() : ModuleSettings(mo
                              .setDefaultValueString("all")
                              .build())
             .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, lpOptimizeForFeasibilityQueries, false, "If set, use optimization in feasibility queries.")
+                        .setIsAdvanced()
+                        .build());
 }
 
 storm::solver::MinMaxMethod MinMaxEquationSolverSettings::getMinMaxEquationSolvingMethod() const {
@@ -184,6 +189,10 @@ bool MinMaxEquationSolverSettings::getLpUseOnlyInitialStateAsObjective() const {
 
 bool MinMaxEquationSolverSettings::getLpUseNonTrivialBounds() const {
     return this->getOption(lpUseNonTrivialBoundsOptionName).getHasOptionBeenSet();
+}
+
+bool MinMaxEquationSolverSettings::getLpOptimizeFeasibilityQueries() const {
+    return this->getOption(lpOptimizeForFeasibilityQueries).getHasOptionBeenSet();
 }
 
 bool MinMaxEquationSolverSettings::getLpUseEqualityForTrivialActions() const {
