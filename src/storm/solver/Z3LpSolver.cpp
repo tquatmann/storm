@@ -220,11 +220,15 @@ void Z3LpSolver<ValueType>::optimize() const {
     // Invoke push() as we want to be able to erase the current optimization function after checking
     solver->push();
 
+    storm::expressions::Expression optimizationFunction = this->manager->integer(0);
     // Solve the optimization problem depending on the optimization direction
-    storm::expressions::Expression optimizationFunction = storm::expressions::sum(optimizationSummands);
+    if (!optimizationSummands.empty()) {
+        optimizationFunction = storm::expressions::sum(optimizationSummands);
+    }
     z3::optimize::handle optFuncHandle = this->getOptimizationDirection() == OptimizationDirection::Minimize
                                              ? solver->minimize(expressionAdapter->translateExpression(optimizationFunction))
                                              : solver->maximize(expressionAdapter->translateExpression(optimizationFunction));
+
     z3::check_result chkRes = solver->check();
     STORM_LOG_THROW(chkRes != z3::unknown, storm::exceptions::InvalidStateException, "Unable to solve LP problem with Z3: Check result is unknown.");
 
