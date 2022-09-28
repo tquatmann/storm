@@ -132,7 +132,7 @@ class RationalSearchHelper {
                         status = viStatus;
                     } else {
                         // Increase the precision.
-                        precision /= storm::utility::convertNumber<ValueType>(static_cast<uint64_t>(10));
+                        precision /= storm::utility::convertNumber<ExactValueType>(static_cast<uint64_t>(10));
                     }
                     break;
                 case RSResult::PrecisionExceeded:
