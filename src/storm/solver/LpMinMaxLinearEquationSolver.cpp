@@ -104,7 +104,13 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                 reltype = storm::expressions::RelationType::LessOrEqual;
             }
         }
-        for (uint64_t entry : this->getRelevantValues()) {
+        for (uint64_t entry = 0; true; ++entry) {
+            if (this->hasRelevantValues()) {
+                entry = this->getRelevantValues().getNextSetIndex(entry);
+            }
+            if (entry >= variableExpressions.size()) {
+                break;
+            }
             storm::expressions::Expression constraint =
                 storm::expressions::makeBinaryRelationExpression(variableExpressions[entry], thresholdConstant, reltype);
             STORM_LOG_TRACE("Global bound added: " << constraint);
