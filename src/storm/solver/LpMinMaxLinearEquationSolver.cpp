@@ -40,7 +40,8 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                                                                      std::vector<ValueType> const& b) const {
     STORM_LOG_THROW(env.solver().minMax().getMethod() == MinMaxMethod::LinearProgramming, storm::exceptions::InvalidEnvironmentException,
                     "This min max solver does not support the selected technique.");
-    bool const doOptimize = env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeFeasibilityQueries() || !this->hasGlobalBound();
+    bool const applyGlobalBound = this->hasGlobalBound() && this->hasRelevantValues(); // bound shall not be applied to non-relevant values
+    bool const doOptimize = env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeFeasibilityQueries() || !applyGlobalBound;
     // Set up the LP solver
     std::unique_ptr<storm::solver::LpSolver<ValueType>> solver = lpSolverFactory->create("");
     solver->setOptimizationDirection(invert(dir));
@@ -87,7 +88,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     STORM_LOG_DEBUG("Use eq if there is a single action: " << env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions());
     bool const useEqualityForSingleAction = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions();
 
-    if (this->hasGlobalBound()) {
+    if (applyGlobalBound) {
         STORM_LOG_DEBUG("Global bound set. Add constraints for relevant values...");
         storm::expressions::Expression thresholdConstant = solver->getConstant(this->globalBound->constraintValue);
         storm::expressions::RelationType reltype;
@@ -104,13 +105,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                 reltype = storm::expressions::RelationType::LessOrEqual;
             }
         }
-        for (uint64_t entry = 0; true; ++entry) {
-            if (this->hasRelevantValues()) {
-                entry = this->getRelevantValues().getNextSetIndex(entry);
-            }
-            if (entry >= variableExpressions.size()) {
-                break;
-            }
+        for (auto entry : this->getRelevantValues()) {
             storm::expressions::Expression constraint =
                 storm::expressions::makeBinaryRelationExpression(variableExpressions[entry], thresholdConstant, reltype);
             STORM_LOG_TRACE("Global bound added: " << constraint);
@@ -161,7 +156,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     STORM_LOG_TRACE("...done.");
 
     bool infeasible = solver->isInfeasible();
-    if (!this->hasGlobalBound()) {
+    if (!applyGlobalBound) {
         STORM_LOG_THROW(!infeasible, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
     } else {
         // Explicitly nothing to be done here.
@@ -208,7 +203,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
             }
         }
     } else {
-        STORM_LOG_ASSERT(this->hasGlobalBound(), "Infeasbile solutions only occur due to a global bound.");
+        STORM_LOG_ASSERT(applyGlobalBound, "Infeasbile solutions only occur due to a global bound.");
         // result is infeasible.
         // we report a result that violates the bound.
 
