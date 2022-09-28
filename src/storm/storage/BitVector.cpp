@@ -812,12 +812,12 @@ uint_fast64_t BitVector::getNextIndexWithValue(uint64_t const* dataPtr, uint64_t
     if (Backward) {
         relevantBitsInBucket = -1ull << (63 - currentBitInBucket);  // 111..111'1'000...000 where the last '1' is at the currentBitInBucket
     } else {
-        relevantBitsInBucket = -1ull >> currentBitInBucket;  // 000..000'1'111..111 where the first '1' is ay the currentBitInBucket
+        relevantBitsInBucket = -1ull >> currentBitInBucket;  // 000..000'1'111..111 where the first '1' is at the currentBitInBucket
     }
-    uint64_t currentBucket = *bucketIt & relevantBitsInBucket;
+    uint64_t currentBucket = Value ? (*bucketIt & relevantBitsInBucket) : (*bucketIt | ~relevantBitsInBucket);
 
     // Find the right bucket
-    if (currentBucket == (Value ? 0ull : relevantBitsInBucket)) {
+    if (currentBucket == (Value ? 0ull : -1ull)) {
         // The first bucket does not contain a bit with the desired value...
         do {
             // Move to next bucket (if there is some)
@@ -838,31 +838,28 @@ uint_fast64_t BitVector::getNextIndexWithValue(uint64_t const* dataPtr, uint64_t
             }
             // Check if the bucket contains our bit
         } while ((*bucketIt) == (Value ? 0ull : -1ull));
-        // At this point we have found our bucket!
+        // At this point we have found our bucket, but it is not the first one
         currentBucket = *bucketIt;
         currentBitInBucket = Backward ? 63u : 0u;  // search within the bucket starting at the last or at the first bit
     }
 
-    // Check if this is the last bucket and whether there actually is a desired bit in the specified range
-    if (Backward) {
-        if (currentBucketIndexOffset < startingIndex) {
-            relevantBitsInBucket = -1ull >> (startingIndex - currentBucketIndexOffset);  // 000..000'1'111..111 where the left '1' is at the startingIndex
-            if ((currentBucket & relevantBitsInBucket) == (Value ? 0ull : relevantBitsInBucket)) {
-                return startingIndex;
-            }
-        }
-    } else {
-        if (currentBucketIndexOffset + 64 > endIndex) {
-            relevantBitsInBucket = -1ull << (currentBucketIndexOffset + 64 - endIndex);  // 111...111'0'000..000 where '0' is at the endIndex
-            if ((currentBucket & relevantBitsInBucket) == (Value ? 0ull : relevantBitsInBucket)) {
-                return endIndex;
-            }
-        }
+    if (!Value) {
+        currentBucket = ~currentBucket;  // invert so that we always search for a '1' from this point
     }
+    // At this point, currentBucket definitely contains a 1-bit and all bits (Backward ? after : before) the currentBitInBucket are zero
+    assert(currentBucket != 0ull);
 
-    // At this point, currentBucket definitely contains a bit with the desired value, and we have to start the search at currentBitInBucket
+#if (defined(__GNUG__) || defined(__clang__))
+    // Use fast and easy builtin functions to find the correct bit index
+    if (Backward) {
+        return std::max(startingIndex, currentBucketIndexOffset + 64ull - __builtin_ctzll(currentBucket));  // make sure to return +1 index after the found 1
+    } else {
+        return std::min(endIndex, currentBucketIndexOffset + __builtin_clzll(currentBucket));
+    }
+#else
+    // Find the correct bit index manually
     uint64_t compareMask = 1ull << (63 - currentBitInBucket);  // 000..000'1'000..000 with '1' at currentBitInBucket position
-    while (static_cast<bool>(currentBucket & compareMask) != Value) {
+    while (!static_cast<bool>(currentBucket & compareMask)) {
         if (Backward) {
             compareMask <<= 1ull;
             --currentBitInBucket;
@@ -872,9 +869,11 @@ uint_fast64_t BitVector::getNextIndexWithValue(uint64_t const* dataPtr, uint64_t
         }
     }
     if (Backward) {
-        ++currentBitInBucket;
+        return std::max(startingIndex, currentBucketIndexOffset + currentBitInBucket + 1ull);  // make sure to return +1 index after the found 1
+    } else {
+        return std::min(endIndex, currentBucketIndexOffset + currentBitInBucket);
     }
-    return currentBucketIndexOffset + currentBitInBucket;
+#endif
 }
 
 storm::storage::BitVector BitVector::getAsBitVector(uint_fast64_t start, uint_fast64_t length) const {
