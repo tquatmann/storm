@@ -633,7 +633,7 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
         if (oneStepTargetProbabilities) {
             origOneStepTargetProbs.reserve(transitionMatrix.getRowCount());
             for (uint64_t row = 0; row < transitionMatrix.getRowCount(); ++row) {
-                origOneStepTargetProbs.push_back(transitionMatrix.getConstrainedRowSum(row, qualitativeStateSets.maybeStates));
+                origOneStepTargetProbs.push_back(transitionMatrix.getConstrainedRowSum(row, ~qualitativeStateSets.maybeStates));
             }
             origOneStepTargetProbsPtr = &origOneStepTargetProbs;
             oneStepTargetProbsPtr = &oneStepTargetProbabilities.get();
