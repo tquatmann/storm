@@ -102,7 +102,7 @@ TEST(GlpkLpSolver, MILPOptimizeMax) {
     ASSERT_NO_THROW(solver.addConstraint("", solver.getConstant(0.5) * y + z - x == solver.getConstant(5)));
     ASSERT_NO_THROW(solver.addConstraint("", y - x <= solver.getConstant(5.5)));
     ASSERT_NO_THROW(solver.update());
-
+    solver.writeModelToFile("testasdf.lp");
     ASSERT_NO_THROW(solver.optimize());
     ASSERT_TRUE(solver.isOptimal());
     ASSERT_FALSE(solver.isUnbounded());
