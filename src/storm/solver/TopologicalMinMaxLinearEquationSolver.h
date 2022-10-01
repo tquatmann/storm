@@ -56,7 +56,7 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
     std::vector<ValueType> computeSccExitProbabilities(storm::storage::BitVector const& sccRowGroups, storm::storage::BitVector const& sccRows) const {
         assert(this->oneMinusRowSumVector);
         std::vector<ValueType> result;
-        result.reserve(sccRows.size());
+        result.reserve(sccRows.getNumberOfSetBits());
         for (auto rowIndex : sccRows) {
             ValueType exitProb = (*oneMinusRowSumVector)[rowIndex];
             for (auto const& entry : this->A->getRow(rowIndex)) {
