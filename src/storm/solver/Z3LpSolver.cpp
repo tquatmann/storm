@@ -69,6 +69,10 @@ typename Z3LpSolver<ValueType, RawMode>::Variable Z3LpSolver<ValueType, RawMode>
                                                                                               ValueType objectiveFunctionCoefficient) {
     STORM_LOG_ASSERT(isIncremental || !this->manager->hasVariable(name), "Variable with name " << name << " already exists.");
     storm::expressions::Variable newVariable = this->declareOrGetExpressionVariable(name, type);
+    if (type == VariableType::Binary) {
+        solver->add(expressionAdapter->translateExpression(newVariable.getExpression() >= this->manager->integer(0)));
+        solver->add(expressionAdapter->translateExpression(newVariable.getExpression() <= this->manager->integer(1)));
+    }
     if (lowerBound) {
         solver->add(expressionAdapter->translateExpression(newVariable.getExpression() >= this->manager->rational(*lowerBound)));
     }
