@@ -869,7 +869,7 @@ std::string toString(GurobiSolverMethod const& method) {
         case GurobiSolverMethod::DETCONCURRENTSIMPLEX:
             return "deterministic-concurrent-simplex";
     }
-    STORM_LOG_ASSERT(false, "Unknown solver method");
+    STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "Unknown solver method");
 }
 
 std::optional<GurobiSolverMethod> gurobiSolverMethodFromString(std::string const& method) {
