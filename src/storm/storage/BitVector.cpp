@@ -852,9 +852,10 @@ uint_fast64_t BitVector::getNextIndexWithValue(uint64_t const* dataPtr, uint64_t
 #if (defined(__GNUG__) || defined(__clang__))
     // Use fast and easy builtin functions to find the correct bit index
     if (Backward) {
-        return std::max(startingIndex, currentBucketIndexOffset + 64ull - __builtin_ctzll(currentBucket));  // make sure to return +1 index after the found 1
+        return std::max<uint64_t>(startingIndex,
+                                  currentBucketIndexOffset + 64ull - __builtin_ctzll(currentBucket));  // make sure to return +1 index after the found 1
     } else {
-        return std::min(endIndex, currentBucketIndexOffset + __builtin_clzll(currentBucket));
+        return std::min<uint64_t>(endIndex, currentBucketIndexOffset + __builtin_clzll(currentBucket));
     }
 #else
     // Find the correct bit index manually
