@@ -106,6 +106,7 @@ std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> configureM
     Environment const& env, SolveGoal<ValueType>&& goal, storm::solver::MinMaxLinearEquationSolverFactory<ValueType> const& factory, MatrixType&& matrix) {
     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> solver = factory.create(env, std::forward<MatrixType>(matrix));
     solver->setOptimizationDirection(goal.direction());
+    STORM_LOG_TRACE("Configure min-max linear equation solver.");
     if (goal.isBounded()) {
         if (goal.boundIsALowerBound()) {
             solver->setTerminationCondition(std::make_unique<TerminateIfFilteredExtremumExceedsThreshold<ValueType>>(
@@ -114,6 +115,8 @@ std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> configureM
             solver->setTerminationCondition(std::make_unique<TerminateIfFilteredExtremumBelowThreshold<ValueType>>(goal.relevantValues(), goal.boundIsStrict(),
                                                                                                                    goal.thresholdValue(), false));
         }
+        STORM_LOG_TRACE("Set global bound constraint");
+        solver->setGlobalRelevantValuesConstraint(goal.thresholdValue(), goal.boundIsALowerBound(), goal.boundIsStrict());
     }
     if (goal.hasRelevantValues()) {
         solver->setRelevantValues(std::move(goal.relevantValues()));
