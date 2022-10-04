@@ -155,6 +155,44 @@ TYPED_TEST(LpSolverTest, LPOptimizeMax) {
     EXPECT_NEAR(this->parseNumber("59/4"), solver->getObjectiveValue(), this->precision());
 }
 
+TYPED_TEST(LpSolverTest, LPOptimizeMaxRaw) {
+    typedef typename TestFixture::ValueType ValueType;
+    auto solver = this->factory()->createRaw("");
+    solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
+    ASSERT_EQ(0u, solver->addBoundedContinuousVariable("x", 0, 1, -1));
+    ASSERT_EQ(1u, solver->addLowerBoundedContinuousVariable("y", 0, 2));
+    ASSERT_EQ(2u, solver->addLowerBoundedContinuousVariable("z", 0, 1));
+    ASSERT_NO_THROW(solver->update());
+
+    // x + y + z <= 12
+    storm::solver::RawLpConstraint<ValueType> constraint1(storm::expressions::RelationType::LessOrEqual, this->parseNumber("12"), 3);
+    constraint1.addToLhs(0, this->parseNumber("1"));
+    constraint1.addToLhs(1, this->parseNumber("1"));
+    constraint1.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint1));
+    // -x + 1/2 * y + z == 5
+    storm::solver::RawLpConstraint<ValueType> constraint2(storm::expressions::RelationType::Equal, this->parseNumber("5"), 3);
+    constraint2.addToLhs(0, -this->parseNumber("1"));
+    constraint2.addToLhs(1, this->parseNumber("1/2"));
+    constraint2.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint2));
+    // -x + y <= 11/2
+    storm::solver::RawLpConstraint<ValueType> constraint3(storm::expressions::RelationType::LessOrEqual, this->parseNumber("11/2"), 2);
+    constraint3.addToLhs(0, -this->parseNumber("1"));
+    constraint3.addToLhs(1, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint3));
+    ASSERT_NO_THROW(solver->update());
+
+    ASSERT_NO_THROW(solver->optimize());
+    ASSERT_TRUE(solver->isOptimal());
+    ASSERT_FALSE(solver->isUnbounded());
+    ASSERT_FALSE(solver->isInfeasible());
+    EXPECT_NEAR(this->parseNumber("1"), solver->getContinuousValue(0), this->precision());
+    EXPECT_NEAR(this->parseNumber("13/2"), solver->getContinuousValue(1), this->precision());
+    EXPECT_NEAR(this->parseNumber("11/4"), solver->getContinuousValue(2), this->precision());
+    EXPECT_NEAR(this->parseNumber("59/4"), solver->getObjectiveValue(), this->precision());
+}
+
 TYPED_TEST(LpSolverTest, LPOptimizeMin) {
     typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
@@ -180,6 +218,46 @@ TYPED_TEST(LpSolverTest, LPOptimizeMin) {
     EXPECT_NEAR(this->parseNumber("1"), solver->getContinuousValue(x), this->precision());
     EXPECT_NEAR(this->parseNumber("0"), solver->getContinuousValue(y), this->precision());
     EXPECT_NEAR(this->parseNumber("57/10"), solver->getContinuousValue(z), this->precision());
+    EXPECT_NEAR(this->parseNumber("-67/10"), solver->getObjectiveValue(), this->precision());
+}
+
+TYPED_TEST(LpSolverTest, LPOptimizeMinRaw) {
+    typedef typename TestFixture::ValueType ValueType;
+    auto solver = this->factory()->createRaw("");
+    solver->setOptimizationDirection(storm::OptimizationDirection::Minimize);
+
+    ASSERT_EQ(0u, solver->addBoundedContinuousVariable("x", 0, 1, -1));
+    ASSERT_EQ(1u, solver->addLowerBoundedContinuousVariable("y", 0, 2));
+    ASSERT_EQ(2u, solver->addBoundedContinuousVariable("z", 1, this->parseNumber("57/10"), -1));
+    ASSERT_NO_THROW(solver->update());
+
+    // x + y + z <= 12
+    storm::solver::RawLpConstraint<ValueType> constraint1(storm::expressions::RelationType::LessOrEqual, this->parseNumber("12"), 3);
+    constraint1.addToLhs(0, this->parseNumber("1"));
+    constraint1.addToLhs(1, this->parseNumber("1"));
+    constraint1.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint1));
+    // -x + 1/2 * y + z <= 5
+    storm::solver::RawLpConstraint<ValueType> constraint2(storm::expressions::RelationType::LessOrEqual, this->parseNumber("5"), 3);
+    constraint2.addToLhs(0, -this->parseNumber("1"));
+    constraint2.addToLhs(1, this->parseNumber("1/2"));
+    constraint2.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint2));
+    // -x + y <= 11/2
+    storm::solver::RawLpConstraint<ValueType> constraint3(storm::expressions::RelationType::LessOrEqual, this->parseNumber("11/2"), 2);
+    constraint3.addToLhs(0, -this->parseNumber("1"));
+    constraint3.addToLhs(1, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint3));
+    ASSERT_NO_THROW(solver->update());
+
+    ASSERT_NO_THROW(solver->optimize());
+    ASSERT_TRUE(solver->isOptimal());
+    ASSERT_FALSE(solver->isUnbounded());
+    ASSERT_FALSE(solver->isInfeasible());
+
+    EXPECT_NEAR(this->parseNumber("1"), solver->getContinuousValue(0), this->precision());
+    EXPECT_NEAR(this->parseNumber("0"), solver->getContinuousValue(1), this->precision());
+    EXPECT_NEAR(this->parseNumber("57/10"), solver->getContinuousValue(2), this->precision());
     EXPECT_NEAR(this->parseNumber("-67/10"), solver->getObjectiveValue(), this->precision());
 }
 
@@ -210,6 +288,50 @@ TYPED_TEST(LpSolverTest, MILPOptimizeMax) {
     EXPECT_TRUE(solver->getBinaryValue(x));
     EXPECT_EQ(6, solver->getIntegerValue(y));
     EXPECT_NEAR(this->parseNumber("3"), solver->getContinuousValue(z), this->precision());
+    EXPECT_NEAR(this->parseNumber("14"), solver->getObjectiveValue(), this->precision());
+}
+
+TYPED_TEST(LpSolverTest, MILPOptimizeMaxRaw) {
+    if (!this->supportsInteger()) {
+        GTEST_SKIP();
+    }
+    typedef typename TestFixture::ValueType ValueType;
+    auto solver = this->factory()->createRaw("");
+    solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
+    storm::expressions::Variable x;
+    storm::expressions::Variable y;
+    storm::expressions::Variable z;
+    ASSERT_EQ(0u, solver->addBinaryVariable("x", -1));
+    ASSERT_EQ(1u, solver->addLowerBoundedIntegerVariable("y", 0, 2));
+    ASSERT_EQ(2u, solver->addLowerBoundedContinuousVariable("z", 0, 1));
+    ASSERT_NO_THROW(solver->update());
+
+    // x + y + z <= 12
+    storm::solver::RawLpConstraint<ValueType> constraint1(storm::expressions::RelationType::LessOrEqual, this->parseNumber("12"), 3);
+    constraint1.addToLhs(0, this->parseNumber("1"));
+    constraint1.addToLhs(1, this->parseNumber("1"));
+    constraint1.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint1));
+    // -x + 1/2 * y + z == 5
+    storm::solver::RawLpConstraint<ValueType> constraint2(storm::expressions::RelationType::Equal, this->parseNumber("5"), 3);
+    constraint2.addToLhs(0, -this->parseNumber("1"));
+    constraint2.addToLhs(1, this->parseNumber("1/2"));
+    constraint2.addToLhs(2, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint2));
+    // -x + y <= 11/2
+    storm::solver::RawLpConstraint<ValueType> constraint3(storm::expressions::RelationType::LessOrEqual, this->parseNumber("11/2"), 2);
+    constraint3.addToLhs(0, -this->parseNumber("1"));
+    constraint3.addToLhs(1, this->parseNumber("1"));
+    ASSERT_NO_THROW(solver->addConstraint("", constraint3));
+    ASSERT_NO_THROW(solver->update());
+
+    ASSERT_NO_THROW(solver->optimize());
+    ASSERT_TRUE(solver->isOptimal());
+    ASSERT_FALSE(solver->isUnbounded());
+    ASSERT_FALSE(solver->isInfeasible());
+    EXPECT_TRUE(solver->getBinaryValue(0));
+    EXPECT_EQ(6, solver->getIntegerValue(1));
+    EXPECT_NEAR(this->parseNumber("3"), solver->getContinuousValue(2), this->precision());
     EXPECT_NEAR(this->parseNumber("14"), solver->getObjectiveValue(), this->precision());
 }
 

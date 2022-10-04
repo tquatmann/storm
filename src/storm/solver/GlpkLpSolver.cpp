@@ -154,7 +154,10 @@ void GlpkLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Co
     if constexpr (RawMode) {
         rhs = storm::utility::convertNumber<double>(constraint._rhs);
         relationType = constraint._relationType;
-        variableIndices.insert(variableIndices.end(), constraint._lhsVariableIndices.begin(), constraint._lhsVariableIndices.end());
+        variableIndices.reserve(constraint._lhsVariableIndices.size() + 1);
+        for (auto const& var : constraint._lhsVariableIndices) {
+            variableIndices.push_back(this->variableToIndexMap.at(var));
+        }
         coefficients.reserve(constraint._lhsCoefficients.size() + 1);
         for (auto const& coef : constraint._lhsCoefficients) {
             coefficients.push_back(storm::utility::convertNumber<double>(coef));

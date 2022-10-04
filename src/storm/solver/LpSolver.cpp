@@ -125,6 +125,8 @@ storm::expressions::Variable LpSolver<ValueType, RawMode>::declareOrGetExpressio
     return {};
 }
 
+template struct RawLpConstraint<double>;
+template struct RawLpConstraint<storm::RationalNumber>;
 template class LpSolver<double, true>;
 template class LpSolver<double, false>;
 template class LpSolver<storm::RationalNumber, true>;
