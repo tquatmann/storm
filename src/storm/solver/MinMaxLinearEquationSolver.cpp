@@ -20,7 +20,8 @@ namespace storm {
 namespace solver {
 
 template<typename ValueType>
-GlobalBound<ValueType>::GlobalBound(ValueType constraintValue, bool lowerBound, bool strict) : constraintValue(constraintValue), lowerBound(lowerBound), strict(strict) {
+GlobalBound<ValueType>::GlobalBound(ValueType constraintValue, bool lowerBound, bool strict)
+    : constraintValue(constraintValue), lowerBound(lowerBound), strict(strict) {
     // nothing to be done.
 }
 

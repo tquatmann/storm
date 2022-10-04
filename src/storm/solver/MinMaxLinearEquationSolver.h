@@ -192,6 +192,7 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
     void setGlobalRelevantValuesConstraint(ValueType const& vt, bool lowerBound, bool strict = false);
     void resetGlobalBound();
     bool hasGlobalBound() const;
+
    protected:
     virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<ValueType>& x, std::vector<ValueType> const& b) const = 0;
 
@@ -212,6 +213,7 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
 
     /// An optional global bound on all relevant states that may or may not be satisfiable.
     std::optional<GlobalBound<ValueType>> globalBound = std::nullopt;
+
    private:
     /// Whether the solver can assume that the min-max equation system has a unique solution
     bool uniqueSolution;
