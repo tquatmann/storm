@@ -15,6 +15,7 @@ class MinMaxLinearEquationSolverRequirements {
         // Requirements that are related to the graph structure of the system. Note that the requirements in this
         // category are to be interpreted incrementally in the following sense: whenever the system has a unique
         // solution then a valid initial scheduler is no longer required.
+        // TOOO: A valid initial scheduler might still be required even if the solution is unique; e.g. if there is an EC in which -infty reward is collected
         Acyclic,
         UniqueSolution,
         ValidInitialScheduler,

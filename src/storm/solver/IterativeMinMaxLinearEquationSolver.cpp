@@ -351,7 +351,8 @@ MinMaxLinearEquationSolverRequirements IterativeMinMaxLinearEquationSolver<Value
         // The initial scheduler shall not select an end component
         if (!this->hasUniqueSolution() && env.solver().minMax().isForceRequireUnique()) {
             requirements.requireUniqueSolution();
-        } else if (!this->hasNoEndComponents()) {
+        }
+        if (!this->hasNoEndComponents() && !this->hasInitialScheduler()) {
             requirements.requireValidInitialScheduler();
         }
     } else if (method == MinMaxMethod::SoundValueIteration) {

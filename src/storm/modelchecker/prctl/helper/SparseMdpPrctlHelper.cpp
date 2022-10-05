@@ -352,9 +352,11 @@ SparseMdpHintType<ValueType> computeHints(Environment const& env, SolutionType c
         }
 
         // If the solver requires an initial scheduler, compute one now. Note that any scheduler is valid if there are no end components.
-        if (requirements.validInitialScheduler() && !result.noEndComponents) {
-            STORM_LOG_DEBUG("Computing valid scheduler, because the solver requires it.");
-            result.schedulerHint = computeValidSchedulerHint(env, type, transitionMatrix, backwardTransitions, maybeStates, phiStates, targetStates);
+        if (requirements.validInitialScheduler()) {
+            if (!result.noEndComponents) {
+                STORM_LOG_DEBUG("Computing valid scheduler, because the solver requires it.");
+                result.schedulerHint = computeValidSchedulerHint(env, type, transitionMatrix, backwardTransitions, maybeStates, phiStates, targetStates);
+            }
             requirements.clearValidInitialScheduler();
         }
 

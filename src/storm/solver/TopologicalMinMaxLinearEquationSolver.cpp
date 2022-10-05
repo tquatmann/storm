@@ -400,7 +400,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveScc(storm::Environme
     this->sccSolver->setMatrix(std::move(sccA));
 
     // Requirements
-    if (req.validInitialScheduler() && this->hasInitialScheduler()) {
+    if (req.validInitialScheduler() && (this->hasInitialScheduler() || this->hasNoEndComponents())) {
         req.clearValidInitialScheduler();
     }
     if (req.uniqueSolution() && this->hasUniqueSolution()) {
