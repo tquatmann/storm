@@ -12,9 +12,13 @@
 
 namespace storm::solver {
 
-template<typename ValueType>
-class SoplexLpSolver : public LpSolver<ValueType> {
+template<typename ValueType, bool RawMode = false>
+class SoplexLpSolver : public LpSolver<ValueType, RawMode> {
    public:
+    using VariableType = typename LpSolver<ValueType, RawMode>::VariableType;
+    using Variable = typename LpSolver<ValueType, RawMode>::Variable;
+    using Constant = typename LpSolver<ValueType, RawMode>::Constant;
+    using Constraint = typename LpSolver<ValueType, RawMode>::Constraint;
     /*!
      * Constructs a solver with the given name and model sense.
      *
@@ -51,20 +55,15 @@ class SoplexLpSolver : public LpSolver<ValueType> {
      */
     virtual ~SoplexLpSolver();
 
-    // Methods to add continuous variables.
-    virtual storm::expressions::Variable addBoundedContinuousVariable(std::string const& name, ValueType lowerBound, ValueType upperBound,
-                                                                      ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addLowerBoundedContinuousVariable(std::string const& name, ValueType lowerBound,
-                                                                           ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addUpperBoundedContinuousVariable(std::string const& name, ValueType upperBound,
-                                                                           ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addUnboundedContinuousVariable(std::string const& name, ValueType objectiveFunctionCoefficient = 0) override;
+    // Methods to add variables.
+    virtual Variable addVariable(std::string const& name, VariableType const& type, std::optional<ValueType> const& lowerBound = std::nullopt,
+                                 std::optional<ValueType> const& upperBound = std::nullopt, ValueType objectiveFunctionCoefficient = 0) override;
 
     // Methods to incorporate recent changes.
     virtual void update() const override;
 
     // Methods to add constraints
-    virtual void addConstraint(std::string const& name, storm::expressions::Expression const& constraint) override;
+    virtual void addConstraint(std::string const& name, Constraint const& constraint) override;
 
     // Methods to optimize and retrieve optimality status.
     virtual void optimize() const override;
@@ -73,7 +72,7 @@ class SoplexLpSolver : public LpSolver<ValueType> {
     virtual bool isOptimal() const override;
 
     // Methods to retrieve values of variables and the objective function in the optimal solutions.
-    virtual ValueType getContinuousValue(storm::expressions::Variable const& name) const override;
+    virtual ValueType getContinuousValue(Variable const& name) const override;
     virtual ValueType getObjectiveValue() const override;
     // Methods to print the LP problem to a file.
     virtual void writeModelToFile(std::string const& filename) const override;
@@ -84,23 +83,13 @@ class SoplexLpSolver : public LpSolver<ValueType> {
     //////////////////
     // MILP related methods not supported by SoPlex
     //////////////////
-    virtual storm::expressions::Variable addBoundedIntegerVariable(std::string const& name, ValueType lowerBound, ValueType upperBound,
-                                                                   ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addLowerBoundedIntegerVariable(std::string const& name, ValueType lowerBound,
-                                                                        ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addUpperBoundedIntegerVariable(std::string const& name, ValueType upperBound,
-                                                                        ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addUnboundedIntegerVariable(std::string const& name, ValueType objectiveFunctionCoefficient = 0) override;
-    virtual storm::expressions::Variable addBinaryVariable(std::string const& name, ValueType objectiveFunctionCoefficient = 0) override;
     virtual void setMaximalMILPGap(ValueType const& gap, bool relative) override;
     virtual ValueType getMILPGap(bool relative) const override;
-    virtual int_fast64_t getIntegerValue(storm::expressions::Variable const& name) const override;
-    virtual bool getBinaryValue(storm::expressions::Variable const& name) const override;
+    virtual int_fast64_t getIntegerValue(Variable const& name) const override;
+    virtual bool getBinaryValue(Variable const& name) const override;
 
    private:
     void ensureSolved() const;
-    void addVariable(storm::expressions::Variable const& variable, ValueType const& lowerBound, ValueType const& upperBound,
-                     ValueType const& objectiveFunctionCoefficient);
 
 #ifdef STORM_HAVE_SOPLEX
     typedef std::conditional_t<std::is_same_v<ValueType, double>, soplex::DVector, soplex::DVectorRational> TypedDVector;

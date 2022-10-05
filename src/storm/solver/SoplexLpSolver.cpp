@@ -14,6 +14,7 @@
 #include "storm/storage/expressions/Expression.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 
+#include "storm/exceptions/InternalException.h"
 #include "storm/exceptions/InvalidAccessException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/InvalidStateException.h"
@@ -35,8 +36,8 @@ storm::RationalNumber from_soplex_rational(soplex::Rational const& r) {
     return storm::utility::convertNumber<storm::RationalNumber>(GmpRationalNumber(r.backend().data()));
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(std::string const& name, OptimizationDirection const& optDir) : LpSolver<ValueType>(optDir) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(std::string const& name, OptimizationDirection const& optDir) : LpSolver<ValueType, RawMode>(optDir) {
     if (std::is_same_v<ValueType, storm::RationalNumber>) {
         solver.setIntParam(SoPlex::READMODE, SoPlex::READMODE_RATIONAL);
         solver.setIntParam(SoPlex::SOLVEMODE, SoPlex::SOLVEMODE_RATIONAL);
@@ -48,136 +49,136 @@ SoplexLpSolver<ValueType>::SoplexLpSolver(std::string const& name, OptimizationD
     solver.setIntParam(SoPlex::VERBOSITY, 0);
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(std::string const& name) : SoplexLpSolver(name, OptimizationDirection::Minimize) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(std::string const& name) : SoplexLpSolver(name, OptimizationDirection::Minimize) {
     // Intentionally left empty.
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(OptimizationDirection const& optDir) : SoplexLpSolver("", optDir) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(OptimizationDirection const& optDir) : SoplexLpSolver("", optDir) {
     // Intentionally left empty.
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::~SoplexLpSolver() {}
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::~SoplexLpSolver() {}
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::update() const {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::update() const {
     // Nothing to be done.
 }
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addBoundedContinuousVariable(std::string const& name, ValueType lowerBound, ValueType upperBound,
-                                                                                     ValueType objectiveFunctionCoefficient) {
-    storm::expressions::Variable newVariable = this->manager->declareOrGetVariable(name, this->manager->getRationalType());
-    this->addVariable(newVariable, lowerBound, upperBound, objectiveFunctionCoefficient);
-    return newVariable;
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addLowerBoundedContinuousVariable(std::string const& name, ValueType lowerBound,
-                                                                                          ValueType objectiveFunctionCoefficient) {
-    storm::expressions::Variable newVariable = this->manager->declareOrGetVariable(name, this->manager->getRationalType());
-    this->addVariable(newVariable, storm::utility::convertNumber<double>(lowerBound), soplex::infinity, objectiveFunctionCoefficient);
-    return newVariable;
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUpperBoundedContinuousVariable(std::string const& name, ValueType upperBound,
-                                                                                          ValueType objectiveFunctionCoefficient) {
-    storm::expressions::Variable newVariable = this->manager->declareOrGetVariable(name, this->manager->getRationalType());
-    this->addVariable(newVariable, -soplex::infinity, storm::utility::convertNumber<double>(upperBound), objectiveFunctionCoefficient);
-    return newVariable;
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUnboundedContinuousVariable(std::string const& name, ValueType objectiveFunctionCoefficient) {
-    storm::expressions::Variable newVariable = this->manager->declareOrGetVariable(name, this->manager->getRationalType());
-    this->addVariable(newVariable, -soplex::infinity, soplex::infinity, objectiveFunctionCoefficient);
-    return newVariable;
-}
-
-template<>
-void SoplexLpSolver<double>::addVariable(storm::expressions::Variable const& variable, double const& lowerBound, double const& upperBound,
-                                         double const& objectiveFunctionCoefficient) {
-    // Assert whether the variable does not exist yet.
-    // Due to potential incremental usage (push(), pop()), a variable might be declared in the manager but not in the lp model.
-    STORM_LOG_ASSERT(variableToIndexMap.count(variable) == 0, "Variable " << variable.getName() << " exists already in the model.");
-    this->variableToIndexMap.emplace(variable, nextVariableIndex);
+template<typename ValueType, bool RawMode>
+typename SoplexLpSolver<ValueType, RawMode>::Variable SoplexLpSolver<ValueType, RawMode>::addVariable(std::string const& name, VariableType const& type,
+                                                                                                      std::optional<ValueType> const& lowerBound,
+                                                                                                      std::optional<ValueType> const& upperBound,
+                                                                                                      ValueType objectiveFunctionCoefficient) {
+    STORM_LOG_THROW(type == VariableType::Continuous, storm::exceptions::NotSupportedException, "Soplex LP Solver only supports variables of continuous type.");
+    Variable resultVar;
+    if constexpr (RawMode) {
+        resultVar = nextVariableIndex;
+    } else {
+        resultVar = this->declareOrGetExpressionVariable(name, type);
+        //  Assert whether the variable does not exist yet.
+        //  Due to incremental usage (push(), pop()), a variable might be declared in the manager but not in the lp model.
+        STORM_LOG_ASSERT(variableToIndexMap.count(resultVar) == 0, "Variable " << resultVar.getName() << " exists already in the model.");
+        this->variableToIndexMap.emplace(resultVar, nextVariableIndex);
+    }
     ++nextVariableIndex;
-    solver.addColReal(soplex::LPColReal(objectiveFunctionCoefficient, variables, upperBound, lowerBound));
+
+    if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        soplex::Rational const rat_inf(soplex::infinity);
+        solver.addColRational(soplex::LPColRational(to_soplex_rational(objectiveFunctionCoefficient), variables,
+                                                    upperBound.has_value() ? to_soplex_rational(*upperBound) : rat_inf,
+                                                    lowerBound.has_value() ? to_soplex_rational(*lowerBound) : -rat_inf));
+    } else {
+        solver.addColReal(soplex::LPColReal(objectiveFunctionCoefficient, variables, upperBound.has_value() ? *upperBound : soplex::infinity,
+                                            lowerBound.has_value() ? *lowerBound : -soplex::infinity));
+    }
+    return resultVar;
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::addVariable(storm::expressions::Variable const& variable, ValueType const& lowerBound, ValueType const& upperBound,
-                                            ValueType const& objectiveFunctionCoefficient) {
-    // Assert whether the variable does not exist yet.
-    // Due to potential incremental usage (push(), pop()), a variable might be declared in the manager but not in the lp model.
-    STORM_LOG_ASSERT(variableToIndexMap.count(variable) == 0, "Variable " << variable.getName() << " exists already in the model.");
-    this->variableToIndexMap.emplace(variable, nextVariableIndex);
-    ++nextVariableIndex;
-    solver.addColRational(
-        soplex::LPColRational(to_soplex_rational(objectiveFunctionCoefficient), variables, to_soplex_rational(upperBound), to_soplex_rational(lowerBound)));
-}
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Constraint const& constraint) {
+    if constexpr (!RawMode) {
+        STORM_LOG_TRACE("Adding constraint " << (name == "" ? std::to_string(nextConstraintIndex) : name) << " to SoplexLpSolver:\n"
+                                             << "\t" << constraint);
+    }
+    using SoplexValueType = std::conditional_t<std::is_same_v<ValueType, storm::RationalNumber>, soplex::Rational, soplex::Real>;
+    // Extract constraint data
+    SoplexValueType rhs;
+    storm::expressions::RelationType relationType;
+    TypedDSVector row(0);
+    if constexpr (RawMode) {
+        if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+            rhs = to_soplex_rational(constraint._rhs);
+        } else {
+            rhs = constraint._rhs;
+        }
+        relationType = constraint._relationType;
+        row = TypedDSVector(constraint._lhsVariableIndices.size());
+        auto varIt = constraint._lhsVariableIndices.cbegin();
+        auto varItEnd = constraint._lhsVariableIndices.cend();
+        auto coefIt = constraint._lhsCoefficients.cbegin();
+        for (; varIt != varItEnd; ++varIt, ++coefIt) {
+            if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+                row.add(*varIt, to_soplex_rational(*coefIt));
+            } else {
+                row.add(*varIt, *coefIt);
+            }
+        }
+    } else {
+        STORM_LOG_THROW(constraint.getManager() == this->getManager(), storm::exceptions::InvalidArgumentException,
+                        "Constraint was not built over the proper variables.");
+        STORM_LOG_THROW(constraint.isRelationalExpression(), storm::exceptions::InvalidArgumentException, "Illegal constraint is not a relational expression.");
 
-template<typename VT, typename VectType>
-void addRowToSolver(soplex::SoPlex& solver, VT const& lconst, VectType const& row, VT const& rconst);
-
-template<>
-void addRowToSolver<double, soplex::DSVector>(soplex::SoPlex& solver, double const& lconst, soplex::DSVector const& row, double const& rconst) {
-    solver.addRowReal(LPRow(lconst, row, rconst));
-}
-
-template<typename VT, typename VectType>
-void addRowToSolver(soplex::SoPlex& solver, storm::RationalNumber const& lconst, VectType const& row, storm::RationalNumber const& rconst) {
-    solver.addRowRational(LPRowRational(to_soplex_rational(lconst), row, to_soplex_rational(rconst)));
-}
-
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::addConstraint(std::string const& name, storm::expressions::Expression const& constraint) {
-    STORM_LOG_TRACE("Adding constraint " << (name == "" ? std::to_string(nextConstraintIndex) : name) << " to SoplexLpSolver:\n"
-                                         << "\t" << constraint);
-    STORM_LOG_THROW(constraint.isRelationalExpression(), storm::exceptions::InvalidArgumentException, "Illegal constraint is not a relational expression.");
-    STORM_LOG_THROW(constraint.getOperator() != storm::expressions::OperatorType::NotEqual, storm::exceptions::InvalidArgumentException,
-                    "Illegal constraint uses inequality operator.");
-
-    storm::expressions::LinearCoefficientVisitor::VariableCoefficients leftCoefficients =
-        storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(0));
-    storm::expressions::LinearCoefficientVisitor::VariableCoefficients rightCoefficients =
-        storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(1));
-    leftCoefficients.separateVariablesFromConstantPart(rightCoefficients);
-
-    // Now we need to transform the coefficients to the vector representation.
-    TypedDSVector row(leftCoefficients.size());
-    for (auto const& variableCoefficientPair : leftCoefficients) {
-        auto variableIndexPair = this->variableToIndexMap.find(variableCoefficientPair.first);
-        row.add(variableIndexPair->second, leftCoefficients.getCoefficient(variableIndexPair->first));
+        // FIXME: We're potentially losing precision as the coefficients and the rhs are converted to double. The LinearCoefficientVisitor needs a ValueType!
+        storm::expressions::LinearCoefficientVisitor::VariableCoefficients leftCoefficients =
+            storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(0));
+        storm::expressions::LinearCoefficientVisitor::VariableCoefficients rightCoefficients =
+            storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(1));
+        leftCoefficients.separateVariablesFromConstantPart(rightCoefficients);
+        rhs = rightCoefficients.getConstantPart();
+        relationType = constraint.getBaseExpression().asBinaryRelationExpression().getRelationType();
+        row = TypedDSVector(std::distance(leftCoefficients.begin(), leftCoefficients.end()));
+        for (auto const& variableCoefficientPair : leftCoefficients) {
+            auto variableIndexPair = this->variableToIndexMap.find(variableCoefficientPair.first);
+            row.add(variableIndexPair->second, leftCoefficients.getCoefficient(variableIndexPair->first));
+        }
     }
 
     // Determine the type of the constraint and add it properly.
-    switch (constraint.getOperator()) {
-        case storm::expressions::OperatorType::Less:
+    SoplexValueType l, r;
+    switch (relationType) {
+        case storm::expressions::RelationType::Less:
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex only supports nonstrict inequalities");
             break;
-        case storm::expressions::OperatorType::LessOrEqual:
-            addRowToSolver<ValueType>(solver, -soplex::infinity, row, rightCoefficients.getConstantPart());
+        case storm::expressions::RelationType::LessOrEqual:
+            l = -soplex::infinity;
+            r = rhs;
             break;
-        case storm::expressions::OperatorType::Greater:
+        case storm::expressions::RelationType::Greater:
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex only supports nonstrict inequalities");
             break;
-        case storm::expressions::OperatorType::GreaterOrEqual:
-            addRowToSolver<ValueType>(solver, rightCoefficients.getConstantPart(), row, soplex::infinity);
+        case storm::expressions::RelationType::GreaterOrEqual:
+            l = rhs;
+            r = soplex::infinity;
             break;
-        case storm::expressions::OperatorType::Equal:
-            addRowToSolver<ValueType>(solver, rightCoefficients.getConstantPart(), row, rightCoefficients.getConstantPart());
+        case storm::expressions::RelationType::Equal:
+            l = rhs;
+            r = rhs;
             break;
         default:
             STORM_LOG_ASSERT(false, "Illegal operator in LP solver constraint.");
     }
+    if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        solver.addRowRational(LPRowRational(l, row, r));
+    } else {
+        solver.addRowReal(LPRow(l, row, r));
+    }
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::optimize() const {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::optimize() const {
     // First incorporate all recent changes.
     this->update();
     //
@@ -188,63 +189,68 @@ void SoplexLpSolver<ValueType>::optimize() const {
     }
 
     status = solver.optimize();
+    STORM_LOG_TRACE("soplex status " << status);
+    if (status == soplex::SPxSolver::ERROR) {
+        STORM_LOG_THROW(false, storm::exceptions::InternalException, "Soplex failed");
+    } else if (status == soplex::SPxSolver::UNKNOWN) {
+        STORM_LOG_THROW(false, storm::exceptions::InternalException, "Soplex gives up on this problem");
+    }
     this->currentModelHasBeenOptimized = true;
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isInfeasible() const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isInfeasible() const {
     if (!this->currentModelHasBeenOptimized) {
-        throw storm::exceptions::InvalidStateException() << "Illegal call to SoplexLpSolver<ValueType>::isInfeasible: model has not been optimized.";
+        throw storm::exceptions::InvalidStateException() << "Illegal call to SoplexLpSolver<ValueType, RawMode>::isInfeasible: model has not been optimized.";
     }
 
     return (status == soplex::SPxSolver::INFEASIBLE);
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isUnbounded() const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isUnbounded() const {
     if (!this->currentModelHasBeenOptimized) {
-        throw storm::exceptions::InvalidStateException() << "Illegal call to SoplexLpSolver<ValueType>::isUnbounded: model has not been optimized.";
+        throw storm::exceptions::InvalidStateException() << "Illegal call to SoplexLpSolver<ValueType, RawMode>::isUnbounded: model has not been optimized.";
     }
 
     return (status == soplex::SPxSolver::UNBOUNDED);
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isOptimal() const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isOptimal() const {
     if (!this->currentModelHasBeenOptimized) {
         return false;
     }
     return (status == soplex::SPxSolver::OPTIMAL);
 }
 
-template<>
-double SoplexLpSolver<double>::getContinuousValue(storm::expressions::Variable const& variable) const {
+template<typename ValueType, bool RawMode>
+ValueType SoplexLpSolver<ValueType, RawMode>::getContinuousValue(Variable const& variable) const {
     ensureSolved();
 
-    auto variableIndexPair = this->variableToIndexMap.find(variable);
-    STORM_LOG_THROW(variableIndexPair != this->variableToIndexMap.end(), storm::exceptions::InvalidAccessException,
-                    "Accessing value of unknown variable '" << variable.getName() << "'.");
-    STORM_LOG_ASSERT(variableIndexPair->second < nextVariableIndex, "Variable Index exceeds highest value.");
+    uint64_t varIndex;
+    if constexpr (RawMode) {
+        varIndex = variable;
+    } else {
+        STORM_LOG_THROW(variableToIndexMap.count(variable) != 0, storm::exceptions::InvalidAccessException,
+                        "Accessing value of unknown variable '" << variable.getName() << "'.");
+        varIndex = variableToIndexMap.at(variable);
+    }
+    STORM_LOG_ASSERT(varIndex < nextVariableIndex, "Variable Index exceeds highest value.");
+
     if (primalSolution.dim() == 0) {
         primalSolution = TypedDVector(nextVariableIndex);
-        solver.getPrimal(primalSolution);
+        if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+            solver.getPrimalRational(primalSolution);
+        } else {
+            solver.getPrimal(primalSolution);
+        }
     }
-    return primalSolution[variableIndexPair->second];
-}
-
-template<typename ValueType>
-ValueType SoplexLpSolver<ValueType>::getContinuousValue(storm::expressions::Variable const& variable) const {
-    ensureSolved();
-
-    auto variableIndexPair = this->variableToIndexMap.find(variable);
-    STORM_LOG_THROW(variableIndexPair != this->variableToIndexMap.end(), storm::exceptions::InvalidAccessException,
-                    "Accessing value of unknown variable '" << variable.getName() << "'.");
-    STORM_LOG_ASSERT(variableIndexPair->second < nextVariableIndex, "Variable Index exceeds highest value.");
-    if (primalSolution.dim() == 0) {
-        primalSolution = TypedDVector(nextVariableIndex);
-        solver.getPrimalRational(primalSolution);
+    if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        return storm::utility::convertNumber<ValueType>(from_soplex_rational(primalSolution[varIndex]));
+    } else {
+        return primalSolution[varIndex];
     }
-    return storm::utility::convertNumber<ValueType>(from_soplex_rational(primalSolution[variableIndexPair->second]));
 }
 
 template<>
@@ -253,14 +259,14 @@ double SoplexLpSolver<double>::getObjectiveValue() const {
     return solver.objValueReal();
 }
 
-template<typename ValueType>
-ValueType SoplexLpSolver<ValueType>::getObjectiveValue() const {
+template<typename ValueType, bool RawMode>
+ValueType SoplexLpSolver<ValueType, RawMode>::getObjectiveValue() const {
     ensureSolved();
     return storm::utility::convertNumber<ValueType>(from_soplex_rational(solver.objValueRational()));
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::ensureSolved() const {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::ensureSolved() const {
     if (!this->isOptimal()) {
         STORM_LOG_THROW(!this->isInfeasible(), storm::exceptions::InvalidAccessException, "Unable to get Soplex solution from infeasible model.");
         STORM_LOG_THROW(!this->isUnbounded(), storm::exceptions::InvalidAccessException, "Unable to get Soplex solution from unbounded model.");
@@ -268,188 +274,145 @@ void SoplexLpSolver<ValueType>::ensureSolved() const {
     }
 }
 
-template<>
-void SoplexLpSolver<double>::writeModelToFile(std::string const& filename) const {
-    solver.writeFileReal(filename.c_str(), NULL, NULL, NULL);
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::writeModelToFile(std::string const& filename) const {
+    if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        solver.writeFileRational(filename.c_str(), NULL, NULL, NULL);
+    } else {
+        solver.writeFileReal(filename.c_str(), NULL, NULL, NULL);
+    }
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::writeModelToFile(std::string const& filename) const {
-    solver.writeFileRational(filename.c_str(), NULL, NULL, NULL);
-}
-
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::push() {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::push() {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Push/Pop not supported on SoPlex");
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::pop() {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::pop() {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Push/Pop not supported on SoPlex");
 }
 
 #else
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(std::string const&, OptimizationDirection const&) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(std::string const&, OptimizationDirection const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(std::string const&) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(std::string const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::SoplexLpSolver(OptimizationDirection const&) {
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::SoplexLpSolver(OptimizationDirection const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-SoplexLpSolver<ValueType>::~SoplexLpSolver() {}
+template<typename ValueType, bool RawMode>
+SoplexLpSolver<ValueType, RawMode>::~SoplexLpSolver() {}
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addBoundedContinuousVariable(std::string const&, ValueType, ValueType, ValueType) {
+template<typename ValueType, bool RawMode>
+typename SoplexLpSolver<ValueType, RawMode>::Variable SoplexLpSolver<ValueType, RawMode>::addVariable(std::string const&, VariableType const&,
+                                                                                                      std::optional<ValueType> const&,
+                                                                                                      std::optional<ValueType> const&, ValueType) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addLowerBoundedContinuousVariable(std::string const&, ValueType, ValueType) {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::update() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUpperBoundedContinuousVariable(std::string const&, ValueType, ValueType) {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::addConstraint(std::string const&, Constraint const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUnboundedContinuousVariable(std::string const&, ValueType) {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::optimize() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::update() const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isInfeasible() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::addConstraint(std::string const&, storm::expressions::Expression const&) {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isUnbounded() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::optimize() const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::isOptimal() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isInfeasible() const {
+template<typename ValueType, bool RawMode>
+ValueType SoplexLpSolver<ValueType, RawMode>::getContinuousValue(Variable const&) const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isUnbounded() const {
+template<typename ValueType, bool RawMode>
+ValueType SoplexLpSolver<ValueType, RawMode>::getObjectiveValue() const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::isOptimal() const {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::writeModelToFile(std::string const&) const {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-ValueType SoplexLpSolver<ValueType>::getContinuousValue(storm::expressions::Variable const&) const {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::push() {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 
-template<typename ValueType>
-ValueType SoplexLpSolver<ValueType>::getObjectiveValue() const {
-    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
-                                                          "requires this support. Please choose a version of support with Soplex support.";
-}
-
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::writeModelToFile(std::string const&) const {
-    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
-                                                          "requires this support. Please choose a version of support with Soplex support.";
-}
-
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::push() {
-    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
-                                                          "requires this support. Please choose a version of support with Soplex support.";
-}
-
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::pop() {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::pop() {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }
 #endif
 
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addBoundedIntegerVariable(std::string const& name, ValueType lowerBound, ValueType upperBound,
-                                                                                  ValueType objectiveFunctionCoefficient) {
-    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integers");
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addLowerBoundedIntegerVariable(std::string const& name, ValueType lowerBound,
-                                                                                       ValueType objectiveFunctionCoefficient) {
-    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integers");
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUpperBoundedIntegerVariable(std::string const& name, ValueType upperBound,
-                                                                                       ValueType objectiveFunctionCoefficient) {
-    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integers");
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addUnboundedIntegerVariable(std::string const& name, ValueType objectiveFunctionCoefficient) {
-    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integers");
-}
-
-template<typename ValueType>
-storm::expressions::Variable SoplexLpSolver<ValueType>::addBinaryVariable(std::string const& name, ValueType objectiveFunctionCoefficient) {
-    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support binary variables");
-}
-
-template<typename ValueType>
-int_fast64_t SoplexLpSolver<ValueType>::getIntegerValue(storm::expressions::Variable const& variable) const {
+template<typename ValueType, bool RawMode>
+int_fast64_t SoplexLpSolver<ValueType, RawMode>::getIntegerValue(Variable const& variable) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integer variables");
 }
 
-template<typename ValueType>
-bool SoplexLpSolver<ValueType>::getBinaryValue(storm::expressions::Variable const& variable) const {
+template<typename ValueType, bool RawMode>
+bool SoplexLpSolver<ValueType, RawMode>::getBinaryValue(Variable const& variable) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support binary variables");
 }
 
-template<typename ValueType>
-void SoplexLpSolver<ValueType>::setMaximalMILPGap(ValueType const& gap, bool relative) {
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::setMaximalMILPGap(ValueType const& gap, bool relative) {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integer variables.");
 }
 
-template<typename ValueType>
-ValueType SoplexLpSolver<ValueType>::getMILPGap(bool relative) const {
+template<typename ValueType, bool RawMode>
+ValueType SoplexLpSolver<ValueType, RawMode>::getMILPGap(bool relative) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "SoPlex does not support integer variables.");
 }
 
-template class SoplexLpSolver<double>;
-template class SoplexLpSolver<storm::RationalNumber>;
+template class SoplexLpSolver<double, false>;
+template class SoplexLpSolver<storm::RationalNumber, false>;
+template class SoplexLpSolver<double, true>;
+template class SoplexLpSolver<storm::RationalNumber, true>;
 }  // namespace solver
 }  // namespace storm

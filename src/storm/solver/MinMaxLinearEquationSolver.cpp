@@ -20,6 +20,12 @@ namespace storm {
 namespace solver {
 
 template<typename ValueType>
+GlobalBound<ValueType>::GlobalBound(ValueType constraintValue, bool lowerBound, bool strict)
+    : constraintValue(constraintValue), lowerBound(lowerBound), strict(strict) {
+    // nothing to be done.
+}
+
+template<typename ValueType>
 MinMaxLinearEquationSolver<ValueType>::MinMaxLinearEquationSolver(OptimizationDirectionSetting direction)
     : direction(direction), trackScheduler(false), uniqueSolution(false), noEndComponents(false), cachingEnabled(false), requirementsChecked(false) {
     // Intentionally left empty.
@@ -168,6 +174,21 @@ void MinMaxLinearEquationSolver<ValueType>::setSchedulerFixedForRowGroup(storm::
 }
 
 template<typename ValueType>
+void MinMaxLinearEquationSolver<ValueType>::setGlobalRelevantValuesConstraint(ValueType const& vt, bool lowerBound, bool strict) {
+    globalBound = std::make_optional<GlobalBound<ValueType>>(vt, lowerBound, strict);
+}
+
+template<typename ValueType>
+void MinMaxLinearEquationSolver<ValueType>::resetGlobalBound() {
+    globalBound = std::nullopt;
+}
+
+template<typename ValueType>
+bool MinMaxLinearEquationSolver<ValueType>::hasGlobalBound() const {
+    return globalBound != std::nullopt;
+}
+
+template<typename ValueType>
 MinMaxLinearEquationSolverFactory<ValueType>::MinMaxLinearEquationSolverFactory() : requirementsChecked(false) {
     // Intentionally left empty
 }
@@ -261,12 +282,15 @@ std::unique_ptr<MinMaxLinearEquationSolver<storm::RationalNumber>> GeneralMinMax
     return result;
 }
 
+template struct GlobalBound<double>;
+
 template class MinMaxLinearEquationSolver<double>;
 
 template class MinMaxLinearEquationSolverFactory<double>;
 template class GeneralMinMaxLinearEquationSolverFactory<double>;
 
 #ifdef STORM_HAVE_CARL
+template struct GlobalBound<storm::RationalNumber>;
 template class MinMaxLinearEquationSolver<storm::RationalNumber>;
 template class MinMaxLinearEquationSolverFactory<storm::RationalNumber>;
 template class GeneralMinMaxLinearEquationSolverFactory<storm::RationalNumber>;

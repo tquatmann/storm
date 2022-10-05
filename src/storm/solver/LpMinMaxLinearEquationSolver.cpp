@@ -41,9 +41,11 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     STORM_LOG_THROW(env.solver().minMax().getMethod() == MinMaxMethod::LinearProgramming, storm::exceptions::InvalidEnvironmentException,
                     "This min max solver does not support the selected technique.");
 
-    // Set up the LP solver
-    std::unique_ptr<storm::solver::LpSolver<ValueType>> solver = lpSolverFactory->create("");
-    solver->setOptimizationDirection(invert(dir));
+    // Determine the variant of the encoding
+    // Enforcing a global bound is only enabled if there is a single initial state.
+    // Otherwise, cases where one state satisfies the bound but another does not will be difficult.
+    bool const applyGlobalBound = this->hasGlobalBound() && this->hasRelevantValues() && this->getRelevantValues().getNumberOfSetBits() == 1;
+    bool const doOptimize = env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeFeasibilityQueries() || !applyGlobalBound;
     bool const optimizeOnlyRelevant = this->hasRelevantValues() && env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeOnlyForInitialState();
     STORM_LOG_DEBUG("Optimize only for relevant state requested:" << env.solver().minMax().getMinMaxLpSolverEnvironment().getOptimizeOnlyForInitialState());
     if (optimizeOnlyRelevant) {
@@ -53,42 +55,72 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     }
     bool const useBounds = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseNonTrivialBounds();
 
+    // Set up the LP solver
+    auto solver = lpSolverFactory->createRaw("");
+    solver->setOptimizationDirection(invert(dir));
+    using VariableIndex = typename LpSolver<ValueType, true>::Variable;
+    std::map<VariableIndex, ValueType> constantRowGroups;  // Keep track of the rows that are known to be constants
+
     // Create a variable for each row group
-    std::vector<storm::expressions::Expression> variableExpressions;
-    variableExpressions.reserve(this->A->getRowGroupCount());
     for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
-        ValueType objValue =
-            optimizeOnlyRelevant && !this->getRelevantValues().get(rowGroup) ? storm::utility::zero<ValueType>() : storm::utility::one<ValueType>();
-        if (useBounds && this->hasLowerBound()) {
-            ValueType lowerBound = this->getLowerBound(rowGroup);
-            if (this->hasUpperBound()) {
-                ValueType upperBound = this->getUpperBound(rowGroup);
-                if (lowerBound == upperBound) {
-                    // Some solvers (like glpk) don't support variables with bounds [x,x]. We therefore just use a constant instead. This should be more
-                    // efficient anyways.
-                    variableExpressions.push_back(solver->getConstant(lowerBound));
-                } else {
-                    STORM_LOG_ASSERT(lowerBound <= upperBound,
-                                     "Lower Bound at row group " << rowGroup << " is " << lowerBound << " which exceeds the upper bound " << upperBound << ".");
-                    variableExpressions.emplace_back(solver->addBoundedContinuousVariable("x" + std::to_string(rowGroup), lowerBound, upperBound, objValue));
-                }
-            } else {
-                variableExpressions.emplace_back(solver->addLowerBoundedContinuousVariable("x" + std::to_string(rowGroup), lowerBound, objValue));
+        ValueType objValue = !doOptimize || (optimizeOnlyRelevant && !this->getRelevantValues().get(rowGroup)) ? storm::utility::zero<ValueType>()
+                                                                                                               : storm::utility::one<ValueType>();
+        std::optional<ValueType> lowerBound, upperBound;
+        if (useBounds) {
+            if (this->hasLowerBound()) {
+                lowerBound = this->getLowerBound(rowGroup);
             }
-        } else {
-            if (useBounds && this->hasUpperBound()) {
-                variableExpressions.emplace_back(
-                    solver->addUpperBoundedContinuousVariable("x" + std::to_string(rowGroup), this->getUpperBound(rowGroup), objValue));
-            } else {
-                variableExpressions.emplace_back(solver->addUnboundedContinuousVariable("x" + std::to_string(rowGroup), objValue));
+            if (this->hasUpperBound()) {
+                upperBound = this->getUpperBound(rowGroup);
+                if (lowerBound) {
+                    STORM_LOG_ASSERT(*lowerBound <= *upperBound, "Lower Bound at row group " << rowGroup << " is " << *lowerBound
+                                                                                             << " which exceeds the upper bound " << *upperBound << ".");
+                    if (*lowerBound == *upperBound) {
+                        // Some solvers (like glpk) don't support variables with bounds [x,x]. We therefore just use a constant instead. This should be more
+                        // efficient anyways.
+                        constantRowGroups.emplace(rowGroup, *lowerBound);
+                        // Still, a dummy variable is added so that variable-indices coincide with state indices
+                        solver->addContinuousVariable("dummy" + std::to_string(rowGroup));
+                        continue;  // with next rowGroup
+                    }
+                }
             }
         }
+        solver->addContinuousVariable("x" + std::to_string(rowGroup), lowerBound, upperBound, objValue);
     }
     solver->update();
-    STORM_LOG_DEBUG("Use eq if there is a single action:" << env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions());
+    STORM_LOG_DEBUG("Use eq if there is a single action: " << env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions());
     bool const useEqualityForSingleAction = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseEqualityForSingleActions();
 
-    // Add a constraint for each row
+    if (applyGlobalBound) {
+        STORM_LOG_DEBUG("Global bound set. Add constraints for relevant values...");
+        storm::expressions::RelationType reltype;
+        if (this->globalBound->lowerBound) {
+            if (this->globalBound->strict) {
+                reltype = storm::expressions::RelationType::Greater;
+            } else {
+                reltype = storm::expressions::RelationType::GreaterOrEqual;
+            }
+        } else {
+            if (this->globalBound->strict) {
+                reltype = storm::expressions::RelationType::Less;
+            } else {
+                reltype = storm::expressions::RelationType::LessOrEqual;
+            }
+        }
+        for (uint64_t entry : this->getRelevantValues()) {
+            RawLpConstraint<ValueType> constraint(reltype, this->globalBound->constraintValue, 1);
+            if (auto findRes = constantRowGroups.find(entry); findRes != constantRowGroups.end()) {
+                constraint._rhs -= findRes->second;
+            } else {
+                constraint.addToLhs(entry, storm::utility::one<ValueType>());
+            }
+            solver->addConstraint("", constraint);
+        }
+    }
+
+    // Add a set of constraints for each row group
+    auto const defaultRelationType = minimize(dir) ? storm::expressions::RelationType::GreaterOrEqual : storm::expressions::RelationType::LessOrEqual;
     for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
         // The rowgroup refers to the state number
         uint64_t rowIndex, rowGroupEnd;
@@ -100,24 +132,33 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
             rowGroupEnd = this->A->getRowGroupIndices()[rowGroup + 1];
         }
         bool const singleAction = (rowIndex + 1 == rowGroupEnd);
-        bool const useEquality = useEqualityForSingleAction && singleAction;
+        auto const relationType = (useEqualityForSingleAction && singleAction) ? storm::expressions::RelationType::Equal : defaultRelationType;
+        // Add a constraint for each row in the current row group
         for (; rowIndex < rowGroupEnd; ++rowIndex) {
             auto row = this->A->getRow(rowIndex);
-            std::vector<storm::expressions::Expression> summands;
-            summands.reserve(1 + row.getNumberOfEntries());
-            summands.push_back(solver->getConstant(b[rowIndex]));
-            for (auto const& entry : row) {
-                summands.push_back(solver->getConstant(entry.getValue()) * variableExpressions[entry.getColumn()]);
+            RawLpConstraint<ValueType> constraint(relationType, -b[rowIndex], row.getNumberOfEntries());
+            auto addToConstraint = [&constraint, &constantRowGroups](VariableIndex const& var, ValueType const& val) {
+                if (auto findRes = constantRowGroups.find(var); findRes != constantRowGroups.end()) {
+                    constraint._rhs -= findRes->second * val;
+                } else {
+                    constraint.addToLhs(var, val);
+                }
+            };
+            auto entryIt = row.begin();
+            auto const entryItEnd = row.end();
+            for (; entryIt != entryItEnd && entryIt->getColumn() < rowGroup; ++entryIt) {
+                addToConstraint(entryIt->getColumn(), entryIt->getValue());
             }
-            storm::expressions::Expression rowConstraint = storm::expressions::sum(summands);
-            if (useEquality) {
-                rowConstraint = variableExpressions[rowGroup] == rowConstraint;
-            } else if (minimize(dir)) {
-                rowConstraint = variableExpressions[rowGroup] <= rowConstraint;
-            } else {
-                rowConstraint = variableExpressions[rowGroup] >= rowConstraint;
+            ValueType diagVal = -storm::utility::one<ValueType>();
+            if (entryIt != entryItEnd && entryIt->getColumn() == rowGroup) {
+                diagVal += entryIt->getValue();
+                ++entryIt;
             }
-            solver->addConstraint("", rowConstraint);
+            addToConstraint(rowGroup, diagVal);
+            for (; entryIt != entryItEnd; ++entryIt) {
+                addToConstraint(entryIt->getColumn(), entryIt->getValue());
+            }
+            solver->addConstraint("", constraint);
         }
     }
 
@@ -126,46 +167,78 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
 #endif
 
     // Invoke optimization
+    STORM_LOG_TRACE("Run solver...");
     solver->optimize();
-    STORM_LOG_THROW(!solver->isInfeasible(), storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
-    STORM_LOG_THROW(!solver->isUnbounded(), storm::exceptions::UnexpectedException, "The MinMax equation system is unbounded.");
-    STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "Unable to find optimal solution for MinMax equation system.");
+    STORM_LOG_TRACE("...done.");
 
-    // write the solution into the solution vector
-    STORM_LOG_ASSERT(x.size() == variableExpressions.size(), "Dimension of x-vector does not match number of varibales.");
-    auto xIt = x.begin();
-    auto vIt = variableExpressions.begin();
-    for (; xIt != x.end(); ++xIt, ++vIt) {
-        auto const& vBaseExpr = vIt->getBaseExpression();
-        if (vBaseExpr.isVariable()) {
-            *xIt = solver->getContinuousValue(vBaseExpr.asVariableExpression().getVariable());
-        } else {
-            STORM_LOG_ASSERT(vBaseExpr.isRationalLiteralExpression(), "Variable expression has unexpected type.");
-            *xIt = storm::utility::convertNumber<ValueType>(vBaseExpr.asRationalLiteralExpression().getValue());
-        }
+    bool infeasible = solver->isInfeasible();
+    if (applyGlobalBound) {
+        STORM_LOG_THROW(!infeasible, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
+    } else {
+        // Explicitly nothing to be done here.
+    }
+    if (!infeasible) {
+        STORM_LOG_THROW(!solver->isUnbounded(), storm::exceptions::UnexpectedException, "The MinMax equation system is unbounded.");
+        STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "Unable to find optimal solution for MinMax equation system.");
     }
 
-    // If requested, we store the scheduler for retrieval.
-    if (this->isTrackSchedulerSet()) {
-        this->schedulerChoices = std::vector<uint_fast64_t>(this->A->getRowGroupCount());
-        for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
-            if (!this->choiceFixedForRowGroup || !this->choiceFixedForRowGroup.get()[rowGroup]) {
-                // Only update scheduler choice for the states that don't have a fixed choice
-                uint64_t row = this->A->getRowGroupIndices()[rowGroup];
-                uint64_t optimalChoiceIndex = 0;
-                uint64_t currChoice = 0;
-                ValueType optimalGroupValue = this->A->multiplyRowWithVector(row, x) + b[row];
-                for (++row, ++currChoice; row < this->A->getRowGroupIndices()[rowGroup + 1]; ++row, ++currChoice) {
-                    ValueType rowValue = this->A->multiplyRowWithVector(row, x) + b[row];
-                    if ((minimize(dir) && rowValue < optimalGroupValue) || (maximize(dir) && rowValue > optimalGroupValue)) {
-                        optimalGroupValue = rowValue;
-                        optimalChoiceIndex = currChoice;
-                    }
-                }
-                this->schedulerChoices.get()[rowGroup] = optimalChoiceIndex;
+    if (!infeasible) {
+        // write the solution into the solution vector
+        auto xIt = x.begin();
+        VariableIndex i = 0;
+        for (; xIt != x.end(); ++xIt, ++i) {
+            if (auto findRes = constantRowGroups.find(i); findRes != constantRowGroups.end()) {
+                *xIt = findRes->second;
+            } else {
+                *xIt = solver->getContinuousValue(i);
             }
         }
+
+        // If requested, we store the scheduler for retrieval.
+        if (this->isTrackSchedulerSet()) {
+            this->schedulerChoices = std::vector<uint_fast64_t>(this->A->getRowGroupCount());
+            for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
+                if (!this->choiceFixedForRowGroup || !this->choiceFixedForRowGroup.get()[rowGroup]) {
+                    // Only update scheduler choice for the states that don't have a fixed choice
+                    uint64_t row = this->A->getRowGroupIndices()[rowGroup];
+                    uint64_t optimalChoiceIndex = 0;
+                    uint64_t currChoice = 0;
+                    ValueType optimalGroupValue = this->A->multiplyRowWithVector(row, x) + b[row];
+                    for (++row, ++currChoice; row < this->A->getRowGroupIndices()[rowGroup + 1]; ++row, ++currChoice) {
+                        ValueType rowValue = this->A->multiplyRowWithVector(row, x) + b[row];
+                        if ((minimize(dir) && rowValue < optimalGroupValue) || (maximize(dir) && rowValue > optimalGroupValue)) {
+                            optimalGroupValue = rowValue;
+                            optimalChoiceIndex = currChoice;
+                        }
+                    }
+                    this->schedulerChoices.get()[rowGroup] = optimalChoiceIndex;
+                }
+            }
+        }
+    } else {
+        STORM_LOG_ASSERT(applyGlobalBound, "Infeasbile solutions only occur due to a global bound.");
+        // result is infeasible.
+        // we report a result that violates the bound.
+
+        ValueType res = this->globalBound->constraintValue;
+        if (!this->globalBound->strict) {
+            if (!this->globalBound->lowerBound) {
+                res -= 1;
+            } else {
+                res += 1;
+            }
+        }
+        for (auto xIt = x.begin(); xIt != x.end(); ++xIt) {
+            *xIt = res;
+        }
+
+        // if tracking a scheduler was set, we report that we cannot find a scheduler as the bound is violated.
+        if (this->isTrackSchedulerSet()) {
+            STORM_LOG_WARN("Cannot track a scheduler if the bound is violated.");
+        }
     }
+
+    // Why always return true?
     return true;
 }
 

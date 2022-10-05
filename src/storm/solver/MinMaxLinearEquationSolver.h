@@ -28,6 +28,14 @@ class SparseMatrix;
 
 namespace solver {
 
+template<typename ValueType>
+struct GlobalBound {
+    GlobalBound(ValueType constraintValue, bool lowerBound, bool strict);
+    ValueType constraintValue;
+    bool lowerBound;
+    bool strict;
+};
+
 /*!
  * A class representing the interface that all min-max linear equation solvers shall implement.
  */
@@ -181,6 +189,10 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
      */
     bool isRequirementsCheckedSet() const;
 
+    void setGlobalRelevantValuesConstraint(ValueType const& vt, bool lowerBound, bool strict = false);
+    void resetGlobalBound();
+    bool hasGlobalBound() const;
+
    protected:
     virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<ValueType>& x, std::vector<ValueType> const& b) const = 0;
 
@@ -193,10 +205,14 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<ValueType> {
     /// The scheduler choices that induce the optimal values (if they could be successfully generated).
     mutable boost::optional<std::vector<uint_fast64_t>> schedulerChoices;
 
-    // A scheduler that can be used by solvers that require a valid initial scheduler.
+    /// A scheduler that can be used by solvers that require a valid initial scheduler.
     boost::optional<std::vector<uint_fast64_t>> initialScheduler;
 
+    ///
     boost::optional<storm::storage::BitVector> choiceFixedForRowGroup;
+
+    /// An optional global bound on all relevant states that may or may not be satisfiable.
+    std::optional<GlobalBound<ValueType>> globalBound = std::nullopt;
 
    private:
     /// Whether the solver can assume that the min-max equation system has a unique solution

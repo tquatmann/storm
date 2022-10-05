@@ -8,15 +8,18 @@ class MinMaxLpSolverEnvironment {
 
     void setUseEqualityForSingleActions(bool newValue);
     void setOptimizeOnlyForInitialState(bool newValue);
+    void setOptimizeFeasibilityQueries(bool newValue);
     void setUseNonTrivialBounds(bool newValue);
 
     bool getUseEqualityForSingleActions() const;
     bool getOptimizeOnlyForInitialState() const;
     bool getUseNonTrivialBounds() const;
+    bool getOptimizeFeasibilityQueries() const;
 
    private:
     bool useEqualityForSingleActions;
     bool optimizeOnlyForInitialState;
+    bool optimizeFeasibilityQueries;
     bool useNonTrivialBounds;
 };
 }  // namespace storm
