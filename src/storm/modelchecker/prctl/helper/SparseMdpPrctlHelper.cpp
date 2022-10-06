@@ -463,7 +463,10 @@ MaybeStateResult<ValueType> computeValuesForMaybeStates(Environment const& env, 
     }
 
     // Solve the corresponding system of equations.
+    storm::utility::Stopwatch sw(true);
     solver->solveEquations(env, x, b);
+    sw.stop();
+    STORM_PRINT("Time for solving: " << sw << "\n");
 
 #ifndef NDEBUG
     // As a sanity check, make sure our local upper bounds were in fact correct.
