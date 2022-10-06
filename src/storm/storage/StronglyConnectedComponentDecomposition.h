@@ -58,6 +58,56 @@ struct StronglyConnectedComponentDecompositionOptions {
     bool isComputeSccDepthsSet = false;
 };
 
+struct SccDecompositionMemoryCache {
+    void initialize(uint64_t numStates) {
+        preorderNumbers.assign(numStates, std::numeric_limits<uint64_t>::max());
+        recursionStateStack.clear();
+        s.clear();
+        p.clear();
+    }
+
+    bool hasPreorderNumber(uint64_t stateIndex) const {
+        return preorderNumbers[stateIndex] != std::numeric_limits<uint64_t>::max();
+    }
+
+    std::vector<uint64_t> preorderNumbers, recursionStateStack, s, p;
+};
+
+struct SccDecompositionResult {
+    void initialize(uint64_t numStates, bool computeSccDepths) {
+        sccCount = 0;
+        stateToSccMapping.assign(numStates, std::numeric_limits<uint64_t>::max());
+        nonTrivialStates.clear();
+        nonTrivialStates.resize(numStates, false);
+        if (computeSccDepths) {
+            if (sccDepths) {
+                sccDepths->clear();
+            } else {
+                sccDepths.emplace();
+            }
+        } else {
+            sccDepths = std::nullopt;
+        }
+    }
+
+    bool stateHasScc(uint64_t const& stateIndex) const {
+        return stateToSccMapping[stateIndex] != std::numeric_limits<uint64_t>::max();
+    }
+
+    uint64_t sccCount;
+    std::vector<uint64_t> stateToSccMapping;     /// Mapping from states to the SCC it belongs to
+    storm::storage::BitVector nonTrivialStates;  //// Keep of trivial states (singleton SCCs without selfloop).
+    std::optional<std::vector<uint64_t>> sccDepths;
+};
+
+template<typename ValueType>
+void performSccDecomposition(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, StronglyConnectedComponentDecompositionOptions const& options,
+                             SccDecompositionResult& result);
+
+template<typename ValueType>
+void performSccDecomposition(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, StronglyConnectedComponentDecompositionOptions const& options,
+                             SccDecompositionResult& result, SccDecompositionMemoryCache& cache);
+
 /*!
  * This class represents the decomposition of a graph-like structure into its strongly connected components.
  */
