@@ -53,7 +53,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     } else if (!this->hasRelevantValues()) {
         STORM_LOG_DEBUG("No relevant values set! Optimizing over all states.");
     }
-    bool const useBounds = env.solver().minMax().getMinMaxLpSolverEnvironment().getUseNonTrivialBounds();
+    bool const useBounds = this->hasLowerBound() || this->hasUpperBound();
 
     // Set up the LP solver
     auto solver = lpSolverFactory->createRaw("");
