@@ -77,7 +77,7 @@ void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::s
             }
         }
         if (reqLower && !canLower) {
-            bool hasPositiveValues = !canLower || *lowerBound < storm::utility::zero<ValueType>();
+            bool hasPositiveValues = !canUpper || *upperBound > storm::utility::zero<ValueType>();
             if (hasPositiveValues) {
                 tmpOffsets.resize(offsets.size());
                 storm::utility::vector::applyPointwise(offsets, tmpOffsets, [](ValueType const& v) { return -std::min(storm::utility::zero<ValueType>(), v); });

@@ -331,6 +331,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveScc(storm::Environme
     if (globalRelevantValues) {
         this->sccSolver->setRelevantValues((*globalRelevantValues) % sccRowGroups);
     }
+    this->sccSolver->clearBounds();
 
     storm::storage::SparseMatrix<ValueType> sccA;
     if (this->choiceFixedForRowGroup) {
