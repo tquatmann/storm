@@ -172,11 +172,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     STORM_LOG_TRACE("...done.");
 
     bool infeasible = solver->isInfeasible();
-    if (applyGlobalBound) {
-        STORM_LOG_THROW(!infeasible, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
-    } else {
-        // Explicitly nothing to be done here.
-    }
+    STORM_LOG_THROW(applyGlobalBound || !infeasible, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
     if (!infeasible) {
         STORM_LOG_THROW(!solver->isUnbounded(), storm::exceptions::UnexpectedException, "The MinMax equation system is unbounded.");
         STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "Unable to find optimal solution for MinMax equation system.");
