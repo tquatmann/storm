@@ -104,6 +104,9 @@ void Z3LpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Cons
         for (; varIt != varItEnd; ++varIt, ++coefIt) {
             lhsSummands.push_back(rawIndexToVariableMap[*varIt] * this->manager->rational(*coefIt));
         }
+        if (lhsSummands.empty()) {
+            lhsSummands.push_back(this->manager->rational(storm::utility::zero<ValueType>()));
+        }
         storm::expressions::Expression constraintExpr = storm::expressions::makeBinaryRelationExpression(
             storm::expressions::sum(lhsSummands), this->manager->rational(constraint._rhs), constraint._relationType);
         solver->add(expressionAdapter->translateExpression(constraintExpr));
