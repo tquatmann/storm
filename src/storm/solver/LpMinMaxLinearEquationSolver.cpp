@@ -9,6 +9,7 @@
 #include "storm/solver/helper/ValueIterationHelper.h"
 #include "storm/storage/expressions/RationalLiteralExpression.h"
 #include "storm/storage/expressions/VariableExpression.h"
+#include "storm/utility/NumberTraits.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
 
@@ -85,18 +86,42 @@ bool LpMinMaxLinearEquationSolver<ValueType>::solveEquationsViToLp(Environment c
             viHelper.VI(xVi, bVi, numIterations, relative, precision, dir, viCallback);
             auto xIt = xVi.cbegin();
             for (auto& xi : x) {
-                auto const sharpenPrecision = static_cast<uint64_t>(std::log10(1.0 / (relative ? precision * (*xIt) : precision)));
                 xi = storm::utility::convertNumber<ValueType>(*xIt);
                 ++xIt;
             }
         }
     }
     STORM_LOG_DEBUG("Found initial values using Value Iteration. Starting LP solving now.");
+    bool res = false;
     if (minimize(dir)) {
-        return solveEquationsLp(env, dir, x, b, nullptr, &x);  // upper bounds
+        res = solveEquationsLp(env, dir, x, b, nullptr, &x);  // upper bounds
     } else {
-        return solveEquationsLp(env, dir, x, b, &x, nullptr);  // lower bounds
+        res = solveEquationsLp(env, dir, x, b, &x, nullptr);  // lower bounds
     }
+
+    if (!res) {
+        return false;
+    }
+
+    if constexpr (storm::NumberTraits<ValueType>::IsExact) {
+        // The above-computed bounds might be incorrect. To obtain a correct procedure, we catch those cases here!
+        for (uint64_t rowGroup = 0; rowGroup < this->A->getRowGroupCount(); ++rowGroup) {
+            uint64_t row = this->A->getRowGroupIndices()[rowGroup];
+            ValueType optimalGroupValue = this->A->multiplyRowWithVector(row, x) + b[row];
+            for (++row; row < this->A->getRowGroupIndices()[rowGroup + 1]; ++row) {
+                ValueType rowValue = this->A->multiplyRowWithVector(row, x) + b[row];
+                if ((minimize(dir) && rowValue < optimalGroupValue) || (maximize(dir) && rowValue > optimalGroupValue)) {
+                    optimalGroupValue = rowValue;
+                }
+            }
+            if (x[rowGroup] != optimalGroupValue) {
+                STORM_LOG_WARN("LP with provided bounds is incorrect. Restarting without bounds.");
+                return solveEquationsLp(env, dir, x, b);  // no bounds
+            }
+        }
+    }
+
+    return true;
 }
 
 template<typename ValueType>
