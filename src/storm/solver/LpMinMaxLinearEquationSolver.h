@@ -29,6 +29,10 @@ class LpMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationSolver<V
                                                                    bool const& hasInitialScheduler = false) const override;
 
    private:
+    bool solveEquationsViToLp(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
+    bool solveEquationsLp(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x, std::vector<ValueType> const& b,
+                          std::vector<ValueType> const* lowerBounds = nullptr, std::vector<ValueType> const* upperBounds = nullptr) const;
+
     std::unique_ptr<storm::utility::solver::LpSolverFactory<ValueType>> lpSolverFactory;
 };
 

@@ -26,10 +26,15 @@ const std::string lpOptimizeOnlyInitialStateOptionName = "lp-objective-type";
 const std::string lpOptimizeForFeasibilityQueries = "lp-use-optimization-for-feasibility";
 
 MinMaxEquationSolverSettings::MinMaxEquationSolverSettings() : ModuleSettings(moduleName) {
-    std::vector<std::string> minMaxSolvingTechniques = {
-        "vi",     "value-iteration",    "pi",  "policy-iteration",      "lp",  "linear-programming",         "rs",          "ratsearch",
-        "ii",     "interval-iteration", "svi", "sound-value-iteration", "ovi", "optimistic-value-iteration", "topological", "vi-to-pi",
-        "acyclic"};
+    std::vector<std::string> minMaxSolvingTechniques = {"vi",          "value-iteration",
+                                                        "pi",          "policy-iteration",
+                                                        "lp",          "linear-programming",
+                                                        "rs",          "ratsearch",
+                                                        "ii",          "interval-iteration",
+                                                        "svi",         "sound-value-iteration",
+                                                        "ovi",         "optimistic-value-iteration",
+                                                        "topological", "vi-to-pi",
+                                                        "vi-to-lp",    "acyclic"};
     this->addOption(
         storm::settings::OptionBuilder(moduleName, solvingMethodOptionName, false, "Sets which min/max linear equation solving technique is preferred.")
             .setIsAdvanced()
@@ -123,6 +128,8 @@ storm::solver::MinMaxMethod MinMaxEquationSolverSettings::getMinMaxEquationSolvi
         return storm::solver::MinMaxMethod::Topological;
     } else if (minMaxEquationSolvingTechnique == "vi-to-pi") {
         return storm::solver::MinMaxMethod::ViToPi;
+    } else if (minMaxEquationSolvingTechnique == "vi-to-lp") {
+        return storm::solver::MinMaxMethod::ViToLp;
     } else if (minMaxEquationSolvingTechnique == "acyclic") {
         return storm::solver::MinMaxMethod::Acyclic;
     }

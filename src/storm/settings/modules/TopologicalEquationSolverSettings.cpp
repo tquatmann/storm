@@ -36,8 +36,8 @@ TopologicalEquationSolverSettings::TopologicalEquationSolverSettings() : ModuleS
                                          .build())
                         .build());
     std::vector<std::string> minMaxSolvingTechniques = {
-        "vi", "value-iteration",    "pi",  "policy-iteration",      "lp",  "linear-programming",         "rs",      "ratsearch",
-        "ii", "interval-iteration", "svi", "sound-value-iteration", "ovi", "optimistic-value-iteration", "vi-to-pi"};
+        "vi", "value-iteration",    "pi",  "policy-iteration",      "lp",  "linear-programming",         "rs",       "ratsearch",
+        "ii", "interval-iteration", "svi", "sound-value-iteration", "ovi", "optimistic-value-iteration", "vi-to-pi", "vi-to-lp"};
     this->addOption(storm::settings::OptionBuilder(moduleName, underlyingMinMaxMethodOptionName, true,
                                                    "Sets which minmax method is considered for solving the underlying minmax equation systems.")
                         .setIsAdvanced()
@@ -103,6 +103,8 @@ storm::solver::MinMaxMethod TopologicalEquationSolverSettings::getUnderlyingMinM
         return storm::solver::MinMaxMethod::OptimisticValueIteration;
     } else if (minMaxEquationSolvingTechnique == "vi-to-pi") {
         return storm::solver::MinMaxMethod::ViToPi;
+    } else if (minMaxEquationSolvingTechnique == "vi-to-lp") {
+        return storm::solver::MinMaxMethod::ViToLp;
     }
 
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown underlying equation solver '" << minMaxEquationSolvingTechnique << "'.");

@@ -3,7 +3,10 @@
 #include "storm/environment/solver/MinMaxLpSolverEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/exceptions/InvalidEnvironmentException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/exceptions/UnmetRequirementException.h"
+#include "storm/solver/helper/ValueIterationHelper.h"
 #include "storm/storage/expressions/RationalLiteralExpression.h"
 #include "storm/storage/expressions/VariableExpression.h"
 #include "storm/utility/macros.h"
@@ -38,9 +41,68 @@ LpMinMaxLinearEquationSolver<ValueType>::LpMinMaxLinearEquationSolver(storm::sto
 template<typename ValueType>
 bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
                                                                      std::vector<ValueType> const& b) const {
-    STORM_LOG_THROW(env.solver().minMax().getMethod() == MinMaxMethod::LinearProgramming, storm::exceptions::InvalidEnvironmentException,
-                    "This min max solver does not support the selected technique.");
+    if (env.solver().minMax().getMethod() == MinMaxMethod::LinearProgramming) {
+        return solveEquationsLp(env, dir, x, b);
+    } else {
+        STORM_LOG_THROW(env.solver().minMax().getMethod() == MinMaxMethod::ViToLp, storm::exceptions::InvalidEnvironmentException,
+                        "This min max solver does not support the selected technique.");
+        return solveEquationsViToLp(env, dir, x, b);
+    }
+}
 
+template<typename ValueType>
+bool LpMinMaxLinearEquationSolver<ValueType>::solveEquationsViToLp(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
+                                                                   std::vector<ValueType> const& b) const {
+    // First create an (inprecise) vi solver to get a good initial bound.
+    STORM_LOG_THROW(!this->choiceFixedForRowGroup, storm::exceptions::NotImplementedException, "Fixed choices not implemented for this solution method.");
+    {
+        auto viOperator = std::make_shared<helper::ValueIterationOperator<double>>();
+        if constexpr (std::is_same_v<ValueType, double>) {
+            viOperator->setMatrixBackwards(*this->A);
+        } else {
+            viOperator->setMatrixBackwards(this->A->template toValueType<double>(), &this->A->getRowGroupIndices());
+        }
+        storm::solver::helper::ValueIterationHelper<double, false> viHelper(viOperator);
+        uint64_t numIterations{0};
+        auto viCallback = [&](SolverStatus const& current) {
+            this->showProgressIterative(numIterations);
+            return this->updateStatus(current, false, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
+        };
+        if (minimize(dir)) {
+            this->createUpperBoundsVector(x);
+        } else {
+            this->createLowerBoundsVector(x);
+        }
+        this->startMeasureProgress();
+        if constexpr (std::is_same_v<ValueType, double>) {
+            viHelper.VI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(),
+                        storm::utility::convertNumber<double>(env.solver().minMax().getPrecision()), dir, viCallback);
+        } else {
+            auto xVi = storm::utility::vector::convertNumericVector<double>(x);
+            auto bVi = storm::utility::vector::convertNumericVector<double>(b);
+            double const precision = storm::utility::convertNumber<double>(env.solver().minMax().getPrecision());
+            bool const relative = env.solver().minMax().getRelativeTerminationCriterion();
+            viHelper.VI(xVi, bVi, numIterations, relative, precision, dir, viCallback);
+            auto xIt = xVi.cbegin();
+            for (auto& xi : x) {
+                auto const sharpenPrecision = static_cast<uint64_t>(std::log10(1.0 / (relative ? precision * (*xIt) : precision)));
+                xi = storm::utility::convertNumber<ValueType>(*xIt);
+                ++xIt;
+            }
+        }
+    }
+    STORM_LOG_DEBUG("Found initial values using Value Iteration. Starting LP solving now.");
+    if (minimize(dir)) {
+        return solveEquationsLp(env, dir, x, b, nullptr, &x);  // upper bounds
+    } else {
+        return solveEquationsLp(env, dir, x, b, &x, nullptr);  // lower bounds
+    }
+}
+
+template<typename ValueType>
+bool LpMinMaxLinearEquationSolver<ValueType>::solveEquationsLp(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
+                                                               std::vector<ValueType> const& b, std::vector<ValueType> const* lowerBounds,
+                                                               std::vector<ValueType> const* upperBounds) const {
     // Determine the variant of the encoding
     // Enforcing a global bound is only enabled if there is a single initial state.
     // Otherwise, cases where one state satisfies the bound but another does not will be difficult.
@@ -53,7 +115,28 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     } else if (!this->hasRelevantValues()) {
         STORM_LOG_DEBUG("No relevant values set! Optimizing over all states.");
     }
-    bool const useBounds = this->hasLowerBound() || this->hasUpperBound();
+
+    // Set-up lower/upper bounds
+    std::function<ValueType(uint64_t const&)> lower, upper;
+    if (this->hasLowerBound() && lowerBounds == nullptr) {
+        lower = [this](uint64_t const& i) { return this->getLowerBound(i); };
+    } else if (!this->hasLowerBound() && lowerBounds != nullptr) {
+        STORM_LOG_ASSERT(lowerBounds->size() == x.size(), "lower bounds vector has invalid size.");
+        lower = [&lowerBounds](uint64_t const& i) { return (*lowerBounds)[i]; };
+    } else if (this->hasLowerBound() && lowerBounds != nullptr) {
+        STORM_LOG_ASSERT(lowerBounds->size() == x.size(), "lower bounds vector has invalid size.");
+        lower = [&lowerBounds, this](uint64_t const& i) { return std::max(this->getLowerBound(i), (*lowerBounds)[i]); };
+    }
+    if (this->hasUpperBound() && upperBounds == nullptr) {
+        upper = [this](uint64_t const& i) { return this->getUpperBound(i); };
+    } else if (!this->hasUpperBound() && upperBounds != nullptr) {
+        STORM_LOG_ASSERT(upperBounds->size() == x.size(), "upper bounds vector has invalid size.");
+        upper = [&upperBounds](uint64_t const& i) { return (*upperBounds)[i]; };
+    } else if (this->hasUpperBound() && upperBounds != nullptr) {
+        STORM_LOG_ASSERT(upperBounds->size() == x.size(), "upper bounds vector has invalid size.");
+        upper = [&upperBounds, this](uint64_t const& i) { return std::min(this->getUpperBound(i), (*upperBounds)[i]); };
+    }
+    bool const useBounds = lower || upper;
 
     // Set up the LP solver
     auto solver = lpSolverFactory->createRaw("");
@@ -67,11 +150,11 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
                                                                                                                : storm::utility::one<ValueType>();
         std::optional<ValueType> lowerBound, upperBound;
         if (useBounds) {
-            if (this->hasLowerBound()) {
-                lowerBound = this->getLowerBound(rowGroup);
+            if (lower) {
+                lowerBound = lower(rowGroup);
             }
-            if (this->hasUpperBound()) {
-                upperBound = this->getUpperBound(rowGroup);
+            if (upper) {
+                upperBound = upper(rowGroup);
                 if (lowerBound) {
                     STORM_LOG_ASSERT(*lowerBound <= *upperBound, "Lower Bound at row group " << rowGroup << " is " << *lowerBound
                                                                                              << " which exceeds the upper bound " << *upperBound << ".");
@@ -172,8 +255,14 @@ bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment
     STORM_LOG_TRACE("...done.");
 
     bool infeasible = solver->isInfeasible();
-    STORM_LOG_THROW(applyGlobalBound || !infeasible, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
-    if (!infeasible) {
+    if (infeasible) {
+        if (lowerBounds || upperBounds) {
+            STORM_LOG_WARN("LP with provided bounds is infeasible. Restarting without bounds.");
+            solveEquationsLp(env, dir, x, b);
+        } else {
+            STORM_LOG_THROW(applyGlobalBound, storm::exceptions::UnexpectedException, "The MinMax equation system is infeasible.");
+        }
+    } else {
         STORM_LOG_THROW(!solver->isUnbounded(), storm::exceptions::UnexpectedException, "The MinMax equation system is unbounded.");
         STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "Unable to find optimal solution for MinMax equation system.");
     }
@@ -249,12 +338,25 @@ MinMaxLinearEquationSolverRequirements LpMinMaxLinearEquationSolver<ValueType>::
     MinMaxLinearEquationSolverRequirements requirements;
 
     // In case we need to retrieve a scheduler, the solution has to be unique
-    if (!this->hasUniqueSolution() && (env.solver().minMax().isForceRequireUnique() || this->isTrackSchedulerSet())) {
+    if (!this->hasUniqueSolution() &&
+        (env.solver().minMax().isForceRequireUnique() || this->isTrackSchedulerSet() || env.solver().minMax().getMethod() == MinMaxMethod::ViToLp)) {
         requirements.requireUniqueSolution();
     }
 
     if (env.solver().minMax().getMinMaxLpSolverEnvironment().getUseNonTrivialBounds()) {
         requirements.requireBounds(false);
+    }
+
+    if (env.solver().minMax().getMethod() == MinMaxMethod::ViToLp) {
+        if (direction) {
+            if (minimize(*direction)) {
+                requirements.requireUpperBounds(true);
+            } else {
+                requirements.requireLowerBounds(true);
+            }
+        } else {
+            requirements.requireBounds(true);
+        }
     }
 
     return requirements;
