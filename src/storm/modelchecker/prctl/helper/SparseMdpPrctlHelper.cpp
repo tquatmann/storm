@@ -618,8 +618,9 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
     storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b, bool produceScheduler,
     boost::optional<std::vector<ValueType>>& oneStepTargetProbabilities) {
     // Get the set of states that (under some scheduler) can stay in the set of maybestates forever
-    storm::storage::BitVector candidateStates = storm::utility::graph::performProb0E(
-        transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions, qualitativeStateSets.maybeStates, ~qualitativeStateSets.maybeStates);
+    auto const nonMaybeStates = ~qualitativeStateSets.maybeStates;
+    storm::storage::BitVector candidateStates = storm::utility::graph::performProb0E(transitionMatrix, transitionMatrix.getRowGroupIndices(),
+                                                                                     backwardTransitions, qualitativeStateSets.maybeStates, nonMaybeStates);
 
     bool doDecomposition = !candidateStates.empty();
 
@@ -638,7 +639,7 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
         if (oneStepTargetProbabilities) {
             origOneStepTargetProbs.reserve(transitionMatrix.getRowCount());
             for (uint64_t row = 0; row < transitionMatrix.getRowCount(); ++row) {
-                origOneStepTargetProbs.push_back(transitionMatrix.getConstrainedRowSum(row, ~qualitativeStateSets.maybeStates));
+                origOneStepTargetProbs.push_back(transitionMatrix.getConstrainedRowSum(row, nonMaybeStates));
             }
             origOneStepTargetProbsPtr = &origOneStepTargetProbs;
             oneStepTargetProbsPtr = &oneStepTargetProbabilities.get();
