@@ -70,6 +70,7 @@ class GlpkLpSolver : public LpSolver<ValueType, RawMode> {
 
     // Methods to add constraints
     virtual void addConstraint(std::string const& name, Constraint const& constraint) override;
+    virtual void addIndicatorConstraint(std::string const& name, Variable indicatorVariable, bool indicatorValue, Constraint const& constraint) override;
 
     // Methods to optimize and retrieve optimality status.
     virtual void optimize() const override;

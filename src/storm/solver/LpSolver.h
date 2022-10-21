@@ -255,6 +255,18 @@ class LpSolver {
     virtual void addConstraint(std::string const& name, Constraint const& constraint) = 0;
 
     /*!
+     * Adds the given indicator constraint to the LP problem:
+     * "If indicatorVariable == indicatorValue, then constraint"
+     *
+     * @param name The name of the constraint. If empty, the constraint has no name.
+     * @param indicatorVariable must be a registered binary
+     * @param indicatorValue
+     * @param constraint An expression that represents the constraint. The given constraint must be a linear
+     * (in)equality over the registered variables.
+     */
+    virtual void addIndicatorConstraint(std::string const& name, Variable indicatorVariable, bool indicatorValue, Constraint const& constraint) = 0;
+
+    /*!
      * Optimizes the LP problem previously constructed. Afterwards, the methods isInfeasible, isUnbounded and
      * isOptimal can be used to query the optimality status.
      */

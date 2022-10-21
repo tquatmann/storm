@@ -119,6 +119,25 @@ void Z3LpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Cons
 }
 
 template<typename ValueType, bool RawMode>
+void Z3LpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const& name, Variable indicatorVariable, bool indicatorValue,
+                                                            Constraint const& constraint) {
+    if constexpr (RawMode) {
+        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Indicator constraints not implemented in RawMode");
+    } else {
+        // binary variables are encoded as integer variables with domain {0,1}.
+        STORM_LOG_THROW(indicatorVariable.hasIntegerType(), storm::exceptions::InvalidArgumentException,
+                        "Variable " << indicatorVariable.getName() << " is not binary.");
+        STORM_LOG_THROW(constraint.isRelationalExpression(), storm::exceptions::InvalidArgumentException, "Illegal constraint is not a relational expression.");
+        STORM_LOG_THROW(constraint.getOperator() != storm::expressions::OperatorType::NotEqual, storm::exceptions::InvalidArgumentException,
+                        "Illegal constraint uses inequality operator.");
+
+        storm::expressions::Expression indicatorVal = this->getConstant(indicatorValue ? 1 : 0);
+        auto indicatorConstraint = (indicatorVariable.getExpression() != indicatorVal) || constraint;
+        solver->add(expressionAdapter->translateExpression(indicatorConstraint));
+    }
+}
+
+template<typename ValueType, bool RawMode>
 void Z3LpSolver<ValueType, RawMode>::optimize() const {
     // First incorporate all recent changes.
     this->update();
@@ -336,6 +355,11 @@ void Z3LpSolver<ValueType, RawMode>::update() const {
 
 template<typename ValueType, bool RawMode>
 void Z3LpSolver<ValueType, RawMode>::addConstraint(std::string const&, Constraint const&) {
+    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without Z3 or the version of Z3 does not support optimization. "
+                                                          "Yet, a method was called that requires this support.";
+}
+
+<typename ValueType, bool RawMode> void Z3LpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const&, Variable, bool, Constraint const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without Z3 or the version of Z3 does not support optimization. "
                                                           "Yet, a method was called that requires this support.";
 }
