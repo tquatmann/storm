@@ -47,6 +47,12 @@ class MultiObjectiveModelCheckerEnvironment {
     EncodingType const& getEncodingType() const;
     void setEncodingType(EncodingType const& value);
 
+    bool getUseIndicatorConstraints() const;
+    void setUseIndicatorConstraints(bool value);
+
+    bool getUseBsccOrderEncoding() const;
+    void setUseBsccOrderEncoding(bool value);
+
     bool isMaxStepsSet() const;
     uint64_t const& getMaxSteps() const;
     void setMaxSteps(uint64_t const& value);
@@ -69,6 +75,8 @@ class MultiObjectiveModelCheckerEnvironment {
     storm::RationalNumber precision;
     PrecisionType precisionType;
     EncodingType encodingType;
+    bool indicatorConstraints;
+    bool bsccOrderEncoding;
     boost::optional<uint64_t> maxSteps;
     boost::optional<storm::storage::SchedulerClass> schedulerRestriction;
     bool printResults;

@@ -97,6 +97,26 @@ class MultiObjectiveSettings : public ModuleSettings {
     bool isAutoEncodingSet() const;
 
     /*!
+     * Retrieves whether the encoding for constraint-based methods should use flow constraints for BSCC detection.
+     */
+    bool isBsccDetectionViaFlowConstraintsSet() const;
+
+    /*!
+     * Retrieves whether the encoding for constraint-based methods should use order constraints for BSCC detection.
+     */
+    bool isBsccDetectionViaOrderConstraintsSet() const;
+
+    /*!
+     * Retrieves whether the encoding for constraint-based methods should use BigM constraints
+     */
+    bool isBigMConstraintsSet() const;
+
+    /*!
+     * Retrieves whether the encoding for constraint-based methods should use indicator constraints
+     */
+    bool isIndicatorConstraintsSet() const;
+
+    /*!
      * Retrieves whether lexicographic model checking has been set
      */
     bool isLexicographicModelCheckingSet() const;
