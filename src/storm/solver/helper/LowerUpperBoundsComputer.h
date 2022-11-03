@@ -17,23 +17,24 @@ namespace storm::solver::helper {
 template<typename ValueType>
 void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::storage::SparseMatrix<ValueType> const& matrix,
                              std::vector<ValueType> const& offsets, std::vector<ValueType> const& exitProbabilities, bool reqLower, bool reqUpper,
-                             std::optional<storm::OptimizationDirection> dir = {}) {
+                             bool stronglyConnected = false, std::optional<storm::OptimizationDirection> dir = {}) {
     if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
         STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Operation not allowed.");
     } else {
+        STORM_LOG_ASSERT(matrix.hasTrivialRowGrouping() || dir.has_value(), "Optimization direction needs to be given if matrix is nondeterministic.");
         storm::utility::Extremum<storm::OptimizationDirection::Minimize, ValueType> lowerBound;
         storm::utility::Extremum<storm::OptimizationDirection::Maximize, ValueType> upperBound;
 
         // Try to compute a lower and an upper bound the "easy" way
         bool canLower = true;
         bool canUpper = true;
-        for (uint64_t sccRow = 0; sccRow < offsets.size(); ++sccRow) {
-            if (storm::utility::isZero(exitProbabilities[sccRow])) {
-                if (canLower && offsets[sccRow] < storm::utility::zero<ValueType>()) {
+        for (uint64_t row = 0; row < offsets.size(); ++row) {
+            if (storm::utility::isZero(exitProbabilities[row])) {
+                if (canLower && offsets[row] < storm::utility::zero<ValueType>()) {
                     // We cannot compute a lower bound
                     canLower = false;
                 }
-                if (canUpper && offsets[sccRow] > storm::utility::zero<ValueType>()) {
+                if (canUpper && offsets[row] > storm::utility::zero<ValueType>()) {
                     // We cannot compute an upper bound
                     canUpper = false;
                 }
@@ -41,7 +42,7 @@ void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::s
                     break;
                 }
             } else {
-                ValueType rowValue = offsets[sccRow] / exitProbabilities[sccRow];
+                ValueType rowValue = offsets[row] / exitProbabilities[row];
                 if (canUpper) {
                     upperBound &= rowValue;
                 }
@@ -67,8 +68,12 @@ void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::s
                 storm::utility::vector::applyPointwise(offsets, tmpOffsets, [](ValueType const& v) { return std::max(storm::utility::zero<ValueType>(), v); });
             }
             if (dir.has_value() && maximize(*dir)) {
-                solver.setUpperBound(storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType>(
-                                         matrix, hasNegativeValues ? tmpOffsets : offsets, exitProbabilities, [](uint64_t) -> uint64_t { return 0; })
+                std::function<uint64_t(uint64_t)> stateToScc;
+                if (stronglyConnected) {
+                    stateToScc = [](uint64_t) -> uint64_t { return 0; };
+                }
+                solver.setUpperBound(storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType>(matrix, hasNegativeValues ? tmpOffsets : offsets,
+                                                                                                            exitProbabilities, stateToScc)
                                          .computeUpperBound());
             } else {
                 solver.setUpperBounds(storm::modelchecker::helper::DsMpiMdpUpperRewardBoundsComputer<ValueType>(
@@ -83,10 +88,12 @@ void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::s
                 storm::utility::vector::applyPointwise(offsets, tmpOffsets, [](ValueType const& v) { return -std::min(storm::utility::zero<ValueType>(), v); });
             }
             if (dir.has_value() && minimize(*dir)) {
-                solver.setLowerBound(
-                    -storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType>(matrix, tmpOffsets, exitProbabilities, [](uint64_t) -> uint64_t {
-                         return 0;
-                     }).computeUpperBound());
+                std::function<uint64_t(uint64_t)> stateToScc;
+                if (stronglyConnected) {
+                    stateToScc = [](uint64_t) -> uint64_t { return 0; };
+                }
+                solver.setLowerBound(-storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType>(matrix, tmpOffsets, exitProbabilities, stateToScc)
+                                          .computeUpperBound());
             } else {
                 auto lowerBounds =
                     storm::modelchecker::helper::DsMpiMdpUpperRewardBoundsComputer<ValueType>(matrix, tmpOffsets, exitProbabilities).computeUpperBounds();
