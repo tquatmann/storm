@@ -302,6 +302,7 @@ DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::Determini
     objectiveHelper.reserve(objectives.size());
     for (auto const& obj : objectives) {
         objectiveHelper.emplace_back(*model, obj);
+        STORM_LOG_ASSERT(!objectiveHelper.back().hasThreshold(), "Unexpected input: got a Pareto query with a thresholded objective.");
     }
     lpChecker = std::make_shared<DeterministicSchedsLpChecker<SparseModelType, GeometryValueType>>(*model, objectiveHelper);
     if (preprocessorResult.containsOnlyTotalRewardFormulas()) {
@@ -334,7 +335,7 @@ DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::Determini
                 bool mecHasNonConstValue = false;
                 for (auto const& stateChoices : mec) {
                     for (auto const& helper : objectiveHelper) {
-                        if (helper.getSchedulerIndependentStateValues().count(stateChoices.first) == 0) {
+                        if (helper.getChoiceRewards().count(stateChoices.first) == 0) {
                             ++nonConstMecStateCounter;
                             mecHasNonConstValue = true;
                             break;
@@ -357,6 +358,9 @@ DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::Determini
 template<class SparseModelType, typename GeometryValueType>
 std::unique_ptr<CheckResult> DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::check(Environment const& env) {
     clean();
+    for (auto& obj : objectiveHelper) {
+        obj.computeLowerUpperBounds(env);
+    }
     initializeFacets(env);
 
     // Compute the relative precision in each dimension.
@@ -549,13 +553,8 @@ template<class SparseModelType, typename GeometryValueType>
 std::vector<GeometryValueType> DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::getReferenceCoordinates(Environment const& env) const {
     std::vector<GeometryValueType> result;
     for (uint64_t objIndex = 0; objIndex < objectives.size(); ++objIndex) {
-        ModelValueType value;
-        if (objectiveHelper[objIndex].minimizing()) {
-            value = -objectiveHelper[objIndex].getUpperValueBoundAtState(env, *model->getInitialStates().begin());
-        } else {
-            value = objectiveHelper[objIndex].getLowerValueBoundAtState(env, *model->getInitialStates().begin());
-        }
-        result.push_back(storm::utility::convertNumber<GeometryValueType>(value));
+        result.push_back(
+            storm::utility::convertNumber<GeometryValueType>(objectiveHelper[objIndex].getLowerValueBoundAtState(*model->getInitialStates().begin())));
     }
     return result;
 }

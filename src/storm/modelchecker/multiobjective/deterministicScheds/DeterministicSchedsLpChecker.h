@@ -53,7 +53,6 @@ class DeterministicSchedsLpChecker {
    private:
     void initialize(Environment const& env);
 
-    bool processEndComponents(std::vector<std::vector<storm::expressions::Expression>>& ecVars);
     void initializeLpModel(Environment const& env);
 
     // Builds the induced markov chain of the current model and checks whether the resulting value coincide with the result of the lp solver.
