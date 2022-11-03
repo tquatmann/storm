@@ -122,6 +122,11 @@ class MultiObjectiveSettings : public ModuleSettings {
     bool isLexicographicModelCheckingSet() const;
 
     /*!
+     * Retrieves whether redundant BSCC constraints are to be added
+     */
+    bool isRedundantBsccConstraintsSet() const;
+
+    /*!
      * Checks whether the settings are consistent. If they are inconsistent, an exception is thrown.
      *
      * @return True if the settings are consistent.

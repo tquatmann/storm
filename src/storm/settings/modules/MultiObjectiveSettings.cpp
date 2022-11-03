@@ -81,14 +81,21 @@ MultiObjectiveSettings::MultiObjectiveSettings() : ModuleSettings(moduleName) {
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("style", "The main type of encoding.")
                                          .setDefaultValueString("auto")
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator({"auto", "classic", "flow"}))
+                                         .makeOptional()
                                          .build())
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("bscc", "bscc encoding.")
                                          .setDefaultValueString("flow")
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator({"flow", "order"}))
+                                         .makeOptional()
                                          .build())
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("constraints", "type of constraints.")
                                          .setDefaultValueString("bigm")
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator({"bigm", "indicator"}))
+                                         .makeOptional()
+                                         .build())
+                        .addArgument(storm::settings::ArgumentBuilder::createBooleanArgument("redundant", "enable redundant bscc constraints.")
+                                         .setDefaultValueBoolean(false)
+                                         .makeOptional()
                                          .build())
                         .build());
 
@@ -203,6 +210,10 @@ bool MultiObjectiveSettings::isBigMConstraintsSet() const {
 
 bool MultiObjectiveSettings::isIndicatorConstraintsSet() const {
     return this->getOption(encodingOptionName).getArgumentByName("constraints").getValueAsString() == "indicator";
+}
+
+bool MultiObjectiveSettings::isRedundantBsccConstraintsSet() const {
+    return this->getOption(encodingOptionName).getArgumentByName("redundant").getValueAsBoolean();
 }
 
 bool MultiObjectiveSettings::isLexicographicModelCheckingSet() const {

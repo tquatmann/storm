@@ -38,6 +38,7 @@ MultiObjectiveModelCheckerEnvironment::MultiObjectiveModelCheckerEnvironment() {
     bsccOrderEncoding = multiobjectiveSettings.isBsccDetectionViaOrderConstraintsSet();
     STORM_LOG_ASSERT(multiobjectiveSettings.isIndicatorConstraintsSet() || multiobjectiveSettings.isBigMConstraintsSet(), "unexpected settings");
     indicatorConstraints = multiobjectiveSettings.isIndicatorConstraintsSet();
+    redundantBsccConstraints = multiobjectiveSettings.isRedundantBsccConstraintsSet();
 
     if (multiobjectiveSettings.isMaxStepsSet()) {
         maxSteps = multiobjectiveSettings.getMaxSteps();
@@ -138,6 +139,14 @@ bool MultiObjectiveModelCheckerEnvironment::getUseBsccOrderEncoding() const {
 }
 void MultiObjectiveModelCheckerEnvironment::setUseBsccOrderEncoding(bool value) {
     bsccOrderEncoding = value;
+}
+
+bool MultiObjectiveModelCheckerEnvironment::getUseRedundantBsccConstraints() const {
+    return redundantBsccConstraints;
+}
+
+void MultiObjectiveModelCheckerEnvironment::setUseRedundantBsccConstraints(bool value) {
+    redundantBsccConstraints = value;
 }
 
 bool MultiObjectiveModelCheckerEnvironment::isMaxStepsSet() const {
