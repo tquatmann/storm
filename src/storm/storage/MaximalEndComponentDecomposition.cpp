@@ -74,7 +74,7 @@ MaximalEndComponentDecomposition<ValueType>& MaximalEndComponentDecomposition<Va
 
 template<typename ValueType>
 void MaximalEndComponentDecomposition<ValueType>::performMaximalEndComponentDecomposition(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
-                                                                                          storm::storage::SparseMatrix<ValueType> backwardTransitions,
+                                                                                          storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                           storm::storage::BitVector const* states,
                                                                                           storm::storage::BitVector const* choices) {
     // Get some data for convenient access.
@@ -106,7 +106,7 @@ void MaximalEndComponentDecomposition<ValueType>::performMaximalEndComponentDeco
             auto const sccIndex = sccDecRes.stateToSccMapping[state];
             nonTrivSccIndices.set(sccIndex, true);
             bool stateCanStayInScc = false;
-            for (auto choice = nondeterministicChoiceIndices[state]; choice < nondeterministicChoiceIndices[state + 1]; ++choice) {
+            for (auto const choice : transitionMatrix.getRowGroupIndices(state)) {
                 if (!ecChoices.get(choice)) {
                     continue;
                 }
@@ -138,10 +138,9 @@ void MaximalEndComponentDecomposition<ValueType>::performMaximalEndComponentDeco
                 remainingEcCandidates.set(state, false);
                 // Add choices to the MEC
                 MaximalEndComponent::set_type containedChoices;
-                for (auto choice = nondeterministicChoiceIndices[state]; choice < nondeterministicChoiceIndices[state + 1]; ++choice) {
-                    if (ecChoices.get(choice)) {
-                        containedChoices.insert(choice);
-                    }
+                for (auto ecChoiceIt = ecChoices.begin(nondeterministicChoiceIndices[state]); *ecChoiceIt < nondeterministicChoiceIndices[state + 1];
+                     ++ecChoiceIt) {
+                    containedChoices.insert(*ecChoiceIt);
                 }
                 STORM_LOG_ASSERT(!containedChoices.empty(), "The contained choices of any state in an MEC must be non-empty.");
                 newMec.addState(state, std::move(containedChoices));
