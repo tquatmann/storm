@@ -131,8 +131,9 @@ void Z3LpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const& n
         STORM_LOG_THROW(constraint.getOperator() != storm::expressions::OperatorType::NotEqual, storm::exceptions::InvalidArgumentException,
                         "Illegal constraint uses inequality operator.");
 
-        storm::expressions::Expression indicatorVal = this->getConstant(indicatorValue ? 1 : 0);
-        auto indicatorConstraint = (indicatorVariable.getExpression() != indicatorVal) || constraint;
+        storm::expressions::Expression invertedIndicatorVal =
+            this->getConstant(indicatorValue ? storm::utility::zero<ValueType>() : storm::utility::one<ValueType>());
+        auto indicatorConstraint = (indicatorVariable.getExpression() == invertedIndicatorVal) || constraint;
         solver->add(expressionAdapter->translateExpression(indicatorConstraint));
     }
 }
