@@ -322,7 +322,7 @@ auto problematicMecConstraintsExpVisits(storm::solver::LpSolver<ValueType>& lpMo
         for (auto choice : matrix.getRowGroupIndices(state)) {
             auto const& choiceVisitsVar = expVisitsVars.at(choice);
             stateVisitsSummands.push_back(choiceVisitsVar);
-            if (choices.contains(choice)) {
+            if (choices.count(choice) != 0) {
                 if (redundantConstraints) {
                     for (auto const& postElem : matrix.getRow(choice)) {
                         if (storm::utility::isZero(postElem.getValue())) {
@@ -511,7 +511,7 @@ std::vector<storm::expressions::Expression> expVisitsConstraints(storm::solver::
         for (auto const& stateChoices : mec) {
             auto const& state = stateChoices.first;
             for (auto choice : matrix.getRowGroupIndices(state)) {
-                if (stateChoices.second.contains(choice)) {
+                if (stateChoices.second.count(choice) != 0) {
                     for (auto const& succ : matrix.getRow(choice)) {
                         if (storm::utility::isZero(succ.getValue())) {
                             continue;
