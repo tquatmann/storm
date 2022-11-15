@@ -438,6 +438,7 @@ void DeterministicSchedsObjectiveHelper<ModelType>::computeLowerUpperBounds(Envi
     storm::storage::MaximalEndComponentDecomposition<ValueType> problMecs(model.getTransitionMatrix(), backwardTransitions, maybeStates,
                                                                           getRelevantZeroRewardChoices());
     auto quotient1 = storm::transformer::EndComponentEliminator<ValueType>::transform(model.getTransitionMatrix(), problMecs, maybeStates, maybeStates);
+    auto backwardTransitions1 = quotient1.matrix.transpose(true);
     std::vector<ValueType> rewards1(quotient1.matrix.getRowCount(), storm::utility::zero<ValueType>());
     std::vector<ValueType> exitProbs1(quotient1.matrix.getRowCount(), storm::utility::zero<ValueType>());
     storm::storage::BitVector subsystemChoices1(quotient1.matrix.getRowCount(), true);
@@ -455,6 +456,10 @@ void DeterministicSchedsObjectiveHelper<ModelType>::computeLowerUpperBounds(Envi
             subsystemChoices1.set(choice, false);
         }
     }
+    // Assert that every state can eventually exit the subsystem. If that is not the case, we get infinite reward as problematic (aka zero mecs) are removed.
+    auto exitStates1 = quotient1.matrix.getRowGroupFilter(~subsystemChoices1, false);
+    STORM_LOG_THROW(storm::utility::graph::performProbGreater0E(backwardTransitions1, allQuotient1States, exitStates1).full(),
+                    storm::exceptions::InvalidOperationException, "Objective " << *objective.originalFormula << " does not induce finite value.");
 
     // Compute bounds for finite cases
     if (getInfinityCase() != InfinityCase::HasNegativeInfinite) {
@@ -484,7 +489,7 @@ void DeterministicSchedsObjectiveHelper<ModelType>::computeLowerUpperBounds(Envi
             hasThreshold() || getInfinityCase() == InfinityCase::HasNegativeInfinite, storm::exceptions::NotSupportedException,
             "The upper bound for objective " << *objective.originalFormula << " is infinity at some state. This is only supported for thresholded objectives");
         // Eliminate remaining mecs
-        storm::storage::MaximalEndComponentDecomposition<ValueType> remainingMecs(quotient1.matrix, quotient1.matrix.transpose(true), allQuotient1States,
+        storm::storage::MaximalEndComponentDecomposition<ValueType> remainingMecs(quotient1.matrix, backwardTransitions1, allQuotient1States,
                                                                                   subsystemChoices1);
         STORM_LOG_ASSERT(!remainingMecs.empty(), "Incorrect infinityCase: There is no MEC with rewards.");
         auto quotient2 =
