@@ -82,11 +82,11 @@ void computeLowerUpperBounds(AbstractEquationSolver<ValueType>& solver, storm::s
             }
         }
         if (reqLower && !canLower) {
-            bool hasPositiveValues = !canUpper || *upperBound > storm::utility::zero<ValueType>();
-            if (hasPositiveValues) {
-                tmpOffsets.resize(offsets.size());
-                storm::utility::vector::applyPointwise(offsets, tmpOffsets, [](ValueType const& v) { return -std::min(storm::utility::zero<ValueType>(), v); });
-            }
+            // For lower bounds we actually compute upper bounds for the negated rewards.
+            // We therefore need tmpOffsets in anyway.
+            tmpOffsets.resize(offsets.size());
+            storm::utility::vector::applyPointwise(offsets, tmpOffsets,
+                                                   [](ValueType const& v) { return std::max<ValueType>(storm::utility::zero<ValueType>(), -v); });
             if (dir.has_value() && minimize(*dir)) {
                 std::function<uint64_t(uint64_t)> stateToScc;
                 if (stronglyConnected) {
