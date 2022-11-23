@@ -429,9 +429,13 @@ template<typename ValueType>
 MinMaxLinearEquationSolverRequirements TopologicalMinMaxLinearEquationSolver<ValueType>::getRequirements(
     Environment const& env, boost::optional<storm::solver::OptimizationDirection> const& direction, bool const& hasInitialScheduler) const {
     // Return the requirements of the underlying solver
-    return GeneralMinMaxLinearEquationSolverFactory<ValueType>().getRequirements(getEnvironmentForUnderlyingSolver(env), this->hasUniqueSolution(),
-                                                                                 this->hasNoEndComponents(), direction, hasInitialScheduler,
-                                                                                 this->isTrackSchedulerSet());
+    auto req = GeneralMinMaxLinearEquationSolverFactory<ValueType>().getRequirements(getEnvironmentForUnderlyingSolver(env), this->hasUniqueSolution(),
+                                                                                     this->hasNoEndComponents(), direction, hasInitialScheduler,
+                                                                                     this->isTrackSchedulerSet());
+    if (oneMinusRowSumVector) {
+        req.clearBounds();  // We are able to compute the bounds ourselves!
+    }
+    return req;
 }
 
 template<typename ValueType>

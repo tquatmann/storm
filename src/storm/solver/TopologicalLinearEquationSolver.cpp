@@ -266,7 +266,12 @@ LinearEquationSolverProblemFormat TopologicalLinearEquationSolver<ValueType>::ge
 template<typename ValueType>
 LinearEquationSolverRequirements TopologicalLinearEquationSolver<ValueType>::getRequirements(Environment const& env) const {
     // Return the requirements of the underlying solver
-    return GeneralLinearEquationSolverFactory<ValueType>().getRequirements(getEnvironmentForUnderlyingSolver(env));
+    auto req = GeneralLinearEquationSolverFactory<ValueType>().getRequirements(getEnvironmentForUnderlyingSolver(env));
+    if (oneMinusRowSumVector) {
+        req.clearLowerBounds();  // We are able to compute the bounds ourselves!
+        req.clearUpperBounds();
+    }
+    return req;
 }
 
 template<typename ValueType>
