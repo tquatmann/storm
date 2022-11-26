@@ -7,6 +7,7 @@
 #include "storm/storage/SparseMatrix.h"
 #include "storm/utility/Extremum.h"
 #include "storm/utility/constants.h"
+#include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
 
 namespace storm {
@@ -26,34 +27,43 @@ class OptimisticValueIterationHelper {
              ValueType const& precision, ValueType const& guessValue, std::optional<ValueType> const& lowerBound = {},
              std::optional<ValueType> const& upperBound = {},
              std::function<SolverStatus(SolverStatus const&, std::vector<ValueType> const&)> const& iterationCallback = {}) {
-        if (SolverStatus status = GSVI<Dir, Relative>(vu.first, offsets, numIterations, precision, iterationCallback); status != SolverStatus::Converged) {
-            return status;
-        }
-        guessCandidate<Relative>(vu, guessValue, lowerBound, upperBound);
-        OVIBackend<Dir, Relative> backend;
-        uint64_t const maxIters =
-            numIterations + storm::utility::convertNumber<uint64_t, ValueType>(storm::utility::ceil<ValueType>(storm::utility::one<ValueType>() / precision));
-        while (numIterations < maxIters) {
-            ++numIterations;
-            if (_operator->template applyInPlace(vu, offsets, backend)) {
-                if (backend.allDown()) {
-                    return SolverStatus::Converged;
-                } else {
-                    assert(backend.allUp());
+        ValueType currentGuessValue = guessValue;
+        for (uint64_t numTries = 1; true; ++numTries) {
+            if (SolverStatus status = GSVI<Dir, Relative>(vu.first, offsets, numIterations, currentGuessValue, iterationCallback);
+                status != SolverStatus::Converged) {
+                return status;
+            }
+            guessCandidate<Relative>(vu, precision, lowerBound, upperBound);
+            OVIBackend<Dir, Relative> backend;
+            uint64_t maxIters;
+            if (storm::utility::isZero(currentGuessValue)) {
+                maxIters = std::numeric_limits<uint64_t>::max();
+            } else {
+                maxIters = numIterations + storm::utility::convertNumber<uint64_t, ValueType>(
+                                               storm::utility::ceil<ValueType>(storm::utility::one<ValueType>() / currentGuessValue));
+            }
+            while (numIterations < maxIters) {
+                ++numIterations;
+                if (_operator->template applyInPlace(vu, offsets, backend)) {
+                    if (backend.allDown()) {
+                        return SolverStatus::Converged;
+                    } else {
+                        assert(backend.allUp());
+                        break;
+                    }
+                }
+                if (backend.abort()) {
                     break;
                 }
-            }
-            if (backend.abort()) {
-                break;
-            }
-            if (iterationCallback) {
-                if (auto status = iterationCallback(SolverStatus::InProgress, vu.first); status != SolverStatus::InProgress) {
-                    return status;
+                if (iterationCallback) {
+                    if (auto status = iterationCallback(SolverStatus::InProgress, vu.first); status != SolverStatus::InProgress) {
+                        return status;
+                    }
                 }
             }
+            STORM_LOG_WARN_COND(numTries != 20, "Optimistic Value Iteration did not terminate after 20 refinements. It might be stuck.");
+            currentGuessValue = backend.error() / storm::utility::convertNumber<ValueType, uint64_t>(2u);
         }
-        return OVI<Dir, Relative>(vu, offsets, numIterations, backend.error() / storm::utility::convertNumber<ValueType, uint64_t>(2u), guessValue, lowerBound,
-                                  upperBound, iterationCallback);
     }
 
     template<storm::OptimizationDirection Dir>
@@ -157,6 +167,7 @@ class OptimisticValueIterationHelper {
         std::function<ValueType(ValueType const&)> guess;
         [[maybe_unused]] ValueType factor = storm::utility::one<ValueType>() + guessValue;
         if constexpr (Relative) {
+            // the guess is given by value + |value * guessValue|. If all values are positive, this can be simplified a bit
             if (lowerBound && *lowerBound < storm::utility::zero<ValueType>()) {
                 guess = [&guessValue](ValueType const& val) { return val + storm::utility::abs<ValueType>(val * guessValue); };
             } else {
