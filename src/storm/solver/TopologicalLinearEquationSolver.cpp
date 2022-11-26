@@ -183,6 +183,7 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
             this->sccSolver->setMatrix(*this->A);
         }
     }
+    this->sccSolver->clearBounds();
     auto req = this->sccSolver->getRequirements(sccSolverEnvironment);
     if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
         helper::computeLowerUpperBounds(*sccSolver, *this->A, b, *this->oneMinusRowSumVector, req.lowerBounds(), req.upperBounds(), true);
@@ -226,7 +227,7 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
         sccB.push_back(std::move(bi));
     }
     // lower/upper bounds
-
+    this->sccSolver->clearBounds();
     auto req = this->sccSolver->getRequirements(sccSolverEnvironment);
     if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
         helper::computeLowerUpperBounds(*this->sccSolver, sccA, sccB, computeSccExitProbabilities(scc, scc), req.lowerBounds(), req.upperBounds(), true);

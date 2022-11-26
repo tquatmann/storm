@@ -284,6 +284,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType>::solveFullyConnectedEquati
     if (this->hasRelevantValues()) {
         this->sccSolver->setRelevantValues(this->getRelevantValues());
     }
+    this->sccSolver->clearBounds();
     auto req = this->sccSolver->getRequirements(sccSolverEnvironment, dir);
     if ((req.lowerBounds() || req.upperBounds()) && this->oneMinusRowSumVector) {
         helper::computeLowerUpperBounds(*this->sccSolver, *this->A, b, *this->oneMinusRowSumVector, req.lowerBounds(), req.upperBounds(), true, dir);
