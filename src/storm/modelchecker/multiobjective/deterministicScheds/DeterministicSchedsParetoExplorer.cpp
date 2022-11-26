@@ -312,44 +312,21 @@ DeterministicSchedsParetoExplorer<SparseModelType, GeometryValueType>::Determini
     }
     if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
         storm::utility::Stopwatch sw(true);
-        std::string modelname = "original-model";
-        std::vector<SparseModelType const*> models;
-        models.push_back(&preprocessorResult.originalModel);
-        models.push_back(model.get());
-        for (SparseModelType const* m : models) {
-            STORM_PRINT_AND_LOG("#STATS " << m->getNumberOfStates() << " states in " << modelname << '\n');
-            STORM_PRINT_AND_LOG("#STATS " << m->getNumberOfChoices() << " choices in " << modelname << '\n');
-            STORM_PRINT_AND_LOG("#STATS " << m->getNumberOfTransitions() << " transitions in " << modelname << '\n');
-            storm::RationalNumber numScheds = storm::utility::one<storm::RationalNumber>();
-            for (uint64_t state = 0; state < m->getNumberOfStates(); ++state) {
-                storm::RationalNumber numChoices = storm::utility::convertNumber<storm::RationalNumber, uint64_t>(m->getNumberOfChoices(state));
-                numScheds *= storm::utility::max(storm::utility::one<storm::RationalNumber>(), numChoices);
-            }
-            auto numSchedsStr = storm::utility::to_string(numScheds);
-            STORM_PRINT_AND_LOG("#STATS " << numSchedsStr.front() << "e" << (numSchedsStr.size() - 1) << " memoryless deterministic schedulers in " << modelname
-                                          << '\n');
-            storm::storage::MaximalEndComponentDecomposition<ModelValueType> mecs(*m);
-            uint64_t nonConstMecCounter = 0;
-            uint64_t nonConstMecStateCounter = 0;
-            for (auto const& mec : mecs) {
-                bool mecHasNonConstValue = false;
-                for (auto const& stateChoices : mec) {
-                    for (auto const& helper : objectiveHelper) {
-                        if (helper.getChoiceRewards().count(stateChoices.first) == 0) {
-                            ++nonConstMecStateCounter;
-                            mecHasNonConstValue = true;
-                            break;
-                        }
-                    }
-                }
-                if (mecHasNonConstValue)
-                    ++nonConstMecCounter;
-            }
-            STORM_PRINT_AND_LOG("#STATS " << nonConstMecCounter << " non-constant MECS in " << modelname << '\n');
-            STORM_PRINT_AND_LOG("#STATS " << nonConstMecStateCounter << " non-constant MEC States in " << modelname << '\n');
-            // Print the same statistics for the unfolded model as well.
-            modelname = "unfolded-model";
+        STORM_PRINT_AND_LOG("#STATS " << model->getNumberOfStates() << " states in unfolded-model\n");
+        STORM_PRINT_AND_LOG("#STATS " << model->getNumberOfChoices() << " choices in unfolded-model\n");
+        STORM_PRINT_AND_LOG("#STATS " << model->getNumberOfTransitions() << " transitions in unfolded-model\n");
+        double log10numScheds = 0;
+        for (uint64_t state = 0; state < model->getNumberOfStates(); ++state) {
+            log10numScheds += storm::utility::log10<double>(model->getNumberOfChoices(state));
         }
+        STORM_PRINT_AND_LOG("#STATS 10^" << log10numScheds << " memoryless deterministic schedulers in unfolded-model\n");
+        storm::storage::MaximalEndComponentDecomposition<ModelValueType> mecs(*model);
+        uint64_t mecStates = 0;
+        for (auto const& mec : mecs) {
+            mecStates += mec.size();
+        }
+        STORM_PRINT_AND_LOG("#STATS " << mecs.size() << " MECS in unfolded-model\n");
+        STORM_PRINT_AND_LOG("#STATS " << mecStates << " MEC States in unfolded-model\n");
         sw.stop();
         STORM_PRINT_AND_LOG("#STATS " << sw << " seconds for computing these statistics.\n");
     }
