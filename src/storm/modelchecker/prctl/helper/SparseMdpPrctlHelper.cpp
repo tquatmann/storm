@@ -65,7 +65,9 @@ std::map<storm::storage::sparse::state_type, ValueType> SparseMdpPrctlHelper<Val
     // Initialize epoch models
     auto initEpoch = rewardUnfolding.getStartEpoch();
     auto epochOrder = rewardUnfolding.getEpochComputationOrder(initEpoch);
-
+    if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
+        STORM_PRINT_AND_LOG("Number of Epochs: " << epochOrder.size() << ".");
+    }
     // initialize data that will be needed for each epoch
     std::vector<ValueType> x, b;
     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> minMaxSolver;
