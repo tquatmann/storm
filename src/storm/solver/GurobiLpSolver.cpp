@@ -91,7 +91,7 @@ void GurobiEnvironment::setOutput(bool set) {
 template<typename ValueType, bool RawMode>
 GurobiLpSolver<ValueType, RawMode>::GurobiLpSolver(std::shared_ptr<GurobiEnvironment> const& environment, std::string const& name,
                                                    OptimizationDirection const& optDir)
-    : LpSolver<ValueType, RawMode>(optDir), model(nullptr), environment(environment), nextVariableIndex(0), nextConstraintIndex(0) {
+    : LpSolver<ValueType, RawMode>(optDir), model(nullptr), environment(environment), nextVariableIndex(0) {
     // Create the model.
     int error = 0;
     error = GRBnewmodel(**environment, &model, name.c_str(), 0, nullptr, nullptr, nullptr, nullptr, nullptr);
@@ -181,75 +181,106 @@ typename GurobiLpSolver<ValueType, RawMode>::Variable GurobiLpSolver<ValueType, 
     return resultVar;
 }
 
-template<typename ValueType, bool RawMode>
-void GurobiLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Constraint const& constraint) {
-    if constexpr (!RawMode) {
-        STORM_LOG_TRACE("Adding constraint " << (name == "" ? std::to_string(nextConstraintIndex) : name) << " to GurobiLpSolver:\n"
-                                             << "\t" << constraint);
-    }
-
-    // Extract constraint data
-    double rhs;
-    storm::expressions::RelationType relationType;
+struct GurobiConstraint {
     std::vector<int> variableIndices;
     std::vector<double> coefficients;
+    char sense;
+    double rhs;
+};
+
+template<typename ValueType, bool RawMode>
+GurobiConstraint createConstraint(typename GurobiLpSolver<ValueType, RawMode>::Constraint const& constraint,
+                                  std::map<storm::expressions::Variable, int> const& variableToIndexMap) {
+    GurobiConstraint result;
+    storm::expressions::RelationType relationType;
     if constexpr (RawMode) {
-        rhs = storm::utility::convertNumber<double>(constraint._rhs);
+        result.rhs = storm::utility::convertNumber<double>(constraint._rhs);
         relationType = constraint._relationType;
-        variableIndices.insert(variableIndices.end(), constraint._lhsVariableIndices.begin(), constraint._lhsVariableIndices.end());
-        coefficients.reserve(constraint._lhsCoefficients.size());
+        result.variableIndices.insert(result.variableIndices.end(), constraint._lhsVariableIndices.begin(), constraint._lhsVariableIndices.end());
+        result.coefficients.reserve(constraint._lhsCoefficients.size());
         for (auto const& coef : constraint._lhsCoefficients) {
-            coefficients.push_back(storm::utility::convertNumber<double>(coef));
+            result.coefficients.push_back(storm::utility::convertNumber<double>(coef));
         }
     } else {
-        STORM_LOG_THROW(constraint.getManager() == this->getManager(), storm::exceptions::InvalidArgumentException,
-                        "Constraint was not built over the proper variables.");
         STORM_LOG_THROW(constraint.isRelationalExpression(), storm::exceptions::InvalidArgumentException, "Illegal constraint is not a relational expression.");
-
         storm::expressions::LinearCoefficientVisitor::VariableCoefficients leftCoefficients =
             storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(0));
         storm::expressions::LinearCoefficientVisitor::VariableCoefficients rightCoefficients =
             storm::expressions::LinearCoefficientVisitor().getLinearCoefficients(constraint.getOperand(1));
         leftCoefficients.separateVariablesFromConstantPart(rightCoefficients);
-        rhs = rightCoefficients.getConstantPart();
+        result.rhs = rightCoefficients.getConstantPart();
         relationType = constraint.getBaseExpression().asBinaryRelationExpression().getRelationType();
         int len = std::distance(leftCoefficients.begin(), leftCoefficients.end());
-        variableIndices.reserve(len);
-        coefficients.reserve(len);
+        result.variableIndices.reserve(len);
+        result.coefficients.reserve(len);
         for (auto const& variableCoefficientPair : leftCoefficients) {
-            auto variableIndexPair = this->variableToIndexMap.find(variableCoefficientPair.first);
-            variableIndices.push_back(variableIndexPair->second);
-            coefficients.push_back(variableCoefficientPair.second);
+            auto variableIndexPair = variableToIndexMap.find(variableCoefficientPair.first);
+            result.variableIndices.push_back(variableIndexPair->second);
+            result.coefficients.push_back(variableCoefficientPair.second);
         }
     }
     // Determine the type of the constraint and add it properly.
-    char sense;
     switch (relationType) {
         case storm::expressions::RelationType::Less:
-            sense = GRB_LESS_EQUAL;
-            rhs -= storm::settings::getModule<storm::settings::modules::GurobiSettings>().getIntegerTolerance();
+            result.sense = GRB_LESS_EQUAL;
+            result.rhs -= storm::settings::getModule<storm::settings::modules::GurobiSettings>().getIntegerTolerance();
             break;
         case storm::expressions::RelationType::LessOrEqual:
-            sense = GRB_LESS_EQUAL;
+            result.sense = GRB_LESS_EQUAL;
             break;
         case storm::expressions::RelationType::Greater:
-            sense = GRB_GREATER_EQUAL;
-            rhs += storm::settings::getModule<storm::settings::modules::GurobiSettings>().getIntegerTolerance();
+            result.sense = GRB_GREATER_EQUAL;
+            result.rhs += storm::settings::getModule<storm::settings::modules::GurobiSettings>().getIntegerTolerance();
             break;
         case storm::expressions::RelationType::GreaterOrEqual:
-            sense = GRB_GREATER_EQUAL;
+            result.sense = GRB_GREATER_EQUAL;
             break;
         case storm::expressions::RelationType::Equal:
-            sense = GRB_EQUAL;
+            result.sense = GRB_EQUAL;
             break;
         default:
             STORM_LOG_ASSERT(false, "Illegal operator in LP solver constraint.");
     }
+    return result;
+}
 
-    int error = GRBaddconstr(model, variableIndices.size(), variableIndices.data(), coefficients.data(), sense, rhs, name == "" ? nullptr : name.c_str());
+template<typename ValueType, bool RawMode>
+void GurobiLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Constraint const& constraint) {
+    if constexpr (!RawMode) {
+        STORM_LOG_TRACE("Adding constraint " << name << " to GurobiLpSolver:\n"
+                                             << "\t" << constraint);
+        STORM_LOG_ASSERT(constraint.getManager() == this->getManager(), "Constraint was not built over the proper variables.");
+    }
+
+    // Extract constraint data
+    auto grbConstr = createConstraint<ValueType, RawMode>(constraint, this->variableToIndexMap);
+    int error = GRBaddconstr(model, grbConstr.variableIndices.size(), grbConstr.variableIndices.data(), grbConstr.coefficients.data(), grbConstr.sense,
+                             grbConstr.rhs, name == "" ? nullptr : name.c_str());
     STORM_LOG_THROW(error == 0, storm::exceptions::InvalidStateException,
                     "Could not assert constraint (" << GRBgeterrormsg(**environment) << ", error code " << error << ").");
-    ++nextConstraintIndex;
+}
+
+template<typename ValueType, bool RawMode>
+void GurobiLpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const& name, Variable indicatorVariable, bool indicatorValue,
+                                                                Constraint const& constraint) {
+    int indVar;
+    // Extract constraint data
+    if constexpr (RawMode) {
+        indVar = indicatorVariable;
+    } else {
+        STORM_LOG_ASSERT(this->variableToIndexMap.count(indicatorVariable) > 0, "Indicator Variable " << indicatorVariable.getName() << " unknown to solver.");
+        STORM_LOG_ASSERT(indicatorVariable.hasIntegerType(), "Indicator Variable " << indicatorVariable.getName() << " has unexpected type.");
+        STORM_LOG_ASSERT(constraint.getManager() == this->getManager(), "Constraint was not built over the proper variables.");
+        STORM_LOG_TRACE("Adding Indicator constraint " << name << " to GurobiLpSolver:\n"
+                                                       << "\t(" << indicatorVariable.getName() << "==" << indicatorValue << ") implies " << constraint);
+        indVar = this->variableToIndexMap.at(indicatorVariable);
+    }
+    int indVal = indicatorValue ? 1 : 0;
+    auto grbConstr = createConstraint<ValueType, RawMode>(constraint, this->variableToIndexMap);
+    int error = GRBaddgenconstrIndicator(model, name == "" ? nullptr : name.c_str(), indVar, indVal, grbConstr.variableIndices.size(),
+                                         grbConstr.variableIndices.data(), grbConstr.coefficients.data(), grbConstr.sense, grbConstr.rhs);
+    STORM_LOG_THROW(error == 0, storm::exceptions::InvalidStateException,
+                    "Could not assert constraint (" << GRBgeterrormsg(**environment) << ", error code " << error << ").");
 }
 
 template<typename ValueType, bool RawMode>
@@ -477,7 +508,11 @@ void GurobiLpSolver<ValueType, RawMode>::writeModelToFile(std::string const& fil
 template<typename ValueType, bool RawMode>
 void GurobiLpSolver<ValueType, RawMode>::push() {
     IncrementalLevel lvl;
-    lvl.firstConstraintIndex = nextConstraintIndex;
+    int num;
+    GRBgetintattr(model, GRB_INT_ATTR_NUMCONSTRS, &num);
+    lvl.firstConstraintIndex = num;
+    GRBgetintattr(model, GRB_INT_ATTR_NUMGENCONSTRS, &num);
+    lvl.firstGenConstraintIndex = num;
     incrementalData.push_back(lvl);
 }
 
@@ -487,10 +522,16 @@ void GurobiLpSolver<ValueType, RawMode>::pop() {
         STORM_LOG_ERROR("Tried to pop from a solver without pushing before.");
     } else {
         IncrementalLevel const& lvl = incrementalData.back();
-
-        std::vector<int> indicesToBeRemoved = storm::utility::vector::buildVectorForRange(lvl.firstConstraintIndex, nextConstraintIndex);
-        GRBdelconstrs(model, indicesToBeRemoved.size(), indicesToBeRemoved.data());
-        nextConstraintIndex = lvl.firstConstraintIndex;
+        int num;
+        GRBgetintattr(model, GRB_INT_ATTR_NUMCONSTRS, &num);
+        std::vector<int> indicesToBeRemoved = storm::utility::vector::buildVectorForRange(lvl.firstConstraintIndex, num);
+        int error = GRBdelconstrs(model, indicesToBeRemoved.size(), indicesToBeRemoved.data());
+        STORM_LOG_THROW(error == 0, storm::exceptions::InvalidStateException,
+                        "Unable to delete constraints (" << GRBgeterrormsg(**environment) << ", error code " << error << ").");
+        GRBgetintattr(model, GRB_INT_ATTR_NUMGENCONSTRS, &num);
+        indicesToBeRemoved = storm::utility::vector::buildVectorForRange(lvl.firstGenConstraintIndex, num);
+        STORM_LOG_THROW(error == 0, storm::exceptions::InvalidStateException,
+                        "Unable to delete general constraints (" << GRBgeterrormsg(**environment) << ", error code " << error << ").");
         indicesToBeRemoved.clear();
 
         if (!lvl.variables.empty()) {
@@ -507,11 +548,22 @@ void GurobiLpSolver<ValueType, RawMode>::pop() {
                 }
             }
             std::vector<int> indicesToBeRemoved = storm::utility::vector::buildVectorForRange(firstIndex, nextVariableIndex);
-            GRBdelvars(model, indicesToBeRemoved.size(), indicesToBeRemoved.data());
+            error = GRBdelvars(model, indicesToBeRemoved.size(), indicesToBeRemoved.data());
+            STORM_LOG_THROW(error == 0, storm::exceptions::InvalidStateException,
+                            "Unable to delete variables (" << GRBgeterrormsg(**environment) << ", error code " << error << ").");
             nextVariableIndex = firstIndex;
         }
-        incrementalData.pop_back();
         update();
+        // Assert that indices are as expected
+        GRBgetintattr(model, GRB_INT_ATTR_NUMCONSTRS, &num);
+        STORM_LOG_THROW(lvl.firstConstraintIndex == num, storm::exceptions::InvalidStateException, "Unexpected number of constraints after deletion.");
+        GRBgetintattr(model, GRB_INT_ATTR_NUMGENCONSTRS, &num);
+        STORM_LOG_THROW(lvl.firstGenConstraintIndex == num, storm::exceptions::InvalidStateException,
+                        "Unexpected number of general constraints after deletion.");
+        GRBgetintattr(model, GRB_INT_ATTR_NUMVARS, &num);
+        STORM_LOG_THROW(nextVariableIndex == num, storm::exceptions::InvalidStateException, "Unexpected number ofvariables after deletion.");
+
+        incrementalData.pop_back();
     }
 }
 
@@ -732,6 +784,12 @@ void GurobiLpSolver<ValueType, RawMode>::update() const {
 
 template<typename ValueType, bool RawMode>
 void GurobiLpSolver<ValueType, RawMode>::addConstraint(std::string const&, Constraint const&) {
+    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Gurobi. Yet, a method was called that "
+                                                          "requires this support. Please choose a version of support with Gurobi support.";
+}
+
+template<typename ValueType, bool RawMode>
+void GurobiLpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const&, Variable, bool, Constraint const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Gurobi. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Gurobi support.";
 }

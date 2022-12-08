@@ -178,6 +178,11 @@ void SoplexLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, 
 }
 
 template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const&, Variable, bool, Constraint const&) {
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Indicator Constraints not supported for SoPlex.");
+}
+
+template<typename ValueType, bool RawMode>
 void SoplexLpSolver<ValueType, RawMode>::optimize() const {
     // First incorporate all recent changes.
     this->update();
@@ -331,6 +336,12 @@ void SoplexLpSolver<ValueType, RawMode>::update() const {
 
 template<typename ValueType, bool RawMode>
 void SoplexLpSolver<ValueType, RawMode>::addConstraint(std::string const&, Constraint const&) {
+    throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
+                                                          "requires this support. Please choose a version of support with Soplex support.";
+}
+
+template<typename ValueType, bool RawMode>
+void SoplexLpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const&, Variable, bool, Constraint const&) {
     throw storm::exceptions::NotImplementedException() << "This version of storm was compiled without support for Soplex. Yet, a method was called that "
                                                           "requires this support. Please choose a version of support with Soplex support.";
 }

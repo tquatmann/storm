@@ -17,6 +17,7 @@
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/InvalidOperationException.h"
 #include "storm/exceptions/InvalidStateException.h"
+#include "storm/exceptions/NotSupportedException.h"
 
 #include "storm/settings/modules/DebugSettings.h"
 #include "storm/settings/modules/GlpkSettings.h"
@@ -211,6 +212,11 @@ void GlpkLpSolver<ValueType, RawMode>::addConstraint(std::string const& name, Co
     glp_set_mat_row(this->lp, constraintIndex, variableIndices.size() - 1, variableIndices.data(), coefficients.data());
 
     this->currentModelHasBeenOptimized = false;
+}
+
+template<typename ValueType, bool RawMode>
+void GlpkLpSolver<ValueType, RawMode>::addIndicatorConstraint(std::string const&, Variable, bool, Constraint const&) {
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Indicator Constraints not supported for SoPlex.");
 }
 
 // Method used within the MIP solver to terminate early
