@@ -120,8 +120,8 @@ class MultiDimensionalRewardUnfolding {
         std::shared_ptr<std::vector<uint64_t> const> productStateToSolutionVectorMap;
         std::vector<SolutionType> solutions;
     };
-    std::map<Epoch, EpochSolution> epochSolutions;
-    EpochSolution const& getEpochSolution(std::map<Epoch, EpochSolution const*> const& solutions, Epoch const& epoch);
+    std::unordered_map<Epoch, EpochSolution> epochSolutions;
+    EpochSolution const& getEpochSolution(std::unordered_map<Epoch, EpochSolution const*> const& solutions, Epoch const& epoch);
     SolutionType const& getStateSolution(EpochSolution const& epochSolution, uint64_t const& productState);
 
     storm::models::sparse::Model<ValueType> const& model;
@@ -131,7 +131,7 @@ class MultiDimensionalRewardUnfolding {
 
     std::vector<uint64_t> epochModelToProductChoiceMap;
     std::shared_ptr<std::vector<uint64_t> const> productStateToEpochModelInStateMap;
-    std::set<Epoch> possibleEpochSteps;
+    std::vector<Epoch> possibleEpochSteps;
 
     EpochModel<ValueType, SingleObjectiveMode> epochModel;
     boost::optional<Epoch> currentEpoch;

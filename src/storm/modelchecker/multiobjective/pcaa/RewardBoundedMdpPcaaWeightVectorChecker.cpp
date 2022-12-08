@@ -79,7 +79,7 @@ void RewardBoundedMdpPcaaWeightVectorChecker<SparseMdpModelType>::check(Environm
     auto initEpoch = rewardUnfolding.getStartEpoch();
     auto epochOrder = rewardUnfolding.getEpochComputationOrder(initEpoch);
     if (numChecks == 0 && storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
-        STORM_PRINT_AND_LOG("Number of Epochs: " << epochOrder.size() << ".");
+        STORM_PRINT_AND_LOG("Number of Epochs: " << epochOrder.size() << ".\n");
     }
     EpochCheckingData cachedData;
     ValueType precision = rewardUnfolding.getRequiredEpochModelPrecision(

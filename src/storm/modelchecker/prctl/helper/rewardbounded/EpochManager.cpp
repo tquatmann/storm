@@ -95,12 +95,12 @@ typename EpochManager::Epoch EpochManager::getSuccessorEpoch(Epoch const& epoch,
 std::vector<typename EpochManager::Epoch> EpochManager::getPredecessorEpochs(Epoch const& epoch, Epoch const& step) const {
     STORM_LOG_ASSERT(dimensionCount > 0, "Invoked EpochManager with zero dimension count.");
     STORM_LOG_ASSERT(!hasBottomDimension(step), "The given step has at least one bottom dimension.");
-    std::set<Epoch> resultAsSet;
+    std::unordered_set<Epoch> resultAsSet;
     gatherPredecessorEpochs(resultAsSet, epoch, step);
     return std::vector<Epoch>(resultAsSet.begin(), resultAsSet.end());
 }
 
-void EpochManager::gatherPredecessorEpochs(std::set<Epoch>& gatheredPredecessorEpochs, Epoch const& epoch, Epoch const& step) const {
+void EpochManager::gatherPredecessorEpochs(std::unordered_set<Epoch>& gatheredPredecessorEpochs, Epoch const& epoch, Epoch const& step) const {
     STORM_LOG_ASSERT(dimensionCount > 0, "Invoked EpochManager with zero dimension count.");
     STORM_LOG_ASSERT(!hasBottomDimension(step), "The given step has at least one bottom dimension.");
     Epoch currStep = step;
@@ -235,6 +235,10 @@ bool EpochManager::epochClassZigZagOrder(Epoch const& epoch1, Epoch const& epoch
     STORM_LOG_ASSERT(dimensionCount > 0, "Invoked EpochManager with zero dimension count.");
 
     // Return true iff epoch 1 has to be computed before epoch 2
+
+    if (epoch1 == epoch2) {
+        return false;
+    }
 
     if (!compareEpochClass(epoch1, epoch2)) {
         return epochClassOrder(getEpochClass(epoch1), getEpochClass(epoch2));

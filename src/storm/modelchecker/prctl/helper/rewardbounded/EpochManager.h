@@ -1,7 +1,7 @@
 #pragma once
 
-#include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace storm {
@@ -27,7 +27,7 @@ class EpochManager {
 
     Epoch getSuccessorEpoch(Epoch const& epoch, Epoch const& step) const;
     std::vector<Epoch> getPredecessorEpochs(Epoch const& epoch, Epoch const& step) const;
-    void gatherPredecessorEpochs(std::set<Epoch>& gatheredPredecessorEpochs, Epoch const& epoch, Epoch const& step) const;
+    void gatherPredecessorEpochs(std::unordered_set<Epoch>& gatheredPredecessorEpochs, Epoch const& epoch, Epoch const& step) const;
 
     bool isZeroEpoch(Epoch const& epoch) const;
     bool isBottomEpoch(Epoch const& epoch) const;

@@ -71,15 +71,13 @@ MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::MultiDimensiona
 template<typename ValueType, bool SingleObjectiveMode>
 void MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::initialize(std::set<storm::expressions::Variable> const& infinityBoundVariables) {
     STORM_LOG_ASSERT(!SingleObjectiveMode || (this->objectives.size() == 1), "Enabled single objective mode but there are multiple objectives.");
-    std::vector<Epoch> epochSteps;
-    initializeObjectives(epochSteps, infinityBoundVariables);
-    initializeMemoryProduct(epochSteps);
-
-    // collect which epoch steps are possible
     possibleEpochSteps.clear();
-    for (auto const& step : epochSteps) {
-        possibleEpochSteps.insert(step);
-    }
+    initializeObjectives(possibleEpochSteps, infinityBoundVariables);
+    initializeMemoryProduct(possibleEpochSteps);
+
+    // remove duplicates
+    std::unordered_set<Epoch> epochStepsSet(possibleEpochSteps.begin(), possibleEpochSteps.end());
+    possibleEpochSteps.assign(epochStepsSet.begin(), epochStepsSet.end());
 }
 
 template<typename ValueType, bool SingleObjectiveMode>
@@ -375,9 +373,7 @@ std::vector<typename MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveM
 MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::getEpochComputationOrder(Epoch const& startEpoch, bool stopAtComputedEpochs) {
     // Perform a DFS to find all the reachable epochs
     std::vector<Epoch> dfsStack;
-    std::set<Epoch, std::function<bool(Epoch const&, Epoch const&)>> collectedEpochs(
-        std::bind(&EpochManager::epochClassZigZagOrder, &epochManager, std::placeholders::_1, std::placeholders::_2));
-
+    std::unordered_set<Epoch> collectedEpochs;
     if (!stopAtComputedEpochs || epochSolutions.count(startEpoch) == 0) {
         collectedEpochs.insert(startEpoch);
         dfsStack.push_back(startEpoch);
@@ -394,7 +390,10 @@ MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::getEpochComputa
             }
         }
     }
-    return std::vector<Epoch>(collectedEpochs.begin(), collectedEpochs.end());
+    std::vector<Epoch> result(collectedEpochs.begin(), collectedEpochs.end());
+    // Now sort the epochs in zigzag order
+    std::sort(result.begin(), result.end(), [this](Epoch const& lhs, Epoch const& rhs) { return epochManager.epochClassZigZagOrder(lhs, rhs); });
+    return result;
 }
 
 template<typename ValueType, bool SingleObjectiveMode>
@@ -421,7 +420,7 @@ EpochModel<ValueType, SingleObjectiveMode>& MultiDimensionalRewardUnfolding<Valu
             break;
         }
     }
-    std::map<Epoch, EpochSolution const*> subSolutions;
+    std::unordered_map<Epoch, EpochSolution const*> subSolutions;
     for (auto const& step : possibleEpochSteps) {
         Epoch successorEpoch = epochManager.getSuccessorEpoch(epoch, step);
         if (successorEpoch != epoch) {
@@ -862,7 +861,7 @@ void MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::setSolutio
     STORM_LOG_ASSERT(currentEpoch, "Tried to set a solution for the current epoch, but no epoch was specified before.");
     STORM_LOG_ASSERT(inStateSolutions.size() == epochModel.epochInStates.getNumberOfSetBits(), "Invalid number of solutions.");
 
-    std::set<Epoch> predecessorEpochs, successorEpochs;
+    std::unordered_set<Epoch> predecessorEpochs, successorEpochs;
     for (auto const& step : possibleEpochSteps) {
         epochManager.gatherPredecessorEpochs(predecessorEpochs, currentEpoch.get(), step);
         successorEpochs.insert(epochManager.getSuccessorEpoch(currentEpoch.get(), step));
@@ -898,7 +897,8 @@ MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::getStateSolutio
 
 template<typename ValueType, bool SingleObjectiveMode>
 typename MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::EpochSolution const&
-MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::getEpochSolution(std::map<Epoch, EpochSolution const*> const& solutions, Epoch const& epoch) {
+MultiDimensionalRewardUnfolding<ValueType, SingleObjectiveMode>::getEpochSolution(std::unordered_map<Epoch, EpochSolution const*> const& solutions,
+                                                                                  Epoch const& epoch) {
     auto epochSolutionIt = solutions.find(epoch);
     STORM_LOG_ASSERT(epochSolutionIt != solutions.end(), "Requested unexisting solution for epoch " << epochManager.toString(epoch) << ".");
     return *epochSolutionIt->second;
