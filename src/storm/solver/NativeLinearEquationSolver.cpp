@@ -440,9 +440,13 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsIntervalIteration(Envi
                               this->getTerminationCondition().terminateNow(data.y, SolverGuarantee::GreaterOrEqual);
         return this->updateStatus(data.status, terminateEarly, numIterations, env.solver().native().getMaximalNumberOfIterations());
     };
+    std::optional<storm::storage::BitVector> optionalRelevantValues;
+    if (this->hasRelevantValues()) {
+        optionalRelevantValues = this->getRelevantValues();
+    }
     this->startMeasureProgress();
     auto status = iiHelper.II(x, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, lowerBoundsCallback, upperBoundsCallback, {},
-                              iiCallback);
+                              iiCallback, optionalRelevantValues);
     this->reportStatus(status, numIterations);
 
     if (!this->isCachingEnabled()) {
@@ -476,10 +480,14 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsSoundValueIteration(En
                                   this->hasCustomTerminationCondition() && current.checkCustomTerminationCondition(this->getTerminationCondition()),
                                   numIterations, env.solver().native().getMaximalNumberOfIterations());
     };
+    std::optional<storm::storage::BitVector> optionalRelevantValues;
+    if (this->hasRelevantValues()) {
+        optionalRelevantValues = this->getRelevantValues();
+    }
     this->startMeasureProgress();
     helper::SoundValueIterationHelper<ValueType, true> sviHelper(_viOperator);
-    auto status =
-        sviHelper.SVI(x, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), precision, {}, lowerBound, upperBound, sviCallback);
+    auto status = sviHelper.SVI(x, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), precision, {}, lowerBound, upperBound,
+                                sviCallback, optionalRelevantValues);
 
     this->reportStatus(status, numIterations);
 

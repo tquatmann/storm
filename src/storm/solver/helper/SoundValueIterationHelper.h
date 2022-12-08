@@ -262,7 +262,8 @@ class SoundValueIterationHelper {
             return false;
         }
 
-        bool checkConvergence(uint64_t& convergenceCheckState, bool relative, ValueType const& precision) {
+        bool checkConvergence(uint64_t& convergenceCheckState, std::function<void()> const& getNextConvergenceCheckState, bool relative,
+                              ValueType const& precision) {
             if (!a.has_value() || !b.has_value())
                 return false;
             if (*a == *b)
@@ -270,23 +271,23 @@ class SoundValueIterationHelper {
             if (relative) {
                 auto [min, max] = std::minmax(*a, *b);
                 if (min >= storm::utility::zero<ValueType>()) {
-                    ValueType val = (max - min) / precision - min;
-                    for (; convergenceCheckState < xy.first.size(); ++convergenceCheckState) {
+                    ValueType const val = (max - min) / precision - min;
+                    for (; convergenceCheckState < xy.first.size(); getNextConvergenceCheckState()) {
                         if (!storm::utility::isZero(xy.second[convergenceCheckState]) &&
                             val > xy.first[convergenceCheckState] / xy.second[convergenceCheckState]) {
                             return false;
                         }
                     }
                 } else if (max <= storm::utility::zero<ValueType>()) {
-                    ValueType val = (min - max) / precision - max;
-                    for (; convergenceCheckState < xy.first.size(); ++convergenceCheckState) {
+                    ValueType const val = (min - max) / precision - max;
+                    for (; convergenceCheckState < xy.first.size(); getNextConvergenceCheckState()) {
                         if (!storm::utility::isZero(xy.second[convergenceCheckState]) &&
                             val < xy.first[convergenceCheckState] / xy.second[convergenceCheckState]) {
                             return false;
                         }
                     }
                 } else {
-                    for (; convergenceCheckState < xy.first.size(); ++convergenceCheckState) {
+                    for (; convergenceCheckState < xy.first.size(); getNextConvergenceCheckState()) {
                         ValueType l = xy.first[convergenceCheckState] + min * xy.second[convergenceCheckState];
                         ValueType u = xy.first[convergenceCheckState] + max * xy.second[convergenceCheckState];
                         assert(u >= l);
@@ -307,7 +308,7 @@ class SoundValueIterationHelper {
                 }
             } else {
                 ValueType val = precision / storm::utility::abs<ValueType>(*b - *a);
-                for (; convergenceCheckState < xy.first.size(); ++convergenceCheckState) {
+                for (; convergenceCheckState < xy.first.size(); getNextConvergenceCheckState()) {
                     if (xy.second[convergenceCheckState] > val) {
                         return false;
                     }
@@ -320,17 +321,27 @@ class SoundValueIterationHelper {
     template<typename BackendType>
     auto SVI(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy, std::pair<std::vector<ValueType> const*, ValueType> const& offsets,
              uint64_t& numIterations, bool relative, ValueType const& precision, BackendType&& backend,
-             std::function<SolverStatus(SVIData const&)> const& iterationCallback, uint64_t convergenceChkState = 0) {
+             std::function<SolverStatus(SVIData const&)> const& iterationCallback, std::optional<storm::storage::BitVector> const& relevantValues,
+             uint64_t convergenceCheckState = 0) {
         if constexpr (BackendType::CurrentStage == SVIStage::Initial) {
             xy.first.assign(xy.first.size(), storm::utility::zero<ValueType>());
             xy.second.assign(xy.first.size(), storm::utility::one<ValueType>());
+            convergenceCheckState = relevantValues.has_value() ? relevantValues->getNextSetIndex(0ull) : 0ull;
+        }
+        std::function<void()> getNextConvergenceCheckState;
+        if (relevantValues) {
+            getNextConvergenceCheckState = [&convergenceCheckState, &relevantValues]() {
+                convergenceCheckState = relevantValues->getNextSetIndex(++convergenceCheckState);
+            };
+        } else {
+            getNextConvergenceCheckState = [&convergenceCheckState]() { ++convergenceCheckState; };
         }
 
         while (true) {
             ++numIterations;
             _operator->template applyInPlace(xy, offsets, backend);
             SVIData data{SolverStatus::InProgress, xy, backend.a(), backend.b()};
-            if (data.checkConvergence(convergenceChkState, relative, precision)) {
+            if (data.checkConvergence(convergenceCheckState, getNextConvergenceCheckState, relative, precision)) {
                 return SVIData{SolverStatus::Converged, xy, backend.a(), backend.b()};
             } else {
                 if (iterationCallback) {
@@ -344,10 +355,10 @@ class SoundValueIterationHelper {
                     switch (backend.nextStage()) {
                         case SVIStage::y_less_1:
                             return SVI(xy, offsets, numIterations, relative, precision, backend.template createBackendForNextStage<SVIStage::y_less_1>(),
-                                       iterationCallback, convergenceChkState);
+                                       iterationCallback, relevantValues, convergenceCheckState);
                         case SVIStage::b_eq_d:
                             return SVI(xy, offsets, numIterations, relative, precision, backend.template createBackendForNextStage<SVIStage::b_eq_d>(),
-                                       iterationCallback, convergenceChkState);
+                                       iterationCallback, relevantValues, convergenceCheckState);
                         default:
                             STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected next stage");
                     }
@@ -359,35 +370,40 @@ class SoundValueIterationHelper {
     template<storm::OptimizationDirection Dir>
     auto SVI(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy, std::pair<std::vector<ValueType> const*, ValueType> const& offsets,
              uint64_t& numIterations, bool relative, ValueType const& precision, std::optional<ValueType> const& a, std::optional<ValueType> const& b,
-             std::function<SolverStatus(SVIData const&)> const& iterationCallback = {}) {
+             std::function<SolverStatus(SVIData const&)> const& iterationCallback = {}, std::optional<storm::storage::BitVector> const& relevantValues = {}) {
         typename SVIBackend<Dir, SVIStage::Initial>::RowValueStorageType rowValueStorage;
         rowValueStorage.resize(_sizeOfLargestRowGroup - 1);
-        return SVI(xy, offsets, numIterations, relative, precision, SVIBackend<Dir, SVIStage::Initial>(rowValueStorage, a, b), iterationCallback);
+        return SVI(xy, offsets, numIterations, relative, precision, SVIBackend<Dir, SVIStage::Initial>(rowValueStorage, a, b), iterationCallback,
+                   relevantValues);
     }
 
     auto SVI(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy, std::pair<std::vector<ValueType> const*, ValueType> const& offsets,
              uint64_t& numIterations, bool relative, ValueType const& precision, std::optional<storm::OptimizationDirection> const& dir,
              std::optional<ValueType> const& lowerBound, std::optional<ValueType> const& upperBound,
-             std::function<SolverStatus(SVIData const&)> const& iterationCallback) {
+             std::function<SolverStatus(SVIData const&)> const& iterationCallback, std::optional<storm::storage::BitVector> const& relevantValues = {}) {
         if (!dir.has_value() || maximize(*dir)) {
             // When we maximize, a is the lower bound and b is the upper bound
-            return SVI<storm::OptimizationDirection::Maximize>(xy, offsets, numIterations, relative, precision, lowerBound, upperBound, iterationCallback);
+            return SVI<storm::OptimizationDirection::Maximize>(xy, offsets, numIterations, relative, precision, lowerBound, upperBound, iterationCallback,
+                                                               relevantValues);
         } else {
             // When we minimize, b is the lower bound and a is the upper bound
-            return SVI<storm::OptimizationDirection::Minimize>(xy, offsets, numIterations, relative, precision, upperBound, lowerBound, iterationCallback);
+            return SVI<storm::OptimizationDirection::Minimize>(xy, offsets, numIterations, relative, precision, upperBound, lowerBound, iterationCallback,
+                                                               relevantValues);
         }
     }
 
     auto SVI(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy, std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative,
              ValueType const& precision, std::optional<storm::OptimizationDirection> const& dir, std::optional<ValueType> const& lowerBound,
-             std::optional<ValueType> const& upperBound, std::function<SolverStatus(SVIData const&)> const& iterationCallback) {
+             std::optional<ValueType> const& upperBound, std::function<SolverStatus(SVIData const&)> const& iterationCallback,
+             std::optional<storm::storage::BitVector> const& relevantValues = {}) {
         std::pair<std::vector<ValueType> const*, ValueType> offsetsPair{&offsets, storm::utility::zero<ValueType>()};
-        return SVI(xy, offsetsPair, numIterations, relative, precision, dir, lowerBound, upperBound, iterationCallback);
+        return SVI(xy, offsetsPair, numIterations, relative, precision, dir, lowerBound, upperBound, iterationCallback, relevantValues);
     }
 
     auto SVI(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative, ValueType const& precision,
              std::optional<storm::OptimizationDirection> const& dir = {}, std::optional<ValueType> const& lowerBound = {},
-             std::optional<ValueType> const& upperBound = {}, std::function<SolverStatus(SVIData const&)> const& iterationCallback = {}) {
+             std::optional<ValueType> const& upperBound = {}, std::function<SolverStatus(SVIData const&)> const& iterationCallback = {},
+             std::optional<storm::storage::BitVector> const& relevantValues = {}) {
         // Create two vectors x and y using the given operand plus an auxiliary vector.
         std::pair<std::vector<ValueType>, std::vector<ValueType>> xy;
         auto& auxVector = _operator->allocateAuxiliaryVector(operand.size());
@@ -397,7 +413,7 @@ class SoundValueIterationHelper {
         if constexpr (std::is_same_v<ValueType, double>) {
             doublePrec -= precision * 1e-6;  // be slightly more precise to avoid a good chunk of floating point issues
         }
-        auto res = SVI(xy, offsets, numIterations, relative, doublePrec, dir, lowerBound, upperBound, iterationCallback);
+        auto res = SVI(xy, offsets, numIterations, relative, doublePrec, dir, lowerBound, upperBound, iterationCallback, relevantValues);
         res.trySetAverage(xy.first);
         // Swap operand and aux vector back to original positions.
         xy.first.swap(operand);
@@ -408,9 +424,10 @@ class SoundValueIterationHelper {
 
     auto SVI(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, bool relative, ValueType const& precision,
              std::optional<storm::OptimizationDirection> const& dir = {}, std::optional<ValueType> const& lowerBound = {},
-             std::optional<ValueType> const& upperBound = {}, std::function<SolverStatus(SVIData const&)> const& iterationCallback = {}) {
+             std::optional<ValueType> const& upperBound = {}, std::function<SolverStatus(SVIData const&)> const& iterationCallback = {},
+             std::optional<storm::storage::BitVector> const& relevantValues = {}) {
         uint64_t numIterations = 0;
-        return SVI(operand, offsets, numIterations, relative, precision, dir, lowerBound, upperBound, iterationCallback);
+        return SVI(operand, offsets, numIterations, relative, precision, dir, lowerBound, upperBound, iterationCallback, relevantValues);
     }
 
     std::shared_ptr<ValueIterationOperator<ValueType, TrivialRowGrouping>> _operator;

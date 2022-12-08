@@ -551,9 +551,13 @@ bool IterativeMinMaxLinearEquationSolver<ValueType>::solveEquationsIntervalItera
                               this->getTerminationCondition().terminateNow(data.y, SolverGuarantee::GreaterOrEqual);
         return this->updateStatus(data.status, terminateEarly, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
     };
+    std::optional<storm::storage::BitVector> optionalRelevantValues;
+    if (this->hasRelevantValues()) {
+        optionalRelevantValues = this->getRelevantValues();
+    }
     this->startMeasureProgress();
     auto status = iiHelper.II(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, lowerBoundsCallback, upperBoundsCallback, dir,
-                              iiCallback);
+                              iiCallback, optionalRelevantValues);
     this->reportStatus(status, numIterations);
 
     // If requested, we store the scheduler for retrieval.
@@ -594,8 +598,12 @@ bool IterativeMinMaxLinearEquationSolver<ValueType>::solveEquationsSoundValueIte
     };
     this->startMeasureProgress();
     helper::SoundValueIterationHelper<ValueType> sviHelper(_viOperator);
-    auto status =
-        sviHelper.SVI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), precision, dir, lowerBound, upperBound, sviCallback);
+    std::optional<storm::storage::BitVector> optionalRelevantValues;
+    if (this->hasRelevantValues()) {
+        optionalRelevantValues = this->getRelevantValues();
+    }
+    auto status = sviHelper.SVI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), precision, dir, lowerBound, upperBound,
+                                sviCallback, optionalRelevantValues);
 
     // If requested, we store the scheduler for retrieval.
     if (this->isTrackSchedulerSet()) {
