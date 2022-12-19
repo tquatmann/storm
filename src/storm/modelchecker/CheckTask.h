@@ -142,14 +142,23 @@ class CheckTask {
      * Retrieves whether an optimization direction was set.
      */
     bool isOptimizationDirectionSet() const {
-        return static_cast<bool>(optimizationDirection);
+        return true;  // TODO: This is a nasty hack to make sure that the 'tonondet' option works properly.
+        // return static_cast<bool>(optimizationDirection);
     }
 
     /*!
      * Retrieves the optimization direction (if set).
      */
+    storm::OptimizationDirection const minimizeDir{
+        storm::OptimizationDirection::Minimize};  // TODO: This is a nasty hack to make sure that the 'tonondet' option works properly.
     storm::OptimizationDirection const& getOptimizationDirection() const {
-        return optimizationDirection.get();
+        if (optimizationDirection) {
+            return optimizationDirection.get();
+        } else {
+            STORM_LOG_WARN("Optimization direction not given. Defaulting to Minimize");  // TODO: This is a nasty hack to make sure that the 'tonondet' option
+                                                                                         // works properly.
+            return minimizeDir;
+        }
     }
 
     /*!
