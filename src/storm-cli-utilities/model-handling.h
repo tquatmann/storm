@@ -595,8 +595,13 @@ std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> prepro
     }
 
     if (transformationSettings.isToNondeterministicModelSet()) {
-        result.first = storm::api::transformToNondeterministicModel<ValueType>(std::move(*result.first));
-        result.second = true;
+        if (result.first->isNondeterministicModel()) {
+            STORM_LOG_WARN("Requested a transformation to a nondeterministic model, but model of type " << result.first->getType()
+                                                                                                        << " is already nondeterministic. This has no effect.");
+        } else {
+            result.first = storm::api::transformToNondeterministicModel<ValueType>(std::move(*result.first));
+            result.second = true;
+        }
     }
 
     return result;
