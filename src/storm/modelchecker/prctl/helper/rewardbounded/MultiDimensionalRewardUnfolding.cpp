@@ -792,54 +792,52 @@ boost::optional<ValueType> MultiDimensionalRewardUnfolding<ValueType, SingleObje
                         objective.upperResultBound = resBound;
                     }
                 }
-
-                // If we could not find an upper bound, try to get an upper bound for the unbounded case
-                if (!objective.upperResultBound) {
-                    storm::storage::BitVector allStates(model.getNumberOfStates(), true);
-                    // Get the set of states from which reward is reachable
-                    auto nonZeroRewardStates = rewModel.getStatesWithZeroReward(model.getTransitionMatrix());
-                    nonZeroRewardStates.complement();
-                    auto expRewGreater0EStates = storm::utility::graph::performProbGreater0E(model.getBackwardTransitions(), allStates, nonZeroRewardStates);
-                    // Eliminate zero-reward ECs
-                    auto zeroRewardChoices = rewModel.getChoicesWithZeroReward(model.getTransitionMatrix());
-                    auto ecElimRes = storm::transformer::EndComponentEliminator<ValueType>::transform(model.getTransitionMatrix(), expRewGreater0EStates,
-                                                                                                      zeroRewardChoices, ~allStates);
-                    allStates.resize(ecElimRes.matrix.getRowGroupCount());
-                    storm::storage::BitVector outStates(allStates.size(), false);
-                    std::vector<ValueType> rew0StateProbs;
-                    rew0StateProbs.reserve(ecElimRes.matrix.getRowCount());
-                    for (uint64_t state = 0; state < allStates.size(); ++state) {
-                        for (uint64_t choice = ecElimRes.matrix.getRowGroupIndices()[state]; choice < ecElimRes.matrix.getRowGroupIndices()[state + 1];
-                             ++choice) {
-                            // Check whether the choice lead to a state with expRew 0 in the original model
-                            bool isOutChoice = false;
-                            uint64_t originalModelChoice = ecElimRes.newToOldRowMapping[choice];
-                            for (auto const& entry : model.getTransitionMatrix().getRow(originalModelChoice)) {
-                                if (!expRewGreater0EStates.get(entry.getColumn())) {
-                                    isOutChoice = true;
-                                    outStates.set(state, true);
-                                    rew0StateProbs.push_back(storm::utility::one<ValueType>() - ecElimRes.matrix.getRowSum(choice));
-                                    assert(!storm::utility::isZero(rew0StateProbs.back()));
-                                    break;
-                                }
-                            }
-                            if (!isOutChoice) {
-                                rew0StateProbs.push_back(storm::utility::zero<ValueType>());
+            }
+            // If we could not find an upper bound, try to get an upper bound for the unbounded case
+            if (!objective.upperResultBound) {
+                storm::storage::BitVector allStates(model.getNumberOfStates(), true);
+                // Get the set of states from which reward is reachable
+                auto nonZeroRewardStates = rewModel.getStatesWithZeroReward(model.getTransitionMatrix());
+                nonZeroRewardStates.complement();
+                auto expRewGreater0EStates = storm::utility::graph::performProbGreater0E(model.getBackwardTransitions(), allStates, nonZeroRewardStates);
+                // Eliminate zero-reward ECs
+                auto zeroRewardChoices = rewModel.getChoicesWithZeroReward(model.getTransitionMatrix());
+                auto ecElimRes = storm::transformer::EndComponentEliminator<ValueType>::transform(model.getTransitionMatrix(), expRewGreater0EStates,
+                                                                                                  zeroRewardChoices, ~allStates);
+                allStates.resize(ecElimRes.matrix.getRowGroupCount());
+                storm::storage::BitVector outStates(allStates.size(), false);
+                std::vector<ValueType> rew0StateProbs;
+                rew0StateProbs.reserve(ecElimRes.matrix.getRowCount());
+                for (uint64_t state = 0; state < allStates.size(); ++state) {
+                    for (uint64_t choice = ecElimRes.matrix.getRowGroupIndices()[state]; choice < ecElimRes.matrix.getRowGroupIndices()[state + 1]; ++choice) {
+                        // Check whether the choice lead to a state with expRew 0 in the original model
+                        bool isOutChoice = false;
+                        uint64_t originalModelChoice = ecElimRes.newToOldRowMapping[choice];
+                        for (auto const& entry : model.getTransitionMatrix().getRow(originalModelChoice)) {
+                            if (!expRewGreater0EStates.get(entry.getColumn())) {
+                                isOutChoice = true;
+                                outStates.set(state, true);
+                                rew0StateProbs.push_back(storm::utility::one<ValueType>() - ecElimRes.matrix.getRowSum(choice));
+                                assert(!storm::utility::isZero(rew0StateProbs.back()));
+                                break;
                             }
                         }
-                    }
-                    // An upper reward bound can only be computed if it is below infinity
-                    if (storm::utility::graph::performProb1A(ecElimRes.matrix, ecElimRes.matrix.getRowGroupIndices(), ecElimRes.matrix.transpose(true),
-                                                             allStates, outStates)
-                            .full()) {
-                        std::vector<ValueType> rewards;
-                        rewards.reserve(ecElimRes.matrix.getRowCount());
-                        for (auto row : ecElimRes.newToOldRowMapping) {
-                            rewards.push_back(actionRewards[row]);
+                        if (!isOutChoice) {
+                            rew0StateProbs.push_back(storm::utility::zero<ValueType>());
                         }
-                        storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType> baier(ecElimRes.matrix, rewards, rew0StateProbs);
-                        objective.upperResultBound = baier.computeUpperBound();
                     }
+                }
+                // An upper reward bound can only be computed if it is below infinity
+                if (storm::utility::graph::performProb1A(ecElimRes.matrix, ecElimRes.matrix.getRowGroupIndices(), ecElimRes.matrix.transpose(true), allStates,
+                                                         outStates)
+                        .full()) {
+                    std::vector<ValueType> rewards;
+                    rewards.reserve(ecElimRes.matrix.getRowCount());
+                    for (auto row : ecElimRes.newToOldRowMapping) {
+                        rewards.push_back(actionRewards[row]);
+                    }
+                    storm::modelchecker::helper::BaierUpperRewardBoundsComputer<ValueType> baier(ecElimRes.matrix, rewards, rew0StateProbs);
+                    objective.upperResultBound = baier.computeUpperBound();
                 }
             }
         }
