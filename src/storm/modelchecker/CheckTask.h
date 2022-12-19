@@ -149,8 +149,8 @@ class CheckTask {
     /*!
      * Retrieves the optimization direction (if set).
      */
-    storm::OptimizationDirection const minimizeDir{
-        storm::OptimizationDirection::Minimize};  // TODO: This is a nasty hack to make sure that the 'tonondet' option works properly.
+    storm::OptimizationDirection minimizeDir =
+        storm::OptimizationDirection::Minimize;  // TODO: This is a nasty hack to make sure that the 'tonondet' option works properly.
     storm::OptimizationDirection const& getOptimizationDirection() const {
         if (optimizationDirection) {
             return optimizationDirection.get();
