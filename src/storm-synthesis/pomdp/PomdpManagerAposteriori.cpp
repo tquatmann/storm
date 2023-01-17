@@ -67,6 +67,8 @@ namespace storm {
                 
                 this->num_states = 0;
                 this->prototype_state_copies.clear();
+                this->state_prototype.clear();
+                this->state_memory.clear();
 
                 this->action_holes.clear();
                 this->update_holes.clear();
@@ -95,6 +97,8 @@ namespace storm {
                     this->prototype_state_copies[prototype].resize(memory_size);
                     for(uint64_t memory = 0; memory < memory_size; memory++) {
                         this->prototype_state_copies[prototype][memory] = this->num_states++;
+                        this->state_prototype.push_back(prototype);
+                        this->state_memory.push_back(memory);
                     }
                 }
             }
