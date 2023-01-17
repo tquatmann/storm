@@ -29,6 +29,11 @@ namespace storm {
 
             // MDP obtained after last unfolding
             std::shared_ptr<storm::models::sparse::Mdp<ValueType>> mdp;
+            // for each state contains its prototype state (reverse of prototype_duplicates)
+            std::vector<uint64_t> state_prototype;
+            // for each state contains its memory index
+            std::vector<uint64_t> state_memory;
+            
             // for each unfolded row, its coloring
             std::vector<std::map<uint64_t,uint64_t>> coloring;
             // for each hole, the number of its options
