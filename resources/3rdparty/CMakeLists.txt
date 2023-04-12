@@ -46,15 +46,14 @@ list(APPEND STORM_DEP_TARGETS gmm)
 ##
 #############################################################
 
-# Checkout Eigen version 3.3.9
-message (STATUS "Storm - Including Eigen 3.3.9.")
+# Checkout Eigen version 3.4.0
+message (STATUS "Storm - Including Eigen 3.4.0 commit b0eded878d5d162d61583a286c0d8a45406ad1bc.")
 ExternalProject_Add(
         eigen_src
         GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-		GIT_SHALLOW 1
-        GIT_TAG 0fd6b4f71dd85b2009ee4d1aeb296e2c11fc9d68
+        GIT_TAG b0eded878d5d162d61583a286c0d8a45406ad1bc
         SOURCE_DIR ${STORM_3RDPARTY_INCLUDE_DIR}/StormEigen
-        PREFIX ${STORM_3RDPARTY_BINARY_DIR}/StormEigen-3.3.9
+        PREFIX ${STORM_3RDPARTY_BINARY_DIR}/StormEigen-3.4.0
 		PATCH_COMMAND git apply ${STORM_3RDPARTY_SOURCE_DIR}/patches/eigen.patch
         UPDATE_COMMAND ""
         CONFIGURE_COMMAND ""
