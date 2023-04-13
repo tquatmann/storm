@@ -12,6 +12,7 @@
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/SignalHandler.h"
+#include "storm/utility/vector.h"
 
 namespace storm {
     namespace builder {
@@ -380,7 +381,7 @@ namespace storm {
             if (!mdpActionRewards.empty()) {
                 mdpActionRewards.resize(getCurrentNumberOfMdpChoices(), storm::utility::zero<ValueType>());
                 mdpRewardModels.emplace("default",
-                                        storm::models::sparse::StandardRewardModel<ValueType>(boost::optional<std::vector<ValueType>>(), std::move(mdpActionRewards)));
+                                        storm::models::sparse::StandardRewardModel<ValueType>(std::optional<std::vector<ValueType>>(), std::move(mdpActionRewards)));
             }
 
             // Create model components

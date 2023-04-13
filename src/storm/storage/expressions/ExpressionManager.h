@@ -2,7 +2,7 @@
 #define STORM_STORAGE_EXPRESSIONS_EXPRESSIONMANAGER_H_
 
 #include <cstdint>
-#include <iostream>
+#include <iosfwd>
 #include <iterator>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,7 +10,7 @@
 
 #include <boost/optional.hpp>
 
-#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/adapters/RationalNumberForward.h"
 #include "storm/storage/expressions/Expression.h"
 #include "storm/storage/expressions/Variable.h"
 #include "storm/utility/OsDetection.h"

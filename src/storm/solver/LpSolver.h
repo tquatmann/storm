@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include "OptimizationDirection.h"
-#include "storm/utility/macros.h"
 
 namespace storm {
 namespace expressions {
@@ -38,10 +37,10 @@ struct RawLpConstraint {
      */
     void addToLhs(VariableIndexType const& variable, ValueType const& coefficient);
 
-    std::vector<VariableIndexType> _lhsVariableIndices;
-    std::vector<ValueType> _lhsCoefficients;
-    storm::expressions::RelationType _relationType;
-    ValueType _rhs;
+    std::vector<VariableIndexType> lhsVariableIndices;
+    std::vector<ValueType> lhsCoefficients;
+    storm::expressions::RelationType relationType;
+    ValueType rhs;
 };
 
 /*!
@@ -344,31 +343,21 @@ class LpSolver {
      *
      * @param modelSense The model sense to use.
      */
-    void setOptimizationDirection(OptimizationDirection const& optimizationDirection) {
-        if (optimizationDirection != this->optimizationDirection) {
-            currentModelHasBeenOptimized = false;
-        }
-        this->optimizationDirection = optimizationDirection;
-    }
+    void setOptimizationDirection(OptimizationDirection const& optimizationDirection);
 
     /*!
      * Retrieves whether the objective function of this model is to be minimized or maximized.
      *
      * @return A value indicating whether the objective function of this model is to be minimized or maximized.
      */
-    OptimizationDirection getOptimizationDirection() const {
-        return optimizationDirection;
-    }
+    OptimizationDirection getOptimizationDirection() const;
 
     /*!
      * Retrieves the manager for the variables created for this solver.
      *
      * @return The manager for the variables created for this solver.
      */
-    storm::expressions::ExpressionManager const& getManager() const {
-        STORM_LOG_ASSERT(!RawMode, "Asking for a manager in raw mode which does not make sense.");
-        return *manager;
-    }
+    storm::expressions::ExpressionManager const& getManager() const;
 
     /*!
      * Pushes a backtracking point on the solver's stack. A following call to pop() deletes exactly those

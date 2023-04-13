@@ -1,6 +1,8 @@
 #include "storm-pomdp/transformer/PomdpMemoryUnfolder.h"
 
 #include <limits>
+
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/storage/sparse/ModelComponents.h"
 #include "storm/utility/graph.h"
 
@@ -144,7 +146,7 @@ namespace storm {
         
             template<typename ValueType>
             storm::models::sparse::StandardRewardModel<ValueType> PomdpMemoryUnfolder<ValueType>::transformRewardModel(storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel, storm::storage::BitVector const& reachableStates) const {
-                boost::optional<std::vector<ValueType>> stateRewards, actionRewards;
+                std::optional<std::vector<ValueType>> stateRewards, actionRewards;
                 if (rewardModel.hasStateRewards()) {
                     stateRewards = std::vector<ValueType>();
                     stateRewards->reserve(pomdp.getNumberOfStates() * memory.getNumberOfStates());

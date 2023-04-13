@@ -1,5 +1,11 @@
 #include "storm/storage/sparse/StateValuations.h"
 
+#include <boost/algorithm/string/join.hpp>
+
+#include "storm/adapters/JsonAdapter.h"
+
+#include "storm/adapters/RationalNumberForward.h"
+
 #include "storm/storage/BitVector.h"
 
 #include "storm/exceptions/InvalidTypeException.h"

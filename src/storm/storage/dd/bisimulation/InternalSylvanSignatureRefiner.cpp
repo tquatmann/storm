@@ -2,6 +2,10 @@
 
 #include "storm/storage/dd/DdManager.h"
 
+#include "storm/storage/dd/sylvan/InternalSylvanBdd.h"
+
+#include "storm/adapters/RationalFunctionAdapter.h"
+
 #include "storm/storage/dd/bisimulation/Partition.h"
 #include "storm/storage/dd/bisimulation/Signature.h"
 
@@ -31,10 +35,6 @@ InternalSylvanSignatureRefinerBase::InternalSylvanSignatureRefinerBase(storm::dd
       numberOfRefinements(0),
       currentCapacity(1ull << 20),
       resizeFlag(0) {
-    // Perform garbage collection to clean up stuff not needed anymore.
-    LACE_ME;
-    sylvan_gc();
-
     table.resize(3 * currentCapacity, NO_ELEMENT_MARKER);
 }
 
@@ -73,16 +73,14 @@ InternalSignatureRefiner<storm::dd::DdType::Sylvan, ValueType>::refine(Partition
                                                                        storm::dd::Add<storm::dd::DdType::Sylvan, ValueType> const& signatureAdd) {
     STORM_LOG_ASSERT(oldPartition.storedAsBdd(), "Expecting partition to be stored as BDD for Sylvan.");
 
-    LACE_ME;
-
     nextFreeBlockIndex = options.reuseBlockNumbers ? oldPartition.getNextFreeBlockIndex() : 0;
     signatures.resize(nextFreeBlockIndex);
 
     // Perform the actual recursive refinement step.
     std::pair<BDD, BDD> result(0, 0);
     result.first =
-        CALL(sylvan_refine_partition, signatureAdd.getInternalAdd().getSylvanMtbdd().GetMTBDD(), oldPartition.asBdd().getInternalBdd().getSylvanBdd().GetBDD(),
-             nondeterminismVariables.getInternalBdd().getSylvanBdd().GetBDD(), nonBlockVariables.getInternalBdd().getSylvanBdd().GetBDD(), this);
+        RUN(sylvan_refine_partition, signatureAdd.getInternalAdd().getSylvanMtbdd().GetMTBDD(), oldPartition.asBdd().getInternalBdd().getSylvanBdd().GetBDD(),
+            nondeterminismVariables.getInternalBdd().getSylvanBdd().GetBDD(), nonBlockVariables.getInternalBdd().getSylvanBdd().GetBDD(), this);
 
     // Construct resulting BDD from the obtained node and the meta information.
     storm::dd::InternalBdd<storm::dd::DdType::Sylvan> internalNewPartitionBdd(&manager.getInternalDdManager(), sylvan::Bdd(result.first));
