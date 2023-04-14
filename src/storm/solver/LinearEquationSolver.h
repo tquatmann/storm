@@ -11,6 +11,7 @@
 #include "storm/solver/OptimizationDirection.h"
 
 #include "storm/utility/VectorHelper.h"
+#include "storm/utility/macros.h"
 
 #include "storm/storage/SparseMatrix.h"
 

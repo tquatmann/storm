@@ -219,7 +219,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::solveEquationsLp(Environment const
         for (uint64_t entry : this->getRelevantValues()) {
             RawLpConstraint<ValueType> constraint(reltype, this->globalBound->constraintValue, 1);
             if (auto findRes = constantRowGroups.find(entry); findRes != constantRowGroups.end()) {
-                constraint._rhs -= findRes->second;
+                constraint.rhs -= findRes->second;
             } else {
                 constraint.addToLhs(entry, storm::utility::one<ValueType>());
             }
@@ -247,7 +247,7 @@ bool LpMinMaxLinearEquationSolver<ValueType>::solveEquationsLp(Environment const
             RawLpConstraint<ValueType> constraint(relationType, -b[rowIndex], row.getNumberOfEntries());
             auto addToConstraint = [&constraint, &constantRowGroups](VariableIndex const& var, ValueType const& val) {
                 if (auto findRes = constantRowGroups.find(var); findRes != constantRowGroups.end()) {
-                    constraint._rhs -= findRes->second * val;
+                    constraint.rhs -= findRes->second * val;
                 } else {
                     constraint.addToLhs(var, val);
                 }
