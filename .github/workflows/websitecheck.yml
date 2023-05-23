@@ -1,0 +1,29 @@
+name: check-website-availability
+# Checks if the storm website is available
+
+on:
+  schedule:
+      # run daily at 8 am
+      - cron: '0 8 * * *'
+  # needed to trigger the workflow manually
+  workflow_dispatch:
+
+jobs:
+
+  check:
+    name: Check Website availability
+    runs-on: ubuntu-latest
+    # Do not run on forks
+    if: github.repository_owner == 'moves-rwth'
+    steps:
+      - name: Check if the main website is available
+        uses: jtalk/url-health-check-action@v3
+        with:
+          url:
+            - https://www.stormchecker.org
+            - http://www.stormchecker.org
+            - https://stormchecker.org
+            - http://stormchecker.org
+          max-attempts: 3
+          retry-delay: 5s
+ 
