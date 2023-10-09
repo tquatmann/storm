@@ -24,14 +24,22 @@ namespace modelchecker {
 namespace helper {
 template<typename ValueType>
 SparseDeterministicVisitingTimesHelper<ValueType>::SparseDeterministicVisitingTimesHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix)
-    : _transitionMatrix(transitionMatrix), _exitRates(nullptr), _backwardTransitions(nullptr), _sccDecomposition(nullptr), _nonBsccStates(_transitionMatrix.getRowCount(), false) {
+    : _transitionMatrix(transitionMatrix),
+      _exitRates(nullptr),
+      _backwardTransitions(nullptr),
+      _sccDecomposition(nullptr),
+      _nonBsccStates(_transitionMatrix.getRowCount(), false) {
     // Intentionally left empty
 }
 
 template<typename ValueType>
 SparseDeterministicVisitingTimesHelper<ValueType>::SparseDeterministicVisitingTimesHelper(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                                           std::vector<ValueType> const& exitRates)
-    : _transitionMatrix(transitionMatrix), _exitRates(&exitRates), _backwardTransitions(nullptr), _sccDecomposition(nullptr), _nonBsccStates(_transitionMatrix.getRowCount(), false) {
+    : _transitionMatrix(transitionMatrix),
+      _exitRates(&exitRates),
+      _backwardTransitions(nullptr),
+      _sccDecomposition(nullptr),
+      _nonBsccStates(_transitionMatrix.getRowCount(), false) {
     // For the CTMC case we assert that the caller actually provided the probabilistic transitions
     STORM_LOG_ASSERT(this->_transitionMatrix.isProbabilistic(), "Non-probabilistic transitions");
 }
@@ -91,7 +99,7 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::computeExpectedVisitingT
 
     // Create auxiliary data and lambdas
     storm::storage::BitVector sccAsBitVector(stateValues.size(), false);
-    auto isLeavingTransition = [&sccAsBitVector](auto const& e) {return !sccAsBitVector.get(e.getColumn());};
+    auto isLeavingTransition = [&sccAsBitVector](auto const& e) { return !sccAsBitVector.get(e.getColumn()); };
     auto isLeavingTransitionWithNonZeroValue = [&isLeavingTransition, &stateValues](auto const& e) {
         return isLeavingTransition(e) && !storm::utility::isZero(stateValues[e.getColumn()]);
     };
@@ -102,7 +110,6 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::computeExpectedVisitingT
         auto row = this->_backwardTransitions->getRow(state);
         return std::any_of(row.begin(), row.end(), isLeavingTransitionWithNonZeroValue);
     };
-
 
     if (env.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Topological) {
         // Compute EVTs SCC wise in topological order
@@ -142,8 +149,7 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::computeExpectedVisitingT
                 break;
             }
         }
-    }
-    else {
+    } else {
         // We solve the equation system for all non-BSCC in one step (not each SCC individually - adaption of precision is not necessary).
         if (!_nonBsccStates.empty()) {
             // We need to adapt precision if we consider CTMCs.
@@ -215,10 +221,9 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::createDecomposition(Envi
 
 template<typename ValueType>
 void SparseDeterministicVisitingTimesHelper<ValueType>::createNonBsccStateVector() {
-
     // Create auxiliary data and lambdas
     storm::storage::BitVector sccAsBitVector(_transitionMatrix.getRowCount(), false);
-    auto isLeavingTransition = [&sccAsBitVector](auto const& e) {return !sccAsBitVector.get(e.getColumn());};
+    auto isLeavingTransition = [&sccAsBitVector](auto const& e) { return !sccAsBitVector.get(e.getColumn()); };
     auto isExitState = [this, &isLeavingTransition](uint64_t state) {
         auto row = this->_transitionMatrix.getRow(state);
         return std::any_of(row.begin(), row.end(), isLeavingTransition);
@@ -234,15 +239,14 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::createNonBsccStateVector
         }
         sccAsBitVector.clear();
     }
-
 }
 
 template<>
-std::vector<storm::RationalFunction> SparseDeterministicVisitingTimesHelper<storm::RationalFunction>::computeUpperBounds(storm::storage::BitVector const& stateSetAsBitvector) const {
+std::vector<storm::RationalFunction> SparseDeterministicVisitingTimesHelper<storm::RationalFunction>::computeUpperBounds(
+    storm::storage::BitVector const& stateSetAsBitvector) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                     "Computing upper bounds for expected visiting times over rational functions is not supported.");
 }
-
 
 template<typename ValueType>
 std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::computeUpperBounds(storm::storage::BitVector const& stateSetAsBitvector) const {
@@ -258,8 +262,6 @@ std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::comput
     return upperBounds;
 }
 
-
-
 template<typename ValueType>
 storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnvironmentForSolver(storm::Environment const& env, bool topological) const {
     storm::Environment newEnv(env);
@@ -270,30 +272,32 @@ storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnviron
     }
 
     // Adjust precision for CTMCs, because the EVTs are divided by the exit rates at the end.
-    if (isContinuousTime()){
+    if (isContinuousTime()) {
         auto prec = newEnv.solver().getPrecisionOfLinearEquationSolver(newEnv.solver().getLinearEquationSolverType());
 
         bool needAdaptPrecision =
-            env.solver().isForceSoundness() &&
-            prec.first.is_initialized() &&
-            prec.second.is_initialized() &&
-            !newEnv.solver().getPrecisionOfLinearEquationSolver(newEnv.solver().getLinearEquationSolverType()).second.get(); // only for the absolute criterion
+            env.solver().isForceSoundness() && prec.first.is_initialized() && prec.second.is_initialized() &&
+            !newEnv.solver().getPrecisionOfLinearEquationSolver(newEnv.solver().getLinearEquationSolverType()).second.get();  // only for the absolute criterion
 
         // Assert that we only adapt the precision for native solvers
-        STORM_LOG_ASSERT(!needAdaptPrecision || env.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Native,
-                         "The precision for the current solver type is not adjusted for this solving method. Ensure that this is correct for topological computation.");
+        STORM_LOG_ASSERT(
+            !needAdaptPrecision || env.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Native,
+            "The precision for the current solver type is not adjusted for this solving method. Ensure that this is correct for topological computation.");
 
         if (needAdaptPrecision) {
             // the precision is relevant (e.g. not the case for elimination, sparselu etc.)
             ValueType min = *std::min_element(_exitRates->begin(), _exitRates->end());
-            STORM_LOG_THROW(!storm::utility::isZero(min), storm::exceptions::InvalidOperationException, "An error occurred during the adjustment of the precision. Min. rate = " << min);
-            newEnv.solver().setLinearEquationSolverPrecision(static_cast<storm::RationalNumber>(prec.first.get() * storm::utility::convertNumber<storm::RationalNumber>(min)));
+            STORM_LOG_THROW(!storm::utility::isZero(min), storm::exceptions::InvalidOperationException,
+                            "An error occurred during the adjustment of the precision. Min. rate = " << min);
+            newEnv.solver().setLinearEquationSolverPrecision(
+                static_cast<storm::RationalNumber>(prec.first.get() * storm::utility::convertNumber<storm::RationalNumber>(min)));
         }
     }
 
     auto prec = newEnv.solver().getPrecisionOfLinearEquationSolver(newEnv.solver().getLinearEquationSolverType());
     if (prec.first.is_initialized()) {
-        STORM_PRINT("Precision for EVTs computation: "<< storm::utility::convertNumber<double>(prec.first.get()) << " (exact: "<< prec.first.get() << ")" <<'\n');
+        STORM_PRINT("Precision for EVTs computation: " << storm::utility::convertNumber<double>(prec.first.get()) << " (exact: " << prec.first.get() << ")"
+                                                       << '\n');
     }
 
     return newEnv;
@@ -308,7 +312,7 @@ storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnviron
     // To guarantee soundness for OVI, II, SVI we need to increase the precision in each SCC.
     auto subEnvPrec = subEnv.solver().getPrecisionOfLinearEquationSolver(subEnv.solver().getLinearEquationSolverType());
 
-    bool singletonSCCs = true; // true if each SCC is a singleton (self-loops are allowed)
+    bool singletonSCCs = true;  // true if each SCC is a singleton (self-loops are allowed)
     storm::storage::BitVector sccAsBitVector(_transitionMatrix.getRowCount(), false);
     auto sccItEnd = std::make_reverse_iterator(_sccDecomposition->begin());
     for (auto sccIt = std::make_reverse_iterator(_sccDecomposition->end()); sccIt != sccItEnd; ++sccIt) {
@@ -316,25 +320,21 @@ storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnviron
         sccAsBitVector.set(scc.begin(), scc.end(), true);
         if (sccAsBitVector.isSubsetOf(_nonBsccStates)) {
             // This is not a BSCC, mark the states correspondingly.
-            if (sccAsBitVector.getNumberOfSetBits() > 1){
+            if (sccAsBitVector.getNumberOfSetBits() > 1) {
                 singletonSCCs = false;
                 break;
             }
-
         }
         sccAsBitVector.clear();
     }
 
-
-    bool needAdaptPrecision =
-        env.solver().isForceSoundness() &&
-        subEnvPrec.first.is_initialized() &&
-        subEnvPrec.second.is_initialized() &&
-        !singletonSCCs; // singleton sccs are solved directly
+    bool needAdaptPrecision = env.solver().isForceSoundness() && subEnvPrec.first.is_initialized() && subEnvPrec.second.is_initialized() &&
+                              !singletonSCCs;  // singleton sccs are solved directly
 
     // Assert that we only adapt the precision for native solvers
-    STORM_LOG_ASSERT(!needAdaptPrecision || subEnv.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Native,
-                         "The precision for the current solver type is not adjusted for this solving method. Ensure that this is correct for topological computation.");
+    STORM_LOG_ASSERT(
+        !needAdaptPrecision || subEnv.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Native,
+        "The precision for the current solver type is not adjusted for this solving method. Ensure that this is correct for topological computation.");
 
     if (needAdaptPrecision && subEnvPrec.second.get()) {
         STORM_LOG_ASSERT(_sccDecomposition->hasSccDepth(), "Did not compute the longest SCC chain size although it is needed.");
@@ -342,18 +342,17 @@ storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnviron
         // We need to increase the solver's relative precision that is used in an SCC depending on the maximal SCC chain length.
         auto subEnvPrec = subEnv.solver().getPrecisionOfLinearEquationSolver(subEnv.solver().getLinearEquationSolverType());
 
-            double scaledPrecision1 = 1-std::pow(1-storm::utility::convertNumber<double>(subEnvPrec.first.get()), 1.0/_sccDecomposition->getMaxSccDepth());
+        double scaledPrecision1 = 1 - std::pow(1 - storm::utility::convertNumber<double>(subEnvPrec.first.get()), 1.0 / _sccDecomposition->getMaxSccDepth());
 
-            // set new precision
-            subEnv.solver().setLinearEquationSolverPrecision(storm::utility::convertNumber<storm::RationalNumber>(scaledPrecision1));
-
+        // set new precision
+        subEnv.solver().setLinearEquationSolverPrecision(storm::utility::convertNumber<storm::RationalNumber>(scaledPrecision1));
 
     } else if (needAdaptPrecision && !subEnv.solver().getPrecisionOfLinearEquationSolver(subEnv.solver().getLinearEquationSolverType()).second.get()) {
         // Sound computations wrt. absolute precision:
-        //STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Sound computations of EVTs wrt. absolute precision is not supported.");
+        // STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Sound computations of EVTs wrt. absolute precision is not supported.");
 
         // TODO: there is probably a better way to implement this
-        if (_sccDecomposition->getMaxSccDepth()>1) {
+        if (_sccDecomposition->getMaxSccDepth() > 1) {
             // The chain length exceeds one, we need to adjust the precision
             // The adjustment of the precision used in each SCC depends on the maximal SCC chain length,
             // the maximal number of incoming transitions, and the maximal probability <1 to reach another states in an SCC.
@@ -396,13 +395,11 @@ storm::Environment SparseDeterministicVisitingTimesHelper<ValueType>::getEnviron
                 // For this, we need the number of SCCs in the longest SCC chain -1, i.e., _sccDecomposition->getMaxSccDepth() -1
                 for (int i = 1; i < _sccDecomposition->getMaxSccDepth(); i++) {
                     scale = scale + storm::utility::pow(storm::utility::convertNumber<storm::RationalNumber>(maxNumInc), i) *
-                                       storm::utility::convertNumber<storm::RationalNumber>(boundEVT);
-
+                                        storm::utility::convertNumber<storm::RationalNumber>(boundEVT);
                 }
             }
             subEnv.solver().setLinearEquationSolverPrecision(static_cast<storm::RationalNumber>(subEnvPrec.first.get() / scale));
         }
-
     }
 
     return subEnv;
@@ -436,24 +433,8 @@ void SparseDeterministicVisitingTimesHelper<ValueType>::processSingletonScc(uint
 
 template<typename ValueType>
 std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::computeValueForStateSet(storm::Environment const& env,
-                                                                                                       storm::storage::BitVector const& stateSetAsBitvector,
-                                                                                                       std::vector<ValueType> const& stateValues) const {
-    // Here we assume that the SCC is not a BSCC
-    // Let P be the SCC matrix. We solve the equation system
-    //       x * P + b = x
-    // <=> P^T * x + b = x   <- fixpoint system
-    // <=> (1-P^T) * x = b   <- equation system
-
-    // TODO We need to check if SVI works on this kind of equation system (OVI and II are correct)
-    storm::solver::GeneralLinearEquationSolverFactory<ValueType> linearEquationSolverFactory;
-    bool isFixpointFormat = linearEquationSolverFactory.getEquationProblemFormat(env) == storm::solver::LinearEquationSolverProblemFormat::FixedPointSystem;
-
-    // Get the matrix for the equation system
-    auto sccMatrix = _backwardTransitions->getSubmatrix(false, stateSetAsBitvector, stateSetAsBitvector, !isFixpointFormat);
-    if (!isFixpointFormat) {
-        sccMatrix.convertToEquationSystem();
-    }
-
+                                                                                                  storm::storage::BitVector const& stateSetAsBitvector,
+                                                                                                  std::vector<ValueType> const& stateValues) const {
     // Get the vector for the equation system
     auto sccVector = storm::utility::vector::filterVector(stateValues, stateSetAsBitvector);
     auto valIt = sccVector.begin();
@@ -465,6 +446,34 @@ std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::comput
         }
         ++valIt;
     }
+    return computeExpectedVisitingTimes(env, stateSetAsBitvector, sccVector);
+}
+
+template<typename ValueType>
+std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::computeExpectedVisitingTimes(Environment const& env,
+                                                                                                       storm::storage::BitVector const& subsystem,
+                                                                                                       std::vector<ValueType> const& initialValues) const {
+    STORM_LOG_ASSERT(subsystem.getNumberOfSetBits() == initialValues.size(), "Inconsistent size of subsystem.");
+
+    if (initialValues.empty()) {  // Catch the case where the subsystem is empty.
+        return {};
+    }
+
+    // Here we assume that the subsystem does not contain a BSCC
+    // Let P be the subsystem matrix. We solve the equation system
+    //       x * P + b = x
+    // <=> P^T * x + b = x   <- fixpoint system
+    // <=> (1-P^T) * x = b   <- equation system
+
+    // TODO We need to check if SVI works on this kind of equation system (OVI and II are correct)
+    storm::solver::GeneralLinearEquationSolverFactory<ValueType> linearEquationSolverFactory;
+    bool isFixpointFormat = linearEquationSolverFactory.getEquationProblemFormat(env) == storm::solver::LinearEquationSolverProblemFormat::FixedPointSystem;
+
+    // Get the matrix for the equation system
+    auto sccMatrix = _backwardTransitions->getSubmatrix(false, subsystem, subsystem, !isFixpointFormat);
+    if (!isFixpointFormat) {
+        sccMatrix.convertToEquationSystem();
+    }
 
     // Get the solver object and satisfy requirements
     auto solver = linearEquationSolverFactory.create(env, std::move(sccMatrix));
@@ -472,21 +481,22 @@ std::vector<ValueType> SparseDeterministicVisitingTimesHelper<ValueType>::comput
     auto req = solver->getRequirements(env);
     req.clearLowerBounds();
     if (req.upperBounds().isCritical()) {
-        // Compute upper bounds on EVTs using techniques from by Baier et al. [CAV'17] (https://doi.org/10.1007/978-3-319-63387-9_8)
-        std::vector<ValueType> upperBounds = computeUpperBounds(stateSetAsBitvector);
+        // Compute upper bounds on EVTs using techniques from Baier et al. [CAV'17] (https://doi.org/10.1007/978-3-319-63387-9_8)
+        std::vector<ValueType> upperBounds = computeUpperBounds(subsystem);
         solver->setUpperBounds(upperBounds);
         req.clearUpperBounds();
     }
 
     if (req.acyclic().isCritical()) {
-        STORM_LOG_THROW(!storm::utility::graph::hasCycle(sccMatrix), storm::exceptions::UnmetRequirementException, "The solver requires an acyclic model, but the model is not acyclic.");
+        STORM_LOG_THROW(!storm::utility::graph::hasCycle(sccMatrix), storm::exceptions::UnmetRequirementException,
+                        "The solver requires an acyclic model, but the model is not acyclic.");
         req.clearAcyclic();
     }
 
     STORM_LOG_THROW(!req.hasEnabledCriticalRequirement(), storm::exceptions::UnmetRequirementException,
                     "Solver requirements " + req.getEnabledRequirementsAsString() + " not checked.");
-    std::vector<ValueType> eqSysValues(sccVector.size());
-    solver->solveEquations(env, eqSysValues, sccVector);
+    std::vector<ValueType> eqSysValues(initialValues.size());
+    solver->solveEquations(env, eqSysValues, initialValues);
     return eqSysValues;
 }
 

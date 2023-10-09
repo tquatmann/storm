@@ -83,6 +83,22 @@ class SparseDeterministicVisitingTimesHelper : public SingleValueModelCheckerHel
      */
     void computeExpectedVisitingTimes(Environment const& env, std::vector<ValueType>& stateValues);
 
+    /*!
+     * Computes for each selected state the expected number of times we are visiting that state assuming the given initial state probabilities
+     * The interpretation of the subsystem is that once a path has exited the subsystem, all subsequent visits will be ignored.
+     * All states within the subsystem must reach a state outside of the subsystem almost surely. In other words, the subsystem shall not contain a BSCC.
+     *
+     * @param subsystem the set of states for which visiting times are computed.
+     * @param initialValues contains for each subsystem state the initial value (probability) for that state.
+     *        The values can actually sum up to something different than 1 but should be non-negative.
+     * @return the expected visiting times for the states in the subsystem.
+     *
+     * @pre subsystem.getNumberOfSetBits() == initialValues.size()
+     * @post result.size() == initialValues.size()
+     */
+    std::vector<ValueType> computeExpectedVisitingTimes(Environment const& env, storm::storage::BitVector const& subsystem,
+                                                        std::vector<ValueType> const& initialValues) const;
+
    private:
     /*!
      * @return true iff this is a computation on a continuous time model (i.e. CTMC, MA)
@@ -135,7 +151,7 @@ class SparseDeterministicVisitingTimesHelper : public SingleValueModelCheckerHel
      * @return for each state of the given set the expected number of times that state is visited.
      */
     std::vector<ValueType> computeValueForStateSet(storm::Environment const& env, storm::storage::BitVector const& stateSetAsBitVector,
-                                                        std::vector<ValueType> const& stateValues) const;
+                                                   std::vector<ValueType> const& stateValues) const;
 
     storm::storage::SparseMatrix<ValueType> const& _transitionMatrix;
     std::vector<ValueType> const* _exitRates;
