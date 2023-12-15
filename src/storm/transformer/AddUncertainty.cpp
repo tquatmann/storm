@@ -3,6 +3,7 @@
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/storage/SparseMatrix.h"
+#include "storm/utility/builder.h"
 #include "storm/utility/macros.h"
 
 namespace storm::transformer {
@@ -22,15 +23,11 @@ std::shared_ptr<storm::models::sparse::Model<Interval>> AddUncertainty<ValueType
             }
         }
     }
-
-    switch (origModel->getType()) {
-        case storm::models::ModelType::Dtmc:
-            return std::make_shared<storm::models::sparse::Dtmc<storm::Interval>>(newMatrixBuilder.build(), origModel->getStateLabeling());
-            // TODO add reward models
-            // TODO add state valuations, etc.
-        default:
-            STORM_LOG_ASSERT(false, "Not implemented");
-    }
+    // TODO add reward models
+    // TODO add state valuations, etc
+    STORM_LOG_ASSERT(origModel->isOfType(storm::models::ModelType::Dtmc), "Not implemented");
+    storm::storage::sparse::ModelComponents<Interval> components(newMatrixBuilder.build(), origModel->getStateLabeling());
+    return storm::utility::builder::buildModelFromComponents(origModel->getType(), std::move(components));
 }
 
 template<typename ValueType>
