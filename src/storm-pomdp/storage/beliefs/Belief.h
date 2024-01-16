@@ -121,7 +121,7 @@ class Belief {
             if (state != secondIt->first) {
                 return false;
             }
-            if (BeliefNumerics<ValueType>::equal(value, secondIt->second)) {
+            if (!BeliefNumerics<ValueType>::equal(value, secondIt->second)) {
                 return false;
             }
             ++secondIt;

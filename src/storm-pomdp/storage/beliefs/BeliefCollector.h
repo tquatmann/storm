@@ -11,17 +11,17 @@ class BeliefCollector {
     /*!
      * Indicates that this collector gives IDs in a consecutive way, ensuring that all Ids are less than `getNumberOfBeliefIds()`
      */
-    bool HasConsecutiveIds = true;
+    static constexpr bool HasConsecutiveIds = true;
 
     bool isEqual(BeliefId const& first, BeliefId const& second) const {
-        return first == second || getBelief(first) == getBelief(second);
+        return first == second || getBeliefFromId(first) == getBeliefFromId(second);
     }
 
     BeliefId getNumberOfBeliefIds() const {
         return gatheredBeliefs.size();
     }
 
-    BeliefType const& getBelief(BeliefId const& id) const {
+    BeliefType const& getBeliefFromId(BeliefId const& id) const {
         STORM_LOG_ASSERT(id < gatheredBeliefs.size(), "Unexpected belief id " << id << ". Ids are in [0," << getNumberOfBeliefIds() << ").");
         return gatheredBeliefs[id];
     }
@@ -29,7 +29,7 @@ class BeliefCollector {
     /*!
      * @return the ID of the given belief. Assumes that the belief is present in the collector.
      */
-    BeliefId getId(BeliefType const& belief) const {
+    BeliefId getIdFromBelief(BeliefType const& belief) const {
         STORM_LOG_ASSERT(belief.observation() < beliefToIdMap.size(),
                          "Unknown belief observation " << belief.observation() << ". Obervations are in [0," << beliefToIdMap.size());
         STORM_LOG_ASSERT(hasBelief(belief), "Belief " << belief.toString() << " is not present in this collector.");
@@ -38,6 +38,10 @@ class BeliefCollector {
 
     bool hasBelief(BeliefType const& belief) const {
         return belief.observation() < beliefToIdMap.size() && beliefToIdMap[belief.observation()].count(belief) > 0;
+    }
+
+    bool hasId(BeliefId const& id) const {
+        return id < gatheredBeliefs.size();
     }
 
     /*!
@@ -57,18 +61,18 @@ class BeliefCollector {
      *  - If yes, the Id is returned.
      *  - If not, the belief is collected and a fresh Id is allocated.
      */
-    BeliefId getOrAddBeliefId(BeliefType&& belief) {
+    BeliefId getIdOrAddBelief(BeliefType&& belief) {
         if (auto id = getIdOptional(belief); id != InvalidBeliefId) {
             return id;
         }
-        return addBeliefId(std::move(belief));
+        return addBelief(std::move(belief));
     }
 
     /*!
      * Adds a fresh belief and returns its ID. Assumes that this belief is not already present.
      * @return
      */
-    BeliefId addBeliefId(BeliefType&& inputBelief) {
+    BeliefId addBelief(BeliefType&& inputBelief) {
         auto const id = gatheredBeliefs.size();
         gatheredBeliefs.push_back(std::move(inputBelief));
         auto const& belief = gatheredBeliefs.back();

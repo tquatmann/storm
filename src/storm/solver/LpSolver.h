@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "LpSolverForward.h"
 #include "OptimizationDirection.h"
 
 namespace storm {
@@ -47,7 +48,7 @@ struct RawLpConstraint {
  * An interface that captures the functionality of an LP solver.
  * @tparam RawMode: If set, variables are given as indices and constraints as RawConstraints. This avoids overhead introduced by storm::expression's
  */
-template<typename ValueType, bool RawMode = false>
+template<typename ValueType, bool RawMode>
 class LpSolver {
    public:
     using Variable = std::conditional_t<RawMode, typename RawLpConstraint<ValueType>::VariableIndexType, storm::expressions::Variable>;

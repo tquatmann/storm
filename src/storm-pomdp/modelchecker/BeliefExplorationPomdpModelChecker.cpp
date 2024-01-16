@@ -4,7 +4,12 @@
 
 #include "storm-pomdp/analysis/FiniteBeliefMdpDetection.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
+#include "storm-pomdp/builder/belief-mdp/BeliefMdpBuilder.h"
+#include "storm-pomdp/storage/beliefs/Belief.h"
 #include "storm-pomdp/transformer/MakeStateSetObservationClosed.h"
+#include "storm/api/verification.h"
+#include "storm/modelchecker/CheckTask.h"
+#include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 
 #include "storm/logic/Formulas.h"
 #include "storm/utility/ConstantsComparator.h"
@@ -201,7 +206,19 @@ BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPTyp
         STORM_LOG_INFO("Detected that the belief MDP is finite.");
         statistics.beliefMdpDetectedToBeFinite = true;
     }
-    if (options.interactiveUnfolding) {
+
+    if (options.useRevisedImplementation) {
+        storm::pomdp::builder::BeliefMdpPropertyInformation propertyInfo;
+        if (rewardModelName) {
+            propertyInfo.kind = storm::pomdp::builder::BeliefMdpPropertyInformation::Kind::ExpectedTotalReachabilityReward;
+            propertyInfo.rewardModelName = rewardModelName;
+        } else {
+            propertyInfo.kind = storm::pomdp::builder::BeliefMdpPropertyInformation::Kind::ReachabilityProbability;
+        }
+        propertyInfo.dir = formulaInfo.getOptimizationDirection();
+        propertyInfo.targetObservations = targetObservations;
+        approximate(env, propertyInfo, pomdpValueBounds, result);
+    } else if (options.interactiveUnfolding) {
         unfoldInteractively(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
     } else {
         refineReachability(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
@@ -303,6 +320,31 @@ PomdpModelType const& BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefV
         return *preprocessedPomdp;
     } else {
         return *inputPomdp;
+    }
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::approximate(
+    storm::Environment const& env, storm::pomdp::builder::BeliefMdpPropertyInformation const& propertyInformation,
+    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
+    storm::utility::Stopwatch swBuildBeliefMdp(true);
+    storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
+                                            storm::pomdp::beliefs::Belief<BeliefValueType>>
+        builder(pomdp(), propertyInformation);
+    auto beliefMdp = builder.build();
+    swBuildBeliefMdp.stop();
+    STORM_PRINT_AND_LOG("Time for constructing belief MDP: " << swBuildBeliefMdp << ".\n");
+    beliefMdp->printModelInformationToStream(std::cout);
+    auto formula = builder.createFormulaForBeliefMdp();
+    storm::modelchecker::CheckTask<storm::logic::Formula, BeliefMDPType> task(*formula, true);
+    std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMDPType>(env, beliefMdp, task));
+    if (res) {
+        STORM_LOG_ASSERT(beliefMdp->getInitialStates().getNumberOfSetBits() == 1, "Unexpected number of initial states for belief mdp");
+        auto value = res->asExplicitQuantitativeCheckResult<BeliefMDPType>()[beliefMdp->getInitialStates().getNextSetIndex(0)];
+        result.updateLowerBound(value);
+        result.updateUpperBound(value);
+    } else {
+        assert(false);
     }
 }
 
@@ -931,8 +973,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     // In this case, we still need to check whether this action needs to be expanded
                     assert(!expandCurrentAction);
                     // Check the action dependent conditions for rewiring
-                    // First, check whether this action has been rewired since the last refinement of one of the successor observations (i.e. whether rewiring
-                    // would actually change the successor states)
+                    // First, check whether this action has been rewired since the last refinement of one of the successor observations (i.e. whether
+                    // rewiring would actually change the successor states)
                     assert(overApproximation->currentStateHasOldBehavior());
                     if (overApproximation->getCurrentStateActionExplorationWasDelayed(action) ||
                         overApproximation->currentStateHasSuccessorObservationInObservationSet(action, refinedObservations)) {
@@ -1476,8 +1518,8 @@ BeliefValueType BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueTy
         auto obsChoiceRating = storm::utility::convertNumber<BeliefValueType, ValueType>(info.maxProbabilityToSuccessorWithObs / info.observationProbability);
         // At this point, obsRating is the largest triangulation weight (which ranges from 1/n to 1)
         // Normalize the rating so that it ranges from 0 to 1, where
-        // 0 means that the actual belief lies in the middle of the triangulating simplex (i.e. a "bad" approximation) and 1 means that the belief is precisely
-        // approximated.
+        // 0 means that the actual belief lies in the middle of the triangulating simplex (i.e. a "bad" approximation) and 1 means that the belief is
+        // precisely approximated.
         obsChoiceRating = (obsChoiceRating * n - one) / (n - one);
         // Scale the ratings with the resolutions, so that low resolutions get a lower rating (and are thus more likely to be refined)
         obsChoiceRating *= observationResolution / maxResolution;

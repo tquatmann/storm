@@ -29,6 +29,20 @@ class BeliefBuilder {
         obs = observation;
     }
 
+    ValueType normalize() {
+        auto sum = storm::utility::zero<ValueType>();
+        for (auto const& [state, value] : data) {
+            STORM_LOG_ASSERT(value >= storm::utility::zero<ValueType>(), "Invalid value: " << value);
+            sum += value;
+        }
+        if (!storm::utility::isOne(sum)) {
+            for (auto& [state, value] : data) {
+                value /= sum;
+            }
+        }
+        return sum;
+    }
+
     BeliefType build() {
         data.shrink_to_fit();
         if constexpr (!storm::NumberTraits<ValueType>::IsExact) {
@@ -49,9 +63,7 @@ class BeliefBuilder {
             return false;
         }
         auto sum = storm::utility::zero<ValueType>();
-        for (auto const& entry : data) {
-            auto const& value = entry.second;
-            auto const& state = entry.first;
+        for (auto const& [state, value] : data) {
             if (value <= storm::utility::zero<ValueType>()) {
                 STORM_LOG_ERROR("Non-positive belief value " << value << " at state " << state << ".");
                 return false;

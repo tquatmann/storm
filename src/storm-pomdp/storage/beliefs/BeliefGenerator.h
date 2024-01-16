@@ -8,6 +8,7 @@
 #include "storm/utility/macros.h"
 
 namespace storm::pomdp::beliefs {
+struct NoAbstraction {};
 
 template<typename PomdpType, typename BeliefType>
 class BeliefGenerator {
@@ -20,6 +21,10 @@ class BeliefGenerator {
     void setRewardModel(std::string rewardModelName = "") {
         auto const& rewardModel = pomdp.getRewardModel(rewardModelName);
         actionRewards = rewardModel.getTotalRewardVector(pomdp.getTransitionMatrix());
+    }
+
+    bool hasRewardModel() const {
+        return !actionRewards.empty();
     }
 
     void unsetRewardModel() {
@@ -47,7 +52,7 @@ class BeliefGenerator {
     }
 
     PomdpValueType getBeliefActionReward(BeliefType const& belief, uint64_t const& localActionIndex) const {
-        STORM_LOG_ASSERT(!actionRewards.empty(), "Requested a reward although no reward model was specified.");
+        STORM_LOG_ASSERT(hasRewardModel(), "Requested a reward although no reward model was specified.");
         STORM_LOG_ASSERT(localActionIndex < getBeliefNumberOfActions(belief), "Invalid action index " << localActionIndex << ".");
         auto result = storm::utility::zero<PomdpValueType>();
         auto const& actionIndices = pomdp.getTransitionMatrix().getRowGroupIndices();
@@ -58,8 +63,19 @@ class BeliefGenerator {
         return result;
     }
 
-    template<typename ExpandCallback>
-    void expand(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback const& callback) {
+    template<typename ExpandCallback, typename PostAbstraction>
+    void expand(BeliefType const& belief, uint64_t localActionIndex, BeliefValueType const& probabilityFactor, ExpandCallback& callback) {
+        expand(belief, localActionIndex, probabilityFactor, callback, NoAbstraction{});
+    }
+
+    template<typename ExpandCallback, typename PostAbstraction>
+    void expand(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback& callback, PostAbstraction& abstraction) {
+        expand(belief, localActionIndex, storm::utility::one<BeliefValueType>(), callback, abstraction);
+    }
+
+    template<typename ExpandCallback, typename PostAbstraction>
+    void expand(BeliefType const& belief, uint64_t localActionIndex, BeliefValueType const& probabilityFactor, ExpandCallback& callback,
+                PostAbstraction& abstraction) {
         // Find the probability we go to each observation
         std::unordered_map<BeliefObservationType, BeliefValueType> successorObservations;
         belief.forEach([&localActionIndex, &successorObservations, this](BeliefStateType const& state, BeliefValueType const& beliefValue) {
@@ -67,7 +83,7 @@ class BeliefGenerator {
                 if (!storm::utility::isZero(pomdpTransition.getValue())) {
                     auto const obs = pomdp.getObservation(pomdpTransition.getColumn());
                     auto const val = beliefValue * storm::utility::convertNumber<BeliefValueType>(pomdpTransition.getValue());
-                    if (auto [insertionIt, inserted] = successorObservations.emplace(successorObservations, val); !inserted) {
+                    if (auto [insertionIt, inserted] = successorObservations.emplace(obs, val); !inserted) {
                         insertionIt->second += val;
                     }
                 }
@@ -75,7 +91,7 @@ class BeliefGenerator {
         });
 
         // Adjust the distribution to diminish numerical inacuracies a bit
-        if constexpr (!BeliefNumerics<BeliefValueType>::isExact() || !BeliefNumerics<PomdpValueType>::isExact()) {
+        if constexpr (!storm::NumberTraits<BeliefValueType>::IsExact || !storm::NumberTraits<PomdpValueType>::IsExact) {
             if (successorObservations.size() == 1) {
                 successorObservations.begin()->second = storm::utility::one<BeliefValueType>();
             }
@@ -94,19 +110,34 @@ class BeliefGenerator {
                     }
                 }
             });
-            callback(successorObsValue.second, builder.build());
+            if constexpr (std::is_same_v<std::remove_cv_t<PostAbstraction>, NoAbstraction>) {
+                callback(static_cast<BeliefValueType>(successorObsValue.second * probabilityFactor), builder.build());
+            } else {
+                abstraction.abstract(static_cast<BeliefValueType>(probabilityFactor * probabilityFactor), builder.build(), callback);
+            }
         }
     }
 
-    template<typename ExpandCallback, typename BeliefAbstraction>
-    void expand(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback const& callback, BeliefAbstraction const& abstraction) {
-        expand(belief, localActionIndex,
-               [&callback, &abstraction](BeliefValueType&& val, BeliefType&& bel) { abstraction.abstract(std::move(val), std::move(bel), callback); });
+    template<typename ExpandCallback, typename PreAbstraction, typename PostAbstraction>
+    void expand(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback& callback, PreAbstraction& preAbstraction,
+                PostAbstraction& postAbstraction) {
+        if constexpr (PreAbstraction::CallbackHasData) {
+            using CbData = typename PreAbstraction::CallbackDataType;
+            preAbstraction.abstract(
+                belief, localActionIndex,
+                [this, &localActionIndex, &callback, &postAbstraction](CbData const& data, BeliefValueType const& preVal, BeliefType const& preBel) {
+                    expand(preBel, localActionIndex, preVal, [&data, &callback](auto&&... args) { callback(data, args...); }, postAbstraction);
+                });
+        } else {
+            preAbstraction.abstract(belief, localActionIndex,
+                                    [this, &localActionIndex, &callback, &postAbstraction](BeliefValueType const& preVal, BeliefType&& preBel) {
+                                        expand(preBel, localActionIndex, preVal, callback, postAbstraction);
+                                    });
+        }
     }
 
    private:
     PomdpType const& pomdp;
     std::vector<PomdpValueType> actionRewards;
-    BeliefId initialBeliefId;
 };
 }  // namespace storm::pomdp::beliefs

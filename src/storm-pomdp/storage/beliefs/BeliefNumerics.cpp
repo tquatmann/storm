@@ -2,8 +2,8 @@
 
 #include <cmath>
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/utility/Constants.h"
 #include "storm/utility/NumberTraits.h"
+#include "storm/utility/constants.h"
 
 namespace storm::pomdp::beliefs {
 

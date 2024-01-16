@@ -21,6 +21,7 @@ struct BeliefExplorationPomdpModelCheckerOptions {
     bool discretize;
     bool unfold;
 
+    bool useRevisedImplementation = false;
     bool useClipping = false;
     bool interactiveUnfolding = false;
     bool refine = false;

@@ -1,4 +1,5 @@
 #include "storm-pomdp/builder/BeliefMdpExplorer.h"
+#include "storm-pomdp/builder/belief-mdp/BeliefMdpBuilder.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelCheckerOptions.h"
 #include "storm-pomdp/storage/BeliefManager.h"
 #include "storm/utility/logging.h"
@@ -257,6 +258,8 @@ class BeliefExplorationPomdpModelChecker {
      */
     void refineReachability(storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
+    void approximate(storm::Environment const& env, storm::pomdp::builder::BeliefMdpPropertyInformation const& propertyInformation,
+                     storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
 
     /**
      * Builds and checks an MDP that over-approximates the POMDP behavior, i.e. provides an upper bound for maximizing and a lower bound for minimizing

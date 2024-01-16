@@ -25,6 +25,7 @@ const std::string observationThresholdOption = "obs-threshold";
 const std::string numericPrecisionOption = "numeric-precision";
 const std::string triangulationModeOption = "triangulationmode";
 const std::string clippingOption = "use-clipping";
+const std::string revisedImplementationOption = "revised";
 const std::string cutZeroGapOption = "cut-zero-gap";
 const std::string stateEliminationCutoffOption = "state-elimination-cutoff";
 
@@ -154,6 +155,9 @@ BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleNa
     this->addOption(
         storm::settings::OptionBuilder(moduleName, clippingOption, false, "If this is set, unfolding will use  (grid) clipping instead of cut-offs only.")
             .build());
+    this->addOption(storm::settings::OptionBuilder(moduleName, revisedImplementationOption, false,
+                                                   "If set, the revised implementation is used (which does not yet support all features).")
+                        .build());
     this->addOption(
         storm::settings::OptionBuilder(moduleName, cutZeroGapOption, false, "Cut beliefs where the gap between over- and underapproximation is 0.").build());
     this->addOption(storm::settings::OptionBuilder(moduleName, stateEliminationCutoffOption, false,
@@ -251,6 +255,7 @@ bool BeliefExplorationSettings::isCutZeroGapSet() const {
 
 template<typename ValueType>
 void BeliefExplorationSettings::setValuesInOptionsStruct(storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>& options) const {
+    options.useRevisedImplementation = this->getOption(revisedImplementationOption).getHasOptionBeenSet();  // TODO
     options.refine = isRefineSet();
     options.refinePrecision = storm::utility::convertNumber<ValueType>(getRefinePrecision());
     options.refineStepLimit = getRefineStepLimit();
