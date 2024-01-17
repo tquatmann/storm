@@ -652,6 +652,11 @@ boost::optional<InitialConstruct> const& Program::getOptionalInitialConstruct() 
     return this->initialConstruct;
 }
 
+void Program::updateInitialStatesExpression(expressions::Expression const& newExpression) {
+    STORM_LOG_THROW(hasInitialConstruct(), exceptions::InvalidOperationException, "We can only update the initial construct, if it already exists.");
+    this->initialConstruct = boost::make_optional(InitialConstruct(newExpression));
+}
+
 storm::expressions::Expression Program::getInitialStatesExpression() const {
     // If there is an initial construct, return its expression. If not, we construct the expression from the
     // initial values of the variables (which have to exist).
@@ -1174,6 +1179,48 @@ Program Program::labelUnlabelledCommands(std::map<uint64_t, std::string> const& 
                    this->getObservationLabels(), this->getOptionalInitialConstruct(), this->getOptionalSystemCompositionConstruct(), prismCompatibility);
 }
 
+Program Program::replaceVariableInitializationByInitExpression() const {
+    std::vector<BooleanVariable> newBooleanVariables = globalBooleanVariables;
+    for (auto& newVar : newBooleanVariables) {
+        newVar.setInitialValueExpression(storm::expressions::Expression());
+    }
+
+    std::vector<IntegerVariable> newIntegerVariables = globalIntegerVariables;
+    for (auto& newVar : newIntegerVariables) {
+        newVar.setInitialValueExpression(storm::expressions::Expression());
+    }
+
+    std::vector<Module> newModules = this->getModules();
+    for (auto& module : newModules) {
+        module.removeVariableInitialization();
+    }
+
+    return Program(this->manager, this->getModelType(), this->getConstants(), newBooleanVariables, newIntegerVariables, this->getFormulas(), this->getPlayers(),
+                   newModules, this->actionToIndexMap, this->getRewardModels(), this->getLabels(), this->getObservationLabels(),
+                   InitialConstruct(this->getInitialStatesExpression()), this->getOptionalSystemCompositionConstruct(), prismCompatibility);
+}
+
+Program Program::replaceConstantByVariable(Constant const& c, expressions::Expression const& lowerBound, expressions::Expression const& upperBound,
+                                           bool observable) const {
+    STORM_LOG_THROW(this->getModelType() == ModelType::POMDP || observable, storm::exceptions::InvalidArgumentException,
+                    "Variables can only be unobservable in POMDPs");
+    std::vector<BooleanVariable> newBooleanVariables = globalBooleanVariables;
+    std::vector<IntegerVariable> newIntegerVariables = globalIntegerVariables;
+    std::vector<Constant> newConstants = constants;
+    auto newEnd = std::remove(newConstants.begin(), newConstants.end(), c);
+    newConstants.erase(newEnd, newConstants.end());  // Erase is necessary based on Erase-remove idiom
+    // The following throw is moved here as this is cheaper.
+    STORM_LOG_THROW(newConstants.size() == constants.size() - 1, exceptions::InvalidArgumentException, "Can only replace a constant if it is present.");
+    if (c.getType().isBooleanType()) {
+        newBooleanVariables.emplace_back(c.getExpressionVariable(), c.getExpression(), observable);
+    } else {
+        newIntegerVariables.emplace_back(c.getExpressionVariable(), lowerBound, upperBound, c.getExpression(), observable);
+    }
+    return Program(this->manager, this->getModelType(), newConstants, newBooleanVariables, newIntegerVariables, this->getFormulas(), this->getPlayers(),
+                   modules, this->actionToIndexMap, this->getRewardModels(), this->getLabels(), this->getObservationLabels(),
+                   this->getOptionalInitialConstruct(), this->getOptionalSystemCompositionConstruct(), prismCompatibility);
+}
+
 void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
     // Start by checking the constant declarations.
     std::set<storm::expressions::Variable> all;
@@ -1212,8 +1259,8 @@ void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
     for (auto const& variable : this->getGlobalBooleanVariables()) {
         if (variable.hasInitialValue()) {
             STORM_LOG_THROW(!this->hasInitialConstruct(), storm::exceptions::WrongFormatException,
-                            "Error in " << variable.getFilename() << ", line " << variable.getLineNumber()
-                                        << ": illegal to specify initial value if an initial construct is present.");
+                            "Error for  " << variable.getName() << " (" << variable.getFilename() << ", line " << variable.getLineNumber()
+                                          << "): illegal to specify initial value if an initial construct is present.");
 
             // Check the initial value of the variable.
             std::set<storm::expressions::Variable> containedVariables = variable.getInitialValueExpression().getVariables();
@@ -1281,8 +1328,8 @@ void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
 
         if (variable.hasInitialValue()) {
             STORM_LOG_THROW(!this->hasInitialConstruct(), storm::exceptions::WrongFormatException,
-                            "Error in " << variable.getFilename() << ", line " << variable.getLineNumber()
-                                        << ": illegal to specify initial value if an initial construct is present.");
+                            "Error for  " << variable.getName() << " (" << variable.getFilename() << ", line " << variable.getLineNumber()
+                                          << "): illegal to specify initial value if an initial construct is present.");
 
             // Check the initial value of the variable.
             std::set<storm::expressions::Variable> containedVariables = variable.getInitialValueExpression().getVariables();
@@ -1314,8 +1361,8 @@ void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
         for (auto const& variable : module.getBooleanVariables()) {
             if (variable.hasInitialValue()) {
                 STORM_LOG_THROW(!this->hasInitialConstruct(), storm::exceptions::WrongFormatException,
-                                "Error in " << variable.getFilename() << ", line " << variable.getLineNumber()
-                                            << ": illegal to specify initial value if an initial construct is present.");
+                                "Error for  " << module.getName() << "." << variable.getName() << " (" << variable.getFilename() << ", line "
+                                              << variable.getLineNumber() << "): illegal to specify initial value if an initial construct is present.");
 
                 // Check the initial value of the variable.
                 std::set<storm::expressions::Variable> containedVariables = variable.getInitialValueExpression().getVariables();
@@ -1381,8 +1428,8 @@ void Program::checkValidity(Program::ValidityCheckLevel lvl) const {
 
             if (variable.hasInitialValue()) {
                 STORM_LOG_THROW(!this->hasInitialConstruct(), storm::exceptions::WrongFormatException,
-                                "Error in " << variable.getFilename() << ", line " << variable.getLineNumber()
-                                            << ": illegal to specify initial value if an initial construct is present.");
+                                "Error for  " << module.getName() << "." << variable.getName() << " (" << variable.getFilename() << ", line "
+                                              << variable.getLineNumber() << "): illegal to specify initial value if an initial construct is present.");
 
                 // Check the initial value of the variable.
                 std::set<storm::expressions::Variable> containedVariables = variable.getInitialValueExpression().getVariables();

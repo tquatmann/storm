@@ -359,6 +359,11 @@ void StateValuationsBuilder::addObservationLabel(const std::string& label) {
     currentStateValuations.observationLabels[label] = labelCount++;
 }
 
+void StateValuationsBuilder::addState(storm::storage::sparse::state_type const& state, std::vector<bool>&& booleanValues,
+                                      std::vector<int64_t>&& integerValues) {
+    addState(state, std::move(booleanValues), std::move(integerValues), {});
+}
+
 void StateValuationsBuilder::addState(storm::storage::sparse::state_type const& state, std::vector<bool>&& booleanValues, std::vector<int64_t>&& integerValues,
                                       std::vector<storm::RationalNumber>&& rationalValues, std::vector<int64_t>&& observationLabelValues) {
     if (state > currentStateValuations.valuations.size()) {
@@ -386,12 +391,12 @@ uint64_t StateValuationsBuilder::getLabelCount() const {
     return labelCount;
 }
 
-StateValuations StateValuationsBuilder::build(std::size_t totalStateCount) {
-    return std::move(currentStateValuations);
+StateValuations StateValuationsBuilder::build() {
     booleanVarCount = 0;
     integerVarCount = 0;
     rationalVarCount = 0;
     labelCount = 0;
+    return std::move(currentStateValuations);
 }
 
 template storm::json<double> StateValuations::toJson<double>(storm::storage::sparse::state_type const&,

@@ -378,12 +378,13 @@ void Scheduler<ValueType>::printJsonToStream(std::ostream& out, std::shared_ptr<
             output.push_back(std::move(stateChoicesJson));
         }
     }
-    out << output.dump(4);
+    out << storm::dumpJson(output);
 }
 
 template class Scheduler<double>;
 template class Scheduler<storm::RationalNumber>;
 template class Scheduler<storm::RationalFunction>;
+template class Scheduler<storm::Interval>;
 
 }  // namespace storage
 }  // namespace storm

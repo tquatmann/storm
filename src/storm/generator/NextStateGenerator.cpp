@@ -42,26 +42,17 @@ NextStateGenerator<ValueType, StateType>::NextStateGenerator(storm::expressions:
       evaluator(nullptr),
       state(nullptr),
       actionMask(mask) {
-    if (variableInformation.hasOutOfBoundsBit()) {
-        outOfBoundsState = createOutOfBoundsState(variableInformation);
-    }
-    if (options.isAddOverlappingGuardLabelSet()) {
-        overlappingGuardStates = std::vector<uint64_t>();
-    }
+    initializeSpecialStates();
 }
 
 template<typename ValueType, typename StateType>
 NextStateGenerator<ValueType, StateType>::NextStateGenerator(storm::expressions::ExpressionManager const& expressionManager,
                                                              NextStateGeneratorOptions const& options,
                                                              std::shared_ptr<ActionMask<ValueType, StateType>> const& mask)
-    : options(options), expressionManager(expressionManager.getSharedPointer()), variableInformation(), evaluator(nullptr), state(nullptr), actionMask(mask) {
-    if (variableInformation.hasOutOfBoundsBit()) {
-        outOfBoundsState = createOutOfBoundsState(variableInformation);
-    }
-    if (options.isAddOverlappingGuardLabelSet()) {
-        overlappingGuardStates = std::vector<uint64_t>();
-    }
-}
+    : options(options), expressionManager(expressionManager.getSharedPointer()), variableInformation(), evaluator(nullptr), state(nullptr), actionMask(mask) {}
+
+template<typename ValueType, typename StateType>
+NextStateGenerator<ValueType, StateType>::~NextStateGenerator() = default;
 
 template<typename ValueType, typename StateType>
 NextStateGeneratorOptions const& NextStateGenerator<ValueType, StateType>::getOptions() const {
@@ -71,6 +62,16 @@ NextStateGeneratorOptions const& NextStateGenerator<ValueType, StateType>::getOp
 template<typename ValueType, typename StateType>
 uint64_t NextStateGenerator<ValueType, StateType>::getStateSize() const {
     return variableInformation.getTotalBitOffset(true);
+}
+
+template<typename ValueType, typename StateType>
+void NextStateGenerator<ValueType, StateType>::initializeSpecialStates() {
+    if (variableInformation.hasOutOfBoundsBit()) {
+        outOfBoundsState = createOutOfBoundsState(variableInformation);
+    }
+    if (options.isAddOverlappingGuardLabelSet()) {
+        overlappingGuardStates = std::vector<uint64_t>();
+    }
 }
 
 template<typename ValueType, typename StateType>
@@ -167,7 +168,7 @@ storm::storage::sparse::StateValuations NextStateGenerator<ValueType, StateType>
         }
         valuationsBuilder.addState(observationEntry.second, std::move(booleanValues), std::move(integerValues), {}, std::move(observationLabelValues));
     }
-    return valuationsBuilder.build(observabilityMap.size());
+    return valuationsBuilder.build();
 }
 
 template<typename ValueType, typename StateType>

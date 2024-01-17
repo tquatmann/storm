@@ -45,8 +45,9 @@ PrismNextStateGenerator<ValueType, StateType>::PrismNextStateGenerator(storm::pr
     // Only after checking validity of the program, we initialize the variable information.
     this->checkValid();
     this->variableInformation = VariableInformation(program, options.getReservedBitsForUnboundedVariables(), options.isAddOutOfBoundsStateSet());
+    this->initializeSpecialStates();
 
-    // Create a proper evalator.
+    // Create a proper evaluator.
     this->evaluator = std::make_unique<storm::expressions::ExpressionEvaluator<ValueType>>(program.getManager());
 
     if (this->options.isBuildAllRewardModelsSet()) {
@@ -182,7 +183,7 @@ std::vector<StateType> PrismNextStateGenerator<ValueType, StateType>::getInitial
     std::vector<StateType> initialStateIndices;
 
     // If all states are initial, we can simplify the enumeration substantially.
-    if (program.hasInitialConstruct() && program.getInitialConstruct().getInitialStatesExpression().isTrue()) {
+    if (program.hasInitialConstruct() && program.getInitialStatesExpression().isTrue()) {
         // Create vectors holding all possible values
         std::vector<std::vector<uint64_t>> allValues;
         for (auto const& intVar : this->variableInformation.integerVariables) {

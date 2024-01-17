@@ -3,8 +3,6 @@
 #include "storm-config.h"
 
 #include "storm/environment/solver/MultiplierEnvironment.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/CoreSettings.h"
 
 #include "storm/storage/SparseMatrix.h"
 
@@ -24,11 +22,7 @@ NativeMultiplier<ValueType>::NativeMultiplier(storm::storage::SparseMatrix<Value
 
 template<typename ValueType>
 bool NativeMultiplier<ValueType>::parallelize(Environment const& env) const {
-#ifdef STORM_HAVE_INTELTBB
-    return storm::settings::getModule<storm::settings::modules::CoreSettings>().isUseIntelTbbSet();
-#else
     return false;
-#endif
 }
 
 template<typename ValueType>
@@ -148,10 +142,9 @@ void NativeMultiplier<ValueType>::multAddReduceParallel(storm::solver::Optimizat
 }
 
 template class NativeMultiplier<double>;
-#ifdef STORM_HAVE_CARL
 template class NativeMultiplier<storm::RationalNumber>;
 template class NativeMultiplier<storm::RationalFunction>;
-#endif
+template class NativeMultiplier<storm::Interval>;
 
 }  // namespace solver
 }  // namespace storm

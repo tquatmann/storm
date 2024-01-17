@@ -2,7 +2,7 @@
 
 #include <map>
 
-#include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 
 #include "storm/builder/RewardModelBuilder.h"
 #include "storm/builder/StateAndChoiceInformationBuilder.h"
@@ -20,6 +20,7 @@
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 
+#include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/BuildSettings.h"
 
 #include "storm/storage/expressions/ExpressionManager.h"
@@ -394,7 +395,7 @@ storm::storage::sparse::ModelComponents<ValueType, RewardModelType> ExplicitMode
     }
     // If requested, build the state valuations and choice origins
     if (stateAndChoiceInformationBuilder.isBuildStateValuations()) {
-        modelComponents.stateValuations = stateAndChoiceInformationBuilder.stateValuationsBuilder().build(numStates);
+        modelComponents.stateValuations = stateAndChoiceInformationBuilder.stateValuationsBuilder().build();
     }
     if (stateAndChoiceInformationBuilder.isBuildChoiceOrigins()) {
         auto originData = stateAndChoiceInformationBuilder.buildDataOfChoiceOrigins(numChoices);
