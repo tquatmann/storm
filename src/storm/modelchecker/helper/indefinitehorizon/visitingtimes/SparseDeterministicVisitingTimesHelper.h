@@ -153,16 +153,16 @@ class SparseDeterministicVisitingTimesHelper : public SingleValueModelCheckerHel
     std::vector<ValueType> computeValueForStateSet(storm::Environment const& env, storm::storage::BitVector const& stateSetAsBitVector,
                                                    std::vector<ValueType> const& stateValues) const;
 
-    storm::storage::SparseMatrix<ValueType> const& _transitionMatrix;
-    std::vector<ValueType> const* _exitRates;
+    storm::storage::SparseMatrix<ValueType> const& transitionMatrix;
+    std::vector<ValueType> const* exitRates;
 
-    storm::storage::SparseMatrix<ValueType> const* _backwardTransitions;
-    std::unique_ptr<storm::storage::SparseMatrix<ValueType>> _computedBackwardTransitions;
+    storm::storage::SparseMatrix<ValueType> const* backwardTransitions;
+    std::unique_ptr<storm::storage::SparseMatrix<ValueType>> computedBackwardTransitions;
 
-    storm::storage::StronglyConnectedComponentDecomposition<ValueType> const* _sccDecomposition;
-    std::unique_ptr<storm::storage::StronglyConnectedComponentDecomposition<ValueType>> _computedSccDecomposition;
+    storm::storage::StronglyConnectedComponentDecomposition<ValueType> const* sccDecomposition;
+    std::unique_ptr<storm::storage::StronglyConnectedComponentDecomposition<ValueType>> computedSccDecomposition;
 
-    storm::storage::BitVector _nonBsccStates;
+    storm::storage::BitVector nonBsccStates;
 };
 
 }  // namespace helper
