@@ -15,7 +15,6 @@
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/WrongFormatException.h"
-#include "storm/settings/SettingsManager.h"
 
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
@@ -23,7 +22,6 @@
 #include "storm/io/file.h"
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
-#include "storm/settings/SettingsManager.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/builder.h"
 #include "storm/utility/constants.h"
@@ -431,6 +429,7 @@ ValueType DirectEncodingParser<ValueType, RewardModelType>::parseValue(std::stri
 template class DirectEncodingParser<double>;
 template class DirectEncodingParser<storm::RationalNumber>;
 template class DirectEncodingParser<storm::RationalFunction>;
+template class DirectEncodingParser<storm::Interval>;
 
 }  // namespace parser
 }  // namespace storm
