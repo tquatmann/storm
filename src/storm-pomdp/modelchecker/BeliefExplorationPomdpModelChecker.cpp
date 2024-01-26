@@ -331,7 +331,8 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
                                             storm::pomdp::beliefs::Belief<BeliefValueType>>
         builder(pomdp(), propertyInformation);
-    auto beliefMdp = builder.build();
+    auto info = builder.explore();
+    auto beliefMdp = builder.build(info);
     swBuildBeliefMdp.stop();
     STORM_PRINT_AND_LOG("Time for constructing belief MDP: " << swBuildBeliefMdp << ".\n");
     beliefMdp->printModelInformationToStream(std::cout);
