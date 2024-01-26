@@ -42,9 +42,10 @@ class BeliefMdpBuilder {
         explorer.performExploration(
             info, h, []() { return false; }, [this](BeliefType const& bel) { return propertyInformation.targetObservations.count(bel.observation()) != 0; },
             storm::pomdp::beliefs::NoAbstraction());
+        return info;
     }
 
-    std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> build(ExplorationInformation const& info, /* CutOffData */) {
+    std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> build(ExplorationInformation const& info /*, CutOffData */) {
         // TODO: reachability analysis?
         return createMdpFromExplorationInfo(info);
     }
