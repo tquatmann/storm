@@ -37,11 +37,10 @@ class BeliefMdpBuilder {
     }
 
     ExplorationInformation explore(/* explorationHeuristic, termination, abstraction*/) {
-        BeliefExplorationHeuristic h;
+        BeliefExplorationHeuristic<BeliefType> h;
+        h.setTerminalObservations(propertyInformation.targetObservations);
         auto info = explorer.initializeExploration(h);
-        explorer.performExploration(
-            info, h, []() { return false; }, [this](BeliefType const& bel) { return propertyInformation.targetObservations.count(bel.observation()) != 0; },
-            storm::pomdp::beliefs::NoAbstraction());
+        explorer.performExploration(info, h, []() { return false; }, storm::pomdp::beliefs::NoAbstraction());
         return info;
     }
 

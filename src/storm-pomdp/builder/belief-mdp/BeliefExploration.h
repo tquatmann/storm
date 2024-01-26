@@ -33,31 +33,27 @@ class BeliefExploration {
     };
 
     struct ExpandCallback {
-        ExpandCallback(ExplorationInformation& info, BeliefExplorationHeuristic& explorationHeuristic,
-                       std::function<bool(BeliefType const&)> const& isTerminalBelief)
-            : info(info), explorationHeuristic(explorationHeuristic), isTerminalBelief(isTerminalBelief) {}
+        ExpandCallback(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic)
+            : info(info), explorationHeuristic(explorationHeuristic) {}
         ExplorationInformation& info;
-        BeliefExplorationHeuristic& explorationHeuristic;
-        std::function<bool(BeliefType const&)> const& isTerminalBelief;
+        BeliefExplorationHeuristic<BeliefType>& explorationHeuristic;
 
-        auto processBelief(BeliefType&& bel) {
-            bool const terminal = isTerminalBelief(bel);
-            auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
-            if (!terminal && info.exploredBeliefs.count(belId) == 0u) {
-                explorationHeuristic.discover(belId);
-            }
-            return belId;
-        }
         void operator()(BeliefValueType&& val, BeliefType&& bel) {  // TODO: add requires construct
             if constexpr (Mode == BeliefExplorationMode::Standard) {
-                auto const belId = processBelief(std::move(bel));
+                auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
+                if (info.exploredBeliefs.count(belId) == 0u) {
+                    explorationHeuristic.discover(belId, info.collectedBeliefs.getBeliefFromId(belId));
+                }
                 info.matrix.transitions.push_back({storm::utility::convertNumber<BeliefMdpValueType>(val), belId});
             }
         }
 
         void operator()(std::vector<BeliefMdpValueType> const& rewardVector, BeliefValueType&& val, BeliefType&& bel) {  // TODO: add requires construct
             if constexpr (Mode == BeliefExplorationMode::RewardBounded) {
-                auto const belId = processBelief(std::move(bel));
+                auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
+                if (info.exploredBeliefs.count(belId) == 0u) {
+                    explorationHeuristic.discover(belId, info.collectedBeliefs.getBeliefFromId(belId));
+                }
                 info.matrix.transitions.push_back({storm::utility::convertNumber<BeliefMdpValueType>(val), belId, rewardVector});
             }
         }
@@ -73,22 +69,22 @@ class BeliefExploration {
         beliefGenerator.setRewardModel(rewardModelName);
     }
 
-    ExplorationInformation initializeExploration(BeliefExplorationHeuristic& explorationHeuristic) {
+    ExplorationInformation initializeExploration(BeliefExplorationHeuristic<BeliefType>& explorationHeuristic) {
         ExplorationInformation info;
         info.initialBelief = info.collectedBeliefs.addBelief(beliefGenerator.computeInitialBelief());
-        explorationHeuristic.discover(info.initialBelief);
+        explorationHeuristic.discover(info.initialBelief, info.collectedBeliefs.getBeliefFromId(info.initialBelief));
         return info;
     }
 
     template<typename BeliefAbstraction>
-    void exploreBelief(ExplorationInformation& info, BeliefExplorationHeuristic& explorationHeuristic, BeliefId const& beliefId,
-                       std::function<bool(BeliefType const&)> const& isTerminalBelief, BeliefAbstraction const& abstraction) {
+    void exploreBelief(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic, BeliefId const& beliefId,
+                       BeliefAbstraction const& abstraction) {
         STORM_LOG_ASSERT(info.collectedBeliefs.hasId(beliefId), "Unknown belief id");
         STORM_LOG_ASSERT(info.exploredBeliefs.count(beliefId) == 0, "Belief #" << beliefId << " already explored.");
         info.exploredBeliefs.emplace(beliefId, info.matrix.groups());
         auto belief = info.collectedBeliefs.getBeliefFromId(beliefId);  // do not take as reference since it will be invalidated when collecting more beliefs
         auto const numActions = beliefGenerator.getBeliefNumberOfActions(belief);
-        ExpandCallback expandCallback(info, explorationHeuristic, isTerminalBelief);
+        ExpandCallback expandCallback(info, explorationHeuristic);
         for (uint64_t localActionIndex = 0; localActionIndex < numActions; ++localActionIndex) {
             if constexpr (Mode == BeliefExplorationMode::Standard) {
                 beliefGenerator.expand(belief, localActionIndex, expandCallback, abstraction);
@@ -104,14 +100,14 @@ class BeliefExploration {
     }
 
     template<typename BeliefAbstraction>
-    bool performExploration(ExplorationInformation& info, BeliefExplorationHeuristic& explorationHeuristic, std::function<bool()> const& terminateExploration,
-                            std::function<bool(BeliefType const&)> const& isTerminalBelief, BeliefAbstraction const& abstraction) {
+    bool performExploration(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic,
+                            std::function<bool()> const& terminateExploration, BeliefAbstraction const& abstraction) {
         while (explorationHeuristic.hasNext()) {
             if (terminateExploration()) {
                 return false;  // Terminate prematurely
             }
             auto currentId = explorationHeuristic.popNext();
-            exploreBelief(info, explorationHeuristic, currentId, isTerminalBelief, abstraction);
+            exploreBelief(info, explorationHeuristic, currentId, abstraction);
         }
         return true;
     }
