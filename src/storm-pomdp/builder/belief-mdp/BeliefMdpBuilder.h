@@ -35,12 +35,16 @@ class BeliefMdpBuilder {
             explorer.setRewardModelForObjective(*propertyInformation.rewardModelName);
         }
     }
+    ExplorationInformation explore() {
+        return explore(storm::pomdp::beliefs::NoAbstraction());
+    }
 
-    ExplorationInformation explore(/* explorationHeuristic, termination, abstraction*/) {
+    template<typename BeliefAbstraction>
+    ExplorationInformation explore(BeliefAbstraction const& abstraction) {
         BeliefExplorationHeuristic<BeliefType> h;
         h.setTerminalObservations(propertyInformation.targetObservations);
         auto info = explorer.initializeExploration(h);
-        explorer.performExploration(info, h, []() { return false; }, storm::pomdp::beliefs::NoAbstraction());
+        explorer.performExploration(info, h, []() { return false; }, abstraction);
         return info;
     }
 

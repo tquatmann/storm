@@ -17,6 +17,7 @@
 
 #include "storm-pomdp/builder/BeliefMdpExplorer.h"
 #include "storm-pomdp/modelchecker/PreprocessingPomdpValueBoundsModelChecker.h"
+#include "storm-pomdp/storage/beliefs/FreudenthalTriangulationBeliefAbstraction.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/utility/vector.h"
 
@@ -327,11 +328,22 @@ template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPTy
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::approximate(
     storm::Environment const& env, storm::pomdp::builder::BeliefMdpPropertyInformation const& propertyInformation,
     storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
+    using BeliefMdpBuilderType = storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
+                                                                         storm::pomdp::beliefs::Belief<BeliefValueType>>;
     storm::utility::Stopwatch swBuildBeliefMdp(true);
-    storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
-                                            storm::pomdp::beliefs::Belief<BeliefValueType>>
-        builder(pomdp(), propertyInformation);
-    auto info = builder.explore();
+
+    BeliefMdpBuilderType builder(pomdp(), propertyInformation);
+    typename BeliefMdpBuilderType::ExplorationInformation info;
+    if (options.discretize) {
+        auto observationResolutionVector =
+            std::vector<BeliefValueType>(pomdp().getNrObservations(), storm::utility::convertNumber<BeliefValueType>(options.resolutionInit));
+        auto mode = options.dynamicTriangulation ? storm::pomdp::beliefs::FreudenthalTriangulationMode::Dynamic
+                                                 : storm::pomdp::beliefs::FreudenthalTriangulationMode::Static;
+        storm::pomdp::beliefs::FreudenthalTriangulationBeliefAbstraction<storm::pomdp::beliefs::Belief<BeliefValueType>> a(observationResolutionVector, mode);
+        info = builder.explore(a);
+    } else {
+        info = builder.explore();
+    }
     auto beliefMdp = builder.build(info);
     swBuildBeliefMdp.stop();
     STORM_PRINT_AND_LOG("Time for constructing belief MDP: " << swBuildBeliefMdp << ".\n");
@@ -920,20 +932,24 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             bool restoreAllActions = false;
             bool checkRewireForAllActions = false;
             // Get the relative gap
-            ValueType gap = getGap(overApproximation->getLowerValueBoundAtCurrentState(), overApproximation->getUpperValueBoundAtCurrentState());
+            //            ValueType gap = getGap(overApproximation->getLowerValueBoundAtCurrentState(), overApproximation->getUpperValueBoundAtCurrentState());
             if (!hasOldBehavior) {
                 // Case 1
                 // If we explore this state and if it has no old behavior, it is clear that an "old" optimal scheduler can be extended to a scheduler that
                 // reaches this state
-                if (!timeLimitExceeded && gap >= heuristicParameters.gapThreshold && numRewiredOrExploredStates < heuristicParameters.sizeThreshold) {
+                //                if (!timeLimitExceeded && gap >= heuristicParameters.gapThreshold && numRewiredOrExploredStates <
+                //                heuristicParameters.sizeThreshold) {
+                if (!timeLimitExceeded && numRewiredOrExploredStates < heuristicParameters.sizeThreshold) {
                     exploreAllActions = true;  // Case 1.1
                 } else {
                     truncateAllActions = true;  // Case 1.2
+                    std::cout << "Unreachable case 1.2" << std::endl;
                     overApproximation->setCurrentStateIsTruncated();
                 }
             } else if (overApproximation->getCurrentStateWasTruncated()) {
+                std::cout << "Unreachable case 2" << std::endl;
                 // Case 2
-                if (!timeLimitExceeded && overApproximation->currentStateIsOptimalSchedulerReachable() && gap > heuristicParameters.gapThreshold &&
+                if (!timeLimitExceeded && overApproximation->currentStateIsOptimalSchedulerReachable() &&
                     numRewiredOrExploredStates < heuristicParameters.sizeThreshold) {
                     exploreAllActions = true;  // Case 2.1
                     STORM_LOG_INFO_COND(!fixPoint, "Not reaching a refinement fixpoint because a previously truncated state is now explored.");
@@ -943,9 +959,10 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     overApproximation->setCurrentStateIsTruncated();
                     if (fixPoint) {
                         // Properly check whether this can still be a fixpoint
-                        if (overApproximation->currentStateIsOptimalSchedulerReachable() && !storm::utility::isZero(gap)) {
-                            STORM_LOG_INFO_COND(!fixPoint, "Not reaching a refinement fixpoint because we truncate a state with non-zero gap "
-                                                               << gap << " that is reachable via an optimal sched.");
+                        if (overApproximation->currentStateIsOptimalSchedulerReachable()) {
+                            //                            STORM_LOG_INFO_COND(!fixPoint, "Not reaching a refinement fixpoint because we truncate a state with
+                            //                            non-zero gap "
+                            //                                                               << gap << " that is reachable via an optimal sched.");
                             fixPoint = false;
                         }
                         // else {}
@@ -954,10 +971,12 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     }
                 }
             } else {
+                std::cout << "Unreachable case 3" << std::endl;
+
                 // Case 3
                 // The decision for rewiring also depends on the corresponding action, but we have some criteria that lead to case 3.2 (independent of the
                 // action)
-                if (!timeLimitExceeded && overApproximation->currentStateIsOptimalSchedulerReachable() && gap > heuristicParameters.gapThreshold &&
+                if (!timeLimitExceeded && overApproximation->currentStateIsOptimalSchedulerReachable() &&
                     numRewiredOrExploredStates < heuristicParameters.sizeThreshold) {
                     checkRewireForAllActions = true;  // Case 3.1 or Case 3.2
                 } else {
@@ -970,6 +989,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             for (uint64_t action = 0, numActions = beliefManager->getBeliefNumberOfChoices(currId); action < numActions; ++action) {
                 bool expandCurrentAction = exploreAllActions || truncateAllActions;
                 if (checkRewireForAllActions) {
+                    std::cout << "Unreachablechkrew" << std::endl;
+
                     assert(refine);
                     // In this case, we still need to check whether this action needs to be expanded
                     assert(!expandCurrentAction);
@@ -992,10 +1013,11 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                 // Check whether this delay means that a fixpoint has not been reached
                                 if (!overApproximation->getCurrentStateActionExplorationWasDelayed(action) ||
                                     (overApproximation->currentStateIsOptimalSchedulerReachable() &&
-                                     overApproximation->actionAtCurrentStateWasOptimal(action) && !storm::utility::isZero(gap))) {
-                                    STORM_LOG_INFO_COND(!fixPoint,
-                                                        "Not reaching a refinement fixpoint because we delay a rewiring of a state with non-zero gap "
-                                                            << gap << " that is reachable via an optimal scheduler.");
+                                     overApproximation->actionAtCurrentStateWasOptimal(action))) {
+                                    //                                    STORM_LOG_INFO_COND(!fixPoint,
+                                    //                                                        "Not reaching a refinement fixpoint because we delay a rewiring of
+                                    //                                                        a state with non-zero gap "
+                                    //                                                            << gap << " that is reachable via an optimal scheduler.");
                                     fixPoint = false;
                                 }
                             }
