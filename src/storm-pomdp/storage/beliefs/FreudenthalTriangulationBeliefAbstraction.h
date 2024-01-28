@@ -9,15 +9,15 @@
 #include "storm/utility/macros.h"
 
 namespace storm::pomdp::beliefs {
+enum class FreudenthalTriangulationMode { Static, Dynamic };
 
 template<typename BeliefType>
 class FreudenthalTriangulationBeliefAbstraction {
    public:
     using BeliefValueType = typename BeliefType::ValueType;
 
-    enum class Mode { Static, Dynamic };
-
-    FreudenthalTriangulationBeliefAbstraction(std::vector<BeliefValueType> const& observationTriangulationResolutions, Mode mode) : mode(mode) {
+    FreudenthalTriangulationBeliefAbstraction(std::vector<BeliefValueType> const& observationTriangulationResolutions, FreudenthalTriangulationMode mode)
+        : mode(mode) {
         observationResolutions.reserve(observationResolutions.size());
         for (auto const& res : observationTriangulationResolutions) {
             observationResolutions.emplace_back(storm::utility::ceil<BeliefValueType>(res));
@@ -26,16 +26,16 @@ class FreudenthalTriangulationBeliefAbstraction {
     }
 
     template<typename AbstractCallback>
-    void abstract(BeliefValueType&& probabilityFactor, BeliefType&& belief, AbstractCallback const& callback) {
+    void abstract(BeliefValueType&& probabilityFactor, BeliefType&& belief, AbstractCallback& callback) const {
         // Quickly triangulate Dirac beliefs
         if (belief.size() == 1u) {
             callback(std::move(probabilityFactor), std::move(belief));
         } else {
             switch (mode) {
-                case Mode::Static:
+                case FreudenthalTriangulationMode::Static:
                     abstractStatic(probabilityFactor, belief, callback, observationResolutions[belief.observation()]);
                     break;
-                case Mode::Dynamic:
+                case FreudenthalTriangulationMode::Dynamic:
                     abstractDynamic(probabilityFactor, belief, callback);
                     break;
                 default:
@@ -46,8 +46,8 @@ class FreudenthalTriangulationBeliefAbstraction {
 
    private:
     template<typename AbstractCallback>
-    void abstractStatic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback const& callback,
-                        BeliefValueType const& staticResolution) {
+    void abstractStatic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback& callback,
+                        BeliefValueType const& staticResolution) const {
         struct FreudenthalDiff {
             BeliefValueType diff;       // d[i]
             BeliefStateType dimension;  // i
@@ -74,12 +74,12 @@ class FreudenthalTriangulationBeliefAbstraction {
         std::vector<BeliefStateType> toOriginalIndicesMap;  // Maps 'local' indices to the original pomdp state indices
         toOriginalIndicesMap.reserve(numEntries);
         BeliefValueType x = staticResolution;
-        for (auto const& entry : belief) {
-            qsRow.push_back(storm::utility::floor(x));                              // v
-            sorted_diffs.emplace({x - qsRow.back(), toOriginalIndicesMap.size()});  // x-v
-            toOriginalIndicesMap.push_back(entry.first);
-            x -= entry.second * staticResolution;
-        }
+        belief.forEach([&qsRow, &sorted_diffs, &toOriginalIndicesMap, &x, &staticResolution](auto const& state, auto const& value) {
+            qsRow.push_back(storm::utility::floor(x));                                              // v
+            sorted_diffs.insert(FreudenthalDiff({x - qsRow.back(), toOriginalIndicesMap.size()}));  // x-v
+            toOriginalIndicesMap.push_back(state);
+            x -= value * staticResolution;
+        });
         // Insert a dummy 0 column in the qs matrix so the loops below are a bit simpler
         qsRow.push_back(storm::utility::zero<BeliefValueType>());
 
@@ -114,7 +114,7 @@ class FreudenthalTriangulationBeliefAbstraction {
     }
 
     template<typename AbstractCallback>
-    void abstractDynamic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback const& callback) {
+    void abstractDynamic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback& callback) const {
         // Find the best resolution for this belief, i.e., N such that the largest distance between one of the belief values to a value in {i/N | 0 ≤ i ≤ N} is
         // minimal
         auto const resolution = observationResolutions[belief.observation()];
@@ -124,7 +124,7 @@ class FreudenthalTriangulationBeliefAbstraction {
         // We don't need to check resolutions that are smaller than the maximal resolution divided by 2 as we already checked multiples of these
         for (BeliefValueType currResolution = resolution; currResolution > resolution / 2; --currResolution) {
             BeliefValueType currDist = storm::utility::zero<BeliefValueType>();
-            bool const newBest = belief.allOf([&currDist, &currResolution](BeliefStateType const&, BeliefValueType const& val) {
+            bool const newBest = belief.allOf([&currDist, &currResolution, &finalResolutionDist](BeliefStateType const&, BeliefValueType const& val) {
                 currDist += storm::utility::abs<BeliefValueType>(val - storm::utility::round<BeliefValueType>(val * currResolution) / currResolution);
                 return currDist <= finalResolutionDist;  // continue as long as the current dist is still smaller than the smallest dist
             });
@@ -142,6 +142,6 @@ class FreudenthalTriangulationBeliefAbstraction {
 
    private:
     std::vector<BeliefValueType> observationResolutions;
-    Mode const mode;
+    FreudenthalTriangulationMode const mode;
 };
 }  // namespace storm::pomdp::beliefs
