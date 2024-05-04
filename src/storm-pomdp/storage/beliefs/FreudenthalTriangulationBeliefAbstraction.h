@@ -119,10 +119,15 @@ class FreudenthalTriangulationBeliefAbstraction {
         // minimal
         auto const resolution = observationResolutions[belief.observation()];
         STORM_LOG_ASSERT(storm::utility::isInteger(resolution), "Expected an integer resolution");
+        BeliefValueType const halfResolution = resolution / storm::utility::convertNumber<BeliefValueType, uint64_t>(2);
+        BeliefValueType const initialDist = storm::utility::one<BeliefValueType>() / resolution;
+        // We take 1/resolution as initial distance. This means that coarser resolutions are only chosen if they are clearly better suited for the given
+        // belief.
+
         BeliefValueType finalResolution = resolution;
-        BeliefValueType finalResolutionDist = storm::utility::one<BeliefValueType>();
+        BeliefValueType finalResolutionDist = initialDist;
         // We don't need to check resolutions that are smaller than the maximal resolution divided by 2 as we already checked multiples of these
-        for (BeliefValueType currResolution = resolution; currResolution > resolution / 2; --currResolution) {
+        for (BeliefValueType currResolution = resolution; currResolution > halfResolution; --currResolution) {
             BeliefValueType currDist = storm::utility::zero<BeliefValueType>();
             bool const newBest = belief.allOf([&currDist, &currResolution, &finalResolutionDist](BeliefStateType const&, BeliefValueType const& val) {
                 currDist += storm::utility::abs<BeliefValueType>(val - storm::utility::round<BeliefValueType>(val * currResolution) / currResolution);
