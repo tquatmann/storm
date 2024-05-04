@@ -330,11 +330,13 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
     using BeliefMdpBuilderType = storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
                                                                          storm::pomdp::beliefs::Belief<BeliefValueType>>;
+    bool isOverApproximation{false};
+    bool isUnderApproximation{false};
     storm::utility::Stopwatch swBuildBeliefMdp(true);
-
     BeliefMdpBuilderType builder(pomdp(), propertyInformation);
     typename BeliefMdpBuilderType::ExplorationInformation info;
     if (options.discretize) {
+        isOverApproximation = true;
         auto observationResolutionVector =
             std::vector<BeliefValueType>(pomdp().getNrObservations(), storm::utility::convertNumber<BeliefValueType>(options.resolutionInit));
         auto mode = options.dynamicTriangulation ? storm::pomdp::beliefs::FreudenthalTriangulationMode::Dynamic
@@ -342,6 +344,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         storm::pomdp::beliefs::FreudenthalTriangulationBeliefAbstraction<storm::pomdp::beliefs::Belief<BeliefValueType>> a(observationResolutionVector, mode);
         info = builder.explore(a);
     } else {
+        isOverApproximation = isUnderApproximation = true;
         info = builder.explore();
     }
     auto beliefMdp = builder.build(info);
@@ -353,9 +356,14 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMDPType>(env, beliefMdp, task));
     if (res) {
         STORM_LOG_ASSERT(beliefMdp->getInitialStates().getNumberOfSetBits() == 1, "Unexpected number of initial states for belief mdp");
-        auto value = res->asExplicitQuantitativeCheckResult<BeliefMDPType>()[beliefMdp->getInitialStates().getNextSetIndex(0)];
-        result.updateLowerBound(value);
-        result.updateUpperBound(value);
+        auto const initState = beliefMdp->getInitialStates().getNextSetIndex(0);
+        auto value = res->asExplicitQuantitativeCheckResult<BeliefMDPType>()[initState];
+        if (storm::solver::maximize(propertyInformation.dir) ? isOverApproximation : isUnderApproximation) {
+            result.updateUpperBound(value);
+        }
+        if (storm::solver::minimize(propertyInformation.dir) ? isOverApproximation : isUnderApproximation) {
+            result.updateLowerBound(value);
+        }
     } else {
         assert(false);
     }
