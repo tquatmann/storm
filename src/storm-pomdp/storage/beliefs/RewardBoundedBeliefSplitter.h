@@ -71,10 +71,10 @@ class RewardBoundedBeliefSplitter {
             builder.setObservation(belief.observation());
             if (splitBeliefs.size() == 1u) {
                 // Fix the distribution to diminish numerical issues a bit
-                callback(rewardVector, storm::utility::one<BeliefValueType>(), builder.build());
+                callback(builder.build(), storm::utility::one<BeliefValueType>(), rewardVector);
             } else {
                 auto val = builder.normalize();
-                callback(rewardVector, std::move(val), builder.build());
+                callback(builder.build(), std::move(val), rewardVector);
             }
         }
     }

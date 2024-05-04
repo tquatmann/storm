@@ -26,10 +26,10 @@ class FreudenthalTriangulationBeliefAbstraction {
     }
 
     template<typename AbstractCallback>
-    void abstract(BeliefValueType&& probabilityFactor, BeliefType&& belief, AbstractCallback& callback) const {
+    void abstract(BeliefType&& belief, BeliefValueType&& probabilityFactor, AbstractCallback const& callback) const {
         // Quickly triangulate Dirac beliefs
         if (belief.size() == 1u) {
-            callback(std::move(probabilityFactor), std::move(belief));
+            callback(std::move(belief), std::move(probabilityFactor));
         } else {
             switch (mode) {
                 case FreudenthalTriangulationMode::Static:
@@ -107,7 +107,7 @@ class FreudenthalTriangulationBeliefAbstraction {
                         builder.addValue(toOriginalIndicesMap[j], gridPointEntry / staticResolution);
                     }
                 }
-                callback(static_cast<BeliefValueType>(weight * probabilityFactor), builder.build());
+                callback(builder.build(), static_cast<BeliefValueType>(weight * probabilityFactor));
             }
             previousSortedDiff = currentSortedDiff++;
         }

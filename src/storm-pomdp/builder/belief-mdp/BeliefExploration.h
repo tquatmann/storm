@@ -38,7 +38,7 @@ class BeliefExploration {
         ExplorationInformation& info;
         BeliefExplorationHeuristic<BeliefType>& explorationHeuristic;
 
-        void operator()(BeliefValueType&& val, BeliefType&& bel) {  // TODO: add requires construct
+        void operator()(BeliefType&& bel, BeliefValueType&& val) {  // TODO: add requires construct
             if constexpr (Mode == BeliefExplorationMode::Standard) {
                 auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
                 if (info.exploredBeliefs.count(belId) == 0u) {
@@ -48,7 +48,7 @@ class BeliefExploration {
             }
         }
 
-        void operator()(std::vector<BeliefMdpValueType> const& rewardVector, BeliefValueType&& val, BeliefType&& bel) {  // TODO: add requires construct
+        void operator()(BeliefType&& bel, std::vector<BeliefMdpValueType> const& rewardVector, BeliefValueType&& val) {  // TODO: add requires construct
             if constexpr (Mode == BeliefExplorationMode::RewardBounded) {
                 auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
                 if (info.exploredBeliefs.count(belId) == 0u) {
