@@ -17,7 +17,7 @@ ValueType PreprocessingPomdpValueBounds<ValueType>::getUpperBound(uint64_t sched
 }
 
 template<typename ValueType>
-ValueType PreprocessingPomdpValueBounds<ValueType>::getHighestLowerBound(uint64_t const& state) {
+ValueType PreprocessingPomdpValueBounds<ValueType>::getHighestLowerBound(uint64_t const& state) const {
     STORM_LOG_ASSERT(!lower.empty(), "requested a lower bound but none were available");
     auto it = lower.begin();
     ValueType result = (*it)[state];
@@ -28,7 +28,7 @@ ValueType PreprocessingPomdpValueBounds<ValueType>::getHighestLowerBound(uint64_
 }
 
 template<typename ValueType>
-ValueType PreprocessingPomdpValueBounds<ValueType>::getSmallestUpperBound(uint64_t const& state) {
+ValueType PreprocessingPomdpValueBounds<ValueType>::getSmallestUpperBound(uint64_t const& state) const {
     STORM_LOG_ASSERT(!upper.empty(), "requested an upper bound but none were available");
     auto it = upper.begin();
     ValueType result = (*it)[state];

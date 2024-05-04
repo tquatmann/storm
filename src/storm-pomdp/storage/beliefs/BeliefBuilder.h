@@ -75,11 +75,11 @@ class BeliefBuilder {
             sum += value;
         }
         if (!BeliefNumerics<ValueType>::lessOrEqual(sum, storm::utility::one<ValueType>())) {
-            STORM_LOG_ERROR("belief value sum " << sum << " is larger than 1.");
+            STORM_LOG_ERROR("belief value sum " << sum << " is larger than 1 (sum-1=" << sum - storm::utility::one<ValueType>() << ").");
             return false;
         }
         if (!BeliefNumerics<ValueType>::lessOrEqual(storm::utility::one<ValueType>(), sum)) {
-            STORM_LOG_ERROR("belief value sum " << sum << " is greater than 1.");
+            STORM_LOG_ERROR("belief value sum " << sum << " is smaller than 1 (1-sum=" << storm::utility::one<ValueType>() - sum << ").");
             return false;
         }
         return true;

@@ -63,7 +63,7 @@ class BeliefGenerator {
         return result;
     }
 
-    template<typename ExpandCallback, typename PostAbstraction>
+    template<typename ExpandCallback>
     void expand(BeliefType const& belief, uint64_t localActionIndex, BeliefValueType const& probabilityFactor, ExpandCallback& callback) {
         expand(belief, localActionIndex, probabilityFactor, callback, NoAbstraction{});
     }
@@ -113,7 +113,7 @@ class BeliefGenerator {
             if constexpr (std::is_same_v<std::remove_cv_t<PostAbstraction>, NoAbstraction>) {
                 callback(static_cast<BeliefValueType>(successorObsValue.second * probabilityFactor), builder.build());
             } else {
-                abstraction.abstract(static_cast<BeliefValueType>(probabilityFactor * probabilityFactor), builder.build(), callback);
+                abstraction.abstract(static_cast<BeliefValueType>(successorObsValue.second * probabilityFactor), builder.build(), callback);
             }
         }
     }

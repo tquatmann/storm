@@ -164,6 +164,7 @@ class BeliefMdpBuilder {
     BeliefMdpValueType computeCutOffValue(BeliefType const& belief) {
         // TODO
         assert(false);
+        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Not implemented.");
     }
     BeliefExploration<Mode, BeliefMdpValueType, PomdpType, BeliefType> explorer;
     BeliefMdpPropertyInformation propertyInformation;
