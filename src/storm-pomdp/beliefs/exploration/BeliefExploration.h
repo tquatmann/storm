@@ -79,7 +79,7 @@ class BeliefExploration {
     template<typename BeliefAbstraction>
     void exploreBelief(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic, BeliefId const& beliefId,
                        BeliefAbstraction const& abstraction) {
-        STORM_LOG_ASSERT(info.collectedBeliefs.hasId(beliefId), "Unknown belief id");
+        STORM_LOG_ASSERT(info.collectedBeliefs.containsId(beliefId), "Unknown belief id");
         STORM_LOG_ASSERT(info.exploredBeliefs.count(beliefId) == 0, "Belief #" << beliefId << " already explored.");
         info.exploredBeliefs.emplace(beliefId, info.matrix.groups());
         auto belief = info.collectedBeliefs.getBeliefFromId(beliefId);  // do not take as reference since it will be invalidated when collecting more beliefs

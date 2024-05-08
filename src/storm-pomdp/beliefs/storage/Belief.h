@@ -14,6 +14,12 @@
 
 namespace storm::pomdp::beliefs {
 
+/*!
+ * Represents a belief of a Pomdp, i.e. a probability distribution over the states of a POMDP.
+ * A belief also knows its observation.
+ * @note A belief is assumed to be mutable. Use the BeliefBuilder class to construct new beliefs.
+ * @tparam ValueTypeArg the type of the values (probabilities) of the belief.
+ */
 template<typename ValueTypeArg>
 class Belief {
    public:
@@ -26,6 +32,52 @@ class Belief {
     Belief<ValueType>& operator=(Belief const& other) = default;
     Belief<ValueType>& operator=(Belief&& other) = default;
 
+    /*!
+     * @return the number of states in the support of this belief.
+     */
+    std::size_t size() const;
+
+    /*!
+     * @return a representative state of this belief.
+     * @pre the belief is valid, in particular not empty.
+     */
+    BeliefStateType representativeState() const;
+
+    /*!
+     * @return the observation of this belief.
+     */
+    BeliefObservationType const& observation() const;
+
+    /*!
+     * @return true if this belief is equal to the other belief.
+     */
+    bool operator==(Belief const& other) const;
+
+    /*!
+     * A (human readable) string representation of this belief
+     * @param convertToDouble if true, numbers are converted to double before printing. If this has ValueType=RationalNumber, the output as double is readable
+     * but potentially imprecise
+     */
+    std::string toString(bool convertToDouble = true) const;
+
+    /*!
+     * @param summands a vector containing a value for each state of the underlying POMDP.
+     * @return the sum of the POMDP state values, each multiplied by the value assigned to that state in this belief
+     * @pre for every state in the support of this belief, the corresponding index in summands must be valid
+     */
+    template<typename SummandsType>
+    SummandsType getWeightedSum(std::vector<SummandsType> const& summands) const {
+        auto sum = storm::utility::zero<SummandsType>();
+        forEach([&sum, &summands](auto const& state, auto const& val) {
+            STORM_LOG_ASSERT(state < summands.size(), "State " << state << " is out of range for the given summands.");
+            sum += summands[state] * val;
+        });
+        return sum;
+    };
+
+    /*!
+     * @param f a function that is called for each (state, value)-pair in the support of this belief.
+     */
     template<typename FunctionType>
     void forEach(FunctionType const& f) const {
         for (auto const& [state, value] : data) {
@@ -33,6 +85,9 @@ class Belief {
         }
     }
 
+    /*!
+     * @return true if f returns true for all (state, value)-pairs in the support of this belief.
+     */
     template<typename FunctionType>
     bool allOf(FunctionType const& f) const {
         for (auto const& [state, value] : data) {
@@ -43,12 +98,23 @@ class Belief {
         return true;
     }
 
+    /*!
+     * @param f a function that is called for each state in the support of this belief.
+     */
     template<typename FunctionType>
     void forEachStateInSupport(FunctionType const& f) const {
         for (auto const& [state, value] : data) {
             f(state);
         }
     }
+
+    /*!
+     * Calls the function f for each state in X with the arguments (state, value1, value2), where
+     * - value1 is the value for state of this belief
+     * - value2 is the value for state of the other belief
+     * - if considerOnlyThisSupport is true, X is the set of states in the support of this belief
+     * - otherwise, X is the set of states in the support of either this or the other belief
+     */
     template<typename FunctionType>
     void forEachCombine(Belief<ValueType> const& other, FunctionType const& f, bool considerOnlyThisSupport = false) const {
         static_assert(BeliefFlatMapIsOrdered);
@@ -95,80 +161,20 @@ class Belief {
         }
     }
 
-    std::size_t size() const {
-        return data.size();
-    }
-
-    BeliefStateType representativeState() const {
-        STORM_LOG_ASSERT(!data.empty(), "Empty belief");
-        return data.begin()->first;
-    }
-
-    BeliefObservationType const& observation() const {
-        return obs;
-    }
-
-    bool operator==(Belief const& other) const {
-        if (obs != other.obs) {
-            return false;
-        }
-        if (data.size() != other.size()) {
-            return false;
-        }
-        static_assert(BeliefFlatMapIsOrdered);
-        auto secondIt = other.data.cbegin();
-        for (auto const& [state, value] : data) {
-            if (state != secondIt->first) {
-                return false;
-            }
-            if (!BeliefNumerics<ValueType>::equal(value, secondIt->second)) {
-                return false;
-            }
-            ++secondIt;
-        }
-        return true;
-    }
-
-    std::string toString(bool convertToDouble = true) const {
-        std::stringstream ss;
-        ss << "Belief{ obs:" << obs;
-        if (convertToDouble) {
-            forEach([&ss](auto const& state, auto const& val) { ss << ", " << state << ":" << storm::utility::convertNumber<double>(val); });
-        } else {
-            forEach([&ss](auto const& state, auto const& val) { ss << ", " << state << ":" << val; });
-        }
-        ss << " }";
-        return ss.str();
-    }
-
-    template<typename SummandsType>
-    SummandsType getWeightedSum(std::vector<SummandsType> const& summands) {
-        auto sum = storm::utility::zero<SummandsType>();
-        forEach([&sum, &summands](auto const& state, auto const& val) {
-            STORM_LOG_ASSERT(state < summands.size(), "State " << state << " is out of range for the given summands.");
-            sum += summands[state] * val;
-        });
-        return sum;
-    }
-
+    /*!
+     * @return provides a hash value for the given belief
+     */
     struct BeliefHash {
-        std::size_t operator()(Belief const& belief) const {
-            auto seed = static_cast<std::size_t>(belief.obs);
-            if constexpr (storm::NumberTraits<ValueType>::IsExact) {
-                boost::hash_combine(seed, belief.data);
-            } else {
-                static_assert(BeliefFlatMapIsOrdered);
-                belief.forEach([&seed](auto const& state, auto const& val) {
-                    boost::hash_combine(seed, state);
-                    boost::hash_combine(seed, BeliefNumerics<ValueType>::valueForHash(val));
-                });
-            }
-            return seed;
-        }
+        std::size_t operator()(Belief const& belief) const;
     };
 
    private:
-    Belief(BeliefFlatMap<ValueType>&& data, BeliefObservationType&& obs) : data(std::move(data)), obs(std::move(obs)) {}
+    /*!
+     * Constructs a belief from the given Data.
+     * @note Use the BeliefBuilder class to create a belief.
+     */
+    Belief(BeliefFlatMap<ValueType>&& data, BeliefObservationType&& obs);
+
     BeliefFlatMap<ValueType> const data;
     BeliefObservationType const obs;
 };

@@ -2,9 +2,12 @@
 
 #include <string>
 #include <vector>
+
 #include "storm-pomdp/beliefs/abstraction/NoAbstraction.h"
 #include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
 #include "storm-pomdp/beliefs/utility/types.h"
+
+#include "storm/utility/constants.h"
 
 namespace storm::pomdp::beliefs {
 
