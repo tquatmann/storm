@@ -14,7 +14,7 @@ namespace detail {
  * Thus, a high value means that we are more precise.
  * This is only relevant if beliefs are represented using an inexact data type like double
  */
-constexpr double NumericPrecisionFactor = 1e15;
+constexpr double NumericPrecisionFactor = 1e14;
 
 double reprValue(double const& val) {
     return round(val * NumericPrecisionFactor);
@@ -50,7 +50,7 @@ ValueType BeliefNumerics<ValueType>::valueForHash(const ValueType& val) {
     return detail::reprValue(val);
 }
 
-template class BeliefNumerics<double>;
-template class BeliefNumerics<storm::RationalNumber>;
+template struct BeliefNumerics<double>;
+template struct BeliefNumerics<storm::RationalNumber>;
 
 }  // namespace storm::pomdp::beliefs
