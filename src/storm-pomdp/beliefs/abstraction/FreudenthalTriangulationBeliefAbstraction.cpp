@@ -1,5 +1,5 @@
-#include "storm-pomdp/storage/beliefs/FreudenthalTriangulationBeliefAbstraction.h"
-#include "storm-pomdp/storage/beliefs/Belief.h"
+#include "storm-pomdp/beliefs/abstraction/FreudenthalTriangulationBeliefAbstraction.h"
+#include "storm-pomdp/beliefs/storage/Belief.h"
 #include "storm/adapters/RationalNumberAdapter.h"
 
 namespace storm::pomdp::beliefs {

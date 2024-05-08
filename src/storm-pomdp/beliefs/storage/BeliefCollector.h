@@ -1,5 +1,5 @@
 #pragma once
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 
 #include "storm/utility/macros.h"
 

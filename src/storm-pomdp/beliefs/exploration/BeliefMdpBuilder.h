@@ -1,7 +1,7 @@
 #pragma once
 
-#include "storm-pomdp/builder/belief-mdp/BeliefExploration.h"
-#include "storm-pomdp/builder/belief-mdp/BeliefExplorationHeuristic.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExploration.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExplorationHeuristic.h"
 #include "storm/logic/Formulas.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"

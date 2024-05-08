@@ -4,8 +4,8 @@
 
 #include "storm/storage/SparseMatrix.h"
 
-#include "storm-pomdp/storage/beliefs/BeliefCollector.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
+#include "storm-pomdp/beliefs/storage/BeliefCollector.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 
 namespace storm::pomdp::builder {
 

@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "storm-pomdp/storage/beliefs/BeliefBuilder.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
+#include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 #include "storm/utility/macros.h"
 
 namespace storm::pomdp::beliefs {
@@ -13,12 +13,12 @@ using NoAbstraction = NoAbstractionStruct const;
 inline constexpr NoAbstraction noAbstraction;
 
 template<typename PomdpType, typename BeliefType>
-class BeliefGenerator {
+class FirstStateNextStateGenerator {
    public:
     using PomdpValueType = typename PomdpType::ValueType;
     using BeliefValueType = typename BeliefType::ValueType;
 
-    BeliefGenerator(PomdpType const& pomdp) : pomdp(pomdp) {}
+    FirstStateNextStateGenerator(PomdpType const& pomdp) : pomdp(pomdp) {}
 
     void setRewardModel(std::string rewardModelName = "") {
         auto const& rewardModel = pomdp.getRewardModel(rewardModelName);

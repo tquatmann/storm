@@ -1,4 +1,4 @@
-#include "storm-pomdp/storage/beliefs/BeliefNumerics.h"
+#include "storm-pomdp/beliefs/utility/BeliefNumerics.h"
 
 #include <cmath>
 #include "storm/adapters/RationalNumberAdapter.h"

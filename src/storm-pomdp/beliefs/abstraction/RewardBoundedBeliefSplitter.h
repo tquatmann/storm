@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "storm-pomdp/storage/beliefs/BeliefBuilder.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
+#include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 #include "storm/utility/macros.h"
 
 #include "storm/exceptions/UnsupportedModelException.h"

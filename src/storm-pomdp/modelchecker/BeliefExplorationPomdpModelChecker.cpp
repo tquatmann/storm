@@ -4,8 +4,8 @@
 
 #include "storm-pomdp/analysis/FiniteBeliefMdpDetection.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
-#include "storm-pomdp/builder/belief-mdp/BeliefMdpBuilder.h"
-#include "storm-pomdp/storage/beliefs/Belief.h"
+#include "storm-pomdp/beliefs/exploration/BeliefMdpBuilder.h"
+#include "storm-pomdp/beliefs/storage/Belief.h"
 #include "storm-pomdp/transformer/MakeStateSetObservationClosed.h"
 #include "storm/api/verification.h"
 #include "storm/modelchecker/CheckTask.h"
@@ -15,9 +15,9 @@
 #include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/NumberTraits.h"
 
+#include "storm-pomdp/beliefs/abstraction/FreudenthalTriangulationBeliefAbstraction.h"
 #include "storm-pomdp/builder/BeliefMdpExplorer.h"
 #include "storm-pomdp/modelchecker/PreprocessingPomdpValueBoundsModelChecker.h"
-#include "storm-pomdp/storage/beliefs/FreudenthalTriangulationBeliefAbstraction.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/utility/vector.h"
 

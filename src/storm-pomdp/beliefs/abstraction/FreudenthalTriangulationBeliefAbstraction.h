@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include "storm-pomdp/storage/beliefs/BeliefBuilder.h"
-#include "storm-pomdp/storage/beliefs/BeliefNumerics.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
+#include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
+#include "storm-pomdp/beliefs/utility/BeliefNumerics.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 

@@ -3,14 +3,14 @@
 #include <functional>
 #include <set>
 
-#include "storm-pomdp/builder/belief-mdp/BeliefExplorationHeuristic.h"
-#include "storm-pomdp/builder/belief-mdp/BeliefExplorationMatrix.h"
-#include "storm-pomdp/builder/belief-mdp/BeliefExplorationMode.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExplorationHeuristic.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExplorationMatrix.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExplorationMode.h"
 
-#include "storm-pomdp/storage/beliefs/BeliefCollector.h"
-#include "storm-pomdp/storage/beliefs/BeliefGenerator.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
-#include "storm-pomdp/storage/beliefs/RewardBoundedBeliefSplitter.h"
+#include "storm-pomdp/beliefs/abstraction/RewardBoundedBeliefSplitter.h"
+#include "storm-pomdp/beliefs/exploration/FirstStateNextStateGenerator.h"
+#include "storm-pomdp/beliefs/storage/BeliefCollector.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 #include "storm/utility/OptionalRef.h"
 #include "storm/utility/vector.h"
 
@@ -113,7 +113,7 @@ class BeliefExploration {
     }
 
    private:
-    storm::pomdp::beliefs::BeliefGenerator<PomdpType, BeliefType> beliefGenerator;
+    storm::pomdp::beliefs::FirstStateNextStateGenerator<PomdpType, BeliefType> beliefGenerator;
     storm::pomdp::beliefs::RewardBoundedBeliefSplitter<BeliefMdpValueType, PomdpType, BeliefType> rewardBoundedBeliefSplitter;
 };
 }  // namespace storm::pomdp::builder

@@ -1,6 +1,6 @@
-#include "storm-pomdp/storage/beliefs/ClippingBeliefAbstraction.h"
+#include "storm-pomdp/beliefs/abstraction/ClippingBeliefAbstraction.h"
 
-#include "storm-pomdp/storage/beliefs/Belief.h"
+#include "storm-pomdp/beliefs/storage/Belief.h"
 
 #include <optional>
 

@@ -2,12 +2,12 @@
 
 #include <set>
 
-#include "storm-pomdp/builder/belief-mdp/BeliefExplorationMode.h"
+#include "storm-pomdp/beliefs/exploration/BeliefExplorationMode.h"
 
-#include "storm-pomdp/storage/beliefs/BeliefCollector.h"
-#include "storm-pomdp/storage/beliefs/BeliefGenerator.h"
-#include "storm-pomdp/storage/beliefs/BeliefTypes.h"
-#include "storm-pomdp/storage/beliefs/RewardBoundedBeliefSplitter.h"
+#include "storm-pomdp/beliefs/abstraction/RewardBoundedBeliefSplitter.h"
+#include "storm-pomdp/beliefs/exploration/FirstStateNextStateGenerator.h"
+#include "storm-pomdp/beliefs/storage/BeliefCollector.h"
+#include "storm-pomdp/beliefs/utility/types.h"
 #include "storm/utility/OptionalRef.h"
 #include "storm/utility/vector.h"
 
