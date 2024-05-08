@@ -1,5 +1,12 @@
 #include "storm-pomdp/beliefs/storage/Belief.h"
+
+#include <boost/functional/hash.hpp>
+
+#include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
+#include "storm-pomdp/beliefs/utility/BeliefNumerics.h"
+
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/utility/NumberTraits.h"
 
 namespace storm::pomdp::beliefs {
 

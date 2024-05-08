@@ -2,17 +2,15 @@
 
 #include <sstream>
 
-#include <boost/functional/hash.hpp>
-
-#include "storm/utility/NumberTraits.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 
-#include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
-#include "storm-pomdp/beliefs/utility/BeliefNumerics.h"
 #include "storm-pomdp/beliefs/utility/types.h"
 
 namespace storm::pomdp::beliefs {
+
+template<typename ValueType>
+class BeliefBuilder;
 
 /*!
  * Represents a belief of a Pomdp, i.e. a probability distribution over the states of a POMDP.
