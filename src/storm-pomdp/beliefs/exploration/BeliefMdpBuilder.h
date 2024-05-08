@@ -36,7 +36,7 @@ class BeliefMdpBuilder {
         }
     }
     ExplorationInformation explore() {
-        return explore(storm::pomdp::beliefs::NoAbstraction());
+        return explore(storm::pomdp::beliefs::NoAbstraction);
     }
 
     template<typename BeliefAbstraction>

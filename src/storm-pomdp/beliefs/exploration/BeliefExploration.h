@@ -87,9 +87,9 @@ class BeliefExploration {
         ExpandCallback expandCallback(info, explorationHeuristic);
         for (uint64_t localActionIndex = 0; localActionIndex < numActions; ++localActionIndex) {
             if constexpr (Mode == BeliefExplorationMode::Standard) {
-                beliefGenerator.expand(belief, localActionIndex, expandCallback, abstraction);
+                beliefGenerator.getPostAbstractionHandle(abstraction, expandCallback)(belief, localActionIndex);
             } else {
-                beliefGenerator.expand(rewardBoundedBeliefSplitter, belief, localActionIndex, expandCallback, abstraction);
+                beliefGenerator.getPrePostAbstractionHandle(rewardBoundedBeliefSplitter, abstraction, expandCallback)(belief, localActionIndex);
             }
             info.matrix.endCurrentRow();
             if (beliefGenerator.hasRewardModel()) {
