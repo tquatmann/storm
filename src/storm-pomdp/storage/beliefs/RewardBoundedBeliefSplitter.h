@@ -18,9 +18,6 @@ class RewardBoundedBeliefSplitter {
     using BeliefValueType = typename BeliefType::ValueType;
     using RewardVectorType = std::vector<RewardValueType>;
 
-    static const bool CallbackHasData = true;
-    using CallbackDataType = RewardVectorType;
-
     RewardBoundedBeliefSplitter(PomdpType const& pomdp) : pomdp(pomdp) {}
 
     void setRewardModel(std::string const& rewardModelName = "") {
