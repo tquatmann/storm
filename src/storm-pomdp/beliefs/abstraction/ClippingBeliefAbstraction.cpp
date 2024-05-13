@@ -15,6 +15,13 @@
 namespace storm::pomdp::beliefs {
 
 template<typename BeliefType>
+ClippingBeliefAbstraction<BeliefType>::ClippingBeliefAbstraction(std::vector<uint64_t>&& observationResolutions)
+    : observationResolutions(std::forward<std::vector<uint64_t>>(observationResolutions)) {
+    STORM_LOG_ASSERT(std::all_of(observationResolutions.begin(), observationResolutions.end(), [](auto o) { return o > 0; }),
+                     "Expected that the resolutions are positive.");
+}
+
+template<typename BeliefType>
 typename ClippingBeliefAbstraction<BeliefType>::BeliefClipping ClippingBeliefAbstraction<BeliefType>::clipBeliefToGrid(
     const BeliefType& belief, uint64_t resolution, const storm::storage::BitVector& isInfinite) {
     if (!lpSolver) {

@@ -12,6 +12,9 @@
 
 namespace storm::pomdp::beliefs {
 
+/*!
+ * @see 10.1007/978-3-030-99527-0_2
+ */
 template<typename BeliefType>
 class ClippingBeliefAbstraction {
    public:
@@ -25,12 +28,8 @@ class ClippingBeliefAbstraction {
         bool onGrid = false;
     };
 
-    ClippingBeliefAbstraction(std::vector<uint64_t>&& observationResolutions)
-        : observationResolutions(std::forward<std::vector<uint64_t>>(observationResolutions)) {
-        STORM_LOG_ASSERT(std::all_of(observationResolutions.begin(), observationResolutions.end(), [](auto o) { return o > 0; }),
-                         "Expected that the resolutions are positive.");
-    }
-
+    ClippingBeliefAbstraction(std::vector<uint64_t>&& observationResolutions);
+    
     template<typename AbstractCallback>
     void abstract(BeliefValueType&& probabilityFactor, BeliefType&& belief, AbstractCallback const& callback) {
         BeliefClipping clipping = clipBeliefToGrid(belief, observationResolutions[belief.observation()]);

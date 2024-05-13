@@ -1,63 +1,67 @@
 #pragma once
 
-#include <set>
+#include <tuple>
+#include <vector>
 
-#include "storm-pomdp/beliefs/exploration/BeliefExplorationMode.h"
-
-#include "storm-pomdp/beliefs/abstraction/RewardBoundedBeliefSplitter.h"
-#include "storm-pomdp/beliefs/exploration/FirstStateNextStateGenerator.h"
-#include "storm-pomdp/beliefs/storage/BeliefCollector.h"
 #include "storm-pomdp/beliefs/utility/types.h"
-#include "storm/utility/OptionalRef.h"
-#include "storm/utility/vector.h"
 
-namespace storm::pomdp::builder {
+namespace storm::pomdp::beliefs {
 
-namespace detail {
-
-template<typename ValueType>
-struct StandardExplorationTransition {
+template<typename ValueType, typename...>
+struct BeliefExplorationTransition {
     ValueType probability;
     storm::pomdp::beliefs::BeliefId targetBelief;
 };
 
-template<typename ValueType>
-struct MultiRewardAugmentedExplorationTransition {
+template<typename ValueType, typename ExtraTransitionData>
+struct BeliefExplorationTransition<ValueType, ExtraTransitionData> {
     ValueType probability;
     storm::pomdp::beliefs::BeliefId targetBelief;
-    std::vector<ValueType> reward;
+    ExtraTransitionData data;
 };
-}  // namespace detail
 
-template<typename ValueType, BeliefExplorationMode Mode>
-using BeliefExplorationTransition = std::conditional_t<Mode == BeliefExplorationMode::Standard, detail::StandardExplorationTransition<ValueType>,
-                                                       detail::MultiRewardAugmentedExplorationTransition<ValueType>>;
+template<typename ValueType, typename FirstExtraTransitionData, typename... OtherExtraTransitionData>
+struct BeliefExplorationTransition<ValueType, FirstExtraTransitionData, OtherExtraTransitionData...> {
+    ValueType probability;
+    storm::pomdp::beliefs::BeliefId targetBelief;
+    std::tuple<FirstExtraTransitionData, OtherExtraTransitionData...> data;
+};
 
-template<typename ValueType, BeliefExplorationMode Mode>
+template<typename ValueType, typename... ExtraTransitionData>
 class BeliefExplorationMatrix {
    public:
-    BeliefExplorationMatrix() {
-        rowIndications.push_back(0u);
-        rowGroupIndices.push_back(0u);
-    }
-    std::size_t rows() const {
-        return rowIndications.size() - 1;
-    }
-    std::size_t groups() const {
-        return rowGroupIndices.size() - 1;
-    }
+    /*!
+     * Initializes a new (empty) belief exploration matrix.
+     */
+    BeliefExplorationMatrix();
 
-    void endCurrentRow() {
-        rowIndications.push_back(transitions.size());
-    };
+    /*!
+     * While building the matrix, ends the current row in the matrix.
+     */
+    void endCurrentRow();
 
-    void endCurrentRowGroup() {
-        rowGroupIndices.push_back(rowIndications.size() - 1);
-    };
+    /*!
+     * While building the matrix, ends the current row group in the matrix.
+     * @note This function should be called after endCurrentRow() has been called.
+     */
+    void endCurrentRowGroup();
 
-    std::vector<BeliefExplorationTransition<ValueType, Mode>> transitions;
+    /*!
+     * @return the current number of rows in the matrix
+     */
+    std::size_t rows() const;
+
+    /*!
+     * @return the current number of row groups in the matrix
+     */
+    std::size_t groups() const;
+
+    /*!
+     * Stores the successor
+     */
+    std::vector<BeliefExplorationTransition<ValueType, ExtraTransitionData...>> transitions;
     std::vector<uint64_t> rowIndications;
     std::vector<uint64_t> rowGroupIndices;
 };
 
-}  // namespace storm::pomdp::builder
+}  // namespace storm::pomdp::beliefs

@@ -24,6 +24,7 @@ class BeliefCollector {
 
     /*!
      * @return The belief that corresponds to the given ID.
+     * @note the returned belief is a reference to the internal storage which might be invalidated when further beliefs are added.
      */
     BeliefType const& getBeliefFromId(BeliefId const& id) const;
 

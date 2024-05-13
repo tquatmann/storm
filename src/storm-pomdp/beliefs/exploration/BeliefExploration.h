@@ -1,119 +1,41 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <set>
 
-#include "storm-pomdp/beliefs/exploration/BeliefExplorationHeuristic.h"
-#include "storm-pomdp/beliefs/exploration/BeliefExplorationMatrix.h"
-#include "storm-pomdp/beliefs/exploration/BeliefExplorationMode.h"
+#include "storm-pomdp/beliefs/exploration/ExplorationInformation.h"
 
-#include "storm-pomdp/beliefs/abstraction/RewardBoundedBeliefSplitter.h"
 #include "storm-pomdp/beliefs/exploration/FirstStateNextStateGenerator.h"
-#include "storm-pomdp/beliefs/storage/BeliefCollector.h"
 #include "storm-pomdp/beliefs/utility/types.h"
+
 #include "storm/utility/OptionalRef.h"
 #include "storm/utility/vector.h"
 
-namespace storm::pomdp::builder {
+namespace storm::pomdp::beliefs {
 
-template<BeliefExplorationMode Mode, typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
+template<typename BeliefType>
+class FreudenthalTriangulationBeliefAbstraction;
+
+template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 class BeliefExploration {
    public:
-    using BeliefId = storm::pomdp::beliefs::BeliefId;
-    using StateId = storm::pomdp::beliefs::BeliefStateType;
-    using PomdpValueType = typename PomdpType::ValueType;
-    using BeliefValueType = typename BeliefType::ValueType;
+    using TerminationCallback = std::function<bool()>;
+    using TerminalBeliefCallback = std::function<std::optional<BeliefMdpValueType>(BeliefType const&)>;
 
-    struct ExplorationInformation {
-        BeliefExplorationMatrix<BeliefMdpValueType, Mode> matrix;
-        std::vector<BeliefMdpValueType> actionRewards;
-        storm::pomdp::beliefs::BeliefCollector<BeliefType> collectedBeliefs;
-        std::unordered_map<BeliefId, StateId> exploredBeliefs;
-        BeliefId initialBelief;
-    };
+    BeliefExploration(PomdpType const& pomdp);
 
-    struct ExpandCallback {
-        ExpandCallback(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic)
-            : info(info), explorationHeuristic(explorationHeuristic) {}
-        ExplorationInformation& info;
-        BeliefExplorationHeuristic<BeliefType>& explorationHeuristic;
-
-        void operator()(BeliefType&& bel, BeliefValueType&& val) {  // TODO: add requires construct
-            if constexpr (Mode == BeliefExplorationMode::Standard) {
-                auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
-                if (info.exploredBeliefs.count(belId) == 0u) {
-                    explorationHeuristic.discover(belId, info.collectedBeliefs.getBeliefFromId(belId));
-                }
-                info.matrix.transitions.push_back({storm::utility::convertNumber<BeliefMdpValueType>(val), belId});
-            }
-        }
-
-        void operator()(BeliefType&& bel, std::vector<BeliefMdpValueType> const& rewardVector, BeliefValueType&& val) {  // TODO: add requires construct
-            if constexpr (Mode == BeliefExplorationMode::RewardBounded) {
-                auto const belId = info.collectedBeliefs.getIdOrAddBelief(std::move(bel));
-                if (info.exploredBeliefs.count(belId) == 0u) {
-                    explorationHeuristic.discover(belId, info.collectedBeliefs.getBeliefFromId(belId));
-                }
-                info.matrix.transitions.push_back({storm::utility::convertNumber<BeliefMdpValueType>(val), belId, rewardVector});
-            }
-        }
-    };
-
-    BeliefExploration(PomdpType const& pomdp) : beliefGenerator(pomdp), rewardBoundedBeliefSplitter(pomdp) {}
-
-    void setRewardModelsForRewardBoundedQuery(std::vector<std::string> const& rewardModelNames) {
-        rewardBoundedBeliefSplitter.setRewardModels(rewardModelNames);
-    }
-
-    void setRewardModelForObjective(std::string const& rewardModelName) {
-        beliefGenerator.setRewardModel(rewardModelName);
-    }
-
-    ExplorationInformation initializeExploration(BeliefExplorationHeuristic<BeliefType>& explorationHeuristic) {
-        ExplorationInformation info;
-        info.initialBelief = info.collectedBeliefs.addBelief(beliefGenerator.computeInitialBelief());
-        explorationHeuristic.discover(info.initialBelief, info.collectedBeliefs.getBeliefFromId(info.initialBelief));
-        return info;
-    }
-
-    template<typename BeliefAbstraction>
-    void exploreBelief(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic, BeliefId const& beliefId,
-                       BeliefAbstraction const& abstraction) {
-        STORM_LOG_ASSERT(info.collectedBeliefs.containsId(beliefId), "Unknown belief id");
-        STORM_LOG_ASSERT(info.exploredBeliefs.count(beliefId) == 0, "Belief #" << beliefId << " already explored.");
-        info.exploredBeliefs.emplace(beliefId, info.matrix.groups());
-        auto belief = info.collectedBeliefs.getBeliefFromId(beliefId);  // do not take as reference since it will be invalidated when collecting more beliefs
-        auto const numActions = beliefGenerator.getBeliefNumberOfActions(belief);
-        ExpandCallback expandCallback(info, explorationHeuristic);
-        for (uint64_t localActionIndex = 0; localActionIndex < numActions; ++localActionIndex) {
-            if constexpr (Mode == BeliefExplorationMode::Standard) {
-                beliefGenerator.getPostAbstractionHandle(abstraction, expandCallback)(belief, localActionIndex);
-            } else {
-                beliefGenerator.getPrePostAbstractionHandle(rewardBoundedBeliefSplitter, abstraction, expandCallback)(belief, localActionIndex);
-            }
-            info.matrix.endCurrentRow();
-            if (beliefGenerator.hasRewardModel()) {
-                info.actionRewards.emplace_back(beliefGenerator.getBeliefActionReward(belief, localActionIndex));
-            }
-        }
-        info.matrix.endCurrentRowGroup();
-    }
-
-    template<typename BeliefAbstraction>
-    bool performExploration(ExplorationInformation& info, BeliefExplorationHeuristic<BeliefType>& explorationHeuristic,
-                            std::function<bool()> const& terminateExploration, BeliefAbstraction const& abstraction) {
-        while (explorationHeuristic.hasNext()) {
-            if (terminateExploration()) {
-                return false;  // Terminate prematurely
-            }
-            auto currentId = explorationHeuristic.popNext();
-            exploreBelief(info, explorationHeuristic, currentId, abstraction);
-        }
-        return true;
-    }
+    using StandardExplorationInformation = ExplorationInformation<BeliefMdpValueType, BeliefType>;
+    StandardExplorationInformation initializeStandardExploration(ExplorationQueueOrder const explorationQueueOrder = ExplorationQueueOrder::Unordered);
+    void resumeExploration(StandardExplorationInformation& info, TerminalBeliefCallback const& terminalBeliefCallback = {},
+                           TerminationCallback const& terminationCallback = {}, storm::OptionalRef<std::string const> rewardModelName = {},
+                           storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction = {});
 
    private:
-    storm::pomdp::beliefs::FirstStateNextStateGenerator<PomdpType, BeliefType> beliefGenerator;
-    storm::pomdp::beliefs::RewardBoundedBeliefSplitter<BeliefMdpValueType, PomdpType, BeliefType> rewardBoundedBeliefSplitter;
+    template<typename InfoType, typename NextStateHandleType>
+    bool performExploration(InfoType& info, NextStateHandleType&& exploreNextStates, TerminalBeliefCallback const& terminalBeliefCallback,
+                            TerminationCallback const& terminationCallback);
+
+    storm::pomdp::beliefs::FirstStateNextStateGenerator<PomdpType, BeliefType> firstStateNextStateGenerator;
 };
-}  // namespace storm::pomdp::builder
+}  // namespace storm::pomdp::beliefs

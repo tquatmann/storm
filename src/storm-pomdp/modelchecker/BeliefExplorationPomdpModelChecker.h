@@ -258,9 +258,7 @@ class BeliefExplorationPomdpModelChecker {
      */
     void refineReachability(storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
-    void approximate(storm::Environment const& env, storm::pomdp::builder::BeliefMdpPropertyInformation const& propertyInformation,
-                     storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
-
+    
     /**
      * Builds and checks an MDP that over-approximates the POMDP behavior, i.e. provides an upper bound for maximizing and a lower bound for minimizing
      * properties

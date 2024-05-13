@@ -4,8 +4,7 @@
 
 #include "storm-pomdp/analysis/FiniteBeliefMdpDetection.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
-#include "storm-pomdp/beliefs/exploration/BeliefMdpBuilder.h"
-#include "storm-pomdp/beliefs/storage/Belief.h"
+#include "storm-pomdp/beliefs/verification/BeliefBasedModelChecker.h"
 #include "storm-pomdp/transformer/MakeStateSetObservationClosed.h"
 #include "storm/api/verification.h"
 #include "storm/modelchecker/CheckTask.h"
@@ -209,17 +208,36 @@ BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPTyp
     }
 
     if (options.useRevisedImplementation) {
-        storm::pomdp::builder::BeliefMdpPropertyInformation propertyInfo;
+        storm::pomdp::beliefs::PropertyInformation propertyInfo;
         if (rewardModelName) {
-            propertyInfo.kind = storm::pomdp::builder::BeliefMdpPropertyInformation::Kind::ExpectedTotalReachabilityReward;
+            propertyInfo.kind = storm::pomdp::beliefs::PropertyInformation::Kind::ExpectedTotalReachabilityReward;
             propertyInfo.rewardModelName = rewardModelName;
         } else {
-            propertyInfo.kind = storm::pomdp::builder::BeliefMdpPropertyInformation::Kind::ReachabilityProbability;
+            propertyInfo.kind = storm::pomdp::beliefs::PropertyInformation::Kind::ReachabilityProbability;
         }
         propertyInfo.dir = formulaInfo.getOptimizationDirection();
         propertyInfo.targetObservations = targetObservations;
-        approximate(env, propertyInfo, pomdpValueBounds, result);
-    } else if (options.interactiveUnfolding) {
+        storm::pomdp::beliefs::BeliefBasedModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType> checker(pomdp());
+        BeliefMDPType resultValue;
+        bool isOverApproximation{false};
+        bool isUnderApproximation{false};
+        if (options.discretize) {
+            isOverApproximation = true;
+            resultValue =
+                checker.checkDiscretize(env, propertyInfo, options.resolutionInit, options.dynamicTriangulation, pomdpValueBounds.trivialPomdpValueBounds);
+        } else {
+            isOverApproximation = isUnderApproximation = true;  // Explore the entire belief MDP (for now)
+            resultValue = checker.checkUnfold(env, propertyInfo, pomdpValueBounds.trivialPomdpValueBounds);
+        }
+        if (storm::solver::maximize(propertyInfo.dir) ? isOverApproximation : isUnderApproximation) {
+            result.updateUpperBound(resultValue);
+        }
+        if (storm::solver::minimize(propertyInfo.dir) ? isOverApproximation : isUnderApproximation) {
+            result.updateLowerBound(resultValue);
+        }
+    }
+
+    else if (options.interactiveUnfolding) {
         unfoldInteractively(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
     } else {
         refineReachability(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
@@ -321,51 +339,6 @@ PomdpModelType const& BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefV
         return *preprocessedPomdp;
     } else {
         return *inputPomdp;
-    }
-}
-
-template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
-void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::approximate(
-    storm::Environment const& env, storm::pomdp::builder::BeliefMdpPropertyInformation const& propertyInformation,
-    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
-    using BeliefMdpBuilderType = storm::pomdp::builder::BeliefMdpBuilder<storm::pomdp::builder::BeliefExplorationMode::Standard, BeliefMDPType, PomdpModelType,
-                                                                         storm::pomdp::beliefs::Belief<BeliefValueType>>;
-    bool isOverApproximation{false};
-    bool isUnderApproximation{false};
-    storm::utility::Stopwatch swBuildBeliefMdp(true);
-    BeliefMdpBuilderType builder(pomdp(), propertyInformation);
-    typename BeliefMdpBuilderType::ExplorationInformation info;
-    if (options.discretize) {
-        isOverApproximation = true;
-        auto observationResolutionVector =
-            std::vector<BeliefValueType>(pomdp().getNrObservations(), storm::utility::convertNumber<BeliefValueType>(options.resolutionInit));
-        auto mode = options.dynamicTriangulation ? storm::pomdp::beliefs::FreudenthalTriangulationMode::Dynamic
-                                                 : storm::pomdp::beliefs::FreudenthalTriangulationMode::Static;
-        storm::pomdp::beliefs::FreudenthalTriangulationBeliefAbstraction<storm::pomdp::beliefs::Belief<BeliefValueType>> a(observationResolutionVector, mode);
-        info = builder.explore(a);
-    } else {
-        isOverApproximation = isUnderApproximation = true;
-        info = builder.explore();
-    }
-    auto beliefMdp = builder.build(info);
-    swBuildBeliefMdp.stop();
-    STORM_PRINT_AND_LOG("Time for constructing belief MDP: " << swBuildBeliefMdp << ".\n");
-    beliefMdp->printModelInformationToStream(std::cout);
-    auto formula = builder.createFormulaForBeliefMdp();
-    storm::modelchecker::CheckTask<storm::logic::Formula, BeliefMDPType> task(*formula, true);
-    std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMDPType>(env, beliefMdp, task));
-    if (res) {
-        STORM_LOG_ASSERT(beliefMdp->getInitialStates().getNumberOfSetBits() == 1, "Unexpected number of initial states for belief mdp");
-        auto const initState = beliefMdp->getInitialStates().getNextSetIndex(0);
-        auto value = res->asExplicitQuantitativeCheckResult<BeliefMDPType>()[initState];
-        if (storm::solver::maximize(propertyInformation.dir) ? isOverApproximation : isUnderApproximation) {
-            result.updateUpperBound(value);
-        }
-        if (storm::solver::minimize(propertyInformation.dir) ? isOverApproximation : isUnderApproximation) {
-            result.updateLowerBound(value);
-        }
-    } else {
-        assert(false);
     }
 }
 
@@ -939,7 +912,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             bool restoreAllActions = false;
             bool checkRewireForAllActions = false;
             // Get the relative gap
-            //            ValueType gap = getGap(overApproximation->getLowerValueBoundAtCurrentState(), overApproximation->getUpperValueBoundAtCurrentState());
+            //            ValueType gap = getGap(overApproximation->getLowerValueBoundAtCurrentState(),
+            //            overApproximation->getUpperValueBoundAtCurrentState());
             if (!hasOldBehavior) {
                 // Case 1
                 // If we explore this state and if it has no old behavior, it is clear that an "old" optimal scheduler can be extended to a scheduler that
@@ -967,8 +941,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     if (fixPoint) {
                         // Properly check whether this can still be a fixpoint
                         if (overApproximation->currentStateIsOptimalSchedulerReachable()) {
-                            //                            STORM_LOG_INFO_COND(!fixPoint, "Not reaching a refinement fixpoint because we truncate a state with
-                            //                            non-zero gap "
+                            //                            STORM_LOG_INFO_COND(!fixPoint, "Not reaching a refinement fixpoint because we truncate a state
+                            //                            with non-zero gap "
                             //                                                               << gap << " that is reachable via an optimal sched.");
                             fixPoint = false;
                         }
@@ -1022,8 +996,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                     (overApproximation->currentStateIsOptimalSchedulerReachable() &&
                                      overApproximation->actionAtCurrentStateWasOptimal(action))) {
                                     //                                    STORM_LOG_INFO_COND(!fixPoint,
-                                    //                                                        "Not reaching a refinement fixpoint because we delay a rewiring of
-                                    //                                                        a state with non-zero gap "
+                                    //                                                        "Not reaching a refinement fixpoint because we delay a
+                                    //                                                        rewiring of a state with non-zero gap "
                                     //                                                            << gap << " that is reachable via an optimal scheduler.");
                                     fixPoint = false;
                                 }

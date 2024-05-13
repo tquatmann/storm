@@ -5,12 +5,16 @@
 
 #include "storm-pomdp/beliefs/storage/BeliefBuilder.h"
 #include "storm-pomdp/beliefs/utility/types.h"
-#include "storm/utility/macros.h"
-
-#include "storm/exceptions/UnsupportedModelException.h"
+#include "storm/utility/constants.h"
 
 namespace storm::pomdp::beliefs {
 
+/*!
+ * Abstracts a given belief by splitting it into sub-beliefs based on the (state-action) reward of the POMDP.
+ * Multiple reward models can be set.
+ * States in the support of the given belief where all action rewards are equal will be grouped together.
+ * When applying this as a pre-abstraction, this intuitively means that the collected rewards are observable.
+ */
 template<typename RewardValueType, typename PomdpType, typename BeliefType>
 class RewardBoundedBeliefSplitter {
    public:
@@ -18,41 +22,11 @@ class RewardBoundedBeliefSplitter {
     using BeliefValueType = typename BeliefType::ValueType;
     using RewardVectorType = std::vector<RewardValueType>;
 
-    RewardBoundedBeliefSplitter(PomdpType const& pomdp) : pomdp(pomdp) {}
-
-    void setRewardModel(std::string const& rewardModelName = "") {
-        setRewardModels({rewardModelName});
-    }
-
-    void setRewardModels(std::vector<std::string> const& rewardModelNames) {
-        actionRewardVectors.assign(pomdp.getNumberOfChoices());
-        for (auto const& rewardModelName : rewardModelNames) {
-            auto const& rewardModel = pomdp.getRewardModel(rewardModelName);
-            STORM_LOG_THROW(!rewardModel.hasTransitionRewards(), storm::exceptions::UnsupportedModelException,
-                            "POMDPs with transition rewards are currently not supported.");
-            for (uint64_t state = 0; state < pomdp.getNumberOfStates(); ++state) {
-                for (auto const& choice : pomdp.getTransitionMatrix().getRowGroupIndices(state)) {
-                    auto val = rewardModel.hasStateActionRewards() ? rewardModel.getStateActionReward(choice) : storm::utility::zero<PomdpValueType>();
-                    if (rewardModel.hasStateRewards()) {
-                        val += rewardModel.getStateReward(state);
-                    }
-                    actionRewardVectors[choice].push_back(storm::utility::convertNumber<RewardValueType>(val));
-                }
-            }
-        }
-    }
-
-    void unsetRewardModels() {
-        actionRewardVectors.clear();
-    }
-
-    std::size_t getNumberOfSetRewardModels() const {
-        if (actionRewardVectors.empty()) {
-            return 0;
-        } else {
-            return actionRewardVectors.front().size();
-        }
-    }
+    RewardBoundedBeliefSplitter(PomdpType const& pomdp);
+    void setRewardModel(std::string const& rewardModelName = "");
+    void setRewardModels(std::vector<std::string> const& rewardModelNames);
+    void unsetRewardModels();
+    std::size_t getNumberOfSetRewardModels() const;
 
     template<typename ExpandCallback>
     void abstract(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback const& callback) {

@@ -11,19 +11,24 @@
 namespace storm::pomdp::beliefs {
 enum class FreudenthalTriangulationMode { Static, Dynamic };
 
+/*!
+ * Abstracts a belief by triangulating it using the Freudenthal triangulation.
+ * Intuitively, the Freudenthal triangulation considers a grid (or: foundation) of beliefs that assign probabilities from the set {0/N, 1/N, 2/N, ..., N/N} for
+ * some resolution N. The freudenthal belief abstraction then represents a given belief by a convex combination over nearby grid-beliefs.
+ * In the static mode, the resolution is fixed.
+ * In the dynamic mode, a lower resolution is chosen, if it fits the belief significantly better. For example, if the original belief is {state1: 1/3, state2:
+ * 2/3 } and the given resolution is N=4, it will be triangulated using N'=3 instead.
+ *
+ * @see 10.1007/978-3-030-59152-6_16
+ *
+ * @tparam BeliefType
+ */
 template<typename BeliefType>
 class FreudenthalTriangulationBeliefAbstraction {
    public:
     using BeliefValueType = typename BeliefType::ValueType;
 
-    FreudenthalTriangulationBeliefAbstraction(std::vector<BeliefValueType> const& observationTriangulationResolutions, FreudenthalTriangulationMode mode)
-        : mode(mode) {
-        observationResolutions.reserve(observationResolutions.size());
-        for (auto const& res : observationTriangulationResolutions) {
-            observationResolutions.emplace_back(storm::utility::ceil<BeliefValueType>(res));
-            STORM_LOG_ASSERT(observationResolutions.back() > 0, "Expected that the resolution is a positive integer. Got " << res << " instead.");
-        }
-    }
+    FreudenthalTriangulationBeliefAbstraction(std::vector<BeliefValueType> const& observationTriangulationResolutions, FreudenthalTriangulationMode mode);
 
     template<typename AbstractCallback>
     void abstract(BeliefType&& belief, BeliefValueType&& probabilityFactor, AbstractCallback const& callback) const {

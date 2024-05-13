@@ -116,7 +116,7 @@ struct NextStateGeneratorHandle {
 
     template<typename... CallBackArgs>
     void operator()(BeliefType const& belief, uint64_t localActionIndex, CallBackArgs const&... additionalCallbackArgs) {
-        applyPreAbstraction(belief, localActionIndex, additionalCallbackArgs...);
+        applyPreAbstraction(belief, localActionIndex, std::forward<CallBackArgs>(additionalCallbackArgs)...);
     }
 
     PomdpType const& pomdp;
@@ -133,8 +133,9 @@ struct NextStateGeneratorHandle {
             preAbstraction.abstract(belief, localActionIndex,
                                     [this, &localActionIndex, &additionalCallbackArgs...](BeliefType&& preBel, BeliefValueType&& preVal,
                                                                                           auto const&... additionalPreAbstractionArgs) {
-                                        computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal), additionalCallbackArgs...,
-                                                                additionalPreAbstractionArgs...);
+                                        computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal),
+                                                                std::forward<CallBackArgs>(additionalCallbackArgs)...,
+                                                                std::forward<decltype(additionalCallbackArgs)>(additionalPreAbstractionArgs)...);
                                     });
         }
     }
@@ -182,7 +183,8 @@ struct NextStateGeneratorHandle {
                     }
                 }
             });
-            applyPostAbstraction(builder.build(), static_cast<BeliefValueType>(successorObsValue.second * transitionProbability), additionalCallbackArgs...);
+            applyPostAbstraction(builder.build(), static_cast<BeliefValueType>(successorObsValue.second * transitionProbability),
+                                 std::forward<CallBackArgs>(additionalCallbackArgs)...);
         }
     }
 
@@ -193,8 +195,9 @@ struct NextStateGeneratorHandle {
         } else {
             postAbstraction.abstract(
                 std::move(belief), std::move(transitionProbability),
-                [this, &additionalCallbackArgs...](BeliefType&& postBel, BeliefValueType&& postVal, auto const&... additionalPostAbstractionArgs) {
-                    discoverCallback(std::move(postBel), std::move(postVal), additionalCallbackArgs..., additionalPostAbstractionArgs...);
+                [this, &additionalCallbackArgs...](BeliefType&& postBel, BeliefValueType&& postVal, auto&&... additionalPostAbstractionArgs) {
+                    discoverCallback(std::move(postBel), std::move(postVal), std::forward<CallBackArgs>(additionalCallbackArgs)...,
+                                     std::forward<decltype(additionalPostAbstractionArgs)>(additionalPostAbstractionArgs)...);
                 });
         }
     }
