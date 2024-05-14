@@ -1,7 +1,7 @@
 #pragma once
 
 #include <deque>
-#include <unordered_set>
+#include <set>
 
 #include "storm-pomdp/beliefs/utility/types.h"
 
@@ -41,7 +41,7 @@ class ExplorationQueue {
     ExplorationQueueOrder order;
 
     /// The set of belief ids in the queue.
-    std::unordered_set<storm::pomdp::beliefs::BeliefId> contents;
+    std::set<storm::pomdp::beliefs::BeliefId> contents;
 
     /// the order in which elements were inserted (empty if unordered)
     std::deque<storm::pomdp::beliefs::BeliefId> queue;
