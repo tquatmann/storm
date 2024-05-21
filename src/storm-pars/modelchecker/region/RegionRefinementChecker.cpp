@@ -1,5 +1,6 @@
 #include "storm-pars/modelchecker/region/RegionRefinementChecker.h"
 
+#include <iterator>
 #include <queue>
 
 #include "storm-pars/modelchecker/region/AnnotatedRegion.h"
@@ -10,6 +11,7 @@
 
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
+#include "utility/logging.h"
 
 namespace storm::modelchecker {
 
@@ -151,7 +153,9 @@ std::unique_ptr<storm::modelchecker::RegionRefinementCheckResult<ParametricType>
             // Split the region as long as the desired refinement depth is not reached.
             if (!depthThreshold || currentRegion.refinementDepth < depthThreshold.value()) {
                 monotonicityBackend->updateMonotonicityBeforeSplitting(env, currentRegion);
-                currentRegion.splitLeafNodeAtCenter(getSplittingVariables(currentRegion, Context::Partitioning), true);
+                auto splittingVariables = getSplittingVariables(currentRegion, Context::Partitioning);
+                STORM_LOG_INFO("Splitting on variables" << splittingVariables);
+                currentRegion.splitLeafNodeAtCenter(splittingVariables, true);
                 for (auto& child : currentRegion.subRegions) {
                     unprocessedRegions.emplace(child);
                 }
@@ -264,7 +268,9 @@ RegionRefinementChecker<ParametricType>::computeExtremalValue(Environment const&
         // Trigger region-splitting if over- and under-approximation are still too far apart
         if (isStrictlyBetterThanValue(currentBound.value())) {
             monotonicityBackend->updateMonotonicityBeforeSplitting(env, currentRegion);
-            currentRegion.splitLeafNodeAtCenter(getSplittingVariables(currentRegion, Context::ExtremalValue), true);
+            auto splittingVariables = getSplittingVariables(currentRegion, Context::ExtremalValue);
+            STORM_LOG_INFO("Splitting on variables " << splittingVariables);
+            currentRegion.splitLeafNodeAtCenter(splittingVariables, true);
             for (auto& child : currentRegion.subRegions) {
                 unprocessedRegions.emplace(child);
             }
@@ -294,10 +300,75 @@ bool RegionRefinementChecker<ParametricType>::verifyRegion(const storm::Environm
 }
 
 template<typename ParametricType>
+std::set<typename RegionRefinementChecker<ParametricType>::VariableType> RegionRefinementChecker<ParametricType>::getSplittingVariablesEstimateBased(
+    AnnotatedRegion<ParametricType> const& region, Context context) const {
+    // If we can split on all variables, do that instead of requesting region split estimates
+    if (this->regionSplittingStrategy.maxSplitDimensions >= region.region.getVariables().size()) {
+        return region.region.getVariables();
+    }
+
+    auto const& estimates = regionChecker->obtainRegionSplitEstimates(region.region.getVariables());
+    std::vector<std::pair<VariableType, CoefficientType>> estimatesToSort;
+    estimatesToSort.reserve(region.region.getVariables().size());
+
+    auto estimatesIter = estimates.begin();
+    for (auto const& param : region.region.getVariables()) {
+        estimatesToSort.push_back(std::make_pair(param, *estimatesIter++));
+    }
+
+    // Sort and insert largest n=maxSplitDimensions estimates
+    std::sort(estimatesToSort.begin(), estimatesToSort.end(), [](const auto& a, const auto& b) {
+        return a.second > b.second;
+    });
+
+    std::set<VariableType> splittingVars;
+    for (uint64_t i = 0; i < this->regionSplittingStrategy.maxSplitDimensions; i++) {
+        // Do not split on monotone parameters if finding an extremal value is the goal
+        if (context == Context::ExtremalValue && region.monotonicityAnnotation.getDefaultMonotonicityAnnotation() &&
+                region.monotonicityAnnotation.getDefaultMonotonicityAnnotation()->globalMonotonicity &&
+                region.monotonicityAnnotation.getDefaultMonotonicityAnnotation()->globalMonotonicity->isMonotone(estimatesToSort[i].first)) {
+            continue;
+        }
+        splittingVars.emplace(estimatesToSort[i].first);
+    }
+    return splittingVars;
+}
+
+template<typename ParametricType>
+std::set<typename RegionRefinementChecker<ParametricType>::VariableType> RegionRefinementChecker<ParametricType>::getSplittingVariablesRoundRobin(
+    AnnotatedRegion<ParametricType> const& region, Context context) const {
+    // Perform round-robin based on the depth of the region, always split on max split dimensions
+    auto const& vars = region.region.getVariables();
+    auto varsIter = vars.begin();
+
+    std::advance(varsIter, (region.refinementDepth * this->regionSplittingStrategy.maxSplitDimensions) % vars.size());
+
+    std::set<VariableType> splittingVars;
+    for (uint64_t i = 0; i < this->regionSplittingStrategy.maxSplitDimensions; i++) {
+        // Do not split on monotone parameters if finding an extremal value is the goal
+        if (context == Context::ExtremalValue && region.monotonicityAnnotation.getDefaultMonotonicityAnnotation() &&
+                region.monotonicityAnnotation.getDefaultMonotonicityAnnotation()->globalMonotonicity &&
+                region.monotonicityAnnotation.getDefaultMonotonicityAnnotation()->globalMonotonicity->isMonotone(*varsIter)) {
+            continue;
+        }
+        splittingVars.emplace(*varsIter);
+        std::advance(varsIter, 1);
+        if (varsIter == vars.end()) {
+            varsIter = vars.begin();
+        }
+    }
+    return splittingVars;
+}
+
+template<typename ParametricType>
 std::set<typename RegionRefinementChecker<ParametricType>::VariableType> RegionRefinementChecker<ParametricType>::getSplittingVariables(
     AnnotatedRegion<ParametricType> const& region, Context context) const {
-    // TODO: Use the splitting strategy, monotonicity, context, ... as in old splitSmart implementation?
-    return region.region.getVariables();
+    switch (regionSplittingStrategy.heuristic) {
+    case RegionSplittingStrategy::Heuristic::EstimateBased:
+        return getSplittingVariablesEstimateBased(region, context);
+    case RegionSplittingStrategy::Heuristic::RoundRobin:
+        return getSplittingVariablesRoundRobin(region, context);
+    }
 }
 
 template class RegionRefinementChecker<storm::RationalFunction>;
