@@ -6,6 +6,7 @@
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
+#include "storm/utility/Stopwatch.h"
 #include "storm/utility/graph.h"
 
 namespace storm {
@@ -111,6 +112,7 @@ void MaximalEndComponentDecomposition<ValueType>::performMaximalEndComponentDeco
                                                                                           storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                           storm::OptionalRef<storm::storage::BitVector const> states,
                                                                                           storm::OptionalRef<storm::storage::BitVector const> choices) {
+    storm::utility::Stopwatch stopwatch(true);
     // Get some data for convenient access.
     auto const& nondeterministicChoiceIndices = transitionMatrix.getRowGroupIndices();
 
@@ -195,6 +197,9 @@ void MaximalEndComponentDecomposition<ValueType>::performMaximalEndComponentDeco
         sccDecOptions.subsystem(remainingEcCandidates);
         sccDecOptions.choices(ecChoices);
     }
+    stopwatch.stop();
+    STORM_PRINT_AND_LOG("Time for end component decomposition: " << stopwatch << "\n");
+    STORM_PRINT_AND_LOG(statistics(transitionMatrix.getRowGroupCount()) << "\n");
 
     STORM_LOG_DEBUG("MEC decomposition found " << this->size() << " MEC(s).");
 }

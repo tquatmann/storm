@@ -482,7 +482,10 @@ MaybeStateResult<SolutionType> computeValuesForMaybeStates(Environment const& en
     solver->setTrackScheduler(produceScheduler);
 
     // Solve the corresponding system of equations.
+    storm::utility::Stopwatch sw(true);
     solver->solveEquations(env, x, b);
+    sw.stop();
+    STORM_PRINT_AND_LOG("Time for model solving: " << sw << ".\n");
 
 #ifndef NDEBUG
     // As a sanity check, make sure our local upper bounds were in fact correct.
