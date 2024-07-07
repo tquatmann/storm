@@ -302,4 +302,130 @@ TYPED_TEST(QuantileQueryTest, resources) {
     compare = this->compareResult(model, result, expectedResult);
     EXPECT_TRUE(compare.first) << compare.second;
 }
+
+template<typename ValueType>
+auto buildTransitionRewardsTestModel() {
+    // There currently is no nice way to input models with transition branch rewards. We're thus doing this manually here.
+    storm::storage::SparseMatrixBuilder<ValueType> transitionsBuilder(6, 5, 10, true, true, 5), rewards1Builder(6, 5, 4, true, true, 5),
+        rewards2Builder(6, 5, 2, true, true, 5);
+    uint64_t row = 0;
+    auto newRowGroup = [&]() {
+        transitionsBuilder.newRowGroup(row);
+        rewards1Builder.newRowGroup(row);
+        rewards2Builder.newRowGroup(row);
+    };
+    auto addNextValue = [&](uint64_t column, std::string probability, std::string reward1, std::string reward2) {
+        transitionsBuilder.addNextValue(row, column, storm::utility::convertNumber<ValueType>(probability));
+        if (!reward1.empty()) {
+            rewards1Builder.addNextValue(row, column, storm::utility::convertNumber<ValueType>(reward1));
+        }
+        if (!reward2.empty()) {
+            rewards2Builder.addNextValue(row, column, storm::utility::convertNumber<ValueType>(reward2));
+        }
+    };
+    newRowGroup();
+    addNextValue(0, "99/100", "1", {});
+    addNextValue(1, "1/100", "1", "10");
+    ++row;
+    addNextValue(1, "4/10", "1", "20");
+    addNextValue(2, "6/10", {}, {});
+    ++row;
+    newRowGroup();
+    addNextValue(3, "1/2", {}, {});
+    addNextValue(4, "1/2", {}, {});
+    ++row;
+    newRowGroup();
+    addNextValue(0, "3/10", {}, {});
+    addNextValue(1, "7/10", "3", {});
+    ++row;
+    newRowGroup();
+    addNextValue(3, "1", {}, {});
+    ++row;
+    newRowGroup();
+    addNextValue(4, "1", {}, {});
+
+    storm::models::sparse::StateLabeling labels(5);
+    labels.addLabel("init");
+    labels.addLabelToState("init", 0);
+    labels.addLabel("target");
+    labels.addLabelToState("target", 3);
+
+    auto mdp = std::make_shared<storm::models::sparse::Mdp<ValueType>>(transitionsBuilder.build(), std::move(labels));
+
+    std::vector<ValueType> actionRewards1(6);
+    actionRewards1[2] = storm::utility::convertNumber<ValueType, uint64_t>(30);
+    actionRewards1[3] = storm::utility::convertNumber<ValueType, uint64_t>(2);
+    mdp->addRewardModel("rew1", storm::models::sparse::StandardRewardModel<ValueType>(std::nullopt, std::move(actionRewards1), rewards1Builder.build()));
+    mdp->addRewardModel("rew2", storm::models::sparse::StandardRewardModel<ValueType>(std::nullopt, std::nullopt, rewards2Builder.build()));
+    return mdp;
+    // Equivalent PRISM formulation with intermediate states
+    // mdp
+    //
+    // module main
+    //
+    // x : [0..4];
+    // xNext : [0..4];
+    //
+    //     [tick1] x=0 -> 0.99: (xNext'=0) + 0.01: (xNext'=1);
+    //     [tick2] x=0 -> 0.4: (xNext'=1) + 0.6: (xNext'=2);
+    //     [tick1] x=1 -> 0.5: (xNext'=3) + 0.5: (xNext'=4);
+    //     [tick1] x=2 -> 0.3: (xNext'=0) + 0.7: (xNext'=1);
+    //
+    //[tack] true -> 1: (x'=xNext);
+    // endmodule
+    //
+    // module ticktack
+    //
+    // act : [0..2] init 0;
+    //
+    //[tick1] act=0 -> 1: (act'=1);
+    //[tick2] act=0 -> 1: (act'=2);
+    //[tack] act>0 -> 1: (act'=0);
+    //
+    // endmodule
+    //
+    // rewards "rew2"
+    //[tack] x=0 & xNext=1 & act=1: 10;
+    //[tack] x=0 & xNext=1 & act=2: 20;
+    // endrewards
+    //
+    // rewards "rew1"
+    //[tack] x=0 & act=1: 1;
+    //[tack] x=0 & xNext=1 & act=2: 1;
+    //[tack] x=1: 30;
+    //[tack] x=2: (xNext=1 ? 5 : 2);
+    // endrewards
+    //
+    // label "target" = x=3;
+}
+
+TYPED_TEST(QuantileQueryTest, transition_rewards) {
+    using ValueType = typename TestFixture::ValueType;
+    typedef storm::models::sparse::Mdp<ValueType> ModelType;
+    std::string formulasString = "quantile(min B2, Pmax>0.49 [F{\"rew2\"}<=B2 \"target\"]);\n";
+    formulasString += "quantile(min B1, min B2, Pmax>0.4 [F{\"rew1\"}<=B1,{\"rew2\"}<=B2 \"target\"]);\n";
+    auto formulas = storm::api::extractFormulasFromProperties(storm::api::parseProperties(formulasString));
+    auto tasks = this->getTasks(formulas);
+
+    auto model = buildTransitionRewardsTestModel<ValueType>();
+    auto checker = this->template createModelChecker<ModelType>(model);
+    std::unique_ptr<storm::modelchecker::CheckResult> result;
+    std::vector<std::string> expectedResult;
+    std::pair<bool, std::string> compare;
+    uint64_t taskId = 0;
+
+    expectedResult.clear();
+    expectedResult.push_back("10");
+    result = checker->check(this->env(), tasks[taskId++]);
+    compare = this->compareResult(model, result, expectedResult);
+    EXPECT_TRUE(compare.first) << compare.second;
+
+    expectedResult.clear();
+    expectedResult.push_back("129, 10");
+    expectedResult.push_back("35, 20");
+    result = checker->check(this->env(), tasks[taskId++]);
+    compare = this->compareResult(model, result, expectedResult);
+    EXPECT_TRUE(compare.first) << compare.second;
+}
+
 }  // namespace

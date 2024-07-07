@@ -18,6 +18,7 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/expressions/Expressions.h"
+#include "storm/transformer/TransitionToActionRewardTransformer.h"
 #include "storm/utility/FilteredRewardModel.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/graph.h"
@@ -124,9 +125,22 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
                 opInfo.bound = checkTask.getBound();
             }
             auto formula = std::make_shared<storm::logic::ProbabilityOperatorFormula>(checkTask.getFormula().asSharedPointer(), opInfo);
-            helper::rewardbounded::MultiDimensionalRewardUnfolding<ValueType, true> rewardUnfolding(this->getModel(), formula);
-            auto numericResult = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeRewardBoundedValues(
-                env, checkTask.getOptimizationDirection(), rewardUnfolding, this->getModel().getInitialStates());
+
+            auto rewModels = formula->getReferencedRewardModels();
+            auto transformation =
+                storm::transformer::transformTransitionToActionRewards(this->getModel(), std::vector<std::string>(rewModels.begin(), rewModels.end()));
+            auto const& transformedMdp = *transformation.model->template as<storm::models::sparse::Mdp<ValueType>>();
+            helper::rewardbounded::MultiDimensionalRewardUnfolding<ValueType, true> rewardUnfolding(transformedMdp, formula);
+
+            auto transformedNumericResult = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeRewardBoundedValues(
+                env, checkTask.getOptimizationDirection(), rewardUnfolding, transformedMdp.getInitialStates());
+            std::map<storm::storage::sparse::state_type, SolutionType> numericResult;
+            STORM_LOG_ASSERT(this->getModel().getInitialStates().getNumberOfSetBits() == transformedNumericResult.size(), "Unexpected number of result values");
+            auto origInitIt = this->getModel().getInitialStates().begin();
+            for (auto const& [state, value] : transformedNumericResult) {
+                numericResult.emplace(*origInitIt, value);
+                ++origInitIt;
+            }
             return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(numericResult)));
         } else {
             STORM_LOG_THROW(pathFormula.hasUpperBound(), storm::exceptions::InvalidPropertyException, "Formula needs to have (a single) upper step bound.");
@@ -299,9 +313,22 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
                 opInfo.bound = checkTask.getBound();
             }
             auto formula = std::make_shared<storm::logic::RewardOperatorFormula>(checkTask.getFormula().asSharedPointer(), checkTask.getRewardModel(), opInfo);
-            helper::rewardbounded::MultiDimensionalRewardUnfolding<ValueType, true> rewardUnfolding(this->getModel(), formula);
-            auto numericResult = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeRewardBoundedValues(
-                env, checkTask.getOptimizationDirection(), rewardUnfolding, this->getModel().getInitialStates());
+
+            auto rewModels = formula->getReferencedRewardModels();
+            auto transformation =
+                storm::transformer::transformTransitionToActionRewards(this->getModel(), std::vector<std::string>(rewModels.begin(), rewModels.end()));
+            auto const& transformedMdp = *transformation.model->template as<storm::models::sparse::Mdp<ValueType>>();
+            helper::rewardbounded::MultiDimensionalRewardUnfolding<ValueType, true> rewardUnfolding(transformedMdp, formula);
+
+            auto transformedNumericResult = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeRewardBoundedValues(
+                env, checkTask.getOptimizationDirection(), rewardUnfolding, transformedMdp.getInitialStates());
+            std::map<storm::storage::sparse::state_type, SolutionType> numericResult;
+            STORM_LOG_ASSERT(this->getModel().getInitialStates().getNumberOfSetBits() == transformedNumericResult.size(), "Unexpected number of result values");
+            auto origInitIt = this->getModel().getInitialStates().begin();
+            for (auto const& [state, value] : transformedNumericResult) {
+                numericResult.emplace(*origInitIt, value);
+                ++origInitIt;
+            }
             return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(numericResult)));
         }
     } else {
@@ -466,7 +493,12 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::che
                         "Quantiles not supported on models with multiple initial states.");
         uint64_t initialState = *this->getModel().getInitialStates().begin();
 
-        helper::rewardbounded::QuantileHelper<SparseMdpModelType> qHelper(this->getModel(), checkTask.getFormula());
+        // TODO: alert for step-bounded
+        auto rewModels = checkTask.getFormula().getReferencedRewardModels();
+        auto transformation =
+            storm::transformer::transformTransitionToActionRewards(this->getModel(), std::vector<std::string>(rewModels.begin(), rewModels.end()));
+        auto const& transformedMdp = *transformation.model->template as<storm::models::sparse::Mdp<ValueType>>();
+        helper::rewardbounded::QuantileHelper<SparseMdpModelType> qHelper(transformedMdp, checkTask.getFormula());
         auto res = qHelper.computeQuantile(env);
 
         if (res.size() == 1 && res.front().size() == 1) {
