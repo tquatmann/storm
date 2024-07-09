@@ -1,6 +1,7 @@
 #include "storm/logic/LiftableTransitionRewardsVisitor.h"
 #include <boost/any.hpp>
 
+#include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/logic/Formulas.h"
 #include "storm/storage/jani/traverser/RewardModelInformation.h"
 
@@ -38,7 +39,7 @@ boost::any LiftableTransitionRewardsVisitor::visit(BooleanLiteralFormula const&,
 
 boost::any LiftableTransitionRewardsVisitor::visit(BoundedUntilFormula const& f, boost::any const& data) const {
     for (unsigned i = 0; i < f.getDimension(); ++i) {
-        if (f.getTimeBoundReference(i).isRewardBound() && rewardModelHasTransitionRewards(f.getTimeBoundReference(i).getRewardName())) {
+        if (f.getTimeBoundReference(i).isRewardBound() && rewardModelHasTransitionRewards(f.getTimeBoundReference(i).getOptionalRewardModelName())) {
             return false;
         }
     }
@@ -63,7 +64,7 @@ boost::any LiftableTransitionRewardsVisitor::visit(ConditionalFormula const& f, 
 
 boost::any LiftableTransitionRewardsVisitor::visit(CumulativeRewardFormula const& f, boost::any const&) const {
     for (unsigned i = 0; i < f.getDimension(); ++i) {
-        if (f.getTimeBoundReference(i).isRewardBound() && rewardModelHasTransitionRewards(f.getTimeBoundReference(i).getRewardName())) {
+        if (f.getTimeBoundReference(i).isRewardBound() && rewardModelHasTransitionRewards(f.getTimeBoundReference(i).getOptionalRewardModelName())) {
             return false;
         }
     }
@@ -149,12 +150,20 @@ boost::any LiftableTransitionRewardsVisitor::visit(HOAPathFormula const& f, boos
     return true;
 }
 
-bool LiftableTransitionRewardsVisitor::rewardModelHasTransitionRewards(std::string const& rewardModelName) const {
+bool LiftableTransitionRewardsVisitor::rewardModelHasTransitionRewards(boost::optional<std::string> rewardModelName) const {
     if (symbolicModelDescription.hasModel()) {
         if (symbolicModelDescription.isJaniModel()) {
-            return storm::jani::RewardModelInformation(symbolicModelDescription.asJaniModel(), rewardModelName).hasTransitionRewards();
+            STORM_LOG_THROW(rewardModelName.has_value(), storm::exceptions::IllegalArgumentException, "Missing reward model name.");
+            return storm::jani::RewardModelInformation(symbolicModelDescription.asJaniModel(), *rewardModelName).hasTransitionRewards();
         } else if (symbolicModelDescription.isPrismProgram()) {
-            return symbolicModelDescription.asPrismProgram().getRewardModel(rewardModelName).hasTransitionRewards();
+            auto const& prismProg = symbolicModelDescription.asPrismProgram();
+            if (!rewardModelName.has_value()) {
+                STORM_LOG_THROW(prismProg.getNumberOfRewardModels() == 1, storm::exceptions::IllegalArgumentException,
+                                "Missing reward model name and the reward model is not unique.");
+                return prismProg.getRewardModels().front().hasTransitionRewards();
+            } else {
+                return prismProg.getRewardModel(*rewardModelName).hasTransitionRewards();
+            }
         }
     }
     return false;

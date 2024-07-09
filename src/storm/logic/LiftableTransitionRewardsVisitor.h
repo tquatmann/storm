@@ -45,7 +45,7 @@ class LiftableTransitionRewardsVisitor : public FormulaVisitor {
 
    private:
     storm::storage::SymbolicModelDescription const& symbolicModelDescription;
-    bool rewardModelHasTransitionRewards(std::string const& rewardModelName) const;
+    bool rewardModelHasTransitionRewards(boost::optional<std::string> rewardModelName) const;
 };
 
 }  // namespace logic
