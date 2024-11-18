@@ -26,13 +26,20 @@ class GenerateMonitorVerifier {
         std::string acceptingLabel = "accepting";
         std::string stepPrefix = "step";
         std::string horizonLabel = "horizon";
+        bool useRisk = false;
     };
-    GenerateMonitorVerifier(storm::models::sparse::Dtmc<ValueType> const& mc, storm::models::sparse::Mdp<ValueType> const& monitor, Options const& options);
+    GenerateMonitorVerifier(storm::models::sparse::Dtmc<ValueType> const& mc, storm::models::sparse::Mdp<ValueType> const& monitor,
+                            std::shared_ptr<storm::expressions::ExpressionManager>& exprManager, Options const& options);
     std::shared_ptr<MonitorVerifier<ValueType>> createProduct();
+    void setRisk(std::vector<ValueType> const& risk);
 
    private:
     const storm::models::sparse::Dtmc<ValueType>& mc;
     const storm::models::sparse::Mdp<ValueType>& monitor;
+    std::shared_ptr<storm::expressions::ExpressionManager>& exprManager;
+    std::vector<ValueType> risk;
+    storm::expressions::Variable monvar;
+    storm::expressions::Variable mcvar;
     Options options;
 };
 

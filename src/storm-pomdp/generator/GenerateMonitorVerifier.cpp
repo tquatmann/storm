@@ -1,8 +1,14 @@
 #include "storm-pomdp/generator/GenerateMonitorVerifier.h"
 
+#include <cstddef>
+#include <deque>
 #include <utility>
+#include <vector>
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/api/builder.h"
+#include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/storage/expressions/ExpressionManager.h"
+#include "storm/utility/constants.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace generator {
@@ -10,9 +16,7 @@ namespace generator {
 template<typename ValueType>
 MonitorVerifier<ValueType>::MonitorVerifier(const models::sparse::Pomdp<ValueType>& product,
                                             const std::map<std::pair<uint32_t, bool>, uint32_t>& observationMap)
-    : product(storm::models::sparse::Pomdp<ValueType>(product)), observationMap(observationMap) {
-    std::cout << "copying" << std::endl;
-}
+    : product(storm::models::sparse::Pomdp<ValueType>(product)), observationMap(observationMap) {}
 
 template<typename ValueType>
 const std::map<std::pair<uint32_t, bool>, uint32_t>& MonitorVerifier<ValueType>::getObservationMap() {
@@ -26,13 +30,18 @@ const models::sparse::Pomdp<ValueType>& MonitorVerifier<ValueType>::getProduct()
 
 template<typename ValueType>
 GenerateMonitorVerifier<ValueType>::GenerateMonitorVerifier(models::sparse::Dtmc<ValueType> const& mc, models::sparse::Mdp<ValueType> const& monitor,
-                                                            Options const& options)
-    : mc(mc), monitor(monitor), options(options) {}
+                                                            std::shared_ptr<storm::expressions::ExpressionManager>& exprManager, Options const& options)
+    : mc(mc), monitor(monitor), risk(), exprManager(exprManager), options(options) {
+    monvar = exprManager->declareFreshIntegerVariable(false, "_mon");
+    mcvar = exprManager->declareFreshIntegerVariable(false, "_mc");
+}
 
 template<typename ValueType>
 std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::createProduct() {
     typedef storm::storage::sparse::state_type state_type;
     typedef std::pair<state_type, state_type> product_state_type;
+
+    STORM_LOG_THROW(monitor.hasChoiceLabeling(), storm::exceptions::InvalidArgumentException, "The monitor should contain choice labeling");
 
     const std::set<std::string>& actions = monitor.getChoiceLabeling().getLabels();
 
@@ -46,7 +55,7 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     }
     actionMap["end"];
 
-    storm::storage::SparseMatrixBuilder<ValueType> builder(0, 0, 0, false, true, 0);
+    storm::storage::SparseMatrixBuilder<ValueType> builder(0, 0, 0, false, true);
     std::size_t currentRow = 0;
     state_type nextStateId = 0;
 
@@ -68,7 +77,7 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     std::deque<product_state_type> todo;
     for (state_type mc_s_0 : mc.getInitialStates()) {
         for (state_type mon_s_0 : monitor.getInitialStates()) {
-            product_state_type prod_s(mon_s_0, mc_s_0);
+            product_state_type prod_s(mc_s_0, mon_s_0);
             state_type index = nextStateId++;
             prodToIndexMap[prod_s] = index;
             prodInitial.push_back(index);
@@ -106,15 +115,17 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
             }
         } else {
             std::size_t numMonRows = monitor.getTransitionMatrix().getRowGroupSize(mon_from);
+            std::size_t monGroupStart = monitor.getTransitionMatrix().getRowGroupIndices()[mon_from];
             std::set<std::string> actionsNotTaken(actions);
             for (std::size_t i = 0; i < numMonRows; i++) {
                 // Remove labels of monitor choice from the labels we still have to take
-                STORM_LOG_ASSERT(monitor.getChoiceLabeling().getLabelsOfChoice(mon_from + i).size() == 1, "Monitor choice has not exactly one choice label");
-                const auto action = *monitor.getChoiceLabeling().getLabelsOfChoice(mon_from + i).begin();
+                STORM_LOG_ASSERT(monitor.getChoiceLabeling().getLabelsOfChoice(monGroupStart + i).size() == 1,
+                                 "Monitor choice has not exactly one choice label");
+                const auto action = *monitor.getChoiceLabeling().getLabelsOfChoice(monGroupStart + i).begin();
                 actionsNotTaken.erase(action);
 
                 const auto& monitorRow = monitor.getTransitionMatrix().getRow(mon_from, i);
-                STORM_LOG_ASSERT(monitorRow.getNumberOfEntries() == 1, "Monitor is not fully deterministic in");
+                STORM_LOG_ASSERT(monitorRow.getNumberOfEntries() == 1, "Monitor is not fully deterministic");
                 const auto& monitorEntry = monitorRow.begin();
 
                 const auto& mcRow = mc.getTransitionMatrix().getRow(mc_from);
@@ -177,10 +188,15 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
         }
 
         if (monitor.getStateLabeling().getStateHasLabel(options.acceptingLabel, mon_from)) {
-            if (mc.getStateLabeling().getStateHasLabel(options.goodLabel, mc_from)) {
-                builder.addNextValue(currentRow, goalIndex, utility::one<ValueType>());
+            if (options.useRisk) {
+                builder.addNextValue(currentRow, goalIndex, risk[mc_from]);
+                builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>() - risk[mc_from]);
             } else {
-                builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>());
+                if (mc.getStateLabeling().getStateHasLabel(options.goodLabel, mc_from)) {
+                    builder.addNextValue(currentRow, goalIndex, utility::one<ValueType>());
+                } else {
+                    builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>());
+                }
             }
             actionMap["end"].push_back(currentRow);
             currentRow++;
@@ -198,6 +214,9 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     stateLabeling.addLabel("stop", storm::storage::BitVector(numberOfStates));
     stateLabeling.addLabelToState("stop", stopIndex);
 
+    storm::storage::sparse::ModelComponents<ValueType> components(builder.build(), std::move(stateLabeling));
+    components.observabilityClasses = std::move(observations);
+
     // Add choice labeling
     const size_t numberOfRows = currentRow;
     storm::models::sparse::ChoiceLabeling choiceLabeling(numberOfRows);
@@ -205,86 +224,97 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
         choiceLabeling.addLabel(label, storm::storage::BitVector(numberOfRows, vec.begin(), vec.end()));
     }
 
-    // Add state valuations
-    storm::storage::sparse::StateValuationsBuilder svBuilder;
-    std::set<expressions::Variable> variables;
-    for (auto i = 0; i < mc.getNumberOfStates(); i++) {
-        const auto& valAssignment = mc.getStateValuations().at(i);
-        for (auto val = valAssignment.begin(); val != valAssignment.end(); ++val) {
-            if (val.isVariableAssignment() && !variables.contains(val.getVariable())) {
-                variables.emplace(val.getVariable());
-                svBuilder.addVariable(val.getVariable());
-            }
-        }
-    }
+    components.choiceLabeling = std::move(choiceLabeling);
 
-    for (auto i = 0; i < mc.getNumberOfStates(); i++) {
-        for (auto j = 0; j < monitor.getNumberOfStates(); j++) {
-            product_state_type s(i, j);
-            if (!prodToIndexMap.contains(s))
-                continue;
-
-            std::vector<bool> booleanValues;
-            std::vector<int64_t> integerValues;
-            std::vector<storm::RationalNumber> rationalValues;
-
+    if (mc.hasStateValuations()) {
+        // Add state valuations
+        storm::storage::sparse::StateValuationsBuilder svBuilder;
+        svBuilder.addVariable(monvar);
+        svBuilder.addVariable(mcvar);
+        std::set<expressions::Variable> variables;
+        for (auto i = 0; i < mc.getNumberOfStates(); i++) {
             const auto& valAssignment = mc.getStateValuations().at(i);
-
-            for (auto& var : variables) {
-                for (auto val = valAssignment.begin(); val != valAssignment.end(); ++val) {
-                    if (var == val.getVariable()) {
-                        if (val.isBoolean()) {
-                            booleanValues.push_back(val.getBooleanValue());
-                        } else if (val.isInteger()) {
-                            integerValues.push_back(val.getIntegerValue());
-                        } else if (val.isRational()) {
-                            rationalValues.push_back(val.getRationalValue());
-                        }
-                        break;
-                    }
+            for (auto val = valAssignment.begin(); val != valAssignment.end(); ++val) {
+                if (val.isVariableAssignment() && !variables.contains(val.getVariable())) {
+                    variables.emplace(val.getVariable());
+                    svBuilder.addVariable(val.getVariable());
                 }
             }
-            svBuilder.addState(prodToIndexMap[std::make_pair(i, j)], std::move(booleanValues), std::move(integerValues), std::move(rationalValues));
         }
+
+        for (auto i = 0; i < mc.getNumberOfStates(); i++) {
+            for (auto j = 0; j < monitor.getNumberOfStates(); j++) {
+                product_state_type s(i, j);
+                if (!prodToIndexMap.contains(s))
+                    continue;
+
+                std::vector<bool> booleanValues;
+                std::vector<int64_t> integerValues;
+                std::vector<storm::RationalNumber> rationalValues;
+
+                integerValues.push_back(j);  // Set monvar
+                integerValues.push_back(i);  // Set mcvar
+
+                const auto& valAssignment = mc.getStateValuations().at(i);
+
+                for (auto& var : variables) {
+                    for (auto val = valAssignment.begin(); val != valAssignment.end(); ++val) {
+                        if (var == val.getVariable()) {
+                            if (val.isBoolean()) {
+                                booleanValues.push_back(val.getBooleanValue());
+                            } else if (val.isInteger()) {
+                                integerValues.push_back(val.getIntegerValue());
+                            } else if (val.isRational()) {
+                                rationalValues.push_back(val.getRationalValue());
+                            }
+                            break;
+                        }
+                    }
+                }
+                svBuilder.addState(prodToIndexMap[std::make_pair(i, j)], std::move(booleanValues), std::move(integerValues), std::move(rationalValues));
+            }
+        }
+
+        std::vector<bool> goalBooleanValues;
+        std::vector<int64_t> goalIntegerValues(2, -1);
+        std::vector<storm::RationalNumber> goalRationalValues;
+        for (auto& var : variables) {
+            if (var.hasBooleanType()) {
+                goalBooleanValues.push_back(false);
+            } else if (var.hasIntegerType()) {
+                goalIntegerValues.push_back(-1);
+            } else if (var.hasRationalType()) {
+                goalRationalValues.emplace_back(-1);
+            }
+        }
+        svBuilder.addState(goalIndex, std::move(goalBooleanValues), std::move(goalIntegerValues), std::move(goalRationalValues));
+
+        std::vector<bool> stopBooleanValues;
+        std::vector<int64_t> stopIntegerValues(2, -1);
+        std::vector<storm::RationalNumber> stopRationalValues;
+        for (auto& var : variables) {
+            if (var.hasBooleanType()) {
+                stopBooleanValues.push_back(false);
+            } else if (var.hasIntegerType()) {
+                stopIntegerValues.push_back(-1);
+            } else if (var.hasRationalType()) {
+                stopRationalValues.emplace_back(-1);
+            }
+        }
+        svBuilder.addState(stopIndex, std::move(stopBooleanValues), std::move(stopIntegerValues), std::move(stopRationalValues));
+
+        components.stateValuations = svBuilder.build();
     }
 
-    std::vector<bool> goalBooleanValues;
-    std::vector<int64_t> goalIntegerValues;
-    std::vector<storm::RationalNumber> goalRationalValues;
-    for (auto& var : variables) {
-        if (var.hasBooleanType()) {
-            goalBooleanValues.push_back(false);
-        } else if (var.hasIntegerType()) {
-            goalIntegerValues.push_back(-1);
-        } else if (var.hasRationalType()) {
-            goalRationalValues.emplace_back(-1);
-        }
-    }
-    svBuilder.addState(goalIndex, std::move(goalBooleanValues), std::move(goalIntegerValues), std::move(goalRationalValues));
-
-    std::vector<bool> stopBooleanValues;
-    std::vector<int64_t> stopIntegerValues;
-    std::vector<storm::RationalNumber> stopRationalValues;
-    for (auto& var : variables) {
-        if (var.hasBooleanType()) {
-            stopBooleanValues.push_back(false);
-        } else if (var.hasIntegerType()) {
-            stopIntegerValues.push_back(-1);
-        } else if (var.hasRationalType()) {
-            stopRationalValues.emplace_back(-1);
-        }
-    }
-    svBuilder.addState(stopIndex, std::move(stopBooleanValues), std::move(stopIntegerValues), std::move(stopRationalValues));
-
-    // Build model
-    storm::storage::sparse::ModelComponents<ValueType> components(builder.build(), std::move(stateLabeling));
-    components.observabilityClasses = std::move(observations);
-    components.choiceLabeling = std::move(choiceLabeling);
-    components.stateValuations = svBuilder.build();
+    // Store model
     storm::models::sparse::Pomdp<ValueType> product(std::move(components));
     auto mv = std::make_shared<MonitorVerifier<ValueType>>(std::move(product), std::move(observationMap));
-    std::cout << mv->getProduct().getNrObservations() << std::endl;
     return mv;
+}
+
+template<typename ValueType>
+void GenerateMonitorVerifier<ValueType>::setRisk(std::vector<ValueType> const& risk) {
+    this->risk = risk;
 }
 
 template class MonitorVerifier<double>;
