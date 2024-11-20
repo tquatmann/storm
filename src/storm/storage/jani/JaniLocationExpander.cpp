@@ -196,11 +196,15 @@ JaniLocationExpander::AutomatonAndIndices JaniLocationExpander::transformAutomat
 
             if (!isEdgeInvalid) {
                 templateEdge->finalize(newModel);
-                newAutomaton.addEdge(storm::jani::Edge(newSourceIndex, edge.getActionIndex(),
-                                                       edge.hasRate() ? boost::optional<storm::expressions::Expression>(substituteJaniExpression(
-                                                                            edge.getRate(), substitutionMap, substituteTranscendentalNumbers))
-                                                                      : boost::none,
-                                                       templateEdge, destinationLocationsAndProbabilities));
+                boost::optional<storm::expressions::Expression> rate, weight;
+                if (edge.hasRate()) {
+                    rate = substituteJaniExpression(edge.getRate(), substitutionMap, substituteTranscendentalNumbers);
+                }
+                if (edge.hasWeight()) {
+                    weight = substituteJaniExpression(edge.getWeight(), substitutionMap, substituteTranscendentalNumbers);
+                }
+                newAutomaton.addEdge(
+                    storm::jani::Edge(newSourceIndex, edge.getActionIndex(), rate, weight, templateEdge, destinationLocationsAndProbabilities));
                 newAutomaton.registerTemplateEdge(templateEdge);
             }
         }

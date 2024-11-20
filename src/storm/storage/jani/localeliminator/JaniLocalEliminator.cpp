@@ -435,7 +435,7 @@ void JaniLocalEliminator::Session::addMissingGuards(const std::string &automaton
             templateEdge->addDestination(ted);
             destinationLocationsAndProbabilities.emplace_back(sinkIndex, model.getExpressionManager().rational(1.0));
 
-            automaton.addEdge(storm::jani::Edge(i, 0, boost::none, templateEdge, destinationLocationsAndProbabilities));
+            automaton.addEdge(storm::jani::Edge(i, 0, boost::none, boost::none, templateEdge, destinationLocationsAndProbabilities));
         } else {
             STORM_LOG_TRACE("\tLocation " + automaton.getLocation(i).getName() + " has no missing guard");
         }

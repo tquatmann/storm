@@ -484,10 +484,10 @@ storm::jani::Model ToJaniConverter::convert(storm::prism::Program const& program
             // Create the edge object.
             storm::jani::Edge newEdge;
             if (command.getActionName().empty()) {
-                newEdge = storm::jani::Edge(onlyLocationIndex, storm::jani::Model::SILENT_ACTION_INDEX, rateExpression, templateEdge,
+                newEdge = storm::jani::Edge(onlyLocationIndex, storm::jani::Model::SILENT_ACTION_INDEX, rateExpression, boost::none, templateEdge,
                                             destinationLocationsAndProbabilities);
             } else {
-                newEdge = storm::jani::Edge(onlyLocationIndex, janiModel.getActionIndex(command.getActionName()), rateExpression, templateEdge,
+                newEdge = storm::jani::Edge(onlyLocationIndex, janiModel.getActionIndex(command.getActionName()), rateExpression, boost::none, templateEdge,
                                             destinationLocationsAndProbabilities);
             }
 

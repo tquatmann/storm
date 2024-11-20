@@ -115,6 +115,9 @@ void JaniTraverser::traverse(Edge& edge, boost::any const& data) {
     if (edge.hasRate()) {
         traverse(edge.getRate(), data);
     }
+    if (edge.hasWeight()) {
+        traverse(edge.getWeight(), data);
+    }
     for (auto& dest : edge.getDestinations()) {
         traverse(dest, data);
     }
@@ -259,6 +262,9 @@ void ConstJaniTraverser::traverse(TemplateEdgeDestination const& templateEdgeDes
 void ConstJaniTraverser::traverse(Edge const& edge, boost::any const& data) {
     if (edge.hasRate()) {
         traverse(edge.getRate(), data);
+    }
+    if (edge.hasWeight()) {
+        traverse(edge.getWeight(), data);
     }
     for (auto const& dest : edge.getDestinations()) {
         traverse(dest, data);

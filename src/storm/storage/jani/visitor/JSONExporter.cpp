@@ -1093,6 +1093,9 @@ ExportJsonType buildEdge(Edge const& edge, std::map<uint64_t, std::string> const
             edgeEntry["rate"]["comment"] = edge.getRate().toString();
         }
     }
+    if (edge.hasWeight()) {
+        edgeEntry["x-weight"] = buildExpression(edge.getWeight(), constants, globalVariables, localVariables);
+    }
     if (!edge.getGuard().isTrue()) {
         edgeEntry["guard"]["exp"] = buildExpression(edge.getGuard(), constants, globalVariables, localVariables);
         if (commentExpressions) {

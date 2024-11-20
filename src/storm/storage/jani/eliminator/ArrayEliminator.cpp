@@ -915,6 +915,9 @@ class ArrayVariableReplacer : public JaniTraverser {
         if (edge.hasRate()) {
             edge.setRate(arrayExprEliminator.eliminate(edge.getRate()));
         }
+        if (edge.hasWeight()) {
+            edge.setWeight(arrayExprEliminator.eliminate(edge.getWeight()));
+        }
         for (auto& dest : edge.getDestinations()) {
             traverse(dest, data);
         }

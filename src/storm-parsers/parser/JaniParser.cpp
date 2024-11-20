@@ -1607,6 +1607,16 @@ storm::jani::Automaton JaniParser<ValueType>::parseAutomaton(Json const& automat
             STORM_LOG_THROW(rateExpr.containsVariables() || rateExpr.evaluateAsRational() > storm::utility::zero<storm::RationalNumber>(),
                             storm::exceptions::InvalidJaniException, "Only positive rates are allowed but rate '" << rateExpr << " was found.");
         }
+        // weight
+        STORM_LOG_THROW(edgeEntry.count("x-weight") < 2, storm::exceptions::InvalidJaniException,
+                        "Edge from '" << sourceLoc << "' in automaton '" << name << "' has multiple weights");
+        storm::expressions::Expression weightExpr;
+        if (edgeEntry.count("x-weight") > 0) {
+            weightExpr = parseExpression(edgeEntry.at("x-weight"), scope.refine("weight expression in edge from '" + sourceLoc));
+            STORM_LOG_THROW(weightExpr.hasNumericalType(), storm::exceptions::InvalidJaniException, "Weight '" << weightExpr << "' has not a numerical type");
+            STORM_LOG_THROW(weightExpr.containsVariables() || weightExpr.evaluateAsRational() > storm::utility::zero<storm::RationalNumber>(),
+                            storm::exceptions::InvalidJaniException, "Only positive weights are allowed but weight '" << weightExpr << " was found.");
+        }
         // guard
         STORM_LOG_THROW(edgeEntry.count("guard") <= 1, storm::exceptions::InvalidJaniException,
                         "Guard can be given at most once in edge from '" << sourceLoc << "' in automaton '" << name << "'");
@@ -1710,8 +1720,9 @@ storm::jani::Automaton JaniParser<ValueType>::parseAutomaton(Json const& automat
             templateEdge->addDestination(storm::jani::TemplateEdgeDestination(assignments));
         }
         automaton.addEdge(storm::jani::Edge(locIds.at(sourceLoc), parentModel.getActionIndex(action),
-                                            rateExpr.isInitialized() ? boost::optional<storm::expressions::Expression>(rateExpr) : boost::none, templateEdge,
-                                            destinationLocationsAndProbabilities));
+                                            rateExpr.isInitialized() ? boost::optional<storm::expressions::Expression>(rateExpr) : boost::none,
+                                            weightExpr.isInitialized() ? boost::optional<storm::expressions::Expression>(weightExpr) : boost::none,
+                                            templateEdge, destinationLocationsAndProbabilities));
     }
 
     return automaton;

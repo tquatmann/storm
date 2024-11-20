@@ -381,6 +381,9 @@ class FunctionEliminatorTraverser : public JaniTraverser {
         if (edge.hasRate()) {
             edge.setRate(functionEliminationVisitor->eliminate(edge.getRate()));
         }
+        if (edge.hasWeight()) {
+            edge.setWeight(functionEliminationVisitor->eliminate(edge.getWeight()));
+        }
         for (auto& dest : edge.getDestinations()) {
             traverse(dest, data);
         }

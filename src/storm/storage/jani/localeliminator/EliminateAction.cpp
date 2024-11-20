@@ -115,7 +115,8 @@ void EliminateAction::eliminateDestination(JaniLocalEliminator::Session& session
         }
 
         STORM_LOG_THROW(!edge.hasRate() && !outEdge.hasRate(), storm::exceptions::NotImplementedException, "Edge Rates are not implemented");
-        newEdges.emplace_back(Edge(sourceIndex, actionIndex, boost::none, templateEdge, destinationLocationsAndProbabilities));
+        STORM_LOG_THROW(!edge.hasWeight() && !outEdge.hasWeight(), storm::exceptions::NotImplementedException, "Edge Weights are not implemented");
+        newEdges.emplace_back(Edge(sourceIndex, actionIndex, boost::none, boost::none, templateEdge, destinationLocationsAndProbabilities));
     }
 
     edge.setGuard(edge.getGuard().getManager().boolean(false));  // Instead of deleting the edge

@@ -13,14 +13,16 @@ namespace storm {
 namespace generator {
 
 template<typename ValueType, typename StateType>
-Choice<ValueType, StateType>::Choice(uint_fast64_t actionIndex, bool markovian)
-    : markovian(markovian), actionIndex(actionIndex), distribution(), totalMass(storm::utility::zero<ValueType>()), rewards(), labels() {
+Choice<ValueType, StateType>::Choice(uint_fast64_t actionIndex, bool markovian, bool weighted)
+    : markovian(markovian), weighted(weighted), actionIndex(actionIndex), distribution(), totalMass(storm::utility::zero<ValueType>()), rewards(), labels() {
+    STORM_LOG_THROW(!this->markovian || !this->weighted, storm::exceptions::InvalidOperationException, "Type of choices do not match.");
     // Intentionally left empty.
 }
 
 template<typename ValueType, typename StateType>
 void Choice<ValueType, StateType>::add(Choice const& other) {
     STORM_LOG_THROW(this->markovian == other.markovian, storm::exceptions::InvalidOperationException, "Type of choices do not match.");
+    STORM_LOG_THROW(this->weighted == other.weighted, storm::exceptions::InvalidOperationException, "Type of choices do not match.");
     STORM_LOG_THROW(this->actionIndex == other.actionIndex, storm::exceptions::InvalidOperationException, "Action index of choices do not match.");
     STORM_LOG_THROW(this->rewards.size() == other.rewards.size(), storm::exceptions::InvalidOperationException, "Reward value sizes of choices do not match.");
 
@@ -178,6 +180,11 @@ std::vector<ValueType> const& Choice<ValueType, StateType>::getRewards() const {
 template<typename ValueType, typename StateType>
 bool Choice<ValueType, StateType>::isMarkovian() const {
     return markovian;
+}
+
+template<typename ValueType, typename StateType>
+bool Choice<ValueType, StateType>::isWeighted() const {
+    return weighted;
 }
 
 template<typename ValueType, typename StateType>

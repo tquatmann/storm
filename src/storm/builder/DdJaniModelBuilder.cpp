@@ -1508,6 +1508,7 @@ class CombinedEdgesSystemComposer : public SystemComposer<Type, ValueType> {
     }
 
     EdgeDd buildEdgeDd(storm::jani::Automaton const& automaton, storm::jani::Edge const& edge) {
+        STORM_LOG_THROW(!edge.hasWeight(), storm::exceptions::WrongFormatException, "Model builder does not support weighted edges.");
         STORM_LOG_TRACE("Translating guard " << edge.getGuard());
 
         // We keep the guard and a "ranged" version seperate, because building the destinations tends to be

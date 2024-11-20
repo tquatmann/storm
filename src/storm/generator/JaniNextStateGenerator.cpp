@@ -682,30 +682,46 @@ StateBehavior<ValueType, StateType> JaniNextStateGenerator<ValueType, StateType>
         return result;
     }
 
-    // If the model is a deterministic model, we need to fuse the choices into one.
-    if (this->isDeterministicModel() && totalNumberOfChoices > 1) {
+    // If the model is a deterministic model or there is one weighted choice, we need to fuse the choices into one.
+    // For a weighted choice, we always have to apply normalization, even if there is just one choice.
+    bool const isWeighted = std::any_of(allChoices.begin(), allChoices.end(), [](Choice<ValueType> const& choice) { return choice.isWeighted(); });
+    if (isWeighted || (this->isDeterministicModel() && totalNumberOfChoices > 1)) {
+        STORM_LOG_ASSERT(!isWeighted || this->isDiscreteTimeModel() || !this->isDeterministicModel(), "Weighted choices are not supported for CTMCs.");
         Choice<ValueType> globalChoice;
 
-        if (this->options.isAddOverlappingGuardLabelSet()) {
+        if (this->options.isAddOverlappingGuardLabelSet() && totalNumberOfChoices > 1) {
             this->overlappingGuardStates->push_back(stateToIdCallback(*this->state));
         }
 
-        // For CTMCs, we need to keep track of the total exit rate to scale the action rewards later. For DTMCs
-        // this is equal to the number of choices, which is why we initialize it like this here.
-        ValueType totalExitRate = this->isDiscreteTimeModel() ? static_cast<ValueType>(totalNumberOfChoices) : storm::utility::zero<ValueType>();
+        // Compute the total mass of all choices.
+        // For CTMC, this is only needed for the action rewards.
+        ValueType totalMass = storm::utility::zero<ValueType>();
+        if (isWeighted || this->isDiscreteTimeModel() || hasStateActionRewards) {
+            for (auto const& choice : allChoices) {
+                if (choice.isWeighted()) {
+                    totalMass += choice.getTotalMass();
+                } else if (choice.isMarkovian()) {
+                    // ignore Markovian choice if one of the weighted chocies exists (maximal progress assumption)
+                    if (!isWeighted) {
+                        totalMass += choice.getTotalMass();
+                    }
+                } else {
+                    totalMass += storm::utility::one<ValueType>();  // Default to one if neither weighted nor Markovian
+                }
+            }
+        }
 
         // Iterate over all choices and combine the probabilities/rates into one choice.
         for (auto const& choice : allChoices) {
-            for (auto const& stateProbabilityPair : choice) {
-                if (this->isDiscreteTimeModel()) {
-                    globalChoice.addProbability(stateProbabilityPair.first, stateProbabilityPair.second / totalNumberOfChoices);
-                } else {
-                    globalChoice.addProbability(stateProbabilityPair.first, stateProbabilityPair.second);
-                }
+            if (isWeighted && choice.isMarkovian()) {
+                continue;  // discard Markovian choices if weights are present (maximal progress assumption)
             }
-
-            if (hasStateActionRewards && !this->isDiscreteTimeModel()) {
-                totalExitRate += choice.getTotalMass();
+            for (auto const& stateProbabilityPair : choice) {
+                if (isWeighted || this->isDiscreteTimeModel()) {
+                    globalChoice.addProbability(stateProbabilityPair.first, stateProbabilityPair.second / totalMass);  // normalize
+                } else {
+                    globalChoice.addProbability(stateProbabilityPair.first, stateProbabilityPair.second);  // CTMC; keep the non-normalized rates
+                }
             }
         }
 
@@ -713,7 +729,7 @@ StateBehavior<ValueType, StateType> JaniNextStateGenerator<ValueType, StateType>
         for (auto const& choice : allChoices) {
             if (hasStateActionRewards) {
                 for (uint_fast64_t rewardVariableIndex = 0; rewardVariableIndex < rewardExpressions.size(); ++rewardVariableIndex) {
-                    stateActionRewards[rewardVariableIndex] += choice.getRewards()[rewardVariableIndex] * choice.getTotalMass() / totalExitRate;
+                    stateActionRewards[rewardVariableIndex] += choice.getRewards()[rewardVariableIndex] * choice.getTotalMass() / totalMass;
                 }
             }
 
@@ -742,13 +758,17 @@ template<typename ValueType, typename StateType>
 Choice<ValueType> JaniNextStateGenerator<ValueType, StateType>::expandNonSynchronizingEdge(storm::jani::Edge const& edge, uint64_t outputActionIndex,
                                                                                            uint64_t automatonIndex, CompressedState const& state,
                                                                                            StateToIdCallback stateToIdCallback) {
-    // Determine the exit rate if it's a Markovian edge.
-    boost::optional<ValueType> exitRate = boost::none;
+    // Determine the exit rate and weight if present
+    boost::optional<ValueType> exitRate, weight;
     if (edge.hasRate()) {
         exitRate = this->evaluator->asRational(edge.getRate());
     }
+    if (edge.hasWeight()) {
+        weight = this->evaluator->asRational(edge.getWeight());
+    }
 
-    Choice<ValueType> choice(edge.getActionIndex(), static_cast<bool>(exitRate));
+    // Initialize Markovian / weighted choice
+    Choice<ValueType> choice(edge.getActionIndex(), exitRate.has_value(), weight.has_value());
     std::vector<ValueType> stateActionRewards;
 
     // Perform the transient edge assignments and create the state action rewards
@@ -821,7 +841,11 @@ Choice<ValueType> JaniNextStateGenerator<ValueType, StateType>::expandNonSynchro
             StateType stateIndex = stateToIdCallback(newState);
 
             // Update the choice by adding the probability/target state to it.
-            probability = exitRate ? exitRate.get() * probability : probability;
+            if (exitRate) {
+                probability *= exitRate.get();
+            } else if (weight) {
+                probability *= weight.get();
+            }
             choice.addProbability(stateIndex, probability);
 
             if (this->options.isExplorationChecksSet()) {
@@ -910,6 +934,7 @@ void JaniNextStateGenerator<ValueType, StateType>::generateSynchronizedDistribut
             if (edge.hasRate()) {
                 successorProbability *= probability * this->evaluator->asRational(edge.getRate());
             } else {
+                STORM_LOG_THROW(!edge.hasWeight(), storm::exceptions::WrongFormatException, "A synchronizing edge has a rate. The semantics is unclear.");
                 successorProbability *= probability;
             }
             if (storm::utility::isZero(successorProbability)) {

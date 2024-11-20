@@ -120,6 +120,7 @@ void RebuildWithoutUnreachableAction::doAction(JaniLocalEliminator::Session &ses
             uint64_t newSource = oldToNewLocationIndices[oldEdge.getSourceLocationIndex()];
             newAutomaton.addEdge(storm::jani::Edge(newSource, oldEdge.getActionIndex(),
                                                    oldEdge.hasRate() ? boost::optional<storm::expressions::Expression>(oldEdge.getRate()) : boost::none,
+                                                   oldEdge.hasWeight() ? boost::optional<storm::expressions::Expression>(oldEdge.getWeight()) : boost::none,
                                                    templateEdge, destinationLocationsAndProbabilities));
             newAutomaton.registerTemplateEdge(templateEdge);
         }

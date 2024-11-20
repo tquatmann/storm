@@ -18,7 +18,7 @@ namespace generator {
 template<typename ValueType, typename StateType = uint32_t>
 struct Choice {
    public:
-    Choice(uint_fast64_t actionIndex = 0, bool markovian = false);
+    Choice(uint_fast64_t actionIndex = 0, bool markovian = false, bool weighted = false);
 
     Choice(Choice const& other) = default;
     Choice& operator=(Choice const& other) = default;
@@ -177,6 +177,11 @@ struct Choice {
     bool isMarkovian() const;
 
     /*!
+     * Retrieves whether the choice is weighted.
+     */
+    bool isWeighted() const;
+
+    /*!
      * Retrieves the size of the distribution associated with this choice.
      */
     std::size_t size() const;
@@ -189,6 +194,9 @@ struct Choice {
    private:
     // A flag indicating whether this choice is Markovian or not.
     bool markovian;
+
+    // A flag indicating whether this choice is weighted or not.
+    bool weighted;
 
     // The action index associated with this choice.
     uint_fast64_t actionIndex;

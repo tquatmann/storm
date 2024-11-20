@@ -151,6 +151,7 @@ struct ConditionalMetaEdge {
     std::vector<uint64_t> components;
     std::vector<uint64_t> condition;
     boost::optional<storm::expressions::Expression> rate;
+    boost::optional<storm::expressions::Expression> weight;
     std::vector<storm::expressions::Expression> probabilities;
     std::vector<std::vector<uint64_t>> effects;
     std::shared_ptr<TemplateEdge> templateEdge;
@@ -432,8 +433,8 @@ void addEdgesToReachableLocations(std::vector<std::reference_wrapper<Automaton c
                     }
                 }
 
-                newAutomaton.addEdge(Edge(newLocationMapping.at(currentLocations), metaEdge.actionIndex, metaEdge.rate, metaEdge.templateEdge, newLocations,
-                                          metaEdge.probabilities));
+                newAutomaton.addEdge(Edge(newLocationMapping.at(currentLocations), metaEdge.actionIndex, metaEdge.rate, metaEdge.weight, metaEdge.templateEdge,
+                                          newLocations, metaEdge.probabilities));
             }
         }
     }
@@ -574,6 +575,7 @@ Model Model::flattenComposition(std::shared_ptr<storm::utility::solver::SmtSolve
                 conditionalMetaEdge.components.emplace_back(static_cast<uint64_t>(i));
                 conditionalMetaEdge.condition.emplace_back(edge.getSourceLocationIndex());
                 conditionalMetaEdge.rate = edge.getOptionalRate();
+                conditionalMetaEdge.weight = edge.getOptionalWeight();
                 for (auto const& destination : edge.getDestinations()) {
                     conditionalMetaEdge.templateEdge->addDestination(destination.getOrderedAssignments());
                     conditionalMetaEdge.effects.emplace_back();

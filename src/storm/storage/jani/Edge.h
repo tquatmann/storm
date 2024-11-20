@@ -19,11 +19,11 @@ class Edge {
     Edge() = default;
 
     Edge(uint64_t sourceLocationIndex, uint64_t actionIndex, boost::optional<storm::expressions::Expression> const& rate,
-         std::shared_ptr<TemplateEdge> const& templateEdge,
+         boost::optional<storm::expressions::Expression> const& weight, std::shared_ptr<TemplateEdge> const& templateEdge,
          std::vector<std::pair<uint64_t, storm::expressions::Expression>> const& destinationTargetLocationsAndProbabilities);
     Edge(uint64_t sourceLocationIndex, uint64_t actionIndex, boost::optional<storm::expressions::Expression> const& rate,
-         std::shared_ptr<TemplateEdge> const& templateEdge, std::vector<uint64_t> const& destinationLocations,
-         std::vector<storm::expressions::Expression> const& destinationProbabilities);
+         boost::optional<storm::expressions::Expression> const& weight, std::shared_ptr<TemplateEdge> const& templateEdge,
+         std::vector<uint64_t> const& destinationLocations, std::vector<storm::expressions::Expression> const& destinationProbabilities);
 
     /*!
      * Retrieves the index of the source location.
@@ -59,6 +59,26 @@ class Edge {
      * Sets a new rate for this edge.
      */
     void setRate(storm::expressions::Expression const& rate);
+
+    /*!
+     * Retrieves whether this edge has an associated weight.
+     */
+    bool hasWeight() const;
+
+    /*!
+     * Retrieves the rate of this edge. Note that calling this is only valid if the edge has an associated weight.
+     */
+    storm::expressions::Expression const& getWeight() const;
+
+    /*!
+     * Retrieves an optional that stores the weight if there is any and none otherwise.
+     */
+    boost::optional<storm::expressions::Expression> const& getOptionalWeight() const;
+
+    /*!
+     * Sets a new weight for this edge.
+     */
+    void setWeight(storm::expressions::Expression const& rate);
 
     /*!
      * Retrieves the guard of this edge.
@@ -165,6 +185,7 @@ class Edge {
     /// The rate with which this edge is taken. This only applies to continuous-time models. For discrete-time
     /// models, this must be set to none.
     boost::optional<storm::expressions::Expression> rate;
+    boost::optional<storm::expressions::Expression> weight;
 
     /// The template of this edge: guards and destinations. Notice that after finalizing, the template edge might be reused; changing it is not permitted.
     std::shared_ptr<TemplateEdge> templateEdge;
