@@ -1,11 +1,20 @@
 #include "storm-pomdp/generator/GenerateMonitorVerifier.h"
+#include <sys/types.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
+#include <ostream>
+#include <set>
+#include <string>
 #include <utility>
 #include <vector>
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/AbortException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/storage/BitVector.h"
+#include "storm/storage/SparseMatrix.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
@@ -45,15 +54,20 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
 
     const std::set<std::string>& actions = monitor.getChoiceLabeling().getLabels();
 
+    // Build choice label map of monitor choices
+    std::vector<std::string> monitorChoiceLabels;
+    for (auto i = 0; i < monitor.getTransitionMatrix().getRowCount(); i++) {
+        auto const& monitorLabels = monitor.getChoiceLabeling().getLabelsOfChoice(i);
+        STORM_LOG_THROW(monitorLabels.size() == 1, storm::exceptions::InvalidArgumentException, "Monitor choice has not exactly one choice label");
+        monitorChoiceLabels.push_back(*monitorLabels.begin());
+    }
+
     uint32_t nextObservation = 0;
     std::map<std::pair<uint32_t, bool>, uint32_t> observationMap;
     std::vector<uint32_t> observations;
 
-    std::map<const std::string, std::vector<size_t>> actionMap;
-    for (auto const& action : actions) {
-        actionMap[action];
-    }
-    actionMap["end"];
+    std::map<std::pair<const std::string, uint32_t>, storage::BitVector> rowActionObservationMap;
+    std::vector<std::set<std::string>> observationUsedActions;
 
     storm::storage::SparseMatrixBuilder<ValueType> builder(0, 0, 0, false, true);
     std::size_t currentRow = 0;
@@ -61,13 +75,17 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
 
     state_type goalIndex = nextStateId++;
     builder.newRowGroup(currentRow);
-    actionMap["end"].push_back(currentRow);
+    rowActionObservationMap[std::make_pair("end", nextObservation)].grow(currentRow + 1);
+    rowActionObservationMap[std::make_pair("end", nextObservation)].set(currentRow);
+    observationUsedActions.push_back({"end"});
     builder.addDiagonalEntry(currentRow++, utility::one<ValueType>());
     observations.push_back(nextObservation++);
 
     state_type stopIndex = nextStateId++;
     builder.newRowGroup(currentRow);
-    actionMap["end"].push_back(currentRow);
+    rowActionObservationMap[std::make_pair("end", nextObservation)].grow(currentRow + 1);
+    rowActionObservationMap[std::make_pair("end", nextObservation)].set(currentRow);
+    observationUsedActions.push_back({"end"});
     builder.addDiagonalEntry(currentRow++, utility::one<ValueType>());
     observations.push_back(nextObservation++);
 
@@ -100,28 +118,30 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
         std::pair obsPair(step, accepting);
         if (!observationMap.contains(obsPair)) {
             observationMap[obsPair] = nextObservation++;
+            observationUsedActions.push_back(std::set<std::string>());
         }
-        observations.push_back(observationMap.at(obsPair));
+        u_int32_t currentObservation = observationMap.at(obsPair);
+        observations.push_back(currentObservation);
 
         // Set transitions for from and add new states to todo
         builder.newRowGroup(currentRow);
         if (monitor.getStateLabeling().getLabelsOfState(mon_from).contains(options.horizonLabel)) {
-            for (const auto& action : actions) {
-                for (state_type initState : prodInitial) {
-                    builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / prodInitial.size());
-                }
-                actionMap[action].push_back(currentRow);
-                currentRow++;
+            const auto& action = *actions.begin();
+            for (state_type initState : prodInitial) {
+                builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / prodInitial.size());
             }
+            rowActionObservationMap[std::make_pair(action, currentObservation)].grow(currentRow + 1);
+            rowActionObservationMap[std::make_pair(action, currentObservation)].set(currentRow);
+            observationUsedActions[currentObservation].emplace(action);
+            currentRow++;
         } else {
             std::size_t numMonRows = monitor.getTransitionMatrix().getRowGroupSize(mon_from);
             std::size_t monGroupStart = monitor.getTransitionMatrix().getRowGroupIndices()[mon_from];
             std::set<std::string> actionsNotTaken(actions);
             for (std::size_t i = 0; i < numMonRows; i++) {
                 // Remove labels of monitor choice from the labels we still have to take
-                STORM_LOG_ASSERT(monitor.getChoiceLabeling().getLabelsOfChoice(monGroupStart + i).size() == 1,
-                                 "Monitor choice has not exactly one choice label");
-                const auto action = *monitor.getChoiceLabeling().getLabelsOfChoice(monGroupStart + i).begin();
+
+                const auto action = monitorChoiceLabels[monGroupStart + i];
                 actionsNotTaken.erase(action);
 
                 const auto& monitorRow = monitor.getTransitionMatrix().getRow(mon_from, i);
@@ -152,29 +172,36 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
                 }
 
                 // Add transitions to the successors, if the successor has not yet been added, add it to the todo list
-                for (const auto& mcEntry : mcRow) {
-                    if (mc.getStateLabeling().getStateHasLabel(action, mcEntry.getColumn())) {
-                        const product_state_type to_pair(mcEntry.getColumn(), monitorEntry->getColumn());
-                        state_type indexTo;
-                        if (auto it = prodToIndexMap.find(to_pair); it != prodToIndexMap.end()) {
-                            indexTo = it->second;
-                        } else {
-                            indexTo = nextStateId++;
-                            todo.push_back(to_pair);
-                            prodToIndexMap[to_pair] = indexTo;
+                if (totalProbability > storm::utility::zero<ValueType>()) {
+                    for (const auto& mcEntry : mcRow) {
+                        if (mc.getStateLabeling().getStateHasLabel(action, mcEntry.getColumn())) {
+                            const product_state_type to_pair(mcEntry.getColumn(), monitorEntry->getColumn());
+                            state_type indexTo;
+                            if (auto it = prodToIndexMap.find(to_pair); it != prodToIndexMap.end()) {
+                                indexTo = it->second;
+                            } else {
+                                indexTo = nextStateId++;
+                                todo.push_back(to_pair);
+                                prodToIndexMap[to_pair] = indexTo;
+                            }
+                            if (newRow.contains(indexTo))
+                                newRow[indexTo] = newRow[indexTo] + mcEntry.getValue();
+                            else
+                                newRow[indexTo] = mcEntry.getValue();
                         }
-                        if (newRow.contains(indexTo))
-                            newRow[indexTo] = newRow[indexTo] + mcEntry.getValue();
-                        else
-                            newRow[indexTo] = mcEntry.getValue();
                     }
+
+                    // Set action to used for this observation
+                    observationUsedActions[currentObservation].emplace(action);
                 }
 
                 // Insert new entries
                 for (const auto& entry : newRow) {
                     builder.addNextValue(currentRow, entry.first, entry.second);
                 }
-                actionMap[action].push_back(currentRow);
+                auto& rowBitVec = rowActionObservationMap[std::make_pair(action, currentObservation)];
+                rowBitVec.grow(currentRow + 1);
+                rowBitVec.set(currentRow);
                 currentRow++;
             }
 
@@ -182,7 +209,9 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
                 for (state_type initState : prodInitial) {
                     builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / prodInitial.size());
                 }
-                actionMap[action].push_back(currentRow);
+                auto& rowBitVec = rowActionObservationMap[std::make_pair(action, currentObservation)];
+                rowBitVec.grow(currentRow + 1);
+                rowBitVec.set(currentRow);
                 currentRow++;
             }
         }
@@ -198,10 +227,43 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
                     builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>());
                 }
             }
-            actionMap["end"].push_back(currentRow);
+            observationUsedActions[currentObservation].emplace("end");
+            auto& rowBitVec = rowActionObservationMap[std::make_pair("end", currentObservation)];
+            rowBitVec.grow(currentRow + 1);
+            rowBitVec.set(currentRow);
             currentRow++;
         }
     }
+
+    size_t numberOfRows = currentRow;
+
+    // Make all observation action bitvectors of size numberOfRows
+    for (auto& [labelObsPair, vec] : rowActionObservationMap) {
+        vec.resize(numberOfRows);
+    }
+
+    // Calculate which rows belong to action which don't all return for an observation and only keep these
+    storm::storage::SparseMatrix<ValueType> transMatrix = builder.build();
+    storm::storage::BitVector rowsToKeep(transMatrix.getRowCount());
+    u_int32_t currentObservation = 0;
+    for (auto const& actionsInObs : observationUsedActions) {
+        for (auto const& action : actionsInObs) {
+            // std::cout << "Keeping action obs (" << action << ", " << currentObservation << ")" << std::endl;
+            rowsToKeep |= rowActionObservationMap[std::make_pair(action, currentObservation)];
+        }
+        currentObservation++;
+    }
+    // std::cout << "Kept " << rowsToKeep.getNumberOfSetBits() << " out of " << numberOfRows << " rows." << std::endl;
+    numberOfRows = rowsToKeep.getNumberOfSetBits();
+    storm::storage::SparseMatrix<ValueType> reducedTransitionMatrix = transMatrix.restrictRows(rowsToKeep);
+    // rowsToKeep.complement();
+    // storm::storage::SparseMatrix<ValueType> inverseReducedTransitionMatrix = transMatrix.restrictRows(rowsToKeep, true);
+    // for (auto row = 0; row < inverseReducedTransitionMatrix.getRowCount(); ++row) {
+    //     STORM_LOG_THROW(inverseReducedTransitionMatrix.getRow(row).getNumberOfEntries() == prodInitial.size(), storm::exceptions::AbortException,
+    //                     "Only dirac rows can be thrown away but " + std::to_string(row) + " is thrown away");
+    // }
+    // rowsToKeep.complement();
+    // auto reducedTransitionMatrix = builder.build();
 
     // Create state labeling
     const state_type numberOfStates = nextStateId;
@@ -214,14 +276,26 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     stateLabeling.addLabel("stop", storm::storage::BitVector(numberOfStates));
     stateLabeling.addLabelToState("stop", stopIndex);
 
-    storm::storage::sparse::ModelComponents<ValueType> components(builder.build(), std::move(stateLabeling));
+    storm::storage::sparse::ModelComponents<ValueType> components(reducedTransitionMatrix, std::move(stateLabeling));
     components.observabilityClasses = std::move(observations);
 
     // Add choice labeling
-    const size_t numberOfRows = currentRow;
+    const std::vector<uint_fast64_t> rowMapping = rowsToKeep.getNumberOfSetBitsBeforeIndices();  // Vector which maps old row id to new row id
     storm::models::sparse::ChoiceLabeling choiceLabeling(numberOfRows);
-    for (const auto& [label, vec] : actionMap) {
-        choiceLabeling.addLabel(label, storm::storage::BitVector(numberOfRows, vec.begin(), vec.end()));
+    for (const auto& [labelObsPair, bitvec] : rowActionObservationMap) {
+        // Rebuild bitvec with restricted rows
+        storm::storage::BitVector newBitVec(numberOfRows);
+        for (const auto& setbit : bitvec) {
+            if (rowsToKeep[setbit])
+                newBitVec.set(rowMapping[setbit]);
+        }
+        // auto newBitVec = bitvec;
+
+        if (choiceLabeling.containsLabel(labelObsPair.first)) {
+            choiceLabeling.setChoices(labelObsPair.first, newBitVec | choiceLabeling.getChoices(labelObsPair.first));
+        } else {
+            choiceLabeling.addLabel(labelObsPair.first, newBitVec);
+        }
     }
 
     components.choiceLabeling = std::move(choiceLabeling);
