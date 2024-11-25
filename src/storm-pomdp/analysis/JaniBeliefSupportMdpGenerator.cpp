@@ -120,7 +120,7 @@ void JaniBeliefSupportMdpGenerator<ValueType>::generate(storm::storage::BitVecto
                                                             storm::expressions::disjunction(exprVec)));
             }
             tedge->addDestination(edgedest);
-            aut.addEdge(jani::Edge(primeloc, oaps.second, boost::none, tedge, {primeloc}, {exprManager.rational(1.0)}));
+            aut.addEdge(jani::Edge(primeloc, oaps.second, boost::none, boost::none, tedge, {primeloc}, {exprManager.rational(1.0)}));
         }
         model.addAutomaton(aut);
     }
@@ -166,7 +166,7 @@ void JaniBeliefSupportMdpGenerator<ValueType>::generate(storm::storage::BitVecto
             }
             probs.push_back(storm::expressions::ite(storm::expressions::disjunction(predExpressions), posProbVar.getExpression(), exprManager.rational(0)));
         }
-        jani::Edge edge(primeloc, jani::Model::SILENT_ACTION_INDEX, boost::none, tedge, destLocs, probs);
+        jani::Edge edge(primeloc, jani::Model::SILENT_ACTION_INDEX, boost::none, boost::none, tedge, destLocs, probs);
         obsAut.addEdge(edge);
     }
     // Back edges
@@ -177,7 +177,7 @@ void JaniBeliefSupportMdpGenerator<ValueType>::generate(storm::storage::BitVecto
         jani::TemplateEdgeDestination tedgedest;
         tedgedest.addAssignment(jani::Assignment(jani::LValue(*oldobsActVar), exprManager.integer(0)));
         tedge->addDestination(tedgedest);
-        jani::Edge edge(secloc, actionIndices[oaps], boost::none, tedge, {primeloc}, {exprManager.rational(1.0)});
+        jani::Edge edge(secloc, actionIndices[oaps], boost::none, boost::none, tedge, {primeloc}, {exprManager.rational(1.0)});
         obsAut.addEdge(edge);
     }
     model.addAutomaton(obsAut);

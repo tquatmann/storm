@@ -132,7 +132,7 @@ void JaniGSPNBuilder::addEdges(storm::jani::Automaton& automaton, uint64_t locId
         for (auto const& oa : oas) {
             templateEdge->addDestination(storm::jani::TemplateEdgeDestination(oa));
         }
-        storm::jani::Edge e(locId, storm::jani::Model::SILENT_ACTION_INDEX, boost::none, templateEdge, destinationLocations, probabilities);
+        storm::jani::Edge e(locId, storm::jani::Model::SILENT_ACTION_INDEX, boost::none, boost::none, templateEdge, destinationLocations, probabilities);
         automaton.addEdge(e);
         lastPriorityGuard = lastPriorityGuard || guard;
     }
@@ -192,7 +192,7 @@ void JaniGSPNBuilder::addEdges(storm::jani::Automaton& automaton, uint64_t locId
         }
 
         templateEdge->addDestination(assignments);
-        storm::jani::Edge e(locId, storm::jani::Model::SILENT_ACTION_INDEX, rate, templateEdge, {locId}, {expressionManager->integer(1)});
+        storm::jani::Edge e(locId, storm::jani::Model::SILENT_ACTION_INDEX, rate, boost::none, templateEdge, {locId}, {expressionManager->integer(1)});
         automaton.addEdge(e);
     }
 }
