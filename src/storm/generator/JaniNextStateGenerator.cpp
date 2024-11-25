@@ -701,10 +701,12 @@ StateBehavior<ValueType, StateType> JaniNextStateGenerator<ValueType, StateType>
                 if (choice.isWeighted()) {
                     totalMass += choice.getTotalMass();
                 } else if (choice.isMarkovian()) {
-                    // ignore Markovian choice if one of the weighted chocies exists (maximal progress assumption)
+                    // ignore Markovian choice if one of the weighted choices exists (maximal progress assumption)
                     if (!isWeighted) {
                         totalMass += choice.getTotalMass();
                     }
+                } else if (this->isDeterministicModel() && !this->isDiscreteTimeModel()) {
+                    totalMass += choice.getTotalMass();  // CTMC choices are always treated as if they are Markovian
                 } else {
                     totalMass += storm::utility::one<ValueType>();  // Default to one if neither weighted nor Markovian
                 }
