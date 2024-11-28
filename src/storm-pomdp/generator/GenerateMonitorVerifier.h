@@ -1,4 +1,7 @@
 #pragma once
+#include <sys/types.h>
+#include <cstdint>
+#include <utility>
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/Pomdp.h"
@@ -8,14 +11,17 @@ namespace storm::generator {
 template<typename ValueType>
 class MonitorVerifier {
    public:
-    MonitorVerifier(const storm::models::sparse::Pomdp<ValueType>& product, const std::map<std::pair<uint32_t, bool>, uint32_t>& observationMap);
+    MonitorVerifier(const storm::models::sparse::Pomdp<ValueType>& product, const std::map<std::pair<uint32_t, bool>, uint32_t>& observationMap,
+                    std::map<uint32_t, std::string> observationDefaultAction);
 
     const std::map<std::pair<uint32_t, bool>, uint32_t>& getObservationMap();
+    const std::map<uint32_t, std::string>& getObservationDefaultAction();
     const storm::models::sparse::Pomdp<ValueType>& getProduct();
 
    private:
     storm::models::sparse::Pomdp<ValueType> product;
     std::map<std::pair<uint32_t, bool>, uint32_t> observationMap;
+    std::map<uint32_t, std::string> observationDefaultAction;
 };
 
 template<typename ValueType>

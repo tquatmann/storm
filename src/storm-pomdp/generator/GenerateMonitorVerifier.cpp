@@ -5,13 +5,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <ostream>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/exceptions/AbortException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
@@ -24,8 +22,9 @@ namespace generator {
 
 template<typename ValueType>
 MonitorVerifier<ValueType>::MonitorVerifier(const models::sparse::Pomdp<ValueType>& product,
-                                            const std::map<std::pair<uint32_t, bool>, uint32_t>& observationMap)
-    : product(storm::models::sparse::Pomdp<ValueType>(product)), observationMap(observationMap) {}
+                                            const std::map<std::pair<uint32_t, bool>, uint32_t>& observationMap,
+                                            std::map<uint32_t, std::string> observationDefaultAction)
+    : product(storm::models::sparse::Pomdp<ValueType>(product)), observationMap(observationMap), observationDefaultAction(observationDefaultAction) {}
 
 template<typename ValueType>
 const std::map<std::pair<uint32_t, bool>, uint32_t>& MonitorVerifier<ValueType>::getObservationMap() {
@@ -35,6 +34,11 @@ const std::map<std::pair<uint32_t, bool>, uint32_t>& MonitorVerifier<ValueType>:
 template<typename ValueType>
 const models::sparse::Pomdp<ValueType>& MonitorVerifier<ValueType>::getProduct() {
     return product;
+}
+
+template<typename ValueType>
+const std::map<uint32_t, std::string>& MonitorVerifier<ValueType>::getObservationDefaultAction() {
+    return observationDefaultAction;
 }
 
 template<typename ValueType>
@@ -245,25 +249,23 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     // Calculate which rows belong to action which don't all return for an observation and only keep these
     storm::storage::SparseMatrix<ValueType> transMatrix = builder.build();
     storm::storage::BitVector rowsToKeep(transMatrix.getRowCount());
+    std::map<uint32_t, std::string> observationDefaultAction;
     u_int32_t currentObservation = 0;
     for (auto const& actionsInObs : observationUsedActions) {
+        if (actionsInObs.size() == 1) {
+            observationDefaultAction[currentObservation] = *actionsInObs.begin();
+        }
+
         for (auto const& action : actionsInObs) {
             // std::cout << "Keeping action obs (" << action << ", " << currentObservation << ")" << std::endl;
             rowsToKeep |= rowActionObservationMap[std::make_pair(action, currentObservation)];
         }
         currentObservation++;
     }
-    // std::cout << "Kept " << rowsToKeep.getNumberOfSetBits() << " out of " << numberOfRows << " rows." << std::endl;
+    std::cout << "Kept " << rowsToKeep.getNumberOfSetBits() << " out of " << numberOfRows << " rows." << std::endl;
+    // rowsToKeep.setMultiple(0, numberOfRows);
     numberOfRows = rowsToKeep.getNumberOfSetBits();
     storm::storage::SparseMatrix<ValueType> reducedTransitionMatrix = transMatrix.restrictRows(rowsToKeep);
-    // rowsToKeep.complement();
-    // storm::storage::SparseMatrix<ValueType> inverseReducedTransitionMatrix = transMatrix.restrictRows(rowsToKeep, true);
-    // for (auto row = 0; row < inverseReducedTransitionMatrix.getRowCount(); ++row) {
-    //     STORM_LOG_THROW(inverseReducedTransitionMatrix.getRow(row).getNumberOfEntries() == prodInitial.size(), storm::exceptions::AbortException,
-    //                     "Only dirac rows can be thrown away but " + std::to_string(row) + " is thrown away");
-    // }
-    // rowsToKeep.complement();
-    // auto reducedTransitionMatrix = builder.build();
 
     // Create state labeling
     const state_type numberOfStates = nextStateId;
@@ -382,7 +384,7 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
 
     // Store model
     storm::models::sparse::Pomdp<ValueType> product(std::move(components));
-    auto mv = std::make_shared<MonitorVerifier<ValueType>>(std::move(product), std::move(observationMap));
+    auto mv = std::make_shared<MonitorVerifier<ValueType>>(std::move(product), std::move(observationMap), std::move(observationDefaultAction));
     return mv;
 }
 
