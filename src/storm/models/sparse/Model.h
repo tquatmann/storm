@@ -361,6 +361,8 @@ class Model : public storm::models::Model<CValueType> {
      */
     virtual void writeJsonToStream(std::ostream& outStream) const;
 
+    virtual void writeGntmcToStream(std::ostream& outStream) const;
+
     /*!
      * Retrieves the set of labels attached to the given state.
      *

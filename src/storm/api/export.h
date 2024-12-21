@@ -53,6 +53,14 @@ void exportSparseModelAsJson(std::shared_ptr<storm::models::sparse::Model<ValueT
     storm::io::closeFile(stream);
 }
 
+template<typename ValueType>
+void exportSparseModelAsGntmc(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename) {
+    std::ofstream stream;
+    storm::io::openFile(filename, stream);
+    model->writeGntmcToStream(stream);
+    storm::io::closeFile(stream);
+}
+
 template<storm::dd::DdType Type, typename ValueType>
 void exportSymbolicModelAsDot(std::shared_ptr<storm::models::symbolic::Model<Type, ValueType>> const& model, std::string const& filename) {
     model->writeDotToFile(filename);

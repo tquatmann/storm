@@ -646,6 +646,9 @@ void exportSparseModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> 
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
                 break;
+            case storm::io::ModelExportFormat::Gntmc:
+                storm::api::exportSparseModelAsGntmc(model, ioSettings.getExportBuildFilename());
+                break;
             default:
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                                 "Exporting sparse models in " << storm::io::toString(ioSettings.getExportBuildFormat()) << " format is not supported.");
