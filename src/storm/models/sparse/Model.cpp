@@ -520,6 +520,38 @@ void Model<ValueType, RewardModelType>::writeDotToStream(std::ostream& outStream
 }
 
 template<typename ValueType, typename RewardModelType>
+void Model<ValueType, RewardModelType>::writeGntmcToStream(std::ostream& outStream) const {
+    bool const largeModel = this->getNumberOfStates() > 10000 || this->getNumberOfTransitions() > 100000;
+    STORM_LOG_WARN_COND(!largeModel, "Exporting a large model to gntmc. This might take some time and will result in a very large file.");
+    using Json = storm::json<double>;
+    Json output;
+    output["name"] = "exported_model";
+    output["lts"]["states"] = storm::utility::vector::buildVectorForRange<int64_t>(0, this->getNumberOfStates());
+    output["lts"]["actions"] = {0};
+    Json::array_t transitions;
+    Json::object_t labels;
+    auto statelabels = this->getStateLabeling();
+    statelabels.removeLabel("init");
+    for (uint64_t state = 0; state < this->getNumberOfStates(); ++state) {
+        for (auto const& entry : this->getTransitionMatrix().getRowGroup(state)) {
+            if (storm::utility::isZero(entry.getValue())) {
+                continue;
+            }
+            transitions.push_back({state, 0, entry.getColumn()});
+        }
+        auto labelset = statelabels.getLabelsOfState(state);
+        if (!labelset.empty()) {
+            labels[std::to_string(state)] = std::vector<std::string>(labelset.begin(), labelset.end());
+        }
+    }
+    output["lts"]["transitions"] = std::move(transitions);
+    output["lts"]["initial_states"] = std::vector<int64_t>(this->getInitialStates().begin(), this->getInitialStates().end());
+    output["lts"]["labelling"] = std::move(labels);
+    output["properties"] = Json::array_t();
+
+    outStream << storm::dumpJson(output, largeModel);  // compact for large models
+}
+template<typename ValueType, typename RewardModelType>
 void Model<ValueType, RewardModelType>::writeJsonToStream(std::ostream& outStream) const {
     STORM_LOG_WARN_COND(this->getNumberOfStates() < 10000 && this->getNumberOfTransitions() < 100000,
                         "Exporting a large model to json. This might take some time and will result in a very large file.");

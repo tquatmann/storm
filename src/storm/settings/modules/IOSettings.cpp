@@ -74,7 +74,7 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .setDefaultValueUnsignedInteger(0)
                                          .build())
                         .build());
-    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json"});
+    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json", "gntmc"});
     this->addOption(
         storm::settings::OptionBuilder(moduleName, exportBuildOptionName, false, "Exports the built model to a file.")
             .addArgument(storm::settings::ArgumentBuilder::createStringArgument("file", "The output file.").build())
