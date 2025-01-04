@@ -83,7 +83,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 set(Boost_NO_BOOST_CMAKE ON)
 
-find_package(Boost 1.65.1 QUIET REQUIRED COMPONENTS filesystem system)
+find_package(Boost 1.65.1 QUIET REQUIRED COMPONENTS filesystem system iostreams)
 if (NOT Boost_FOUND)
     if (Boost_VERSION)
 	message(FATAL_ERROR "The required Boost version is 1.65.1 or newer, however, only ${Boost_VERSION} was found.")

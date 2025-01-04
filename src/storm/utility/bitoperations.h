@@ -1,7 +1,28 @@
 #pragma once
+#include <array>
+#include <bit>
 #include <cstdint>
+#include <ranges>
 
 #include "storm/utility/macros.h"
+
+namespace storm::utility {
+
+/*!
+ * Swaps the byte representation of the given value, (i.e., swaps endianness)
+ * Taken from https://en.cppreference.com/w/cpp/numeric/byteswap
+ * Can be replaced once we are at C++23
+ */
+template<typename T>
+inline T byteSwap(T const t) {
+    // Note: c++23's std::bit_cast does not allow floating point types. Potentially because they don't have a unique object representation (NaN).
+    static_assert(std::has_unique_object_representations_v<T> || std::is_same_v<T, double> || std::is_same_v<T, float>, "T may not have padding bits");
+    auto value_representation = std::bit_cast<std::array<std::byte, sizeof(T)>>(t);
+    std::ranges::reverse(value_representation);
+    return std::bit_cast<T>(value_representation);
+}
+
+}  // namespace storm::utility
 
 /**
  * \return 2^n - 1
