@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
@@ -222,8 +223,16 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
 
         if (monitor.getStateLabeling().getStateHasLabel(options.acceptingLabel, mon_from)) {
             if (options.useRisk) {
-                builder.addNextValue(currentRow, goalIndex, risk[mc_from]);
-                builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>() - risk[mc_from]);
+                STORM_LOG_THROW(risk[mc_from] >= -utility::convertNumber<ValueType>(1e-12) && risk[mc_from] <= utility::convertNumber<ValueType>(1.0 + 1e-12),
+                                exceptions::IllegalArgumentException, "Risk for state " + std::to_string(mc_from) + " is not in [0, 1]");
+                if (utility::isAlmostZero(risk[mc_from])) {
+                    builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>());
+                } else if (utility::isAlmostOne(risk[mc_from])) {
+                    builder.addNextValue(currentRow, goalIndex, utility::one<ValueType>());
+                } else {
+                    builder.addNextValue(currentRow, goalIndex, risk[mc_from]);
+                    builder.addNextValue(currentRow, stopIndex, utility::one<ValueType>() - risk[mc_from]);
+                }
             } else {
                 if (mc.getStateLabeling().getStateHasLabel(options.goodLabel, mc_from)) {
                     builder.addNextValue(currentRow, goalIndex, utility::one<ValueType>());
