@@ -508,6 +508,10 @@ std::shared_ptr<storm::models::ModelBase> buildModelExplicit(storm::settings::mo
         storm::parser::DirectEncodingParserOptions options;
         options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
         result = storm::api::buildExplicitDRNModel<ValueType>(ioSettings.getExplicitDRNFilename(), options);
+    } else if (ioSettings.isExplicitDmbSet()) {
+        storm::parser::DirectEncodingParserOptions options;
+        options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
+        result = storm::api::buildExplicitDRNModel<ValueType>(ioSettings.getExplicitDRNFilename(), options);
     } else {
         STORM_LOG_THROW(ioSettings.isExplicitIMCASet(), storm::exceptions::InvalidSettingsException, "Unexpected explicit model input type.");
         result = storm::api::buildExplicitIMCAModel<ValueType>(ioSettings.getExplicitIMCAFilename());
@@ -645,6 +649,9 @@ void exportSparseModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> 
                 break;
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
+                break;
+            case storm::io::ModelExportFormat::Dmb:
+                storm::api::exportSparseModelAsDmb(model, ioSettings.getExportBuildFilename());
                 break;
             default:
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,

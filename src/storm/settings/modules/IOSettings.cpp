@@ -31,6 +31,8 @@ const std::string IOSettings::explicitOptionName = "explicit";
 const std::string IOSettings::explicitOptionShortName = "exp";
 const std::string IOSettings::explicitDrnOptionName = "explicit-drn";
 const std::string IOSettings::explicitDrnOptionShortName = "drn";
+const std::string IOSettings::explicitDmbOptionName = "explicit-dmb";
+const std::string IOSettings::explicitDmbOptionShortName = "dmb";
 const std::string IOSettings::explicitImcaOptionName = "explicit-imca";
 const std::string IOSettings::explicitImcaOptionShortName = "imca";
 const std::string IOSettings::prismInputOptionName = "prism";
@@ -74,7 +76,7 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .setDefaultValueUnsignedInteger(0)
                                          .build())
                         .build());
-    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json"});
+    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json", "dmb"});
     this->addOption(
         storm::settings::OptionBuilder(moduleName, exportBuildOptionName, false, "Exports the built model to a file.")
             .addArgument(storm::settings::ArgumentBuilder::createStringArgument("file", "The output file.").build())
@@ -134,6 +136,12 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .build())
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("labeling filename",
                                                                                             "The name of the file from which to read the state labeling.")
+                                         .addValidatorString(ArgumentValidatorFactory::createExistingFileValidator())
+                                         .build())
+                        .build());
+    this->addOption(storm::settings::OptionBuilder(moduleName, explicitDmbOptionName, false, "Parses the model given in the DMB format.")
+                        .setShortName(explicitDmbOptionShortName)
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("dmb location", "The location of the dmb encoding.")
                                          .addValidatorString(ArgumentValidatorFactory::createExistingFileValidator())
                                          .build())
                         .build());
@@ -369,6 +377,14 @@ bool IOSettings::isExplicitDRNSet() const {
 
 std::string IOSettings::getExplicitDRNFilename() const {
     return this->getOption(explicitDrnOptionName).getArgumentByName("drn filename").getValueAsString();
+}
+
+bool IOSettings::isExplicitDmbSet() const {
+    return this->getOption(explicitDmbOptionName).getHasOptionBeenSet();
+}
+
+std::string IOSettings::getExplicitDmbFilename() const {
+    return this->getOption(explicitDmbOptionName).getArgumentByName("dmb location").getValueAsString();
 }
 
 bool IOSettings::isExplicitIMCASet() const {

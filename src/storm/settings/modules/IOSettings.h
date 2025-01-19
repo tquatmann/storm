@@ -175,6 +175,20 @@ class IOSettings : public ModuleSettings {
     bool isExplicitExportPlaceholdersDisabled() const;
 
     /*!
+     * Retrieves whether the explicit option with DMB was set.
+     *
+     * @return True if the explicit option with DMB was set.
+     */
+    bool isExplicitDmbSet() const;
+
+    /*!
+     * Retrieves the name of the file that contains the model in the DMB format.
+     *
+     * @return The name of the DMB file that contains the model.
+     */
+    std::string getExplicitDmbFilename() const;
+
+    /*!
      * Retrieves whether the explicit option with IMCA was set.
      *
      * @return True if the explicit option with IMCA was set.
@@ -396,6 +410,8 @@ class IOSettings : public ModuleSettings {
     static const std::string explicitOptionShortName;
     static const std::string explicitDrnOptionName;
     static const std::string explicitDrnOptionShortName;
+    static const std::string explicitDmbOptionName;
+    static const std::string explicitDmbOptionShortName;
     static const std::string explicitImcaOptionName;
     static const std::string explicitImcaOptionShortName;
     static const std::string prismInputOptionName;

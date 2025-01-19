@@ -11,10 +11,15 @@
 
 namespace storm::io {
 
+template<typename T>
+concept IsBinaryFileViewable = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+
 template<typename T, std::endian Endianness = std::endian::little>
+    requires IsBinaryFileViewable<T>
 class BinaryFileViewer {
    public:
     static const bool NativeEndianness = Endianness == std::endian::native;
+    using value_type = T;
 
     BinaryFileViewer(std::string const& filename) : file(createMappedFile(filename)), rangeView(createRangeView(file)) {
         std::cout << "read a file of size " << file.size() << " using a type with size " << sizeof(T) << std::endl;

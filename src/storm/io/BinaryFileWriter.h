@@ -9,10 +9,15 @@
 #include "storm/utility/macros.h"
 namespace storm::io {
 
+template<typename T>
+concept IsBinaryFileWritable = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+
 template<typename T, std::endian Endianness = std::endian::little>
+    requires IsBinaryFileWritable<T>
 class BinaryFileWriter {
    public:
     static const bool NativeEndianness = Endianness == std::endian::native;
+    using value_type = T;
 
     BinaryFileWriter(std::string const& filename) : outputStream(filename, std::ios::out | std::ios::binary) {
         STORM_LOG_THROW(outputStream, storm::exceptions::FileIoException, "Could not open file '" << filename << "' for writing.");
@@ -33,7 +38,9 @@ class BinaryFileWriter {
     static_assert(!std::is_same_v<T, bool>, "bool is not supported yet (unclear representation)");
 
    private:
-    static T encode(T const t) requires(!NativeEndianness) {
+    static T encode(T const t)
+        requires(!NativeEndianness)
+    {
         return storm::utility::byteSwap(t);
     }
     std::ofstream outputStream;
