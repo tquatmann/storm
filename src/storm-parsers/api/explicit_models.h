@@ -34,6 +34,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDRNModel(
 }
 
 template<typename ValueType>
+    requires(!std::is_same_v<ValueType, storm::RationalFunction>)  // RationalFunction currently not supported for DMB models
 std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDmbModel(std::string const& dmbLocation, storm::dmb::ImportOptions const& options = {}) {
     return storm::dmb::parseModelFromDmb<ValueType>(dmbLocation, options);
 }

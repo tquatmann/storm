@@ -141,9 +141,7 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                         .build());
     this->addOption(storm::settings::OptionBuilder(moduleName, explicitDmbOptionName, false, "Parses the model given in the DMB format.")
                         .setShortName(explicitDmbOptionShortName)
-                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("dmb location", "The location of the dmb encoding.")
-                                         .addValidatorString(ArgumentValidatorFactory::createExistingFileValidator())
-                                         .build())
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("dmb location", "The location of the dmb encoding.").build())
                         .build());
     this->addOption(storm::settings::OptionBuilder(moduleName, explicitDrnOptionName, false, "Parses the model given in the DRN format.")
                         .setShortName(explicitDrnOptionShortName)
