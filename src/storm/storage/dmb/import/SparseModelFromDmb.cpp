@@ -44,6 +44,12 @@ storm::storage::SparseMatrix<ValueType> constructTransitionMatrix(storm::dmb::Dm
     return builder.build();
 }
 
+template<typename ValueType, StorageType Storage>
+storm::models::sparse::StateLabeling constructStateLabelling(storm::dmb::DmbModel<Storage> const& dmbModel) {
+    // TODO: Implement
+    static_assert(false);
+}
+
 template<typename ValueType, typename RewardModelType, StorageType Storage>
 std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> constructSparseModel(storm::dmb::DmbModel<Storage> const& dmbModel) {
     storm::storage::sparse::ModelComponents<ValueType, RewardModelType> components(constructTransitionMatrix<ValueType, Storage>(dmbModel));
