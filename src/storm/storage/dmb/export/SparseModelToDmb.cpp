@@ -1,4 +1,4 @@
-#include "storm/storage/dmb/SparseModelConversion.h"
+#include "storm/storage/dmb/export/SparseModelToDmb.h"
 
 #include "storm/storage/SparseMatrix.h"
 #include "storm/storage/dmb/model/DmbModel.h"

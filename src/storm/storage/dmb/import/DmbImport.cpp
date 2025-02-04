@@ -41,7 +41,7 @@ void loadStatesChoicesBranchesFromDisk(std::filesystem::path const& dmbDir, DmbM
     auto& states = dmbModel.states;
     constructFromPathIfExists(dmbDir, "state-to-choice.bin", states.stateToChoice);
     constructFromPathIfExists(dmbDir, "state-to-player.bin", states.stateToPlayer);
-    // constructFromPathIfExists(dmbDir, "initial-states.bin", states.initialStates);
+    constructFromPathIfExists(dmbDir, "initial-states.bin", states.initialStates);
     auto& choices = dmbModel.choices;
     constructFromPathIfExists(dmbDir, "choice-to-branch.bin", choices.choiceToBranch);
     constructFromPathIfExists(dmbDir, "choice-to-action.bin", choices.choiceToAction);

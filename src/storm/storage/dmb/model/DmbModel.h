@@ -27,7 +27,7 @@ class DmbModel : public DmbModelBase {
     };
     template<typename T>
     using TO1 = typename TO1Helper<T>::type;
-    
+
     template<typename T>
     using SEQ = TO1<T>;
     using CSR = OptionalVec<uint64_t>;
@@ -37,7 +37,7 @@ class DmbModel : public DmbModelBase {
     struct States {
         CSR stateToChoice;
         TO1<uint32_t> stateToPlayer;
-        // SEQ<bool> initialStates;
+        SEQ<bool> initialStates;
     } states;
     struct Choices {
         CSR choiceToBranch;

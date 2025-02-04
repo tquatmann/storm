@@ -16,7 +16,7 @@
 namespace storm {
 namespace storage {
 
-BitVector::const_iterator::const_iterator() : dataPtr(nullptr), currentIndex(0), endIndex(0) {};
+BitVector::const_iterator::const_iterator() : dataPtr(nullptr), currentIndex(0), endIndex(0){};
 
 BitVector::const_iterator::const_iterator(uint64_t const* dataPtr, uint_fast64_t startIndex, uint_fast64_t endIndex, bool setOnFirstBit)
     : dataPtr(dataPtr), endIndex(endIndex) {
@@ -72,7 +72,7 @@ bool BitVector::const_iterator::operator==(const_iterator const& other) const {
     return currentIndex == other.currentIndex;
 }
 
-BitVector::const_reverse_iterator::const_reverse_iterator() : dataPtr(nullptr), currentIndex(0), lowerBound(0) {};
+BitVector::const_reverse_iterator::const_reverse_iterator() : dataPtr(nullptr), currentIndex(0), lowerBound(0){};
 
 BitVector::const_reverse_iterator::const_reverse_iterator(uint64_t const* dataPtr, uint64_t upperBound, uint64_t lowerBound, bool setOnFirstBit)
     : dataPtr(dataPtr), lowerBound(lowerBound) {
@@ -1165,6 +1165,23 @@ size_t BitVector::bucketCount() const {
         ++result;
     }
     return result;
+}
+
+void BitVector::setBucket(uint64_t bucketIndex, uint64_t value) {
+    STORM_LOG_ASSERT(bucketIndex < bucketCount(), "Invalid call to BitVector::getBucket: bucket index " << bucketIndex << " out of bounds.");
+    buckets[bucketIndex] = value;
+    if (bucketIndex == bucketCount() - 1) {
+        truncateLastBucket();
+    }
+}
+uint64_t BitVector::getBucket(uint64_t bucketIndex) const {
+    STORM_LOG_ASSERT(bucketIndex < bucketCount(), "Invalid call to BitVector::getBucket: bucket index " << bucketIndex << " out of bounds.");
+    STORM_LOG_ASSERT(bucketIndex < bucketCount() - 1 || buckets[bucketIndex] << (bitCount & mod64mask) == 0ull,
+                     "Bitvector in invalid state: last bucket contains bits beyond bitCount.");
+    if (bucketIndex == bucketCount() - 1) {
+        return buckets[bucketIndex] & ~((1ll << (64 - (bitCount & mod64mask))) - 1ll);
+    }
+    return buckets[bucketIndex];
 }
 
 std::ostream& operator<<(std::ostream& out, BitVector const& bitvector) {
