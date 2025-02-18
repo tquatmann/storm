@@ -44,15 +44,33 @@ storm::storage::SparseMatrix<ValueType> constructTransitionMatrix(storm::dmb::Dm
     return builder.build();
 }
 
-template<typename ValueType, StorageType Storage>
+template<StorageType Storage>
+storm::storage::BitVector createBitVector(storm::dmb::VectorType<bool, Storage> const& dmbBitVector, uint64_t size) {
+    if constexpr (Storage == StorageType::Memory) {
+        STORM_LOG_ASSERT(dmbBitVector.size() >= size, "Bit vector has unexpected size: " << dmbBitVector.size() << " < " << size);
+        storm::storage::BitVector result = dmbBitVector;
+        result.resize(size);
+        return result;
+    } else {
+        return dmbBitVector.getAsBitVector(size);
+    }
+}
+
+template<StorageType Storage>
 storm::models::sparse::StateLabeling constructStateLabelling(storm::dmb::DmbModel<Storage> const& dmbModel) {
-    // TODO: Implement
-    static_assert(false);
+    auto const& index = dmbModel.getIndex();
+    storm::models::sparse::StateLabeling stateLabelling(index.numStates);
+    if (dmbModel.states.initialStates) {
+        stateLabelling.addLabel("init", createBitVector<Storage>(dmbModel.states.initialStates.value(), index.numStates));
+    }
+    // todo: more labels
+    return stateLabelling;
 }
 
 template<typename ValueType, typename RewardModelType, StorageType Storage>
 std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> constructSparseModel(storm::dmb::DmbModel<Storage> const& dmbModel) {
-    storm::storage::sparse::ModelComponents<ValueType, RewardModelType> components(constructTransitionMatrix<ValueType, Storage>(dmbModel));
+    storm::storage::sparse::ModelComponents<ValueType, RewardModelType> components(constructTransitionMatrix<ValueType, Storage>(dmbModel),
+                                                                                   constructStateLabelling(dmbModel));
     return storm::utility::builder::buildModelFromComponents(deriveModelType(dmbModel.getIndex()), std::move(components));
 }
 

@@ -35,6 +35,16 @@ void transitionMatrixToDmb(storm::storage::SparseMatrix<ValueType> const& matrix
     dmb.branches.branchToValue.template set<ValueType>(std::move(branchToValue));
 }
 
+void stateLabelingToDmb(storm::models::sparse::StateLabeling const& labeling, storm::dmb::DmbModel<StorageType::Memory>& dmb) {
+    for (auto const& labelId : labeling.getLabels()) {
+        if (labelId == "init") {
+            dmb.states.initialStates = labeling.getStates(labelId);
+        } else {
+            STORM_LOG_WARN("Export of labeling not yet implemented. ignoring label " << labelId);
+        }
+    }
+}
+
 template<typename ValueType, typename RewardModelType>
 void setIndexInformation(storm::models::sparse::Model<ValueType, RewardModelType> const& model, storm::dmb::ModelIndex& index) {
     index.creation.setDateToNow();
@@ -94,6 +104,7 @@ template<typename ValueType, typename RewardModelType>
 std::unique_ptr<storm::dmb::DmbModelBase> sparseModelToDmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model) {
     DmbModel<StorageType::Memory> dmbModel;
     detail::setIndexInformation(model, dmbModel.index);
+    detail::stateLabelingToDmb(model.getStateLabeling(), dmbModel);
     if (model.isOfType(storm::models::ModelType::Ctmc)) {
         detail::transitionMatrixToDmb(dynamic_cast<storm::models::sparse::Ctmc<ValueType> const&>(model).computeProbabilityMatrix(), dmbModel);
     } else {
@@ -101,6 +112,7 @@ std::unique_ptr<storm::dmb::DmbModelBase> sparseModelToDmb(storm::models::sparse
     }
     return std::make_unique<DmbModel<StorageType::Memory>>(std::move(dmbModel));
 }
+
 template std::unique_ptr<storm::dmb::DmbModelBase> sparseModelToDmb<double>(storm::models::sparse::Model<double> const& model);
 template std::unique_ptr<storm::dmb::DmbModelBase> sparseModelToDmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model);
 }  // namespace storm::dmb

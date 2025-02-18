@@ -20,6 +20,19 @@ void writeVectorToDisk(VectorType const& vector, std::filesystem::path const& dm
     writer.write(vector);
 }
 
+void writeVectorToDisk(storm::storage::BitVector const& vector, std::filesystem::path const& dmbDir, std::filesystem::path const& fileName) {
+    STORM_LOG_ASSERT(fileName.extension() == ".bin", "Undexpected file path '" << fileName << "'. File extension must be .bin");
+    storm::io::BinaryFileWriter<uint64_t, std::endian::little> writer(dmbDir / fileName);
+    for (uint64_t i = 0; i < vector.bucketCount(); ++i) {
+        writer.write(vector.getBucket(i));
+    }
+}
+
+template<StorageType Storage>
+void writeVectorToDisk(DmbBitVector<Storage> const& vector, std::filesystem::path const& dmbDir, std::filesystem::path const& fileName) {
+    writeVectorToDisk(vector.getAsBitVectorAutoSize(), dmbDir, fileName);
+}
+
 template<typename VectorType>
 void writeVectorToDisk(std::optional<VectorType> const& vector, std::filesystem::path const& dmbDir, std::filesystem::path const& fileName) {
     if (vector) {
@@ -40,7 +53,7 @@ void writeStatesChoicesBranchesToDisk(DmbModel<Storage> const& dmbModel, std::fi
     auto& states = dmbModel.states;
     writeVectorToDisk(states.stateToChoice, dmbDir, "state-to-choice.bin");
     writeVectorToDisk(states.stateToPlayer, dmbDir, "state-to-player.bin");
-    // writeVectorToDisk(states.initialStates, dmbDir, "initial-states.bin");
+    writeVectorToDisk(states.initialStates, dmbDir, "initial-states.bin");
     auto& choices = dmbModel.choices;
     writeVectorToDisk(choices.choiceToBranch, dmbDir, "choice-to-branch.bin");
     writeVectorToDisk(choices.choiceToAction, dmbDir, "choice-to-action.bin");

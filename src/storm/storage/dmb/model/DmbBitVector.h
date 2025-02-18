@@ -1,3 +1,4 @@
+#pragma once
 #include <variant>
 
 #include "storm/io/BinaryFileViewer.h"
@@ -17,14 +18,19 @@ class DmbBitVector {
         : data(path) {
         // Intentionally left empty
     }
+    
+    storm::storage::BitVector getAsBitVectorAutoSize() const {
+        return getAsBitVector(data.size() * 64ull);
+    }
 
-    storm::storage::BitVector const& getAsBitVector(uint64_t size) const {
+    storm::storage::BitVector getAsBitVector(uint64_t size) const {
         STORM_LOG_ASSERT(size <= data.size() * 64ull, "Invalid size. expected size=" << size << " but data has size=" << data.size() * 64ull << ".");
         storm::storage::BitVector result(size, false);
         for (uint64_t bucketIndex = 0; auto bits : data) {
             result.setBucket(bucketIndex, bits);
             ++bucketIndex;
         }
+        return result;
     }
 
    private:
