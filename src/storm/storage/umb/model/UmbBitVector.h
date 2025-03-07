@@ -3,22 +3,22 @@
 
 #include "storm/io/BinaryFileViewer.h"
 #include "storm/storage/BitVector.h"
-#include "storm/storage/dmb/model/StorageType.h"
+#include "storm/storage/umb/model/StorageType.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 template<StorageType Storage>
     requires(Storage != StorageType::Memory)
-class DmbBitVector {
+class UmbBitVector {
    public:
     using UnderlyingType = storm::io::BinaryFileViewer<uint64_t, std::endian::little>;
 
-    DmbBitVector(std::filesystem::path const& path)
+    UmbBitVector(std::filesystem::path const& path)
         requires(Storage == StorageType::Disk)
         : data(path) {
         // Intentionally left empty
     }
-    
+
     storm::storage::BitVector getAsBitVectorAutoSize() const {
         return getAsBitVector(data.size() * 64ull);
     }
@@ -36,4 +36,4 @@ class DmbBitVector {
    private:
     UnderlyingType data;
 };
-}  // namespace storm::dmb
+}  // namespace storm::umb

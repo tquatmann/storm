@@ -9,7 +9,7 @@
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/storage/Scheduler.h"
-#include "storm/storage/dmb/Dmb.h"
+#include "storm/storage/umb/Umb.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -55,12 +55,12 @@ void exportSparseModelAsJson(std::shared_ptr<storm::models::sparse::Model<ValueT
 }
 
 template<typename ValueType>
-void exportSparseModelAsDmb(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
-                            storm::dmb::ExportOptions const& options = {}) {
+void exportSparseModelAsUmb(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
+                            storm::umb::ExportOptions const& options = {}) {
     if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Export of rational functions to DMB is not supported.");
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Export of rational functions to UMB is not supported.");
     } else {
-        storm::dmb::exportModelToDmb(*model, filename, options);
+        storm::umb::exportModelToUmb(*model, filename, options);
     }
 }
 

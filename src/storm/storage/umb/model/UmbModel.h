@@ -2,16 +2,16 @@
 
 #include <memory>
 
-#include "storm/storage/dmb/model/DmbModelBase.h"
-#include "storm/storage/dmb/model/GenericValueVector.h"
-#include "storm/storage/dmb/model/ModelIndex.h"
-#include "storm/storage/dmb/model/StorageType.h"
-#include "storm/storage/dmb/model/VectorType.h"
+#include "storm/storage/umb/model/GenericValueVector.h"
+#include "storm/storage/umb/model/ModelIndex.h"
+#include "storm/storage/umb/model/StorageType.h"
+#include "storm/storage/umb/model/UmbModelBase.h"
+#include "storm/storage/umb/model/VectorType.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 template<StorageType Storage>
-class DmbModel : public DmbModelBase {
+class UmbModel : public UmbModelBase {
    public:
     template<typename T>
     using OptionalVec = std::optional<VectorType<T, Storage>>;
@@ -53,4 +53,4 @@ class DmbModel : public DmbModelBase {
     virtual ModelIndex const& getIndex() const override;
 };
 
-}  // namespace storm::dmb
+}  // namespace storm::umb

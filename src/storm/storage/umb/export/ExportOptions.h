@@ -1,7 +1,7 @@
 #pragma once
 
-namespace storm::dmb {
+namespace storm::umb {
 struct ExportOptions {
     // bool buildChoiceLabeling = false;
 };
-}  // namespace storm::dmb
+}  // namespace storm::umb

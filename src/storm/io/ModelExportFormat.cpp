@@ -17,8 +17,8 @@ ModelExportFormat getModelExportFormatFromString(std::string const& input) {
         return ModelExportFormat::Drn;
     } else if (input == "json") {
         return ModelExportFormat::Json;
-    } else if (input == "dmb") {
-        return ModelExportFormat::Dmb;
+    } else if (input == "umb") {
+        return ModelExportFormat::Umb;
     }
     STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "The model export format '" << input << "' does not match any known format.");
 }
@@ -33,8 +33,8 @@ std::string toString(ModelExportFormat const& input) {
             return "drn";
         case ModelExportFormat::Json:
             return "json";
-        case ModelExportFormat::Dmb:
-            return "dmb";
+        case ModelExportFormat::Umb:
+            return "umb";
     }
     STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "Unhandled model export format.");
 }
@@ -44,7 +44,7 @@ ModelExportFormat getModelExportFormatFromFileExtension(std::string const& filen
     if (path.has_extension()) {
         return getModelExportFormatFromString(path.extension().string().substr(1));
     } else {
-        return ModelExportFormat::Dmb;
+        return ModelExportFormat::Umb;
     }
 }
 

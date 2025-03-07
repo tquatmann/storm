@@ -1,14 +1,14 @@
 #pragma once
 
-namespace storm::dmb {
+namespace storm::umb {
 
-class DmbModelBase;
+class UmbModelBase;
 
 enum class StorageType;
 
 template<StorageType Storage>
-class DmbModel;
+class UmbModel;
 
 struct ModelIndex;
 
-}  // namespace storm::dmb
+}  // namespace storm::umb

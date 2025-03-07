@@ -508,13 +508,13 @@ std::shared_ptr<storm::models::ModelBase> buildModelExplicit(storm::settings::mo
         storm::parser::DirectEncodingParserOptions options;
         options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
         result = storm::api::buildExplicitDRNModel<ValueType>(ioSettings.getExplicitDRNFilename(), options);
-    } else if (ioSettings.isExplicitDmbSet()) {
-        storm::dmb::ImportOptions options;
+    } else if (ioSettings.isExplicitUmbSet()) {
+        storm::umb::ImportOptions options;
         // options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "RationalFunction currently not supported for DMB models.");
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "RationalFunction currently not supported for UMB models.");
         } else {
-            result = storm::api::buildExplicitDmbModel<ValueType>(ioSettings.getExplicitDmbFilename(), options);
+            result = storm::api::buildExplicitUmbModel<ValueType>(ioSettings.getExplicitUmbFilename(), options);
         }
     } else {
         STORM_LOG_THROW(ioSettings.isExplicitIMCASet(), storm::exceptions::InvalidSettingsException, "Unexpected explicit model input type.");
@@ -537,7 +537,7 @@ std::shared_ptr<storm::models::ModelBase> buildModel(SymbolicInput const& input,
             auto options = createBuildOptionsSparseFromSettings(input);
             result = buildModelSparse<ValueType>(input, options);
         }
-    } else if (ioSettings.isExplicitSet() || ioSettings.isExplicitDRNSet() || ioSettings.isExplicitIMCASet() || ioSettings.isExplicitDmbSet()) {
+    } else if (ioSettings.isExplicitSet() || ioSettings.isExplicitDRNSet() || ioSettings.isExplicitIMCASet() || ioSettings.isExplicitUmbSet()) {
         STORM_LOG_THROW(mpi.engine == storm::utility::Engine::Sparse, storm::exceptions::InvalidSettingsException,
                         "Can only use sparse engine with explicit input.");
         result = buildModelExplicit<ValueType>(ioSettings, storm::settings::getModule<storm::settings::modules::BuildSettings>());
@@ -654,8 +654,8 @@ void exportSparseModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> 
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
                 break;
-            case storm::io::ModelExportFormat::Dmb:
-                storm::api::exportSparseModelAsDmb(model, ioSettings.getExportBuildFilename());
+            case storm::io::ModelExportFormat::Umb:
+                storm::api::exportSparseModelAsUmb(model, ioSettings.getExportBuildFilename());
                 break;
             default:
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,

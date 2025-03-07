@@ -6,7 +6,7 @@
 
 #include "storm/adapters/JsonSerializationAdapter.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 struct Index {
     uint64_t formatVersion{0}, formatRevision{0};
@@ -40,4 +40,4 @@ struct Index {
     using JsonSerialization = storm::JsonSerialization;
 };
 
-}  // namespace storm::dmb
+}  // namespace storm::umb

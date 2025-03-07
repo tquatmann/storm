@@ -4,10 +4,10 @@
 #include "storm/models/sparse/Model.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 
-#include "storm/storage/dmb/model/DmbModelForward.h"
+#include "storm/storage/umb/model/UmbModelForward.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 template<typename ValueType, typename RewardModelType = storm::models::sparse::StandardRewardModel<ValueType>>
-std::unique_ptr<storm::dmb::DmbModelBase> sparseModelToDmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model);
+std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model);
 
-}  // namespace storm::dmb
+}  // namespace storm::umb

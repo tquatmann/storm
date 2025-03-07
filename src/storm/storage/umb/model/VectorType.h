@@ -3,10 +3,10 @@
 #include "storm/adapters/RationalNumberForward.h"
 #include "storm/io/BinaryFileViewer.h"
 #include "storm/storage/BitVector.h"
-#include "storm/storage/dmb/model/DmbBitVector.h"
-#include "storm/storage/dmb/model/StorageType.h"
+#include "storm/storage/umb/model/StorageType.h"
+#include "storm/storage/umb/model/UmbBitVector.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 namespace internal {
 template<typename T, StorageType Storage>
@@ -24,7 +24,7 @@ struct VectorTypeHelper<std::string, StorageType::Disk> {
 
 template<>
 struct VectorTypeHelper<bool, StorageType::Disk> {
-    using type = DmbBitVector<StorageType::Disk>;
+    using type = UmbBitVector<StorageType::Disk>;
 };
 
 template<>
@@ -46,4 +46,4 @@ struct VectorTypeHelper<T, StorageType::Memory> {
 
 template<typename T, StorageType Storage>
 using VectorType = typename internal::VectorTypeHelper<T, Storage>::type;
-}  // namespace storm::dmb
+}  // namespace storm::umb

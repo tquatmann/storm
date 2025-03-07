@@ -7,7 +7,7 @@
 #include "storm/adapters/JsonAdapter.h"
 #include "storm/adapters/JsonSerializationAdapter.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 struct ModelIndex {
     uint64_t formatVersion{0}, formatRevision{0};
@@ -62,4 +62,4 @@ struct ModelIndex {
     using JsonSerialization = storm::JsonSerialization;
 };
 
-}  // namespace storm::dmb
+}  // namespace storm::umb

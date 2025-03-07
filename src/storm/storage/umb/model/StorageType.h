@@ -1,5 +1,5 @@
 #pragma once
 
-namespace storm::dmb {
+namespace storm::umb {
 enum class StorageType { Disk, Memory };
 }

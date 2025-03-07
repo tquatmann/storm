@@ -2,11 +2,11 @@
 #include <variant>
 
 #include "storm/adapters/RationalNumberForward.h"
-#include "storm/storage/dmb/model/StorageType.h"
-#include "storm/storage/dmb/model/VectorType.h"
+#include "storm/storage/umb/model/StorageType.h"
+#include "storm/storage/umb/model/VectorType.h"
 #include "storm/utility/constants.h"
 
-namespace storm::dmb {
+namespace storm::umb {
 
 template<StorageType Storage>
 class GenericValueVectorType {
@@ -65,4 +65,4 @@ class GenericValueVectorType {
    private:
     std::variant<std::monostate, Vec<double>, Vec<storm::RationalNumber>> data;
 };
-}  // namespace storm::dmb
+}  // namespace storm::umb

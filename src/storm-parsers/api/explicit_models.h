@@ -9,7 +9,7 @@
 #include "storm-parsers/parser/DirectEncodingParser.h"
 #include "storm-parsers/parser/ImcaMarkovAutomatonParser.h"
 #include "storm/exceptions/NotSupportedException.h"
-#include "storm/storage/dmb/Dmb.h"
+#include "storm/storage/umb/Umb.h"
 #include "storm/utility/macros.h"
 
 namespace storm::api {
@@ -34,9 +34,9 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDRNModel(
 }
 
 template<typename ValueType>
-    requires(!std::is_same_v<ValueType, storm::RationalFunction>)  // RationalFunction currently not supported for DMB models
-std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDmbModel(std::string const& dmbLocation, storm::dmb::ImportOptions const& options = {}) {
-    return storm::dmb::parseModelFromDmb<ValueType>(dmbLocation, options);
+    requires(!std::is_same_v<ValueType, storm::RationalFunction>)  // RationalFunction currently not supported for UMB models
+std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitUmbModel(std::string const& umbLocation, storm::umb::ImportOptions const& options = {}) {
+    return storm::umb::parseModelFromUmb<ValueType>(umbLocation, options);
 }
 
 template<typename ValueType>
