@@ -10,22 +10,22 @@
 namespace storm::umb {
 
 struct ModelIndex {
-    uint64_t formatVersion{0}, formatRevision{0};
+    uint64_t formatVersion{1}, formatRevision{0};
 
-    struct Metadata {
-        std::optional<std::string> version;
+    struct ModelData {
+        std::optional<std::string> name, version;
         std::optional<std::vector<std::string>> authors;
         std::optional<std::string> description, comment, doi, url;
-        static auto constexpr JsonKeys = {"version", "authors", "description", "comment", "doi", "url"};
+        static auto constexpr JsonKeys = {"name", "version", "authors", "description", "comment", "doi", "url"};
         using JsonSerialization = storm::JsonSerialization;
-    } metadata;
+    };
+    std::optional<ModelData> modelData;
 
-    struct Creation {
-        std::string tool;
-        std::optional<std::string> version;
+    struct FileData {
+        std::optional<std::string> tool, version;
         std::optional<uint64_t> date;
         std::optional<std::string> parameters;
-        auto static constexpr JsonKeys = {"tool", "version", "date", "parameters"};
+        auto static constexpr JsonKeys = {"tool", "tool-version", "creation-date", "parameters"};
         using JsonSerialization = storm::JsonSerialization;
 
         std::string dateAsString() const {
@@ -36,29 +36,49 @@ struct ModelIndex {
                 return "unknown";
             }
         }
-
         void setDateToNow() {
             date = static_cast<uint64_t>(std::time(nullptr));
         }
+    };
+    std::optional<FileData> fileData;
 
-    } creation;
+    struct TransitionSystem {
+        enum class Time { Discrete, Stochastic, UrgentStochastic };
+        NLOHMANN_JSON_SERIALIZE_ENUM(Time, {{Time::Discrete, "discrete"}, {Time::Stochastic, "stochastic"}, {Time::UrgentStochastic, "urgent-stochastic"}})
+        Time time{Time::Discrete};
+        uint64_t players{0};
+        enum class BranchValues { None, Number, Interval };
+        NLOHMANN_JSON_SERIALIZE_ENUM(BranchValues, {{BranchValues::None, "none"}, {BranchValues::Number, "number"}, {BranchValues::Interval, "interval"}})
+        BranchValues branchValues{BranchValues::None};
 
-    enum class Time { Discrete, Stochastic, UrgentStochastic };
-    NLOHMANN_JSON_SERIALIZE_ENUM(Time, {{Time::Discrete, "discrete"}, {Time::Stochastic, "stochastic"}, {Time::UrgentStochastic, "urgent-stochastic"}})
-    Time time{Time::Discrete};
-    uint64_t players{0};
-    enum class BranchValues { None, Number, Interval };
-    NLOHMANN_JSON_SERIALIZE_ENUM(BranchValues, {{BranchValues::None, "none"}, {BranchValues::Number, "number"}, {BranchValues::Interval, "interval"}})
-    BranchValues branchValues{BranchValues::None};
+        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{}, numBranches{0};
 
-    uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numBranches{0};
+        enum class BranchValueType { Double, Rational };
+        NLOHMANN_JSON_SERIALIZE_ENUM(BranchValueType, {{BranchValueType::Double, "double"}, {BranchValueType::Rational, "rational"}})
+        std::optional<BranchValueType> branchValueType;
+        auto static constexpr JsonKeys = {"time",     "#players", "branch-values", "#states",          "#initial-states",
+                                          "#choices", "#actions", "#branches",     "branch-value-type"};
 
-    enum class BranchValueType { Double, Rational };
-    NLOHMANN_JSON_SERIALIZE_ENUM(BranchValueType, {{BranchValueType::Double, "double"}, {BranchValueType::Rational, "rational"}})
-    BranchValueType branchValueType{BranchValueType::Double};
+        using JsonSerialization = storm::JsonSerialization;
 
-    auto static constexpr JsonKeys = {"format-version", "format-revision", "metadata",        "creation", "time",      "players",
-                                      "branch-values",  "#states",         "#initial-states", "#choices", "#branches", "branch-value-type"};
+    } transitionSystem;
+
+    struct Annotation {
+        std::optional<std::string> name;
+        enum class AppliesTo { States, Choices, Branches };
+        NLOHMANN_JSON_SERIALIZE_ENUM(AppliesTo, {{AppliesTo::States, "states"}, {AppliesTo::Choices, "choices"}, {AppliesTo::Branches, "branches"}})
+        AppliesTo appliesTo{AppliesTo::States};
+        enum class Type { Bool, Int32, Double, Rational, String };
+        NLOHMANN_JSON_SERIALIZE_ENUM(
+            Type, {{Type::Bool, "bool"}, {Type::Int32, "int-32"}, {Type::Double, "double"}, {Type::Rational, "rational"}, {Type::String, "string"}})
+        Type type{Type::Bool};
+        // TODO: #strings, lower, upper
+        auto static constexpr JsonKeys = {"name", "applies-to", "type"};
+        using JsonSerialization = storm::JsonSerialization;
+    };
+    std::map<std::string, Annotation> annotations;
+
+    auto static constexpr JsonKeys = {"format-version", "format-revision", "model-data", "file-data", "transition-system", "annotations"};
     using JsonSerialization = storm::JsonSerialization;
 };
 

@@ -23,19 +23,18 @@ namespace detail {
 
 template<typename ValueType, StorageType Storage>
 storm::storage::SparseMatrix<ValueType> constructTransitionMatrix(storm::umb::UmbModel<Storage> const& umbModel) {
-    auto const& index = umbModel.getIndex();
+    auto const& ts = umbModel.getIndex().transitionSystem;
     bool const hasRowGroups = umbModel.states.stateToChoice.has_value();
-    storm::storage::SparseMatrixBuilder<ValueType> builder(index.numChoices, index.numStates, index.numBranches, true, hasRowGroups,
-                                                           hasRowGroups ? index.numStates : 0u);
-    for (uint64_t stateIndex{0}, choiceIndex{0}, branchIndex{0}; stateIndex < index.numStates; ++stateIndex) {
+    storm::storage::SparseMatrixBuilder<ValueType> builder(ts.numChoices, ts.numStates, ts.numBranches, true, hasRowGroups, hasRowGroups ? ts.numStates : 0u);
+    for (uint64_t stateIndex{0}, choiceIndex{0}, branchIndex{0}; stateIndex < ts.numStates; ++stateIndex) {
         if (hasRowGroups) {
             builder.newRowGroup(choiceIndex);
         }
         for (auto const choiceEnd = hasRowGroups ? umbModel.states.stateToChoice.value()[stateIndex + 1] : stateIndex + 1; choiceIndex < choiceEnd;
              ++choiceIndex) {
-            STORM_LOG_ASSERT(choiceIndex < index.numChoices, "Choice index out of bounds.");
+            STORM_LOG_ASSERT(choiceIndex < ts.numChoices, "Choice index out of bounds.");
             for (auto const branchEnd = umbModel.choices.choiceToBranch.value()[choiceIndex + 1]; branchIndex < branchEnd; ++branchIndex) {
-                STORM_LOG_ASSERT(branchIndex < index.numBranches, "branch index out of bounds.");
+                STORM_LOG_ASSERT(branchIndex < ts.numBranches, "branch index out of bounds.");
                 builder.addNextValue(choiceIndex, umbModel.branches.branchToTarget.value()[branchIndex],
                                      umbModel.branches.branchToValue.template at<ValueType>(branchIndex));
             }
@@ -58,10 +57,10 @@ storm::storage::BitVector createBitVector(storm::umb::VectorType<bool, Storage> 
 
 template<StorageType Storage>
 storm::models::sparse::StateLabeling constructStateLabelling(storm::umb::UmbModel<Storage> const& umbModel) {
-    auto const& index = umbModel.getIndex();
-    storm::models::sparse::StateLabeling stateLabelling(index.numStates);
+    auto const& ts = umbModel.getIndex().transitionSystem;
+    storm::models::sparse::StateLabeling stateLabelling(ts.numStates);
     if (umbModel.states.initialStates) {
-        stateLabelling.addLabel("init", createBitVector<Storage>(umbModel.states.initialStates.value(), index.numStates));
+        stateLabelling.addLabel("init", createBitVector<Storage>(umbModel.states.initialStates.value(), ts.numStates));
     }
     // todo: more labels
     return stateLabelling;
@@ -77,13 +76,15 @@ std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> constr
 }  // namespace detail
 
 storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
-    STORM_LOG_THROW(index.branchValues != storm::umb::ModelIndex::BranchValues::None, storm::exceptions::NotSupportedException,
+    auto const& ts = index.transitionSystem;
+
+    STORM_LOG_THROW(ts.branchValues != storm::umb::ModelIndex::TransitionSystem::BranchValues::None, storm::exceptions::NotSupportedException,
                     "Models without branch values are not supported.");
-    switch (index.time) {
+    switch (ts.time) {
         using enum storm::models::ModelType;
-        using enum storm::umb::ModelIndex::Time;
+        using enum storm::umb::ModelIndex::TransitionSystem::Time;
         case Discrete:
-            switch (index.players) {
+            switch (ts.players) {
                 case 0:
                     return Dtmc;
                 case 1:
@@ -92,10 +93,10 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
                     return Smg;
             }
         case Stochastic:
-            STORM_LOG_THROW(index.players == 0, storm::exceptions::NotSupportedException, "Stochastic time models with multiple players are not supported.");
+            STORM_LOG_THROW(ts.players == 0, storm::exceptions::NotSupportedException, "Stochastic time models with multiple players are not supported.");
             return Ctmc;
         case UrgentStochastic:
-            STORM_LOG_THROW(index.players == 1, storm::exceptions::NotSupportedException,
+            STORM_LOG_THROW(ts.players == 1, storm::exceptions::NotSupportedException,
                             "Urgent stochastic time models with multiple or no players are not supported.");
             return MarkovAutomaton;
     }
