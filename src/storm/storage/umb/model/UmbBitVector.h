@@ -4,6 +4,7 @@
 #include "storm/io/BinaryFileViewer.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/umb/model/StorageType.h"
+#include "storm/utility/bitoperations.h"
 
 namespace storm::umb {
 
@@ -27,7 +28,9 @@ class UmbBitVector {
         STORM_LOG_ASSERT(size <= data.size() * 64ull, "Invalid size. expected size=" << size << " but data has size=" << data.size() * 64ull << ".");
         storm::storage::BitVector result(size, false);
         for (uint64_t bucketIndex = 0; auto bits : data) {
-            result.setBucket(bucketIndex, bits);
+            result.setBucket(bucketIndex,
+                             storm::utility::reverseBits(
+                                 bits));  // Our bit vectors store the items in reverse order, i.e., the first item is indicated by the most significant bit
             ++bucketIndex;
         }
         return result;

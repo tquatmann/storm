@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "storm/storage/umb/model/GenericValueVector.h"
+#include "storm/storage/umb/model/GenericVector.h"
 #include "storm/storage/umb/model/ModelIndex.h"
 #include "storm/storage/umb/model/StorageType.h"
 #include "storm/storage/umb/model/UmbModelBase.h"
@@ -15,15 +15,15 @@ class UmbModel : public UmbModelBase {
    public:
     template<typename T>
     using OptionalVec = std::optional<VectorType<T, Storage>>;
-    struct GenericValue {};
+    struct AnyType {};
 
     template<typename T>
     struct TO1Helper {
         using type = OptionalVec<T>;
     };
     template<>
-    struct TO1Helper<GenericValue> {
-        using type = GenericValueVectorType<Storage>;
+    struct TO1Helper<AnyType> {
+        using type = GenericVector<Storage>;
     };
     template<typename T>
     using TO1 = typename TO1Helper<T>::type;
@@ -37,17 +37,24 @@ class UmbModel : public UmbModelBase {
     struct States {
         CSR stateToChoice;
         TO1<uint32_t> stateToPlayer;
-        SEQ<bool> initialStates;
+        TO1<bool> initialStates;
     } states;
     struct Choices {
         CSR choiceToBranch;
         TO1<uint32_t> choiceToAction;
+        // CSR actionToActionString intentionally absent
         SEQ<std::string> actionStrings;
     } choices;
     struct Branches {
         TO1<uint64_t> branchToTarget;
-        TO1<GenericValue> branchToValue;
+        // CSR branchToValue intentionally absent
+        SEQ<AnyType> branchValues;
     } branches;
+    struct Annotation {
+        TO1<AnyType> values;
+        // TODO: Support for distributions, string-valued annotations, ...
+    };
+    std::map<std::string, Annotation> annotations;
 
     virtual bool isStorageType(StorageType storageType) const override;
     virtual ModelIndex const& getIndex() const override;

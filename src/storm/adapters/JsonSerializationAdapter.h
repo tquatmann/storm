@@ -3,12 +3,65 @@
 #include "storm/adapters/JsonForward.h"
 
 #include <boost/pfr.hpp>
+#include <ostream>
 #include "storm/exceptions/WrongFormatException.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
 /// Helper struct to enable json serialization
 struct JsonSerialization {};
+
+template<typename EnumDecl>
+    requires std::is_enum_v<typename EnumDecl::Values>
+class SerializedEnum {
+   public:
+    using EnumDeclaration = EnumDecl;
+    using E = typename EnumDeclaration::Values;
+    auto static constexpr Keys = EnumDeclaration::Keys;
+    E static constexpr Uninitialized = static_cast<E>(std::numeric_limits<std::underlying_type_t<E>>::max());
+
+    SerializedEnum() = default;
+    SerializedEnum(SerializedEnum const&) = default;
+    SerializedEnum(E value) : value(value) {}
+    SerializedEnum(std::string_view str) {
+        auto findRes = std::find(std::begin(Keys), std::end(Keys), str);
+        STORM_LOG_THROW(findRes != std::end(Keys), storm::exceptions::WrongFormatException,
+                        "Invalid enum value "
+                            << "'str'");
+        value = static_cast<E>(std::distance(std::begin(Keys), findRes));
+    }
+
+    bool isInitialized() const {
+        return value != Uninitialized;
+    }
+
+    operator E() const {
+        STORM_LOG_ASSERT(isInitialized(), "Enum value not initialized.");
+        return value;
+    }
+
+    bool operator==(E other) const {
+        return value == other;
+    }
+
+    std::string_view toString() const {
+        auto const index = static_cast<std::underlying_type_t<E>>(value);
+        if (isInitialized()) {
+            STORM_LOG_ASSERT(index < Keys.size(), "Enum value with index " << index << " does not have a key.");
+            return *(std::begin(Keys) + index);
+        } else {
+            return "__UNINITIALIZED__";
+        }
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, SerializedEnum const& val) {
+        os << val.toString();
+        return os;
+    }
+
+   private:
+    E value{Uninitialized};
+};
 }  // namespace storm
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
@@ -73,4 +126,22 @@ struct adl_serializer<T> {
         }
     }
 };
+
+template<typename T>
+concept StormIsSerializedEnum = std::same_as<T, ::storm::SerializedEnum<typename T::EnumDeclaration>>;
+
+template<StormIsSerializedEnum T>
+struct adl_serializer<T> {
+    template<typename JsonType>
+    static void to_json(JsonType& json, T const& val) {
+        json = val.toString();
+    }
+
+    template<typename JsonType>
+    static void from_json(JsonType const& json, T& val) {
+        STORM_LOG_THROW(json.is_string(), ::storm::exceptions::WrongFormatException, "Expected a string, got something else.");
+        val = T(json.template get<std::string>());
+    }
+};
+
 NLOHMANN_JSON_NAMESPACE_END

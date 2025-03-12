@@ -5,6 +5,7 @@
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/exceptions/WrongFormatException.h"
 #include "storm/models/ModelType.h"
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/Dtmc.h"
@@ -16,6 +17,10 @@
 namespace storm::umb {
 
 namespace detail {
+
+bool isValidAnnotationId(std::string const& id) {
+    return !id.empty() && std::all_of(id.begin(), id.end(), [](char c) { return std::isalnum(c) || c == '_' || c == '-'; });
+}
 
 template<typename ValueType>
 void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix, storm::umb::UmbModel<StorageType::Memory>& umb) {
@@ -32,15 +37,36 @@ void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix
         branchToValue.push_back(entry.getValue());
     }
     umb.branches.branchToTarget = std::move(branchToTarget);
-    umb.branches.branchToValue.template set<ValueType>(std::move(branchToValue));
+    if constexpr (std::is_same_v<ValueType, double>) {
+        umb.branches.branchValues.template set<ValueType>(std::move(branchToValue));
+    } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Rationals not yet supported.");
+    } else {
+        static_assert(false, "Unhandled value type.");
+    }
 }
 
 void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, storm::umb::UmbModel<StorageType::Memory>& umb) {
-    for (auto const& labelId : labeling.getLabels()) {
-        if (labelId == "init") {
-            umb.states.initialStates = labeling.getStates(labelId);
+    for (auto const& labelName : labeling.getLabels()) {
+        if (labelName == "init") {
+            umb.states.initialStates = labeling.getStates(labelName);
         } else {
-            STORM_LOG_WARN("Export of labeling not yet implemented. ignoring label " << labelId);
+            // Get a unique, valid id
+            auto const labelIdBase = isValidAnnotationId(labelName) ? labelName : "label";
+            std::string labelId = labelIdBase;
+            for (uint64_t i = 0; umb.annotations.contains(labelId); ++i) {
+                labelId = labelIdBase + "_" + std::to_string(i);
+            }
+
+            // Add the annotation data
+            umb.annotations[labelId].values.template set<bool>(labeling.getStates(labelName));
+
+            // Add index data
+            STORM_LOG_ASSERT(!umb.index.annotations.contains(labelId), "Annotation id " << labelId << " already exists in index but not as file.");
+            auto& annotationIndex = umb.index.annotations[labelId];
+            annotationIndex.name = labelName;
+            annotationIndex.appliesTo = storm::umb::ModelIndex::Annotation::AppliesTo::States;
+            annotationIndex.type = storm::umb::ModelIndex::Annotation::Type::Bool;
         }
     }
 }

@@ -16,6 +16,7 @@
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/exceptions/WrongFormatException.h"
 
 namespace storm::umb {
 
@@ -36,7 +37,7 @@ storm::storage::SparseMatrix<ValueType> constructTransitionMatrix(storm::umb::Um
             for (auto const branchEnd = umbModel.choices.choiceToBranch.value()[choiceIndex + 1]; branchIndex < branchEnd; ++branchIndex) {
                 STORM_LOG_ASSERT(branchIndex < ts.numBranches, "branch index out of bounds.");
                 builder.addNextValue(choiceIndex, umbModel.branches.branchToTarget.value()[branchIndex],
-                                     umbModel.branches.branchToValue.template at<ValueType>(branchIndex));
+                                     umbModel.branches.branchValues.template at<ValueType>(branchIndex));
             }
         };
     }
@@ -62,7 +63,15 @@ storm::models::sparse::StateLabeling constructStateLabelling(storm::umb::UmbMode
     if (umbModel.states.initialStates) {
         stateLabelling.addLabel("init", createBitVector<Storage>(umbModel.states.initialStates.value(), ts.numStates));
     }
-    // todo: more labels
+    for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
+        if (annotation.appliesTo == storm::umb::ModelIndex::Annotation::AppliesTo::States &&
+            annotation.type == storm::umb::ModelIndex::Annotation::Type::Bool) {
+            STORM_LOG_THROW(umbModel.annotations.contains(annotationId), storm::exceptions::WrongFormatException,
+                            "Annotation data missing for id '" << annotationId << "'.");
+            stateLabelling.addLabel(annotationId, createBitVector<Storage>(umbModel.annotations.at(annotationId).values.template get<bool>(),
+                                                                           ts.numStates));  // todo: more careful handling
+        }
+    }
     return stateLabelling;
 }
 
@@ -76,29 +85,30 @@ std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> constr
 }  // namespace detail
 
 storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
+    using ModelType = storm::models::ModelType;
+
     auto const& ts = index.transitionSystem;
 
     STORM_LOG_THROW(ts.branchValues != storm::umb::ModelIndex::TransitionSystem::BranchValues::None, storm::exceptions::NotSupportedException,
                     "Models without branch values are not supported.");
     switch (ts.time) {
-        using enum storm::models::ModelType;
         using enum storm::umb::ModelIndex::TransitionSystem::Time;
         case Discrete:
             switch (ts.players) {
                 case 0:
-                    return Dtmc;
+                    return ModelType::Dtmc;
                 case 1:
-                    return Mdp;
+                    return ModelType::Mdp;
                 default:
-                    return Smg;
+                    return ModelType::Smg;
             }
         case Stochastic:
             STORM_LOG_THROW(ts.players == 0, storm::exceptions::NotSupportedException, "Stochastic time models with multiple players are not supported.");
-            return Ctmc;
+            return ModelType::Ctmc;
         case UrgentStochastic:
             STORM_LOG_THROW(ts.players == 1, storm::exceptions::NotSupportedException,
                             "Urgent stochastic time models with multiple or no players are not supported.");
-            return MarkovAutomaton;
+            return ModelType::MarkovAutomaton;
     }
 }
 

@@ -9,7 +9,7 @@
 namespace storm::umb {
 
 template<StorageType Storage>
-class GenericValueVectorType {
+class GenericVector {
    public:
     template<typename T>
     using Vec = VectorType<T, Storage>;
@@ -43,6 +43,10 @@ class GenericValueVectorType {
         return std::holds_alternative<Vec<T>>(data);
     }
 
+    bool hasValue() const {
+        return !std::holds_alternative<std::monostate>(data);
+    }
+
     template<typename FromType, typename ToType>
     auto convertFromTo() const {
         if constexpr (std::is_same_v<FromType, ToType>) {
@@ -63,6 +67,6 @@ class GenericValueVectorType {
     }
 
    private:
-    std::variant<std::monostate, Vec<double>, Vec<storm::RationalNumber>> data;
+    std::variant<std::monostate, Vec<bool>, Vec<int32_t>, Vec<uint64_t>, Vec<double>, Vec<storm::RationalNumber>> data;
 };
 }  // namespace storm::umb

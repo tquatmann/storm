@@ -21,9 +21,7 @@ class BinaryFileViewer {
     static const bool NativeEndianness = Endianness == std::endian::native;
     using value_type = T;
 
-    BinaryFileViewer(std::string const& filename) : file(createMappedFile(filename)), rangeView(createRangeView(file)) {
-        std::cout << "read a file of size " << file.size() << " using a type with size " << sizeof(T) << std::endl;
-    }
+    BinaryFileViewer(std::string const& filename) : file(createMappedFile(filename)), rangeView(createRangeView(file)) {}
 
     const T& operator[](std::size_t index) const {
         return rangeView[index];

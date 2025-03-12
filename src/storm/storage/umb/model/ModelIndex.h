@@ -44,18 +44,30 @@ struct ModelIndex {
 
     struct TransitionSystem {
         enum class Time { Discrete, Stochastic, UrgentStochastic };
-        NLOHMANN_JSON_SERIALIZE_ENUM(Time, {{Time::Discrete, "discrete"}, {Time::Stochastic, "stochastic"}, {Time::UrgentStochastic, "urgent-stochastic"}})
-        Time time{Time::Discrete};
-        uint64_t players{0};
-        enum class BranchValues { None, Number, Interval };
-        NLOHMANN_JSON_SERIALIZE_ENUM(BranchValues, {{BranchValues::None, "none"}, {BranchValues::Number, "number"}, {BranchValues::Interval, "interval"}})
-        BranchValues branchValues{BranchValues::None};
+        struct TimeDeclaration {
+            using Values = Time;
+            auto static constexpr Keys = {"discrete", "stochastic", "urgent-stochastic"};
+        };
+        storm::SerializedEnum<TimeDeclaration> time;
 
-        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{}, numBranches{0};
+        uint64_t players{0};
+
+        enum class BranchValues { None, Number, Interval };
+        struct BranchValuesDeclaration {
+            using Values = BranchValues;
+            auto static constexpr Keys = {"none", "number", "interval"};
+        };
+        storm::SerializedEnum<BranchValuesDeclaration> branchValues;
+
+        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{0}, numBranches{0};
 
         enum class BranchValueType { Double, Rational };
-        NLOHMANN_JSON_SERIALIZE_ENUM(BranchValueType, {{BranchValueType::Double, "double"}, {BranchValueType::Rational, "rational"}})
-        std::optional<BranchValueType> branchValueType;
+        struct BranchValueTypeDeclaration {
+            using Values = BranchValueType;
+            auto static constexpr Keys = {"double", "rational"};
+        };
+        std::optional<storm::SerializedEnum<BranchValueTypeDeclaration>> branchValueType;
+
         auto static constexpr JsonKeys = {"time",     "#players", "branch-values", "#states",          "#initial-states",
                                           "#choices", "#actions", "#branches",     "branch-value-type"};
 
@@ -65,14 +77,23 @@ struct ModelIndex {
 
     struct Annotation {
         std::optional<std::string> name;
+
         enum class AppliesTo { States, Choices, Branches };
-        NLOHMANN_JSON_SERIALIZE_ENUM(AppliesTo, {{AppliesTo::States, "states"}, {AppliesTo::Choices, "choices"}, {AppliesTo::Branches, "branches"}})
-        AppliesTo appliesTo{AppliesTo::States};
+        struct AppliesToDeclaration {
+            using Values = AppliesTo;
+            auto static constexpr Keys = {"states", "choices", "branches"};
+        };
+        storm::SerializedEnum<AppliesToDeclaration> appliesTo;
+
         enum class Type { Bool, Int32, Double, Rational, String };
-        NLOHMANN_JSON_SERIALIZE_ENUM(
-            Type, {{Type::Bool, "bool"}, {Type::Int32, "int-32"}, {Type::Double, "double"}, {Type::Rational, "rational"}, {Type::String, "string"}})
-        Type type{Type::Bool};
+        struct TypeDeclaration {
+            using Values = Type;
+            auto static constexpr Keys = {"bool", "int-32", "double", "rational", "string"};
+        };
+        storm::SerializedEnum<TypeDeclaration> type{Type::Bool};
+
         // TODO: #strings, lower, upper
+        
         auto static constexpr JsonKeys = {"name", "applies-to", "type"};
         using JsonSerialization = storm::JsonSerialization;
     };
