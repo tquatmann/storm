@@ -87,6 +87,8 @@ void loadStatesChoicesBranchesFromDisk(std::filesystem::path const& umbDir, UmbM
 
 void loadAnnotationsFromDisk(std::filesystem::path const& annotationsDir, UmbModel<StorageType::Disk>& umbModel) {
     for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
+        std::filesystem::path annotationIdPath{annotationId};
+        STORM_LOG_WARN_COND(annotationIdPath.filename() == annotationIdPath, "Unexpeced annotation id " << annotationId);
         auto const dirOfAnnotation = annotationsDir / annotationId;
         STORM_LOG_THROW(std::filesystem::exists(dirOfAnnotation), storm::exceptions::FileIoException,
                         "No files for annotation '" << annotationId << "' referenced in index file.");

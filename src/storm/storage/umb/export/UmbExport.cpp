@@ -2,7 +2,6 @@
 
 #include "storm/storage/umb/model/UmbModel.h"
 
-#include "storm/exceptions/FileIoException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
 #include "storm/io/BinaryFileWriter.h"

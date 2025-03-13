@@ -2,6 +2,7 @@
 #include <variant>
 
 #include "storm/adapters/RationalNumberForward.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/storage/umb/model/StorageType.h"
 #include "storm/storage/umb/model/VectorType.h"
 #include "storm/utility/constants.h"
@@ -52,7 +53,33 @@ class GenericVector {
         if constexpr (std::is_same_v<FromType, ToType>) {
             return get<ToType>();
         } else {
-            return get<FromType>() | std::ranges::transform_view([](FromType const& value) { return storm::utility::convertNumber<ToType>(value); });
+            return get<FromType>() |
+                   std::ranges::views::transform([](FromType const& value) -> ToType { return storm::utility::convertNumber<ToType, FromType>(value); });
+        }
+    }
+
+    template<typename T>
+    std::vector<T> asVector() const {
+        if (isType<T>()) {
+            return std::vector<T>(get<T>().begin(), get<T>().end());
+        } else {
+            if constexpr (!std::is_same_v<T, bool>) {
+                //                if (isType<int32_t>()) {
+                //                    auto convertedView = convertFromTo<int32_t, T>();
+                //                    return std::vector<T>(convertedView.begin(), convertedView.end());
+                if (isType<uint64_t>()) {
+                    auto convertedView = convertFromTo<uint64_t, T>();
+                    return std::vector<T>(convertedView.begin(), convertedView.end());
+
+                } else if (isType<double>()) {
+                    auto convertedView = convertFromTo<double, T>();
+                    return std::vector<T>(convertedView.begin(), convertedView.end());
+                } else if (isType<storm::RationalNumber>()) {
+                    auto convertedView = convertFromTo<storm::RationalNumber, T>();
+                    return std::vector<T>(convertedView.begin(), convertedView.end());
+                }
+            }
+            STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected type.");
         }
     }
 

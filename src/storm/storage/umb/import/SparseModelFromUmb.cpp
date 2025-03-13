@@ -68,17 +68,48 @@ storm::models::sparse::StateLabeling constructStateLabelling(storm::umb::UmbMode
             annotation.type == storm::umb::ModelIndex::Annotation::Type::Bool) {
             STORM_LOG_THROW(umbModel.annotations.contains(annotationId), storm::exceptions::WrongFormatException,
                             "Annotation data missing for id '" << annotationId << "'.");
-            stateLabelling.addLabel(annotationId, createBitVector<Storage>(umbModel.annotations.at(annotationId).values.template get<bool>(),
-                                                                           ts.numStates));  // todo: more careful handling
+            stateLabelling.addLabel(annotationId, createBitVector<Storage>(umbModel.annotations.at(annotationId).values.template get<bool>(), ts.numStates));
+            if (annotation.name.has_value() && *annotation.name != annotationId) {
+                stateLabelling.addLabel(*annotation.name,
+                                        createBitVector<Storage>(umbModel.annotations.at(annotationId).values.template get<bool>(), ts.numStates));
+            }
+            // todo: more careful handling of label names
         }
     }
     return stateLabelling;
 }
 
+template<typename ValueType, StorageType Storage>
+auto constructRewardModels(storm::umb::UmbModel<Storage> const& umbModel) {
+    using RewardModel = storm::models::sparse::StandardRewardModel<ValueType>;
+    auto const& ts = umbModel.getIndex().transitionSystem;
+    std::unordered_map<std::string, RewardModel> rewardModels;
+    using AppliesTo = storm::umb::ModelIndex::Annotation::AppliesTo;
+    using Type = storm::umb::ModelIndex::Annotation::Type;
+    for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
+        if (annotation.type != Type::Double && annotation.type != Type::Int32 && annotation.type != Type::Rational) {
+            continue;  // annotation not suitable for rewards
+        }
+        STORM_LOG_THROW(umbModel.annotations.contains(annotationId), storm::exceptions::WrongFormatException,
+                        "Annotation data missing for id '" << annotationId << "'.");
+        STORM_LOG_WARN_COND(!(annotation.type == Type::Double && !std::is_same_v<ValueType, double>), "Converting double reward model to non-double type.");
+        STORM_LOG_WARN_COND(rewardModels.contains(annotationId), "Duplicate reward model with id '" << annotationId << "'.");
+        std::vector<ValueType> rewardVector = umbModel.annotations.at(annotationId).values.template asVector<ValueType>();
+        if (annotation.appliesTo == AppliesTo::States) {
+            rewardModels.emplace(annotationId, RewardModel(rewardVector));
+        } else if (annotation.appliesTo == AppliesTo::Choices) {
+            rewardModels.emplace(annotationId, RewardModel(std::nullopt, rewardVector));
+        } else {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reward Annotation applies to neither states nor choices.");
+        }
+    }
+    return rewardModels;
+}
+
 template<typename ValueType, typename RewardModelType, StorageType Storage>
 std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> constructSparseModel(storm::umb::UmbModel<Storage> const& umbModel) {
-    storm::storage::sparse::ModelComponents<ValueType, RewardModelType> components(constructTransitionMatrix<ValueType, Storage>(umbModel),
-                                                                                   constructStateLabelling(umbModel));
+    storm::storage::sparse::ModelComponents<ValueType, RewardModelType> components(
+        constructTransitionMatrix<ValueType, Storage>(umbModel), constructStateLabelling(umbModel), constructRewardModels<ValueType>(umbModel));
     return storm::utility::builder::buildModelFromComponents(deriveModelType(umbModel.getIndex()), std::move(components));
 }
 

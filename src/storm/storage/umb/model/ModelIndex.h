@@ -10,7 +10,7 @@
 namespace storm::umb {
 
 struct ModelIndex {
-    uint64_t formatVersion{1}, formatRevision{0};
+    uint64_t formatVersion{0}, formatRevision{0};
 
     struct ModelData {
         std::optional<std::string> name, version;
@@ -59,7 +59,7 @@ struct ModelIndex {
         };
         storm::SerializedEnum<BranchValuesDeclaration> branchValues;
 
-        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{0}, numBranches{0};
+        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{1} /* TODO */, numBranches{0};
 
         enum class BranchValueType { Double, Rational };
         struct BranchValueTypeDeclaration {
@@ -93,7 +93,7 @@ struct ModelIndex {
         storm::SerializedEnum<TypeDeclaration> type{Type::Bool};
 
         // TODO: #strings, lower, upper
-        
+
         auto static constexpr JsonKeys = {"name", "applies-to", "type"};
         using JsonSerialization = storm::JsonSerialization;
     };
