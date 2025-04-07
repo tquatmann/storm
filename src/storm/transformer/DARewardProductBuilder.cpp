@@ -1,10 +1,95 @@
 #include "DARewardProductBuilder.h"
+
+#include "../modelchecker/CheckTask.h"
+#include "../modelchecker/helper/ltl/SparseLTLHelper.h"
+#include "../models/sparse/MarkovAutomaton.h"
 #include "../storage/MaximalEndComponentDecomposition.h"
+#include "../storage/prism/RewardModel.h"
+#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/LTL2DeterministicAutomaton.h"
+#include "storm/logic/ExtractMaximalStateFormulasVisitor.h"
+
+#include "storm/exceptions/InvalidPropertyException.h"
+#include <gmpxx.h> //???
 
 //#define DA_READY
 
 namespace storm {
 namespace transformer {
+
+template<typename ValueType, typename RewardModelType>
+std::shared_ptr<DAProduct<models::sparse::Mdp<ValueType, RewardModelType>>>  DARewardProductBuilder<ValueType, RewardModelType>::buildProductMDP() {
+    storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
+    std::shared_ptr<storm::logic::Formula> ltlFormula = storm::logic::ExtractMaximalStateFormulasVisitor::extract(formula, extracted);
+    STORM_LOG_ASSERT(ltlFormula->isPathFormula(), "Unexpected formula type.");
+
+    // Compute Satisfaction sets for the APs (which represent the state-subformulae
+    auto apSatSets = storm::modelchecker::helper::SparseLTLHelper<ValueType, true>::computeApSets(extracted, formulaChecker);
+
+    STORM_LOG_INFO("Resulting LTL path formula: " << ltlFormula->toString());
+
+    std::shared_ptr<storm::automata::DeterministicAutomaton> da = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
+
+    return buildDAProduct(*da, apSatSets);
+}
+
+
+template<typename ValueType, typename RewardModelType>
+std::shared_ptr<DAProduct<models::sparse::Mdp<ValueType, RewardModelType>>> DARewardProductBuilder<ValueType, RewardModelType>::buildDAProduct(storm::automata::DeterministicAutomaton const& da, std::map<std::string, storm::storage::BitVector>& apSatSets) {
+    const storm::automata::APSet& apSet = da.getAPSet();
+
+    std::vector<storm::storage::BitVector> statesForAP;
+    for (const std::string& ap : apSet.getAPs()) {
+        auto it = apSatSets.find(ap);
+        STORM_LOG_THROW(it != apSatSets.end(), storm::exceptions::InvalidOperationException,
+                        "Deterministic automaton has AP " << ap << ", does not appear in formula");
+
+        statesForAP.push_back(std::move(it->second));
+    }
+
+    storm::storage::BitVector statesOfInterest(model.getNumberOfStates(), true);
+    transformer::DAProductBuilder productBuilder(da, statesForAP);
+
+    auto product = productBuilder.build<Mdp>(model.getTransitionMatrix(), statesOfInterest);
+
+    STORM_LOG_INFO("Product MDP-DA has "
+                   << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfTransitions()
+                   << " transitions.");
+
+    return product;
+}
+
+
+template<typename ValueType, typename RewardModelType>
+std::pair<std::vector<uint64_t>, storage::SparseMatrix<ValueType>> DARewardProductBuilder<ValueType, RewardModelType>::buildTransitionMatrix(automata::AcceptanceCondition const& acceptance,
+                                                                                            storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                                            storm::storage::SparseMatrix<ValueType> const& backwardTransitions) {
+    STORM_LOG_INFO("Building transition matrix...");
+
+}
+
+template<typename ValueType, typename RewardModelType>
+void DARewardProductBuilder<ValueType, RewardModelType>::build() {
+    std::cout << "Building the demerged matrix..." << std::endl;
+
+    auto product = buildProductMDP();
+
+    auto transitionMatrix = buildTransitionMatrix(*product->getAcceptance(), product->getProductModel().getTransitionMatrix(), product->getProductModel().getBackwardTransitions());
+
+
+}
+
+
+template class DARewardProductBuilder<double, storm::models::sparse::StandardRewardModel<double>>;
+
+template class DARewardProductBuilder<RationalNumber, storm::models::sparse::StandardRewardModel<RationalNumber>>;
+
+
+
+
+#ifdef DA_READY
+
+
 template<typename ValueType>
 DAProduct<Model>::ptr DARewardProductBuilder<Model>::build(const storm::storage::SparseMatrix<typename Model::ValueType>& originalMatrix, const storm::storage::BitVector& statesOfInterest) {
     transformer::DAProductBuilder productBuilder(da, statesForAP);
@@ -23,8 +108,6 @@ DAProduct<Model>::ptr DARewardProductBuilder<Model>::build(const storm::storage:
 
     return product;
 }
-
-#ifdef DA_READY
 
 template<typename Model>
 void DARewardProductBuilder<Model>::modify(storm::storage::SparseMatrix<typename Model::ValueType> const& transitionMatrix,

@@ -31,14 +31,14 @@ namespace preprocessing {
 
 template<typename SparseModelType>
 typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(
-    Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula) {
+    Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula, CheckFormulaCallback const& formulaChecker) {
     std::shared_ptr<SparseModelType> model;
 
     // Incorporate the necessary memory
     if (env.modelchecker().multi().isSchedulerRestrictionSet()) {
         auto const& schedRestr = env.modelchecker().multi().getSchedulerRestriction();
         if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::GoalMemory) {
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas());
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), formulaChecker);
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Arbitrary && schedRestr.getMemoryStates() > 1) {
             model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateFullMemory(originalModel, schedRestr.getMemoryStates());
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Counter && schedRestr.getMemoryStates() > 1) {
@@ -49,7 +49,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
             STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "The given scheduler restriction has not been implemented.");
         }
     } else {
-        model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas());
+        model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), formulaChecker);
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
