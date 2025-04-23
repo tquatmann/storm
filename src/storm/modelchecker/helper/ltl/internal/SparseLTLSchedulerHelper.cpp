@@ -6,6 +6,7 @@
 #include "storm/storage/memorystructure/MemoryStructureBuilder.h"
 #include "storm/transformer/DAProductBuilder.h"
 #include "storm/utility/graph.h"
+#include "storm/logic/ExtractMaximalStateFormulasVisitor.h"
 
 namespace storm {
 namespace modelchecker {

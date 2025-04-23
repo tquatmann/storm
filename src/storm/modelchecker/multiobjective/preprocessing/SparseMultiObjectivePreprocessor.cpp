@@ -50,6 +50,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         }
     } else {
         model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), formulaChecker);
+        std::cout << "Hallöle" << std::endl;
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
@@ -62,6 +63,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     // Invoke preprocessing on the individual objectives
     for (auto const& subFormula : originalFormula.getSubformulas()) {
         STORM_LOG_INFO("Preprocessing objective " << *subFormula << ".");
+        std::cout << *subFormula << std::endl;
         data.objectives.push_back(std::make_shared<Objective<ValueType>>());
         data.objectives.back()->originalFormula = subFormula;
         data.finiteRewardCheckObjectives.resize(data.objectives.size(), false);
@@ -70,6 +72,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
         preprocessOperatorFormula(data.objectives.back()->originalFormula->asOperatorFormula(), data);
     }
+    std::cout << "Invoke preprocessing on the individual objectives done" << std::endl;
 
     // Remove reward models that are not needed anymore
     std::set<std::string> relevantRewardModels;

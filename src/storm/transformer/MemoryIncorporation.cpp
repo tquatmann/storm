@@ -13,7 +13,7 @@
 #include "storm/storage/memorystructure/NondeterministicMemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
 #include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
-#include "storm/transformer/DARewardProductBuilder.h"
+#include "storm/storage/memorystructure/SparseModelDARewardProduct.h"
 
 #include "storm/utility/macros.h"
 
@@ -64,18 +64,13 @@ std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorpora
     storm::storage::MemoryStructure memory = storm::storage::MemoryStructureBuilder<ValueType, RewardModelType>::buildTrivialMemoryStructure(model);
 
     for (auto const& subFormula : formulas) {
-        std::cout << subFormula->toString() << std::endl;
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
         auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
-        std::cout << subsubFormula.toString() << std::endl;
 
         if (subsubFormula.info(false).containsComplexPathFormula()) {
-            // we need to incorporate the DRA for the LTL formula
-            std::cout << "COMPLEX PATH FORMULA FOUND" << std::endl;
-            //model.isOfType(storm::models::ModelType::Mdp))
             if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<ValueType>>()) {
-                DARewardProductBuilder<ValueType, RewardModelType> productBuilder(model, subsubFormula.asPathFormula(), formulaChecker);
-                productBuilder.build();
+                storage::SparseModelDARewardProduct<ValueType, RewardModelType> productBuilder(model, subsubFormula.asPathFormula(), formulaChecker);
+                return std::dynamic_pointer_cast<SparseModelType>(productBuilder.build());
             }
         } else if (subsubFormula.isEventuallyFormula()) {
             memory = memory.product(getGoalMemory(model, subsubFormula.asEventuallyFormula().getSubformula()));
