@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "storm/storage/bisimulation/DeterministicBlockData.h"
-#include "storm/storage/bisimulation/Partition.h"
+#include "storm/storage/bisimulation_old/Partition.h"
 
 #include "storm/utility/macros.h"
 
