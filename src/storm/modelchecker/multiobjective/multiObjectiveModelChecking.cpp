@@ -42,7 +42,7 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
     // Preprocess the model
     auto preprocessorResult = preprocessing::SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(env, model, formula, formulaChecker);
     swPreprocessing.stop();
-    std::cout << "Hallöle" << std::endl;
+
     if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
         STORM_PRINT_AND_LOG("Preprocessing done in " << swPreprocessing << " seconds.\n"
                                                      << " Result: " << preprocessorResult << '\n');
@@ -50,7 +50,6 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
         STORM_LOG_INFO("Preprocessing done in " << swPreprocessing << " seconds.\n"
                                                 << " Result: " << preprocessorResult << '\n');
     }
-    std::cout << "Hallöle" << std::endl;
 
     // Invoke the analysis
     storm::utility::Stopwatch swAnalysis(true);
@@ -73,7 +72,6 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
                     }
                 }
             } else {
-                std::cout << "Hallöle" << std::endl;
                 std::unique_ptr<SparsePcaaQuery<SparseModelType, storm::RationalNumber>> query;
                 switch (preprocessorResult.queryType) {
                     case preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType>::QueryType::Achievability:

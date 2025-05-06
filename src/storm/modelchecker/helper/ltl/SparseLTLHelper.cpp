@@ -374,7 +374,7 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
 }
 
 template<typename ValueType, bool Nondeterministic>
-typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, CheckFormulaCallback const& formulaChecker) {
+std::pair<typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr, storm::storage::BitVector> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, CheckFormulaCallback const& formulaChecker) {
     storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
     std::shared_ptr<storm::logic::Formula> ltlFormula = storm::logic::ExtractMaximalStateFormulasVisitor::extract(formula, extracted);
     STORM_LOG_ASSERT(ltlFormula->isPathFormula(), "Unexpected formula type.");
@@ -398,11 +398,17 @@ typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondetermini
 
     auto product = productBuilder.build<productModelType>(model.getTransitionMatrix(), statesOfInterest);
 
+    // retrieve the initial state from the product model
+    auto initialStateModel = model.getInitialStates().getNextSetIndex(0);
+    auto initialStateIndex = productBuilder.getInitialState(initialStateModel);
+    storm::storage::BitVector initialStates(product->getProductModel().getNumberOfStates(), false);
+    initialStates.set(initialStateIndex);
+
     STORM_LOG_INFO("Product has "
-                   << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfTransitions()
+                   << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfChoices()
                    << " transitions.");
 
-    return product;
+    return std::make_pair(product, initialStates);
 }
 
 template class SparseLTLHelper<double, false>;

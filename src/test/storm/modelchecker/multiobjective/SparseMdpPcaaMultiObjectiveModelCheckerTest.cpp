@@ -490,4 +490,27 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, resource_gathering) {
     }
 }
 
+TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_LTL_LRA) {
+    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
+        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
+    }
+
+    storm::Environment env;
+    env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);\
+
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/simple_LTL_LRA.nm";
+    std::string formulasAsString = "multi(R{\"default\"}max=? [S], P>=0.5 [F G \"a\"]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [F G \"a\"]);\n";
+
+    // programm, model,  formula
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    program.checkValidity();
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    storm::generator::NextStateGeneratorOptions options(formulas);
+    auto mdp = storm::builder::ExplicitModelBuilder<double>(program, options).build()->as<storm::models::sparse::Mdp<double>>();
+
+}
+
 #endif /* STORM_HAVE_Z3_OPTIMIZE */

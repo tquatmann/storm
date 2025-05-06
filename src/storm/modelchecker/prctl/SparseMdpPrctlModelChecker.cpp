@@ -438,7 +438,7 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::che
         auto formulaChecker = [&](storm::logic::Formula const& formula) {
             return this->check(env, formula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
         };
-        return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula(), formulaChecker); //formulaChecker, was genau checkTask?
+        return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula(), formulaChecker);
     }
 }
 

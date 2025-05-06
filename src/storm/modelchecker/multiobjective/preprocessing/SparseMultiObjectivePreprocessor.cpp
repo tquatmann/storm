@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 
+#include "../../../logic/FormulaInformation.h"
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
@@ -50,7 +51,6 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         }
     } else {
         model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), formulaChecker);
-        std::cout << "Hallöle" << std::endl;
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
@@ -59,20 +59,25 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
 
     PreprocessorData data(model);
     data.deadlockLabel = deadlockLabel;
-
     // Invoke preprocessing on the individual objectives
     for (auto const& subFormula : originalFormula.getSubformulas()) {
         STORM_LOG_INFO("Preprocessing objective " << *subFormula << ".");
-        std::cout << *subFormula << std::endl;
         data.objectives.push_back(std::make_shared<Objective<ValueType>>());
         data.objectives.back()->originalFormula = subFormula;
         data.finiteRewardCheckObjectives.resize(data.objectives.size(), false);
         data.upperResultBoundObjectives.resize(data.objectives.size(), false);
         STORM_LOG_THROW(data.objectives.back()->originalFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
-        preprocessOperatorFormula(data.objectives.back()->originalFormula->asOperatorFormula(), data);
+
+        auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
+        if (subsubFormula.info(false).containsComplexPathFormula()) {
+            auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
+            logic::RewardOperatorFormula operatorFormula(totalRewardFormulaPtr, std::string("accEc"), subFormula->asOperatorFormula().getOperatorInformation());
+            preprocessOperatorFormula(operatorFormula, data);
+        } else {
+            preprocessOperatorFormula(data.objectives.back()->originalFormula->asOperatorFormula(), data);
+        }
     }
-    std::cout << "Invoke preprocessing on the individual objectives done" << std::endl;
 
     // Remove reward models that are not needed anymore
     std::set<std::string> relevantRewardModels;
@@ -111,7 +116,10 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
                         "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
         auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
         if (opFormula->isProbabilityOperatorFormula()) {
-            if (pathFormula.isUntilFormula()) {
+            if (pathFormula.info(false).containsComplexPathFormula()) {
+                // we are dealing with an LTL formula
+                absorbingStatesForSubformula = storm::storage::BitVector(model->getNumberOfStates(), false);
+            } else if (pathFormula.isUntilFormula()) {
                 auto lhs = mc.check(pathFormula.asUntilFormula().getLeftSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 auto rhs = mc.check(pathFormula.asUntilFormula().getRightSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 absorbingStatesForSubformula = storm::utility::graph::performProb0A(backwardTransitions, lhs, rhs);

@@ -92,9 +92,9 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * @param model
      * @param formula
      * @param formulaChecker
-     * @return
+     * @return a pair the DAProduct and its initial state
      */
-    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
+    static std::pair<typename transformer::DAProduct<productModelType>::ptr, storm::storage::BitVector> buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
 
    private:
     /*!

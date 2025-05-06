@@ -21,6 +21,12 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
                                                                 storm::logic::MultiObjectiveFormula const& formula,
                                                                 CheckFormulaCallback const& formulaChecker);
 
+template<typename SparseModelType>
+std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment const& env, SparseModelType const& model,
+                                                                storm::logic::MultiObjectiveFormula const& formula) {
+    return performMultiObjectiveModelChecking(env, model, formula, nullptr);
+}
+
 }
 }  // namespace modelchecker
 }  // namespace storm
