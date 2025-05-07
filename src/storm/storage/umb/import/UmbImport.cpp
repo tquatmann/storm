@@ -10,6 +10,7 @@
 
 #include "storm/exceptions/FileIoException.h"
 #include "storm/exceptions/NotSupportedException.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/exceptions/WrongFormatException.h"
 
 namespace storm::umb {
@@ -37,25 +38,17 @@ struct UmbPath {
 template<typename T>
 concept SourceType = std::same_as<T, UmbPath> || std::same_as<T, storm::io::ArchiveReadEntry>;
 
-bool matches(UmbPath const& src, std::filesystem::path const& file) {
-    return src.filepath == file;
+std::filesystem::path getFilePath(UmbPath const& src) {
+    return src.filepath;
 }
 
-bool matches(storm::io::ArchiveReadEntry const& src, std::filesystem::path const& file) {
-    return src.name() == file;
-}
-
-std::filesystem::path getFilePath(SourceType auto const& src) {
-    if constexpr (std::same_as<decltype(src), UmbPath>) {
-        return src.filepath;
-    } else {
-        return src.name();
-    }
+std::filesystem::path getFilePath(storm::io::ArchiveReadEntry const& src) {
+    return src.name();
 }
 
 template<typename T>
 bool loadIfMatches(UmbPath const& src, std::filesystem::path const& file, T& objRef) {
-    if (matches(src, file)) {
+    if (getFilePath(src) == file) {
         objRef.emplace(src.base / src.filepath);
         return true;
     }
@@ -64,7 +57,7 @@ bool loadIfMatches(UmbPath const& src, std::filesystem::path const& file, T& obj
 
 template<typename T>
 bool loadIfMatches(storm::io::ArchiveReadEntry& src, auto const& file, std::optional<T>& objRef) {
-    if (matches(src, file)) {
+    if (getFilePath(src) == file) {
         if constexpr (std::is_same_v<T, storm::storage::BitVector>) {
             objRef = src.template toVector<bool>();
         } else {
@@ -78,14 +71,14 @@ bool loadIfMatches(storm::io::ArchiveReadEntry& src, auto const& file, std::opti
 template<typename EnumType, StorageType Storage>
     requires std::is_enum_v<EnumType>
 bool loadGenericVectorIfMatches(SourceType auto& src, std::filesystem::path const& file, EnumType const type, GenericVector<Storage>& objRef) {
-    if (!matches(src, file)) {
+    if (getFilePath(src) != file) {
         return false;
     }
     auto set = [&objRef, &src]<typename T>() {
         if constexpr (std::is_same_v<std::remove_cvref_t<decltype(src)>, storm::io::ArchiveReadEntry>) {
             objRef.template set<T>(src.template toVector<T>());
         } else {
-            objRef.set(typename GenericVector<Storage>::template Vec<T>(src.base / src.filepath));
+            objRef.template set<T>(typename GenericVector<Storage>::template Vec<T>(src.base / src.filepath));
         }
     };
 
@@ -146,7 +139,8 @@ bool loadAnnotations(SourceType auto& src, UmbModel<Storage>& umbModel) {
     auto file = getFilePath(src);
     auto fileIt = file.begin();
     auto getNextElementOfPath = [&fileIt, &file]() { return fileIt != file.end() ? *fileIt++ : std::filesystem::path{}; };
-    STORM_LOG_ASSERT(getNextElementOfPath() == "annotations", "Unexpected path: " << file);
+    auto const annotationsRootDir = getNextElementOfPath();
+    STORM_LOG_ASSERT(annotationsRootDir == "annotations", "Unexpected path: " << file);
     std::string const annotationId = getNextElementOfPath();
     auto annotationIndex = umbModel.index.annotations.find(annotationId);
     if (annotationIndex == umbModel.index.annotations.end()) {
@@ -157,21 +151,43 @@ bool loadAnnotations(SourceType auto& src, UmbModel<Storage>& umbModel) {
     return loadGenericVectorIfMatches(src, "annotations/" + annotationId + "/values.bin", annotationIndex->second.type, annotation.values);
 }
 
+template<StorageType Storage>
+void loadSource(SourceType auto& src, UmbModel<Storage>& umbModel) {
+    std::cout << "loading file: " << getFilePath(src) << "\n";
+
+    if (*getFilePath(src).begin() == "annotations") {
+        if (!loadAnnotations(src, umbModel)) {
+            STORM_LOG_WARN("Unable to process file " << getFilePath(src) << " for annotations.");
+        }
+    } else {
+        if (!loadStatesChoicesBranches(src, umbModel)) {
+            STORM_LOG_WARN("Unable to process file " << getFilePath(src) << ".");
+        }
+    }
+}
+
 std::unique_ptr<UmbModelBase> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& options) {
     STORM_LOG_THROW(std::filesystem::is_directory(umbDir), storm::exceptions::FileIoException, "The given path is not a directory.");
     auto result = std::make_unique<UmbModel<StorageType::Disk>>();
     internal::parseIndexFromDisk(umbDir / "index.json", result->index);
     std::cout << "umb dir is " << umbDir << "\n";
+    std::string umbDirString = umbDir.string();
+    if (umbDirString.back() != '/') {
+        umbDirString.push_back('/');
+    }
     for (auto f : std::filesystem::recursive_directory_iterator(umbDir)) {
         std::cout << "Reading file: " << f.path() << " aka " << f << "\n";
-        UmbPath entry{umbDir, f.path()};
+        // get the suffix of file f without the umbDir prefix
+        // This is a bit hacky, but there does not seem to be a more elegant way (?)
+        std::string fString = f.path().string();
+        STORM_LOG_THROW(fString.starts_with(umbDirString), storm::exceptions::UnexpectedException,
+                        "Unexpected String: " << fString << " does not start with " << umbDirString);
+        UmbPath entry{umbDir, fString.substr(umbDirString.length())};
+        std::cout << "Entry is " << entry.filepath << "\n";
         if (entry.filepath == "index.json" || f.is_directory() || entry.filepath.empty()) {
             continue;  // skip the index file and directories
-                       //        } else if (*entry.filepath.begin() == "annotations") {
-                       //            loadAnnotations(entry, *result);
-                       //        } else {
-                       //            loadStatesChoicesBranches(entry, *result);
         }
+        loadSource(entry, *result);
     }
     return result;
 }
@@ -196,16 +212,8 @@ std::unique_ptr<UmbModelBase> fromArchive(std::filesystem::path const& umbArchiv
     for (auto entry : storm::io::openArchive(umbArchive)) {
         if (entry.name() == "index.json" || entry.isDir()) {
             continue;  // skip the index file and directories
-        } else if (entry.name().starts_with("annotations")) {
-            if (!loadAnnotations(entry, *result)) {
-                STORM_LOG_WARN("Unable to process file " << entry.name() << " for annotations.");
-            }
-        } else {
-            std::cout << "Reading file: " << entry.name() << "\n";
-            if (!loadStatesChoicesBranches(entry, *result)) {
-                STORM_LOG_WARN("Unable to process file " << entry.name() << ".");
-            }
         }
+        loadSource(entry, *result);
     }
     std::cout << "Second pass: bin files loaded in " << stopwatch << " seconds.\n";
     return result;

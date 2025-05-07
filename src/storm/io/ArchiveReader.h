@@ -95,7 +95,6 @@ class ArchiveReadEntry {
             if constexpr (std::is_same_v<T, bool>) {
                 content.grow(bucketCount + data.size() * 64);  // 64 bits in a bucket
                 for (auto bits : data) {
-                    std::cout << " have bits: " << bits << "\n";
                     content.setBucket(
                         bucketCount,
                         storm::utility::reverseBits(
@@ -137,7 +136,6 @@ class ArchiveReadEntry {
         // Resize the content to the actual size
         if constexpr (std::is_same_v<T, bool>) {
             content.resize(bucketCount * 64);  // 64 bits in a bucket
-            std::cout << "Parsed " << content << ".\n";
         } else {
             content.shrink_to_fit();
         }
