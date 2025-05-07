@@ -9,6 +9,6 @@
 namespace storm::umb {
 class UmbModelBase;  // Forward Declaration
 
-std::unique_ptr<storm::umb::UmbModelBase> fromDisk(std::filesystem::path const& umbDir, ImportOptions const& options = {});
+std::unique_ptr<storm::umb::UmbModelBase> fromDisk(std::filesystem::path const& umbLocation, ImportOptions const& options = {});
 
 }  // namespace storm::umb

@@ -2,7 +2,10 @@
 
 #include "storm/storage/umb/model/UmbModel.h"
 
+#include "storm/adapters/JsonAdapter.h"
+#include "storm/io/ArchiveReader.h"
 #include "storm/io/file.h"
+#include "storm/utility/Stopwatch.h"
 #include "storm/utility/macros.h"
 
 #include "storm/exceptions/FileIoException.h"
@@ -22,60 +25,111 @@ void parseIndexFromDisk(std::filesystem::path const& indexFilePath, storm::umb::
     parsedStructure.get_to(index);
 }
 
+void parseIndexFromString(std::string const& indexFileString, storm::umb::ModelIndex& index) {
+    std::cout << indexFileString << std::endl;
+    storm::json<storm::RationalNumber>::parse(indexFileString).get_to(index);
+}
+
+struct UmbPath {
+    std::filesystem::path base, filepath;
+};
+
 template<typename T>
-bool constructFromPathIfExists(std::filesystem::path const& file, T& objRef) {
-    if (std::filesystem::exists(file)) {
-        objRef.emplace(file);
+concept SourceType = std::same_as<T, UmbPath> || std::same_as<T, storm::io::ArchiveReadEntry>;
+
+bool matches(UmbPath const& src, std::filesystem::path const& file) {
+    return src.filepath == file;
+}
+
+bool matches(storm::io::ArchiveReadEntry const& src, std::filesystem::path const& file) {
+    return src.name() == file;
+}
+
+std::filesystem::path getFilePath(SourceType auto const& src) {
+    if constexpr (std::same_as<decltype(src), UmbPath>) {
+        return src.filepath;
+    } else {
+        return src.name();
+    }
+}
+
+template<typename T>
+bool loadIfMatches(UmbPath const& src, std::filesystem::path const& file, T& objRef) {
+    if (matches(src, file)) {
+        objRef.emplace(src.base / src.filepath);
         return true;
     }
     return false;
 }
 
-template<typename EnumType>
+template<typename T>
+bool loadIfMatches(storm::io::ArchiveReadEntry& src, auto const& file, std::optional<T>& objRef) {
+    if (matches(src, file)) {
+        if constexpr (std::is_same_v<T, storm::storage::BitVector>) {
+            objRef = src.template toVector<bool>();
+        } else {
+            objRef = src.template toVector<typename T::value_type>();
+        }
+        return true;
+    }
+    return false;
+}
+
+template<typename EnumType, StorageType Storage>
     requires std::is_enum_v<EnumType>
-bool constructGenericVectorFromPathIfExists(std::filesystem::path const& file, EnumType const type, GenericVector<StorageType::Disk>& objRef) {
-    if (!std::filesystem::exists(file)) {
+bool loadGenericVectorIfMatches(SourceType auto& src, std::filesystem::path const& file, EnumType const type, GenericVector<Storage>& objRef) {
+    if (!matches(src, file)) {
         return false;
     }
+    auto set = [&objRef, &src]<typename T>() {
+        if constexpr (std::is_same_v<std::remove_cvref_t<decltype(src)>, storm::io::ArchiveReadEntry>) {
+            objRef.template set<T>(src.template toVector<T>());
+        } else {
+            objRef.set(typename GenericVector<Storage>::template Vec<T>(src.base / src.filepath));
+        }
+    };
+
     if (type == EnumType::Double) {
-        objRef.set<double>(typename GenericVector<StorageType::Disk>::Vec<double>(file));
+        set.template operator()<double>();
     }
     if constexpr (std::is_same_v<EnumType, storm::umb::ModelIndex::Annotation::Type>) {
         if (type == EnumType::Bool) {
-            objRef.set<bool>(typename GenericVector<StorageType::Disk>::Vec<bool>(file));
+            set.template operator()<bool>();
         } else if (type == EnumType::Int32) {
-            objRef.set<int32_t>(typename GenericVector<StorageType::Disk>::Vec<int32_t>(file));
+            set.template operator()<int32_t>();
         }
     }
     STORM_LOG_ASSERT(objRef.hasValue(), "Unexpected type with index: " << static_cast<std::underlying_type_t<EnumType>>(type) << ".");
     return true;
 }
 
-template<typename EnumType>
+template<typename EnumType, StorageType Storage>
     requires std::is_enum_v<typename EnumType::E>
-bool constructGenericVectorFromPathIfExists(std::filesystem::path const& file, EnumType const type, GenericVector<StorageType::Disk>& objRef) {
-    return constructGenericVectorFromPathIfExists<typename EnumType::E>(file, type, objRef);  // convert to inner enum type
+bool loadGenericVectorIfMatches(SourceType auto& src, std::filesystem::path const& file, EnumType const type, GenericVector<Storage>& objRef) {
+    return loadGenericVectorIfMatches<typename EnumType::E>(src, file, type, objRef);  // convert to inner enum type
 }
 
-void loadStatesChoicesBranchesFromDisk(std::filesystem::path const& umbDir, UmbModel<StorageType::Disk>& umbModel) {
+template<StorageType Storage>
+bool loadStatesChoicesBranches(SourceType auto& src, UmbModel<Storage>& umbModel) {
+    bool processed{false};
+
     auto const& ts = umbModel.index.transitionSystem;
     auto& states = umbModel.states;
-    constructFromPathIfExists(umbDir / "state-to-choice.bin", states.stateToChoice);
-    constructFromPathIfExists(umbDir / "state-to-player.bin", states.stateToPlayer);
-    constructFromPathIfExists(umbDir / "initial-states.bin", states.initialStates);
+    processed |= loadIfMatches(src, "state-to-choice.bin", states.stateToChoice);
+    processed |= loadIfMatches(src, "state-to-player.bin", states.stateToPlayer);
+    processed |= loadIfMatches(src, "initial-states.bin", states.initialStates);
     auto& choices = umbModel.choices;
-    constructFromPathIfExists(umbDir / "choice-to-branch.bin", choices.choiceToBranch);
-    constructFromPathIfExists(umbDir / "choice-to-action.bin", choices.choiceToAction);
-    // constructFromPathIfExists(umbDir, "action-to-action-string.bin", "action-strings.bin", choices.actionStrings);
+    processed |= loadIfMatches(src, "choice-to-branch.bin", choices.choiceToBranch);
+    processed |= loadIfMatches(src, "choice-to-action.bin", choices.choiceToAction);
     auto& branches = umbModel.branches;
-    constructFromPathIfExists(umbDir / "branch-to-target.bin", branches.branchToTarget);
+    processed |= loadIfMatches(src, "branch-to-target.bin", branches.branchToTarget);
 
     using BranchValues = storm::umb::ModelIndex::TransitionSystem::BranchValues;
     using BranchValueType = storm::umb::ModelIndex::TransitionSystem::BranchValueType;
     if (ts.branchValues == BranchValues::Number) {
         STORM_LOG_THROW(ts.branchValueType.has_value(), storm::exceptions::WrongFormatException, "Branch values are numbers, but no type is specified.");
         if (auto const branchVT = *ts.branchValueType; branchVT == BranchValueType::Double) {
-            constructGenericVectorFromPathIfExists(umbDir / "branch-values.bin", branchVT, branches.branchValues);
+            processed |= loadGenericVectorIfMatches(src, "branch-values.bin", branchVT, branches.branchValues);
         } else {
             //  constructFromPathIfExists(umbDir, "branch-to-value.bin", "branch-rational.bin", branches.branchToValue);
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value type " << branchVT << " unhandled.");
@@ -83,29 +137,89 @@ void loadStatesChoicesBranchesFromDisk(std::filesystem::path const& umbDir, UmbM
     } else {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value kind " << ts.branchValues << " unhandled.");
     }
+    return processed;
 }
 
-void loadAnnotationsFromDisk(std::filesystem::path const& annotationsDir, UmbModel<StorageType::Disk>& umbModel) {
-    for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
-        std::filesystem::path annotationIdPath{annotationId};
-        STORM_LOG_WARN_COND(annotationIdPath.filename() == annotationIdPath, "Unexpeced annotation id " << annotationId);
-        auto const dirOfAnnotation = annotationsDir / annotationId;
-        STORM_LOG_THROW(std::filesystem::exists(dirOfAnnotation), storm::exceptions::FileIoException,
-                        "No files for annotation '" << annotationId << "' referenced in index file.");
-        auto& annotationFile = umbModel.annotations[annotationId];
-        constructGenericVectorFromPathIfExists(dirOfAnnotation / "values.bin", annotation.type, annotationFile.values);
+template<StorageType Storage>
+bool loadAnnotations(SourceType auto& src, UmbModel<Storage>& umbModel) {
+    // extract the annotations ID from src
+    auto file = getFilePath(src);
+    auto fileIt = file.begin();
+    auto getNextElementOfPath = [&fileIt, &file]() { return fileIt != file.end() ? *fileIt++ : std::filesystem::path{}; };
+    STORM_LOG_ASSERT(getNextElementOfPath() == "annotations", "Unexpected path: " << file);
+    std::string const annotationId = getNextElementOfPath();
+    auto annotationIndex = umbModel.index.annotations.find(annotationId);
+    if (annotationIndex == umbModel.index.annotations.end()) {
+        STORM_LOG_WARN("Annotation ID '" << annotationId << "' not found in index file but referenced in file '" << file << "', which will be ignored.");
+        return false;
     }
+    auto& annotation = umbModel.annotations[annotationId];
+    return loadGenericVectorIfMatches(src, "annotations/" + annotationId + "/values.bin", annotationIndex->second.type, annotation.values);
+}
+
+std::unique_ptr<UmbModelBase> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& options) {
+    STORM_LOG_THROW(std::filesystem::is_directory(umbDir), storm::exceptions::FileIoException, "The given path is not a directory.");
+    auto result = std::make_unique<UmbModel<StorageType::Disk>>();
+    internal::parseIndexFromDisk(umbDir / "index.json", result->index);
+    std::cout << "umb dir is " << umbDir << "\n";
+    for (auto f : std::filesystem::recursive_directory_iterator(umbDir)) {
+        std::cout << "Reading file: " << f.path() << " aka " << f << "\n";
+        UmbPath entry{umbDir, f.path()};
+        if (entry.filepath == "index.json" || f.is_directory() || entry.filepath.empty()) {
+            continue;  // skip the index file and directories
+                       //        } else if (*entry.filepath.begin() == "annotations") {
+                       //            loadAnnotations(entry, *result);
+                       //        } else {
+                       //            loadStatesChoicesBranches(entry, *result);
+        }
+    }
+    return result;
+}
+
+std::unique_ptr<UmbModelBase> fromArchive(std::filesystem::path const& umbArchive, ImportOptions const& options) {
+    storm::utility::Stopwatch stopwatch;
+    stopwatch.start();
+    auto result = std::make_unique<UmbModel<StorageType::Memory>>();
+    // First pass: find the index file
+    bool indexFound = false;
+    for (auto entry : storm::io::openArchive(umbArchive)) {
+        if (entry.name() == "index.json") {
+            parseIndexFromString(entry.toString(), result->index);
+            indexFound = true;
+            break;
+        }
+    }
+    STORM_LOG_THROW(indexFound, storm::exceptions::FileIoException, "File 'index.json' not found in UMB archive.");
+    std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";
+    stopwatch.restart();
+    // Second pass: load the bin files
+    for (auto entry : storm::io::openArchive(umbArchive)) {
+        if (entry.name() == "index.json" || entry.isDir()) {
+            continue;  // skip the index file and directories
+        } else if (entry.name().starts_with("annotations")) {
+            if (!loadAnnotations(entry, *result)) {
+                STORM_LOG_WARN("Unable to process file " << entry.name() << " for annotations.");
+            }
+        } else {
+            std::cout << "Reading file: " << entry.name() << "\n";
+            if (!loadStatesChoicesBranches(entry, *result)) {
+                STORM_LOG_WARN("Unable to process file " << entry.name() << ".");
+            }
+        }
+    }
+    std::cout << "Second pass: bin files loaded in " << stopwatch << " seconds.\n";
+    return result;
 }
 
 }  // namespace internal
 
-std::unique_ptr<UmbModelBase> fromDisk(std::filesystem::path const& umbDir, ImportOptions const& options) {
-    STORM_LOG_THROW(is_directory(umbDir), storm::exceptions::FileIoException, "The given path is not a directory.");
-    auto result = std::make_unique<UmbModel<StorageType::Disk>>();
-    internal::parseIndexFromDisk(umbDir / "index.json", result->index);
-    internal::loadStatesChoicesBranchesFromDisk(umbDir, *result);
-    internal::loadAnnotationsFromDisk(umbDir / "annotations", *result);
-    return result;
+std::unique_ptr<UmbModelBase> fromDisk(std::filesystem::path const& umbLocation, ImportOptions const& options) {
+    STORM_LOG_THROW(std::filesystem::exists(umbLocation), storm::exceptions::FileIoException, "The given path '" << umbLocation << "' does not exist.");
+    if (std::filesystem::is_directory(umbLocation)) {
+        return internal::fromDirectory(umbLocation, options);
+    } else {
+        return internal::fromArchive(umbLocation, options);
+    }
 }
 
 }  // namespace storm::umb

@@ -52,10 +52,6 @@ class BinaryFileViewer {
     }
 
     static auto createRangeView(MappedFileType const& file) {
-        // if constexpr (std::is_same_v<T, bool>) {
-        //     return std::span<const T>(reinterpret_cast<const T*>(file.data()), file.size() * 8);
-        //} else
-        static_assert(!std::is_same_v<T, bool>, "bool is not supported yet (unclear representation)");
         if constexpr (NativeEndianness || sizeof(T) == 1) {
             return std::span<const T>(reinterpret_cast<const T*>(file.data()), file.size() / sizeof(T));
         } else {

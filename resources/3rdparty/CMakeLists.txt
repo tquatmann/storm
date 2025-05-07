@@ -31,6 +31,36 @@ add_imported_library_interface(l3pp "${l3pp_INCLUDE}")
 list(APPEND STORM_DEP_TARGETS l3pp)
 add_dependencies(l3pp l3pp_ext)
 
+
+#############################################################
+##
+## LibArchive
+##
+#############################################################
+# following https://stackoverflow.com/a/76916842
+if(MACOSX)
+    # Homebrew ships libarchive keg only, include dirs have to be set manually
+    execute_process(
+            COMMAND brew --prefix libarchive
+            ERROR_QUIET
+            OUTPUT_VARIABLE LIBARCHIVE_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT "${LIBARCHIVE_PREFIX}" STREQUAL "")
+        set(LibArchive_INCLUDE_DIR "${LIBARCHIVE_PREFIX}/include")
+    endif()
+endif()
+find_package(LibArchive QUIET)
+set(STORM_HAVE_LIBARCHIVE ${LibArchive_FOUND})
+if(LibArchive_FOUND)
+    message (STATUS "Storm - Linking with LibArchive (version ${LibArchive_VERSION}).")
+    add_imported_library(LibArchive SHARED ${LibArchive_LIBRARIES} ${LibArchive_INCLUDE_DIRS})
+    list(APPEND STORM_DEP_TARGETS LibArchive_SHARED)
+else()
+    message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files such will not be supported.")
+endif(LibArchive_FOUND)
+
+
 #############################################################
 ##
 ##	gmm
@@ -560,11 +590,11 @@ else()
     set(sylvan_dep lib_carl)
 endif()
 
-if (STORM_DEBUG_SYLVAN)
+#if (STORM_DEBUG_SYLVAN)
     set(SYLVAN_BUILD_TYPE "Debug")
-else()
-    set(SYLVAN_BUILD_TYPE "Release")
-endif()
+#else()
+#    set(SYLVAN_BUILD_TYPE "Release")
+#endif()
 
 ExternalProject_Add(
         sylvan
