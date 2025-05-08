@@ -373,6 +373,46 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
     return numericResult;
 }
 
+template<typename ValueType, bool Nondeterministic>
+std::pair<typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr, storm::storage::BitVector> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, CheckFormulaCallback const& formulaChecker) {
+    storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
+    std::shared_ptr<storm::logic::Formula> ltlFormula = storm::logic::ExtractMaximalStateFormulasVisitor::extract(formula, extracted);
+    STORM_LOG_ASSERT(ltlFormula->isPathFormula(), "Unexpected formula type.");
+
+    // Compute Satisfaction sets for the APs (which represent the state-subformulae)
+    auto apSatSets = computeApSets(extracted, formulaChecker);
+
+    STORM_LOG_INFO("Resulting LTL path formula: " << ltlFormula->toString());
+    std::shared_ptr<storm::automata::DeterministicAutomaton> da = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
+
+    std::vector<storm::storage::BitVector> statesForAP;
+    for (const std::string& ap : da->getAPSet().getAPs()) {
+        auto it = apSatSets.find(ap);
+        STORM_LOG_THROW(it != apSatSets.end(), storm::exceptions::InvalidOperationException,
+                        "Deterministic automaton has AP " << ap << ", does not appear in formula");
+        statesForAP.push_back(std::move(it->second));
+    }
+
+    storm::storage::BitVector statesOfInterest(model.getNumberOfStates(), true);
+    transformer::DAProductBuilder productBuilder(*da, statesForAP);
+
+    auto product = productBuilder.build<productModelType>(model.getTransitionMatrix(), statesOfInterest);
+
+    // retrieve the initial state from the product model
+    auto initialStateModel = model.getInitialStates().getNextSetIndex(0);
+    auto initialStateAutomaton = productBuilder.getInitialState(initialStateModel);
+    auto initialStateIndex = product->getProductStateIndex(initialStateModel, initialStateAutomaton);
+
+    storm::storage::BitVector initialStates(product->getProductModel().getNumberOfStates(), false);
+    initialStates.set(initialStateIndex);
+
+    STORM_LOG_INFO("Product has "
+                   << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfChoices()
+                   << " transitions.");
+
+    return std::make_pair(product, initialStates);
+}
+
 template class SparseLTLHelper<double, false>;
 template class SparseLTLHelper<double, true>;
 

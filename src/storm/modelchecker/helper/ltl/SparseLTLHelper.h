@@ -86,6 +86,16 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
     std::vector<ValueType> computeLTLProbabilities(Environment const& env, storm::logic::PathFormula const& formula,
                                                    std::map<std::string, storm::storage::BitVector>& apSatSets);
 
+    /*!
+     *
+     * @tparam Model
+     * @param model
+     * @param formula
+     * @param formulaChecker
+     * @return a pair the DAProduct and its initial state
+     */
+    static std::pair<typename transformer::DAProduct<productModelType>::ptr, storm::storage::BitVector> buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
+
    private:
     /*!
      * Computes a set S of states that admit a probability 1 strategy of satisfying the given acceptance condition (in DNF).

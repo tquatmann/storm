@@ -31,7 +31,8 @@ endif(ADDITIONAL_LINK_DIRS)
 ###############################################################################
 
 # Create libstorm.
-add_library(storm SHARED ${STORM_3RDPARTY_SOURCES} ${STORM_SOURCES} ${STORM_HEADERS})
+add_library(storm SHARED ${STORM_3RDPARTY_SOURCES} ${STORM_SOURCES} ${STORM_HEADERS}
+		storage/memorystructure/SparseModelDARewardProduct.h)
 target_precompile_headers(storm PRIVATE ${STORM_PRECOMPILED_HEADERS})
 # Remove define symbol for shared libstorm.
 set_target_properties(storm PROPERTIES DEFINE_SYMBOL "")

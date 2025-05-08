@@ -8,10 +8,15 @@
 
 #include <vector>
 
+namespace storm::logic {
+class PathFormula;
+}
 namespace storm {
 namespace transformer {
 class DAProductBuilder {
    public:
+    using CheckFormulaCallback = std::function<storm::storage::BitVector(storm::logic::Formula const&)>;
+
     DAProductBuilder(const storm::automata::DeterministicAutomaton& da, const std::vector<storm::storage::BitVector>& statesForAP)
         : da(da), statesForAP(statesForAP) {}
 

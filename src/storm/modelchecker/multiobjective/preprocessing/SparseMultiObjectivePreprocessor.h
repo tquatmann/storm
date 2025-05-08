@@ -24,6 +24,7 @@ class SparseMultiObjectivePreprocessor {
    public:
     typedef typename SparseModelType::ValueType ValueType;
     typedef typename SparseModelType::RewardModelType RewardModelType;
+    typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
     typedef SparseMultiObjectivePreprocessorResult<SparseModelType> ReturnType;
 
     /*!
@@ -31,7 +32,7 @@ class SparseMultiObjectivePreprocessor {
      * @param originalModel The considered model
      * @param originalFormula the considered formula. The subformulas should only contain one OperatorFormula at top level.
      */
-    static ReturnType preprocess(Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula);
+    static ReturnType preprocess(Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula, CheckFormulaCallback const& checkFormulaCallback);
 
    private:
     struct PreprocessorData {

@@ -1,5 +1,6 @@
 #include "MemoryIncorporation.h"
 
+#include "../logic/FormulaInformation.h"
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/logic/Formulas.h"
 #include "storm/logic/FragmentSpecification.h"
@@ -12,6 +13,7 @@
 #include "storm/storage/memorystructure/NondeterministicMemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
 #include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
+#include "storm/storage/memorystructure/SparseModelDARewardProduct.h"
 
 #include "storm/utility/macros.h"
 
@@ -58,13 +60,19 @@ storm::storage::MemoryStructure getUntilFormulaMemory(SparseModelType const& mod
 
 template<class SparseModelType>
 std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
-    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, CheckFormulaCallback const& formulaChecker) {
     storm::storage::MemoryStructure memory = storm::storage::MemoryStructureBuilder<ValueType, RewardModelType>::buildTrivialMemoryStructure(model);
 
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
         auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
-        if (subsubFormula.isEventuallyFormula()) {
+
+        if (subsubFormula.info(false).containsComplexPathFormula()) {
+            if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<ValueType>>()) {
+                storage::SparseModelDARewardProduct<ValueType, RewardModelType> productBuilder(model, subsubFormula.asPathFormula(), formulaChecker);
+                return std::dynamic_pointer_cast<SparseModelType>(productBuilder.build());
+            }
+        } else if (subsubFormula.isEventuallyFormula()) {
             memory = memory.product(getGoalMemory(model, subsubFormula.asEventuallyFormula().getSubformula()));
         } else if (subsubFormula.isUntilFormula()) {
             memory = memory.product(
