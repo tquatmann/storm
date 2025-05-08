@@ -46,7 +46,7 @@ public:
          * @param reachingAccECsChoices choices that a.s. reach a copy of an accepting ec
          * @return the reward models for the modified model
          */
-        std::unordered_map<std::string, RewardModelType> buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToProductState, std::list<uint64_t> const& reachingAccECsChoices);
+        std::unordered_map<std::string, RewardModelType> buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& choiceToModelChoice, std::list<uint64_t> const& reachingAccECsChoices);
 };
 }
 }

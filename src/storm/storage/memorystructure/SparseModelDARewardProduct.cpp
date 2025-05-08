@@ -14,14 +14,14 @@ std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseMo
     transformer::DARewardProductBuilder<ValueType, RewardModelType> builder(*product, originalModel, initialStatesProduct);
     auto result = builder.build();
 
-    auto rewardModels = buildRewardModels(result->getTransitionMatrix(), result->getStateToModelState(), result->getReachingAccEcChoices());
+    auto rewardModels = buildRewardModels(result->getTransitionMatrix(), result->getStateToModelState(), result->getActionToModelAction(), result->getReachingAccEcChoices());
     auto stateLabeling = buildStateLabeling(result->getTransitionMatrix(), result->getStateToModelState(), result->getInitialStates());
 
-    return std::make_shared<Mdp>(Mdp(result->getTransitionMatrix(), stateLabeling, rewardModels));
+    return std::make_shared<Mdp>(result->getTransitionMatrix(), stateLabeling, rewardModels);
 }
 
 template<typename ValueType, typename RewardModelType>
-std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, std::list<uint64_t> const& reachingAccECsChoices) {
+std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& choiceToModelChoice, std::list<uint64_t> const& reachingAccECsChoices) {
     typedef typename RewardModelType::ValueType RewardValueType;
     std::unordered_map<std::string, RewardModelType> result;
     uint64_t numResStates = resultTransitionMatrix.getRowGroupCount();
@@ -37,7 +37,18 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
             }
         }
 
-        result.insert(std::make_pair(rewardModel.first, RewardModelType(stateRewards)));
+        std::optional<std::vector<RewardValueType>> stateActionRewards;
+        if (rewardModel.second.hasStateActionRewards()) {
+            stateActionRewards = std::vector<RewardValueType>(numResStates, storm::utility::zero<RewardValueType>());
+
+            for (uint64_t choice = 0; choice < resultTransitionMatrix.getRowCount(); ++choice) {
+                if (choiceToModelChoice[choice] != std::numeric_limits<uint64_t>::max()) {
+                    stateActionRewards.value()[choice] += rewardModel.second.getStateActionReward(choiceToModelChoice[choice]);
+                }
+            }
+        }
+
+        result.insert(std::make_pair(rewardModel.first, RewardModelType(stateRewards, stateActionRewards)));
     }
 
     // add rewards for reaching an accepting end component
@@ -72,6 +83,7 @@ storm::models::sparse::StateLabeling SparseModelDARewardProduct<ValueType, Rewar
             }
         }
     }
+
     resultLabeling.setStates("init", initialStates);
 
     return resultLabeling;

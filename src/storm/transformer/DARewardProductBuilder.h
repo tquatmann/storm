@@ -40,9 +40,10 @@ class DARewardProductBuilder {
          * @param transitionMatrixBuilder the matrix builder for the modified matrix
          * @param stateToMec
          * @param mecs
+         * @param choiceToModelChoice a mapping of choices in the modified model to ones in the original model
          * @return a mapping of each MEC to the actions that leave it with some probability
          */
-        std::vector<std::list<uint64_t>> processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs);
+        std::vector<std::list<uint64_t>> processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::vector<uint64_t>& choiceToModelChoice);
 
         /*!
          *
@@ -54,7 +55,11 @@ class DARewardProductBuilder {
          * @param mecsToLeavingActions
          * @return a list of actions that lead to an accepting end component in the modified model a.s.
          */
-        std::list<uint64_t> addRepresentativeStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent> accEcs, std::vector<std::list<uint64_t>> mecsToLeavingActions);
+        std::list<uint64_t> addRepresentativeStates(storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec,
+                                                    storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
+                                                    std::list<storage::MaximalEndComponent>& accEcs,
+                                                    std::vector<std::list<uint64_t>> const& mecsToLeavingActions);
 
         /*!
          * Adds copies of the MACs to the modified model
@@ -71,9 +76,8 @@ class DARewardProductBuilder {
          * @param transitionMatrix
          * @param mecs
          * @param accEcs
-         * @return a pair of mappings from states/actions in the modified model to states/actions in the original model
          */
-        std::pair<std::vector<uint64_t>,std::vector<uint64_t>> computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent> accEcs);
+        void computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent> const& accEcs, std::vector<uint64_t>& stateToModelState, std::vector<uint64_t>& choiceToModelChoice);
 
         /*!
          * Computes the set of maximal accepting end components
@@ -82,7 +86,12 @@ class DARewardProductBuilder {
          * @param backwardTransitions the reversed transition relation
          * @return the list of maximal accepting end components
          */
-        std::list<storage::MaximalEndComponent> computeAcceptingECs(automata::AcceptanceCondition const& acceptance,storm::storage::SparseMatrix<ValueType> const& transitionMatrix,storm::storage::SparseMatrix<ValueType> const& backwardTransitions);
+        std::list<storage::MaximalEndComponent> computeAcceptingECs(automata::AcceptanceCondition const& acceptance,
+                                                                    storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                    storm::storage::SparseMatrix<ValueType> const& backwardTransitions);
+
+
+        static void removeSubsetEndComponents(std::list<storage::MaximalEndComponent>& endComponents);
 
         /*!
          * Lifts the initial states from the original model to the modified one

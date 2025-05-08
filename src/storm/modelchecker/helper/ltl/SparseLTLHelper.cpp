@@ -400,7 +400,9 @@ std::pair<typename transformer::DAProduct<typename SparseLTLHelper<ValueType, No
 
     // retrieve the initial state from the product model
     auto initialStateModel = model.getInitialStates().getNextSetIndex(0);
-    auto initialStateIndex = productBuilder.getInitialState(initialStateModel);
+    auto initialStateAutomaton = productBuilder.getInitialState(initialStateModel);
+    auto initialStateIndex = product->getProductStateIndex(initialStateModel, initialStateAutomaton);
+
     storm::storage::BitVector initialStates(product->getProductModel().getNumberOfStates(), false);
     initialStates.set(initialStateIndex);
 
