@@ -151,7 +151,7 @@ class Partition {
                           [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
             newBlockIndex = newBlockEnd;
         }
-        return true;  // there must have been a split because the case without a split is already  catched above
+        return true;  // there must have been a split because the case without a split is already caught above
     }
 
     /*!

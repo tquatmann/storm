@@ -1,8 +1,8 @@
 #ifndef STORM_STORAGE_BISIMULATION_NONDETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
 #define STORM_STORAGE_BISIMULATION_NONDETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
 
+#include <deque>
 #include "storm/storage/bisimulation/BisimulationDecomposition.h"
-#include "storm/storage/bisimulation/DeterministicBlockData.h"
 
 #include "storm/storage/DistributionWithReward.h"
 
@@ -13,9 +13,8 @@ namespace storage {
  * This class represents the decomposition of a nondeterministic model into its bisimulation quotient.
  */
 template<typename ModelType>
-class NondeterministicModelBisimulationDecomposition : public BisimulationDecomposition<ModelType, bisimulation::DeterministicBlockData> {
+class NondeterministicModelBisimulationDecomposition : public BisimulationDecomposition<ModelType> {
    public:
-    typedef bisimulation::DeterministicBlockData BlockDataType;
     typedef typename ModelType::ValueType ValueType;
     typedef typename ModelType::RewardModelType RewardModelType;
 
@@ -27,16 +26,16 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
      * @param options The options that customize the computed bisimulation.
      */
     NondeterministicModelBisimulationDecomposition(ModelType const& model,
-                                                   typename BisimulationDecomposition<ModelType, BlockDataType>::Options const& options =
-                                                       typename BisimulationDecomposition<ModelType, BlockDataType>::Options());
+                                                   typename BisimulationDecomposition<ModelType>::Options const& options =
+                                                       typename BisimulationDecomposition<ModelType>::Options());
 
    protected:
     virtual std::pair<storm::storage::BitVector, storm::storage::BitVector> getStatesWithProbability01() override;
 
     virtual void buildQuotient() override;
 
-    virtual void refinePartitionBasedOnSplitter(bisimulation::Block<BlockDataType>& splitter,
-                                                std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue) override;
+    virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
+                                                std::unordered_set<uint64_t>& enqueuedSplitterBlocks) override;
 
     virtual void initialize() override;
 
@@ -48,11 +47,11 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
     void initializeQuotientDistributions();
 
     // Retrieves whether the given block possibly needs refinement.
-    bool possiblyNeedsRefinement(bisimulation::Block<BlockDataType> const& block) const;
+    // bool possiblyNeedsRefinement(bisimulation::Block<BlockDataType> const& block) const;
 
     // Splits the given block according to the current quotient distributions.
-    bool splitBlockAccordingToCurrentQuotientDistributions(bisimulation::Block<BlockDataType>& block,
-                                                           std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue);
+    // bool splitBlockAccordingToCurrentQuotientDistributions(bisimulation::Block<BlockDataType>& block,
+    //                                                        std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue);
 
     // Retrieves whether the quotient distributions of state 1 are considered to be less than the ones of state 2.
     bool quotientDistributionsLess(storm::storage::sparse::state_type state1, storm::storage::sparse::state_type state2) const;
@@ -62,13 +61,13 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
 
     // Updates the quotient distributions of the predecessors of the new block by taking the probability mass
     // away from the old block.
-    void updateQuotientDistributionsOfPredecessors(bisimulation::Block<BlockDataType> const& newBlock, bisimulation::Block<BlockDataType> const& oldBlock,
-                                                   std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue);
+    // void updateQuotientDistributionsOfPredecessors(bisimulation::Block<BlockDataType> const& newBlock, bisimulation::Block<BlockDataType> const& oldBlock,
+    //                                                std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue);
 
     bool checkQuotientDistributions() const;
-    bool checkBlockStable(bisimulation::Block<BlockDataType> const& newBlock) const;
+    // bool checkBlockStable(bisimulation::Block<BlockDataType> const& newBlock) const;
     bool printDistributions(storm::storage::sparse::state_type state) const;
-    bool checkDistributionsDifferent(bisimulation::Block<BlockDataType> const& block, storm::storage::sparse::state_type end) const;
+    // bool checkDistributionsDifferent(bisimulation::Block<BlockDataType> const& block, storm::storage::sparse::state_type end) const;
 
     // A mapping from choice indices to the state state that has this choice.
     std::vector<storm::storage::sparse::state_type> choiceToStateMapping;

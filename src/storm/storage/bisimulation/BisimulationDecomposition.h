@@ -1,17 +1,21 @@
 #ifndef STORM_STORAGE_BISIMULATIONDECOMPOSITION_H_
 #define STORM_STORAGE_BISIMULATIONDECOMPOSITION_H_
 
+#include <deque>
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/BisimulationSettings.h"
 #include "storm/solver/OptimizationDirection.h"
-#include "storm/storage/Decomposition.h"
 #include "storm/storage/StateBlock.h"
 #include "storm/storage/bisimulation/BisimulationType.h"
-#include "storm/storage/bisimulation_old/Partition.h"
+#include "storm/storage/bisimulation/Partition.h"
 #include "storm/storage/sparse/StateType.h"
+
+#include "storm/models/sparse/Model.h"
+#include "storm/storage/SparseMatrix.h"
 
 #include "storm/logic/Formulas.h"
 
+#include "Signature.h"
 #include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/constants.h"
 
@@ -41,8 +45,8 @@ inline BisimulationType resolveBisimulationTypeChoice(BisimulationTypeChoice c) 
 /*!
  * This class is the superclass of all decompositions of a sparse model into its bisimulation quotient.
  */
-template<typename ModelType, typename BlockDataType>
-class BisimulationDecomposition : public Decomposition<StateBlock> {
+template<typename ModelType>
+class BisimulationDecomposition {
    public:
     typedef typename ModelType::ValueType ValueType;
     typedef typename ModelType::RewardModelType RewardModelType;
@@ -209,14 +213,37 @@ class BisimulationDecomposition : public Decomposition<StateBlock> {
     void performPartitionRefinement();
 
     /*!
+     * Performs the signature refinement on the model and thereby computes the equivalence classes under strong
+     * bisimulation equivalence. If required, the quotient model is built and may be retrieved using
+     * getQuotient().
+     */
+    void performSignatureRefinement();
+
+    /*!
+     * Computes the signature of the given state with respect to the given partition.
+     * @param state input state whose signature shall be computed.
+     * @param currentPartition current currentPartition to compute the signature.
+     * @return hash value of the state's signature.
+     */
+    storm::storage::bisimulation::Signature<typename ModelType::ValueType> computeStateSignature(
+        storm::storage::sparse::state_type state,
+        storm::storage::bisimulation::Partition const& currentPartition) const;
+
+    /*!
+     * Computes a hash value based of the signature of the given state with respect to the given partition.
+     * @param state input state whose signature shall be computed.
+     * @return hash value of the state's signature.
+     */
+    std::size_t computeStateSignatureHash(storm::storage::sparse::state_type state) const;
+
+    /*!
      * Refines the partition by considering the given splitter. All blocks that become potential splitters
      * because of this refinement, are marked as splitters and inserted into the splitter vector.
      *
-     * @param splitter The splitter to use.
-     * @param splitterVector The vector into which to insert the newly discovered potential splitters.
+     * @param splitterBlock The splitter to use.
      */
-    virtual void refinePartitionBasedOnSplitter(bisimulation::Block<BlockDataType>& splitter,
-                                                std::vector<bisimulation::Block<BlockDataType>*>& splitterQueue) = 0;
+    virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
+                                                std::unordered_set<uint64_t>& enqueuedSplitterBlocks) = 0;
 
     /*!
      * Builds the quotient model based on the previously computed equivalence classes (stored in the blocks
@@ -277,13 +304,16 @@ class BisimulationDecomposition : public Decomposition<StateBlock> {
     Options options;
 
     // The current partition (used by partition refinement).
-    storm::storage::bisimulation::Partition<BlockDataType> partition;
+    storm::storage::bisimulation::Partition partition;
 
     // A comparator used for comparing the distances of constants.
     storm::utility::ConstantsComparator<ValueType> comparator;
 
-    // The quotient, if it was build. Otherwhise a null pointer.
+    // The quotient, if it was build. Otherwise, a null pointer.
     std::shared_ptr<ModelType> quotient;
+
+    // Map of representative states of absorbing blocks. A single entry represents: <first state of block, representative state>
+    std::map<uint64_t, uint64_t> absorbingBlocks;
 };
 }  // namespace storage
 }  // namespace storm
