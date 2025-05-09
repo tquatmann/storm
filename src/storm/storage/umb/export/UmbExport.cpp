@@ -4,6 +4,7 @@
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
+#include "storm/io/ArchiveWriter.h"
 #include "storm/io/BinaryFileWriter.h"
 #include "storm/io/file.h"
 #include "storm/utility/bitoperations.h"
@@ -11,48 +12,72 @@
 
 namespace storm::umb {
 
-namespace internal {
+namespace detail {
 
-template<typename VectorType>
-    requires storm::io::IsBinaryFileWritable<typename VectorType::value_type>
-void writeVectorToDisk(VectorType const& vector, std::filesystem::path const& filepath) {
-    STORM_LOG_ASSERT(filepath.extension() == ".bin", "Undexpected file path '" << filepath.filename() << "'. File extension must be .bin");
-    storm::io::BinaryFileWriter<typename VectorType::value_type, std::endian::little> writer(filepath);
-    writer.write(vector);
+template<typename T>
+concept TargetType = std::same_as<std::remove_cvref_t<T>, std::filesystem::path> || std::same_as<std::remove_cvref_t<T>, storm::io::ArchiveWriter>;
+
+void createDirectory(std::filesystem::path const& umbDir, std::filesystem::path const& subdirectory) {
+    std::filesystem::create_directories(umbDir / subdirectory);
 }
 
-void writeVectorToDisk(storm::storage::BitVector const& vector, std::filesystem::path const& filepath) {
-    STORM_LOG_ASSERT(filepath.extension() == ".bin", "Undexpected file path '" << filepath.filename() << "'. File extension must be .bin");
-    storm::io::BinaryFileWriter<uint64_t, std::endian::little> writer(filepath);
-    for (uint64_t i = 0; i < vector.bucketCount(); ++i) {
-        writer.write(storm::utility::reverseBits(vector.getBucket(i)));
+void createDirectory(storm::io::ArchiveWriter& archiveWriter, std::filesystem::path const& subdirectory) {
+    archiveWriter.addDirectory(subdirectory.string());
+}
+
+/*!
+ * Write a vector to disk.
+ * The file path must have the extension .bin.
+ */
+template<typename VectorType>
+    requires storm::io::IsBinaryFileWritable<typename VectorType::value_type> || std::same_as<VectorType, storm::storage::BitVector> ||
+             std::same_as<VectorType, storm::umb::UmbBitVector>
+void writeVector(VectorType const& vector, std::filesystem::path const& umbDir, std::filesystem::path const& filepath) {
+    STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
+    if constexpr (std::is_same_v<VectorType, storm::umb::UmbBitVector>) {
+        writeVector(vector.getAsBitVectorAutoSize(), umbDir, filepath);
+    } else if constexpr (std::is_same_v<VectorType, storm::storage::BitVector>) {
+        using BucketType = decltype(std::declval<storm::storage::BitVector&>().getBucket({}));
+        storm::io::BinaryFileWriter<BucketType, std::endian::little> writer(umbDir / filepath);
+        for (uint64_t i = 0; i < vector.bucketCount(); ++i) {
+            writer.write(storm::utility::reverseBits(vector.getBucket(i)));
+        }
+    } else {
+        storm::io::BinaryFileWriter<typename VectorType::value_type, std::endian::little> writer(umbDir / filepath);
+        writer.write(vector);
     }
 }
 
-template<StorageType Storage>
-void writeVectorToDisk(UmbBitVector<Storage> const& vector, std::filesystem::path const& filepath) {
-    writeVectorToDisk(vector.getAsBitVectorAutoSize(), filepath);
+/*!
+ * Write a vector to archive.
+ * The file path must have the extension .bin.
+ */
+template<typename VectorType>
+    requires storm::io::IsBinaryFileWritable<typename VectorType::value_type> || std::same_as<VectorType, storm::storage::BitVector>
+void writeVector(VectorType const& vector, storm::io::ArchiveWriter& archiveWriter, std::filesystem::path const& filepath) {
+    STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
+    archiveWriter.addBinaryFile(filepath.string(), vector);
 }
 
 template<StorageType Storage>
-void writeVectorToDisk(GenericVector<Storage> const& vector, std::filesystem::path const& filepath) {
+void writeVector(GenericVector<Storage> const& vector, TargetType auto& target, std::filesystem::path const& filepath) {
     if (vector.template isType<bool>()) {
-        writeVectorToDisk(vector.template get<bool>(), filepath);
+        writeVector(vector.template get<bool>(), target, filepath);
     } else if (vector.template isType<int32_t>()) {
-        writeVectorToDisk(vector.template get<int32_t>(), filepath);
+        writeVector(vector.template get<int32_t>(), target, filepath);
     } else if (vector.template isType<uint64_t>()) {
-        writeVectorToDisk(vector.template get<uint64_t>(), filepath);
+        writeVector(vector.template get<uint64_t>(), target, filepath);
     } else if (vector.template isType<double>()) {
-        writeVectorToDisk(vector.template get<double>(), filepath);
+        writeVector(vector.template get<double>(), target, filepath);
     } else {
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected type.");
     }
 }
 
 template<typename VectorType>
-void writeVectorToDisk(std::optional<VectorType> const& vector, std::filesystem::path const& filepath) {
+void writeVector(std::optional<VectorType> const& vector, TargetType auto& target, std::filesystem::path const& filepath) {
     if (vector) {
-        writeVectorToDisk(*vector, filepath);
+        writeVector(*vector, target, filepath);
     }
 }
 
@@ -64,19 +89,23 @@ void writeIndexFile(storm::umb::ModelIndex const& index, std::filesystem::path c
     storm::io::closeFile(stream);
 }
 
+void writeIndexFile(storm::umb::ModelIndex const& index, storm::io::ArchiveWriter& archiveWriter) {
+    archiveWriter.addTextFile("index.json", storm::dumpJson(storm::json<storm::RationalNumber>(index)));
+}
+
 template<StorageType Storage>
-void writeStatesChoicesBranchesToDisk(UmbModel<Storage> const& umbModel, std::filesystem::path const& umbDir) {
+void writeStatesChoicesBranches(UmbModel<Storage> const& umbModel, TargetType auto& target) {
     auto const& ts = umbModel.index.transitionSystem;
     auto const& states = umbModel.states;
-    writeVectorToDisk(states.stateToChoice, umbDir / "state-to-choice.bin");
-    writeVectorToDisk(states.stateToPlayer, umbDir / "state-to-player.bin");
-    writeVectorToDisk(states.initialStates, umbDir / "initial-states.bin");
+    writeVector(states.stateToChoice, target, "state-to-choice.bin");
+    writeVector(states.stateToPlayer, target, "state-to-player.bin");
+    writeVector(states.initialStates, target, "initial-states.bin");
     auto const& choices = umbModel.choices;
-    writeVectorToDisk(choices.choiceToBranch, umbDir / "choice-to-branch.bin");
-    writeVectorToDisk(choices.choiceToAction, umbDir / "choice-to-action.bin");
-    // writeVectorToDisk(choices.actionStrings, umbDir, "action-to-action-string.bin", "action-strings.bin");
+    writeVector(choices.choiceToBranch, target, "choice-to-branch.bin");
+    writeVector(choices.choiceToAction, target, "choice-to-action.bin");
+    // writeVector(choices.actionStrings, target, "action-to-action-string.bin", "action-strings.bin");
     auto const& branches = umbModel.branches;
-    writeVectorToDisk(branches.branchToTarget, umbDir / "branch-to-target.bin");
+    writeVector(branches.branchToTarget, target, "branch-to-target.bin");
 
     using BranchValues = storm::umb::ModelIndex::TransitionSystem::BranchValues;
     using BranchValueType = storm::umb::ModelIndex::TransitionSystem::BranchValueType;
@@ -84,7 +113,7 @@ void writeStatesChoicesBranchesToDisk(UmbModel<Storage> const& umbModel, std::fi
         STORM_LOG_THROW(ts.branchValueType.has_value(), storm::exceptions::WrongFormatException, "Branch values are numbers, but no type is specified.");
         if (auto const branchVT = *ts.branchValueType; branchVT == BranchValueType::Double) {
             STORM_LOG_ASSERT(branches.branchValues.template isType<double>(), "Unexpected branch value type.");
-            writeVectorToDisk(branches.branchValues, umbDir / "branch-values.bin");
+            writeVector(branches.branchValues, target, "branch-values.bin");
         } else {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value type " << branchVT << " unhandled.");
         }
@@ -94,30 +123,43 @@ void writeStatesChoicesBranchesToDisk(UmbModel<Storage> const& umbModel, std::fi
 }
 
 template<StorageType Storage>
-void writeAnnotationsToDisk(UmbModel<Storage> const& umbModel, std::filesystem::path const& annotationsDir) {
+void writeAnnotations(UmbModel<Storage> const& umbModel, TargetType auto& target) {
+    createDirectory(target, "annotations");
     for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
-        auto const dirOfAnnotation = annotationsDir / annotationId;
-        std::filesystem::create_directories(dirOfAnnotation);
+        std::filesystem::path const dirOfAnnotation = "annotations/" + annotationId;
+        createDirectory(target, dirOfAnnotation);
         auto const& annotationFile = umbModel.annotations.at(annotationId);
-        writeVectorToDisk(annotationFile.values, dirOfAnnotation / "values.bin");
+        writeVector(annotationFile.values, target, dirOfAnnotation / "values.bin");
     }
 }
 
 template<StorageType Storage>
-void toDisk(storm::umb::UmbModel<Storage> const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& options) {
-    std::filesystem::create_directories(umbDir);
-    writeIndexFile(umbModel.index, umbDir);
-    writeStatesChoicesBranchesToDisk(umbModel, umbDir);
-    writeAnnotationsToDisk(umbModel, umbDir / "annotations");
+void exportUmb(storm::umb::UmbModel<Storage> const& umbModel, TargetType auto& target, ExportOptions const& options) {
+    writeIndexFile(umbModel.index, target);
+    writeStatesChoicesBranches(umbModel, target);
+    writeAnnotations(umbModel, target);
 }
 
-}  // namespace internal
+}  // namespace detail
 
 void toDisk(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& options) {
+    std::filesystem::create_directories(umbDir);
     if (umbModel.isStorageType(StorageType::Disk)) {
-        internal::toDisk(umbModel.template as<StorageType::Disk>(), umbDir, options);
+        detail::exportUmb(umbModel.template as<StorageType::Disk>(), umbDir, options);
     } else if (umbModel.isStorageType(StorageType::Memory)) {
-        internal::toDisk(umbModel.template as<StorageType::Memory>(), umbDir, options);
+        detail::exportUmb(umbModel.template as<StorageType::Memory>(), umbDir, options);
+    } else {
+        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
+    }
+}
+
+void toArchive(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& options) {
+    storm::io::ArchiveWriter archiveWriter(archivePath);
+    if (umbModel.isStorageType(StorageType::Disk)) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Exporting to archive from disk storage is not supported.");  // TODO
+        //        detail::exportUmb(umbModel.template as<StorageType::Disk>(), archiveWriter, options);
+    } else if (umbModel.isStorageType(StorageType::Memory)) {
+        detail::exportUmb(umbModel.template as<StorageType::Memory>(), archiveWriter, options);
     } else {
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
     }

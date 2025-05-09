@@ -19,7 +19,11 @@ template<typename ValueType, typename RewardModelType>
 void exportModelToUmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model, std::filesystem::path const& targetLocation,
                       ExportOptions const& options) {
     auto umb = storm::umb::sparseModelToUmb(model);
-    storm::umb::toDisk(*umb, targetLocation, options);
+    if (targetLocation.has_extension() && targetLocation.extension() == ".umb") {
+        storm::umb::toArchive(*umb, targetLocation, options);
+    } else {
+        storm::umb::toDisk(*umb, targetLocation, options);
+    }
 }
 
 template std::shared_ptr<storm::models::sparse::Model<double>> parseModelFromUmb(std::filesystem::path const&, ImportOptions const&);

@@ -23,8 +23,9 @@ inline T byteSwap(T const t) {
 
 /*!
  * Swaps the bits in the bit representation of the given value
+ * @tparam ReverseBytes If true, the byte representation is also swapped (i.e., endianness is swapped)
  */
-template<typename T>
+template<typename T, bool ReverseBytes = true>
 inline T reverseBits(T const t) {
     // lookup table to quickly reverse the bits in a byte, taken from https://stackoverflow.com/a/2606268
     static const unsigned char table[] = {
@@ -42,7 +43,9 @@ inline T reverseBits(T const t) {
 
     static_assert(std::has_unique_object_representations_v<T> || std::is_same_v<T, double> || std::is_same_v<T, float>, "T may not have padding bits");
     auto value_representation = std::bit_cast<std::array<unsigned char, sizeof(T)>>(t);
-    std::ranges::reverse(value_representation);  // reverse the bytes
+    if constexpr (ReverseBytes) {
+        std::ranges::reverse(value_representation);  // reverse the bytes
+    }
     std::ranges::transform(value_representation, value_representation.begin(),
                            [](unsigned char byte) { return table[byte]; });  // reverse the bits in each byte
     return std::bit_cast<T>(value_representation);

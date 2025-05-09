@@ -24,7 +24,7 @@ struct VectorTypeHelper<std::string, StorageType::Disk> {
 
 template<>
 struct VectorTypeHelper<bool, StorageType::Disk> {
-    using type = UmbBitVector<StorageType::Disk>;
+    using type = UmbBitVector;
 };
 
 template<>

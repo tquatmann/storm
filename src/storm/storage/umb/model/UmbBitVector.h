@@ -8,15 +8,11 @@
 
 namespace storm::umb {
 
-template<StorageType Storage>
-    requires(Storage != StorageType::Memory)
 class UmbBitVector {
    public:
     using UnderlyingType = storm::io::BinaryFileViewer<uint64_t, std::endian::little>;
 
-    UmbBitVector(std::filesystem::path const& path)
-        requires(Storage == StorageType::Disk)
-        : data(path) {
+    UmbBitVector(std::filesystem::path const& path) : data(path) {
         // Intentionally left empty
     }
 

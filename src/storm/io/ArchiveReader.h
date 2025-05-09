@@ -4,7 +4,6 @@
 #include <archive_entry.h>
 
 #include <bit>
-#include <concepts>
 #include <memory>
 #include <string>
 #include <vector>
@@ -75,7 +74,8 @@ class ArchiveReadEntry {
     template<typename T, std::endian Endianness = std::endian::little>
         requires(std::is_arithmetic_v<T>)
     VectorType<T> toVector() {
-        using DataType = std::conditional_t<std::is_same_v<T, bool>, uint64_t, T>;  // for BitVectors, we use uint64_t as the underlying type
+        using BucketType = decltype(std::declval<storm::storage::BitVector&>().getBucket({}));
+        using DataType = std::conditional_t<std::is_same_v<T, bool>, BucketType, T>;  // for BitVectors, we use uint64_t as the underlying type
         constexpr bool NativeEndianness = Endianness == std::endian::native;
         STORM_LOG_THROW(_currentEntry, storm::exceptions::FileIoException, "No valid entry loaded.");
 
@@ -93,7 +93,7 @@ class ArchiveReadEntry {
         // Helper function to add data to the content
         auto append = [&content, &bucketCount](std::ranges::input_range auto&& data) {
             if constexpr (std::is_same_v<T, bool>) {
-                content.grow(bucketCount + data.size() * 64);  // 64 bits in a bucket
+                content.grow(bucketCount + data.size() * sizeof(BucketType) * 8);  // 8 bits in a byte
                 for (auto bits : data) {
                     content.setBucket(
                         bucketCount,
@@ -135,7 +135,7 @@ class ArchiveReadEntry {
 
         // Resize the content to the actual size
         if constexpr (std::is_same_v<T, bool>) {
-            content.resize(bucketCount * 64);  // 64 bits in a bucket
+            content.resize(bucketCount * sizeof(BucketType) * 8);  // 8 bits in a byte
         } else {
             content.shrink_to_fit();
         }
