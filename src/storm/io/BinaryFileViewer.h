@@ -10,6 +10,7 @@
 #include "storm/utility/macros.h"
 
 namespace storm::io {
+static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big, "This code is not supported for mixed endian systems.");
 
 template<typename T>
 concept IsBinaryFileViewable = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
