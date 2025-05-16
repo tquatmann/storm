@@ -1,5 +1,7 @@
 #include "storm/storage/umb/export/UmbExport.h"
 
+#include <boost/pfr.hpp>
+
 #include "storm/storage/umb/model/UmbModel.h"
 
 #include "storm/exceptions/NotSupportedException.h"
@@ -81,85 +83,84 @@ void writeVector(std::optional<VectorType> const& vector, TargetType auto& targe
     }
 }
 
-void writeIndexFile(storm::umb::ModelIndex const& index, std::filesystem::path const& umbDir) {
+void writeIndexFile(storm::umb::ModelIndex const& index, std::filesystem::path const& umbDir, std::filesystem::path const& filepath) {
     std::ofstream stream;
     storm::json<storm::RationalNumber> indexJson(index);
-    storm::io::openFile(umbDir / "index.json", stream, false, true);
+    storm::io::openFile(umbDir / filepath, stream, false, true);
     stream << storm::dumpJson(indexJson);
     storm::io::closeFile(stream);
 }
 
-void writeIndexFile(storm::umb::ModelIndex const& index, storm::io::ArchiveWriter& archiveWriter) {
-    archiveWriter.addTextFile("index.json", storm::dumpJson(storm::json<storm::RationalNumber>(index)));
+void writeIndexFile(storm::umb::ModelIndex const& index, storm::io::ArchiveWriter& archiveWriter, std::filesystem::path const& filepath) {
+    archiveWriter.addTextFile(filepath, storm::dumpJson(storm::json<storm::RationalNumber>(index)));
 }
 
-template<StorageType Storage>
-void writeStatesChoicesBranches(UmbModel<Storage> const& umbModel, TargetType auto& target) {
-    auto const& ts = umbModel.index.transitionSystem;
-    auto const& states = umbModel.states;
-    writeVector(states.stateToChoice, target, "state-to-choice.bin");
-    writeVector(states.stateToPlayer, target, "state-to-player.bin");
-    writeVector(states.initialStates, target, "initial-states.bin");
-    auto const& choices = umbModel.choices;
-    writeVector(choices.choiceToBranch, target, "choice-to-branch.bin");
-    writeVector(choices.choiceToAction, target, "choice-to-action.bin");
-    // writeVector(choices.actionStrings, target, "action-to-action-string.bin", "action-strings.bin");
-    auto const& branches = umbModel.branches;
-    writeVector(branches.branchToTarget, target, "branch-to-target.bin");
+template<typename T>
+concept HasFileNames = requires { T::FileNames.size(); };
 
-    using BranchValues = storm::umb::ModelIndex::TransitionSystem::BranchValues;
-    using BranchValueType = storm::umb::ModelIndex::TransitionSystem::BranchValueType;
-    if (ts.branchValues == BranchValues::Number) {
-        STORM_LOG_THROW(ts.branchValueType.has_value(), storm::exceptions::WrongFormatException, "Branch values are numbers, but no type is specified.");
-        if (auto const branchVT = *ts.branchValueType; branchVT == BranchValueType::Double) {
-            STORM_LOG_ASSERT(branches.branchValues.template isType<double>(), "Unexpected branch value type.");
-            writeVector(branches.branchValues, target, "branch-values.bin");
-        } else {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value type " << branchVT << " unhandled.");
+template<typename T>
+concept FileNameMap = std::same_as<std::remove_cvref_t<typename T::key_type>, std::string> && HasFileNames<typename T::mapped_type>;
+
+template<typename T>
+concept IsOptionalWithFileNames = std::same_as<std::remove_cvref_t<T>, std::optional<typename T::value_type>> && HasFileNames<typename T::value_type>;
+
+template<typename UmbStructure>
+void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std::filesystem::path const& context) {
+    static_assert(UmbStructure::FileNames.size() == boost::pfr::tuple_size_v<UmbStructure>, "Number of file names does not match number of fields in struct.");
+    boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t i) {
+        // potentially create directory for sub-field
+        std::filesystem::path fieldName = std::data(UmbStructure::FileNames)[i];
+        if (!fieldName.empty() && !fieldName.has_extension()) {
+            createDirectory(target, context / fieldName);
         }
-    } else {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value kind " << ts.branchValues << " unhandled.");
-    }
-}
-
-template<StorageType Storage>
-void writeAnnotations(UmbModel<Storage> const& umbModel, TargetType auto& target) {
-    createDirectory(target, "annotations");
-    for (auto const& [annotationId, annotation] : umbModel.index.annotations) {
-        std::filesystem::path const dirOfAnnotation = "annotations/" + annotationId;
-        createDirectory(target, dirOfAnnotation);
-        auto const& annotationFile = umbModel.annotations.at(annotationId);
-        writeVector(annotationFile.values, target, dirOfAnnotation / "values.bin");
-    }
-}
-
-template<StorageType Storage>
-void exportUmb(storm::umb::UmbModel<Storage> const& umbModel, TargetType auto& target, ExportOptions const& options) {
-    writeIndexFile(umbModel.index, target);
-    writeStatesChoicesBranches(umbModel, target);
-    writeAnnotations(umbModel, target);
+        // export the field, either with a recursive call or via writeVector
+        using FieldType = std::remove_cvref_t<decltype(field)>;
+        if constexpr (HasFileNames<FieldType>) {
+            exportFiles(field, target, context / fieldName);
+        } else if constexpr (IsOptionalWithFileNames<FieldType>) {
+            if (field) {
+                exportFiles(*field, target, context / fieldName);
+            }
+        } else if constexpr (FileNameMap<FieldType>) {
+            for (auto const& [key, value] : field) {
+                createDirectory(target, context / fieldName / key);
+                exportFiles(value, target, context / fieldName / key);
+            }
+        } else if constexpr (std::is_same_v<FieldType, storm::umb::ModelIndex>) {
+            writeIndexFile(field, target, context / fieldName);
+        } else if constexpr (std::is_same_v<FieldType, GenericVector<StorageType::Memory>> || std::is_same_v<FieldType, GenericVector<StorageType::Disk>>) {
+            if (field.template isType<storm::RationalNumber>()) {
+                // TODO: handle case
+                assert(false);
+            } else {
+                writeVector(field, target, context / fieldName);
+            }
+        } else {
+            writeVector(field, target, context / fieldName);
+        }
+    });
 }
 
 }  // namespace detail
 
-void toDisk(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& options) {
+void toDisk(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& /*options*/) {
     std::filesystem::create_directories(umbDir);
     if (umbModel.isStorageType(StorageType::Disk)) {
-        detail::exportUmb(umbModel.template as<StorageType::Disk>(), umbDir, options);
+        detail::exportFiles(umbModel.template as<StorageType::Disk>(), umbDir, {});
     } else if (umbModel.isStorageType(StorageType::Memory)) {
-        detail::exportUmb(umbModel.template as<StorageType::Memory>(), umbDir, options);
+        detail::exportFiles(umbModel.template as<StorageType::Memory>(), umbDir, {});
     } else {
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
     }
 }
 
-void toArchive(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& options) {
+void toArchive(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& /*options*/) {
     storm::io::ArchiveWriter archiveWriter(archivePath);
     if (umbModel.isStorageType(StorageType::Disk)) {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Exporting to archive from disk storage is not supported.");  // TODO
-        //        detail::exportUmb(umbModel.template as<StorageType::Disk>(), archiveWriter, options);
+        //        detail::exportUmb(umbModel.template as<StorageType::Disk>(), archiveWriter);
     } else if (umbModel.isStorageType(StorageType::Memory)) {
-        detail::exportUmb(umbModel.template as<StorageType::Memory>(), archiveWriter, options);
+        detail::exportFiles(umbModel.template as<StorageType::Memory>(), archiveWriter, {});
     } else {
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
     }

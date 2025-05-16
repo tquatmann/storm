@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <ctime>
+#include <format>
 #include <optional>
 
 #include "storm/adapters/JsonAdapter.h"
@@ -22,22 +23,27 @@ struct ModelIndex {
     std::optional<ModelData> modelData;
 
     struct FileData {
-        std::optional<std::string> tool, version;
-        std::optional<uint64_t> date;
-        std::optional<std::string> parameters;
+        std::optional<std::string> tool, toolVersion;
+        std::optional<uint64_t> creationDate;
+        std::optional<storm::json<storm::RationalNumber>> parameters;
         auto static constexpr JsonKeys = {"tool", "tool-version", "creation-date", "parameters"};
         using JsonSerialization = storm::JsonSerialization;
 
-        std::string dateAsString() const {
-            if (date) {
-                std::time_t t = static_cast<std::time_t>(date.value());
+        std::string creationDateAsString() const {
+            if (creationDate) {
+                std::time_t t = static_cast<std::time_t>(creationDate.value());
                 return std::ctime(&t);
             } else {
                 return "unknown";
             }
         }
-        void setDateToNow() {
-            date = static_cast<uint64_t>(std::time(nullptr));
+        void setCreationDateToNow() {
+            if (std::time_t result; std::time(&result) == static_cast<std::time_t>(-1)) {
+                STORM_LOG_WARN("No creation time is set for UMB index: unable to get the current time.");
+                creationDate.reset();
+            } else {
+                creationDate.emplace(result);
+            }
         }
     };
     std::optional<FileData> fileData;
@@ -50,54 +56,93 @@ struct ModelIndex {
         };
         storm::SerializedEnum<TimeDeclaration> time;
 
-        uint64_t players{0};
+        auto static constexpr InvalidNumber = std::numeric_limits<uint64_t>::max();  // initial value for counts
+        uint64_t numPlayers{InvalidNumber}, numStates{InvalidNumber}, numInitialStates{InvalidNumber}, numChoices{InvalidNumber}, numActions{InvalidNumber},
+            numBranches{InvalidNumber};
 
-        enum class BranchValues { None, Number, Interval };
-        struct BranchValuesDeclaration {
-            using Values = BranchValues;
-            auto static constexpr Keys = {"none", "number", "interval"};
+        enum class BranchProbabilityType { None, Double, Rational, DoubleInterval, RationalInterval };
+        struct BranchProbabilityTypeDeclaration {
+            using Values = BranchProbabilityType;
+            auto static constexpr Keys = {"none", "double", "rational", "double-interval", "rational-interval"};
         };
-        storm::SerializedEnum<BranchValuesDeclaration> branchValues;
+        storm::SerializedEnum<BranchProbabilityTypeDeclaration> branchProbabilityType;
 
-        uint64_t numStates{0}, numInitialStates{0}, numChoices{0}, numActions{1} /* TODO */, numBranches{0};
-
-        enum class BranchValueType { Double, Rational };
-        struct BranchValueTypeDeclaration {
-            using Values = BranchValueType;
-            auto static constexpr Keys = {"double", "rational"};
-        };
-        std::optional<storm::SerializedEnum<BranchValueTypeDeclaration>> branchValueType;
-
-        auto static constexpr JsonKeys = {"time",     "#players", "branch-values", "#states",          "#initial-states",
-                                          "#choices", "#actions", "#branches",     "branch-value-type"};
-
+        auto static constexpr JsonKeys = {"time", "#players", "#states", "#initial-states", "#choices", "#actions", "#branches", "branch-probability-type"};
         using JsonSerialization = storm::JsonSerialization;
 
     } transitionSystem;
 
-    struct Annotation {
-        std::optional<std::string> name;
-
+    struct Annotations {
         enum class AppliesTo { States, Choices, Branches };
         struct AppliesToDeclaration {
             using Values = AppliesTo;
             auto static constexpr Keys = {"states", "choices", "branches"};
         };
-        storm::SerializedEnum<AppliesToDeclaration> appliesTo;
-
-        enum class Type { Bool, Int32, Double, Rational, String };
-        struct TypeDeclaration {
-            using Values = Type;
-            auto static constexpr Keys = {"bool", "int-32", "double", "rational", "string"};
+        struct Reward {
+            std::optional<std::string> alias, description;
+            std::optional<storm::RationalNumber> lower, upper;
+            enum class Type { Double, Rational, DoubleInterval, RationalInterval };
+            struct TypeDeclaration {
+                using Values = Type;
+                auto static constexpr Keys = {"double", "rational", "double-interval", "rational-interval"};
+            };
+            storm::SerializedEnum<TypeDeclaration> type;
+            std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;  // todo check if this stays here
+            auto static constexpr JsonKeys = {"alias", "description", "lower", "upper", "type", "applies-to"};
+            using JsonSerialization = storm::JsonSerialization;
         };
-        storm::SerializedEnum<TypeDeclaration> type{Type::Bool};
+        std::map<std::string, Reward> rewards;
 
-        // TODO: #strings, lower, upper
+        struct AtomicProposition {
+            std::optional<std::string> alias, description;
+            std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;  // todo check if this stays here
+            auto static constexpr JsonKeys = {"alias", "description", "applies-to"};
+            using JsonSerialization = storm::JsonSerialization;
+        };
+        std::map<std::string, AtomicProposition> atomicPropositions;
 
-        auto static constexpr JsonKeys = {"name", "applies-to", "type"};
+        static std::pair<std::string, std::optional<std::string>> getAllowedNameAndAlias(std::string const& inputName) {
+            auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };
+
+            if (std::all_of(inputName.begin(), inputName.end(), isAllowed)) {
+                return {inputName, std::nullopt};  // no alias needed
+            } else {
+                std::string newName;
+                for (auto ch : inputName) {
+                    if (isAllowed(ch)) {
+                        newName += ch;
+                    } else {
+                        newName += "_0x" + std::format("{:x}", ch) + '_';
+                    }
+                }
+                return {newName, inputName};  // alias is the original name
+            }
+        }
+
+        template<typename MapType>
+        static std::string findAnnotationName(MapType const& map, std::string const& id) {
+            if (map.contains(id)) {
+                return id;
+            }
+            for (auto const& [name, annotation] : map) {
+                if (annotation.alias == id) {
+                    return name;
+                }
+            }
+            return {};
+        }
+
+        std::string findRewardName(std::string const& id) const {
+            return findAnnotationName(rewards, id);
+        }
+
+        std::string findAtomicPropositionName(std::string const& id) const {
+            return findAnnotationName(atomicPropositions, id);
+        }
+
+        auto static constexpr JsonKeys = {"rewards", "aps"};
         using JsonSerialization = storm::JsonSerialization;
-    };
-    std::map<std::string, Annotation> annotations;
+    } annotations;
 
     auto static constexpr JsonKeys = {"format-version", "format-revision", "model-data", "file-data", "transition-system", "annotations"};
     using JsonSerialization = storm::JsonSerialization;

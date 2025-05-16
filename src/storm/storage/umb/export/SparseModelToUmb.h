@@ -2,12 +2,12 @@
 
 #include <memory>
 #include "storm/models/sparse/Model.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 
+#include "storm/storage/umb/export/ExportOptions.h"
 #include "storm/storage/umb/model/UmbModelForward.h"
 
 namespace storm::umb {
-template<typename ValueType, typename RewardModelType = storm::models::sparse::StandardRewardModel<ValueType>>
-std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model);
+template<typename ValueType>
+std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options);
 
 }  // namespace storm::umb

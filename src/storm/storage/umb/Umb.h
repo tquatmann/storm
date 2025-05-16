@@ -6,16 +6,13 @@
 #include "storm/storage/umb/import/ImportOptions.h"
 
 #include "storm/models/sparse/Model.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 
 namespace storm::umb {
-template<typename ValueType, typename RewardModelType = storm::models::sparse::StandardRewardModel<ValueType>>
-std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> parseModelFromUmb(std::filesystem::path const& umbLocation,
-                                                                                            ImportOptions const& options = {});
+template<typename ValueType>
+std::shared_ptr<storm::models::sparse::Model<ValueType>> parseModelFromUmb(std::filesystem::path const& umbLocation, ImportOptions const& options = {});
 
-template<typename ValueType, typename RewardModelType = storm::models::sparse::StandardRewardModel<ValueType>>
-void exportModelToUmb(storm::models::sparse::Model<ValueType, RewardModelType> const& model, std::filesystem::path const& targetLocation,
-                      ExportOptions const& options = {});
+template<typename ValueType>
+void exportModelToUmb(storm::models::sparse::Model<ValueType> const& model, std::filesystem::path const& targetLocation, ExportOptions const& options = {});
 
 }  // namespace storm::umb
 

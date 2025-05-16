@@ -11,7 +11,7 @@
 namespace storm::umb {
 
 template<StorageType Storage>
-class UmbModel : public UmbModelBase {
+class UmbModel {
    public:
     template<typename T>
     using OptionalVec = std::optional<VectorType<T, Storage>>;
@@ -38,26 +38,47 @@ class UmbModel : public UmbModelBase {
         CSR stateToChoice;
         TO1<uint32_t> stateToPlayer;
         TO1<bool> initialStates;
+        auto static constexpr FileNames = {"state-to-choice.bin", "state-to-player.bin", "initial-states.bin"};
     } states;
     struct Choices {
         CSR choiceToBranch;
         TO1<uint32_t> choiceToAction;
-        // CSR actionToActionString intentionally absent
-        SEQ<std::string> actionStrings;
+        CSR actionToActionString;
+        SEQ<char> actionStrings;
+        auto static constexpr FileNames = {"choice-to-branch.bin", "choice-to-action.bin", "action-to-action-string.bin", "action-strings.bin"};
     } choices;
     struct Branches {
         TO1<uint64_t> branchToTarget;
-        // CSR branchToValue intentionally absent
-        SEQ<AnyType> branchValues;
+        CSR branchToProbability;
+        SEQ<AnyType> branchProbabilities;
+        auto static constexpr FileNames = {"branch-to-target.bin", "branch-to-probability.bin", "branch-probabilities.bin"};
     } branches;
-    struct Annotation {
-        TO1<AnyType> values;
-        // TODO: Support for distributions, string-valued annotations, ...
-    };
-    std::map<std::string, Annotation> annotations;
 
-    virtual bool isStorageType(StorageType storageType) const override;
-    virtual ModelIndex const& getIndex() const override;
+    struct Annotation {
+        struct Values {
+            CSR toValue;
+            SEQ<AnyType> values;
+            auto static constexpr FileNames = {"to-value.bin", "values.bin"};
+            // TODO: Support for distributions, string-valued annotations, ...
+        };
+        std::optional<Values> forStates, forChoices, forBranches;
+        auto static constexpr FileNames = {"for-states/", "for-choices/", "for-branches/"};
+    };
+    std::map<std::string, Annotation> rewards;
+
+    struct BooleanAnnotation {
+        struct Values {
+            TO1<bool> values;
+            auto static constexpr FileNames = {"values.bin"};
+        };
+        std::optional<Values> forStates, forChoices, forBranches;
+        auto static constexpr FileNames = {"for-states/", "for-choices/", "for-branches/"};
+    };
+    std::map<std::string, BooleanAnnotation> atomicPropositions;
+
+    auto static constexpr FileNames = {"index.json", "", "", "", "annotations/rewards/", "annotations/aps/"};
+
+    bool validate(bool silent = false) const;
 };
 
 }  // namespace storm::umb

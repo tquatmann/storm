@@ -14,12 +14,17 @@ struct VectorTypeHelper;
 
 template<>
 struct VectorTypeHelper<storm::RationalNumber, StorageType::Disk> {
-    using type = std::vector<storm::RationalNumber>;  // todo
+    using type = std::vector<storm::RationalNumber>;
+};
+
+template<>
+struct VectorTypeHelper<storm::Interval, StorageType::Disk> {
+    using type = std::vector<storm::Interval>;
 };
 
 template<>
 struct VectorTypeHelper<std::string, StorageType::Disk> {
-    using type = std::vector<std::string>;  // todo
+    using type = std::vector<std::string>;
 };
 
 template<>

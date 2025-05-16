@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ranges>
 #include <variant>
 
@@ -94,6 +96,6 @@ class GenericVector {
     }
 
    private:
-    std::variant<std::monostate, Vec<bool>, Vec<int32_t>, Vec<uint64_t>, Vec<double>, Vec<storm::RationalNumber>> data;
+    std::variant<std::monostate, Vec<bool>, Vec<int32_t>, Vec<uint64_t>, Vec<double>, Vec<storm::RationalNumber>, Vec<storm::Interval>> data;
 };
 }  // namespace storm::umb

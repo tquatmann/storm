@@ -16,6 +16,17 @@
 namespace storm::umb {
 
 namespace internal {
+template<typename T>
+concept HasFileNames = requires { T::FileNames.size(); };
+
+template<typename T>
+concept FileNameMap = std::same_as<std::remove_cvref_t<typename T::key_type>, std::string> && HasFileNames<typename T::mapped_type>;
+
+template<typename T>
+concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename T::value_type>>;
+
+template<typename T>
+concept IsOptionalWithFileNames = IsOptional<T> && HasFileNames<typename T::value_type>;
 
 void parseIndexFromDisk(std::filesystem::path const& indexFilePath, storm::umb::ModelIndex& index) {
     storm::json<storm::RationalNumber> parsedStructure;
@@ -27,10 +38,25 @@ void parseIndexFromDisk(std::filesystem::path const& indexFilePath, storm::umb::
 }
 
 void parseIndexFromString(std::string const& indexFileString, storm::umb::ModelIndex& index) {
-    std::cout << indexFileString << std::endl;
     storm::json<storm::RationalNumber>::parse(indexFileString).get_to(index);
 }
 
+/*!
+ * Prepares annotations so that all fields are available according to the index.
+ */
+template<StorageType Storage>
+void prepareAnnotations(storm::umb::UmbModel<Storage>& umbModel) {
+    for (auto const& [name, rew] : umbModel.index.annotations.rewards) {
+        umbModel.rewards[name];
+    }
+    for (auto const& [name, ap] : umbModel.index.annotations.atomicPropositions) {
+        umbModel.atomicPropositions[name];
+    }
+}
+
+/*!
+ * Helper struct used when loading umb from disk.
+ */
 struct UmbPath {
     std::filesystem::path base, filepath;
 };
@@ -46,153 +72,165 @@ std::filesystem::path getFilePath(storm::io::ArchiveReadEntry const& src) {
     return src.name();
 }
 
-template<typename T>
-bool loadIfMatches(UmbPath const& src, std::filesystem::path const& file, T& objRef) {
-    if (getFilePath(src) == file) {
-        objRef.emplace(src.base / src.filepath);
-        return true;
-    }
-    return false;
+template<typename VecT>
+    requires std::same_as<VecT, storm::umb::UmbBitVector> || std::same_as<VecT, storm::io::BinaryFileViewer<typename VecT::value_type, std::endian::little>>
+VecT importVector(UmbPath const& src) {
+    return VecT(src.base / src.filepath);
 }
 
-template<typename T>
-bool loadIfMatches(storm::io::ArchiveReadEntry& src, auto const& file, std::optional<T>& objRef) {
-    if (getFilePath(src) == file) {
-        if constexpr (std::is_same_v<T, storm::storage::BitVector>) {
-            objRef = src.template toVector<bool>();
-        } else {
-            objRef = src.template toVector<typename T::value_type>();
-        }
-        return true;
-    }
-    return false;
+template<typename VecT>
+    requires std::same_as<VecT, std::vector<typename VecT::value_type>>
+VecT importVector(storm::io::ArchiveReadEntry& src) {
+    return src.template toVector<typename VecT::value_type>();
 }
 
-template<typename EnumType, StorageType Storage>
-    requires std::is_enum_v<EnumType>
-bool loadGenericVectorIfMatches(SourceType auto& src, std::filesystem::path const& file, EnumType const type, GenericVector<Storage>& objRef) {
-    if (getFilePath(src) != file) {
-        return false;
+template<typename VecT>
+    requires std::same_as<VecT, storm::storage::BitVector>
+VecT importVector(storm::io::ArchiveReadEntry& src) {
+    return src.template toVector<bool>();
+}
+
+template<typename VecT>
+void importVector(SourceType auto& src, std::optional<VecT>& target) {
+    target = importVector<VecT>(src);
+}
+
+template<typename VecT>
+    requires(!IsOptional<VecT>)
+void importVector(SourceType auto& src, VecT& target) {
+    target = importVector<VecT>(src);
+}
+
+template<typename ValueType, StorageType Storage>
+void importGenericVector(SourceType auto& src, GenericVector<Storage>& target) {
+    target.template set<ValueType>(importVector<typename GenericVector<Storage>::template Vec<ValueType>>(src));
+}
+
+template<typename TypeDecl, StorageType Storage>
+    requires std::is_enum_v<typename TypeDecl::E>
+void importGenericVector(SourceType auto& src, TypeDecl const& type, GenericVector<Storage>& target) {
+    using E = typename TypeDecl::E;
+    if (type == E::Double || type == E::DoubleInterval) {
+        importGenericVector<double>(src, target);
+    } else if (type == E::Rational || type == E::RationalInterval) {
+        importGenericVector<uint64_t>(src, target);
+    } else {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Type " << type << " is not handled.");
     }
-    auto set = [&objRef, &src]<typename T>() {
-        if constexpr (std::is_same_v<std::remove_cvref_t<decltype(src)>, storm::io::ArchiveReadEntry>) {
-            objRef.template set<T>(src.template toVector<T>());
+}
+
+template<StorageType Storage>
+void importGenericVector(SourceType auto& src, storm::umb::ModelIndex const& index, GenericVector<Storage>& target) {
+    // Find type information in the index that matches the given src.
+    auto srcPath = getFilePath(src);
+    if (srcPath == "branch-probabilities.bin") {
+        importGenericVector(src, index.transitionSystem.branchProbabilityType, target);
+    } else {
+        // Reaching this means that we must have reward values. We expect a path of the form
+        // "annotations/rewards/<annotationId>/for-<somewhere>/values.bin"
+        std::vector<std::string> p(srcPath.begin(), srcPath.end());
+        if (p.size() == 5 && p[0] == "annotations" && p[1] == "rewards" && p[4] == "values.bin") {
+            auto const& annotationId = p[2];
+            auto const& rewards = index.annotations.rewards;
+            STORM_LOG_THROW(rewards.contains(annotationId), storm::exceptions::WrongFormatException,
+                            "Annotation id '" << annotationId << "'referenced in file but not found in index.");
+            importGenericVector(src, rewards.at(annotationId).type, target);
         } else {
-            objRef.template set<T>(typename GenericVector<Storage>::template Vec<T>(src.base / src.filepath));
+            STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
+                            "Unexpected file path '" << srcPath << "'. Expected 'annotations/rewards/<annotationId>/for-<somewhere>/values.bin'.");
         }
+    }
+}
+
+template<StorageType Storage, typename UmbStructure>
+    requires HasFileNames<UmbStructure>
+bool importVector(SourceType auto& src, storm::umb::ModelIndex const& index, UmbStructure& umbStructure, std::filesystem::path const& context) {
+    static_assert(UmbStructure::FileNames.size() == boost::pfr::tuple_size_v<UmbStructure>, "Number of file names does not match number of fields in struct.");
+
+    // helper to check if src is in the given path
+    auto containsSrc = [&src](auto const& other) {
+        auto srcPath = getFilePath(src);
+        auto srcIt = srcPath.begin();
+        for (auto const& o : other) {
+            if (srcIt == srcPath.end() || *srcIt != o && !o.empty()) {
+                return false;
+            }
+            ++srcIt;
+        }
+        return true;
     };
 
-    if (type == EnumType::Double) {
-        set.template operator()<double>();
-    }
-    if constexpr (std::is_same_v<EnumType, storm::umb::ModelIndex::Annotation::Type>) {
-        if (type == EnumType::Bool) {
-            set.template operator()<bool>();
-        } else if (type == EnumType::Int32) {
-            set.template operator()<int32_t>();
-        }
-    }
-    STORM_LOG_ASSERT(objRef.hasValue(), "Unexpected type with index: " << static_cast<std::underlying_type_t<EnumType>>(type) << ".");
-    return true;
-}
-
-template<typename EnumType, StorageType Storage>
-    requires std::is_enum_v<typename EnumType::E>
-bool loadGenericVectorIfMatches(SourceType auto& src, std::filesystem::path const& file, EnumType const type, GenericVector<Storage>& objRef) {
-    return loadGenericVectorIfMatches<typename EnumType::E>(src, file, type, objRef);  // convert to inner enum type
-}
-
-template<StorageType Storage>
-bool loadStatesChoicesBranches(SourceType auto& src, UmbModel<Storage>& umbModel) {
-    bool processed{false};
-
-    auto const& ts = umbModel.index.transitionSystem;
-    auto& states = umbModel.states;
-    processed |= loadIfMatches(src, "state-to-choice.bin", states.stateToChoice);
-    processed |= loadIfMatches(src, "state-to-player.bin", states.stateToPlayer);
-    processed |= loadIfMatches(src, "initial-states.bin", states.initialStates);
-    auto& choices = umbModel.choices;
-    processed |= loadIfMatches(src, "choice-to-branch.bin", choices.choiceToBranch);
-    processed |= loadIfMatches(src, "choice-to-action.bin", choices.choiceToAction);
-    auto& branches = umbModel.branches;
-    processed |= loadIfMatches(src, "branch-to-target.bin", branches.branchToTarget);
-
-    using BranchValues = storm::umb::ModelIndex::TransitionSystem::BranchValues;
-    using BranchValueType = storm::umb::ModelIndex::TransitionSystem::BranchValueType;
-    if (ts.branchValues == BranchValues::Number) {
-        STORM_LOG_THROW(ts.branchValueType.has_value(), storm::exceptions::WrongFormatException, "Branch values are numbers, but no type is specified.");
-        if (auto const branchVT = *ts.branchValueType; branchVT == BranchValueType::Double) {
-            processed |= loadGenericVectorIfMatches(src, "branch-values.bin", branchVT, branches.branchValues);
-        } else {
-            //  constructFromPathIfExists(umbDir, "branch-to-value.bin", "branch-rational.bin", branches.branchToValue);
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value type " << branchVT << " unhandled.");
-        }
-    } else {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Branch value kind " << ts.branchValues << " unhandled.");
-    }
-    return processed;
-}
-
-template<StorageType Storage>
-bool loadAnnotations(SourceType auto& src, UmbModel<Storage>& umbModel) {
-    // extract the annotations ID from src
-    auto file = getFilePath(src);
-    auto fileIt = file.begin();
-    auto getNextElementOfPath = [&fileIt, &file]() { return fileIt != file.end() ? *fileIt++ : std::filesystem::path{}; };
-    auto const annotationsRootDir = getNextElementOfPath();
-    STORM_LOG_ASSERT(annotationsRootDir == "annotations", "Unexpected path: " << file);
-    std::string const annotationId = getNextElementOfPath();
-    auto annotationIndex = umbModel.index.annotations.find(annotationId);
-    if (annotationIndex == umbModel.index.annotations.end()) {
-        STORM_LOG_WARN("Annotation ID '" << annotationId << "' not found in index file but referenced in file '" << file << "', which will be ignored.");
+    // check if the src is in the given context
+    if (!containsSrc(context)) {
         return false;
     }
-    auto& annotation = umbModel.annotations[annotationId];
-    return loadGenericVectorIfMatches(src, "annotations/" + annotationId + "/values.bin", annotationIndex->second.type, annotation.values);
+    bool found = false;
+    boost::pfr::for_each_field(umbStructure, [&](auto& field, std::size_t i) {
+        auto fieldPath = context / std::data(UmbStructure::FileNames)[i];
+        // handle the case that we already found the subfield or that this is not the right subfield
+        if (found || !containsSrc(fieldPath)) {
+            return;
+        }
+
+        // load the file into this field, either with a recursive call or directly if the field points to a file
+        using FieldType = std::remove_cvref_t<decltype(field)>;
+        if constexpr (HasFileNames<FieldType>) {
+            found = importVector<Storage>(src, index, field, fieldPath);
+        } else if constexpr (IsOptionalWithFileNames<FieldType>) {
+            field.emplace();
+            found = importVector<Storage>(src, index, field.value(), fieldPath);
+        } else if constexpr (FileNameMap<FieldType>) {
+            for (auto& [key, value] : field) {
+                found = importVector<Storage>(src, index, value, fieldPath / key);
+                if (found) {
+                    break;
+                }
+            }
+        } else {
+            // reaching this point means that we have found the right field
+            STORM_LOG_THROW(fieldPath == getFilePath(src), storm::exceptions::WrongFormatException,
+                            "Unexpected file paths: " << fieldPath << " != " << getFilePath(src));
+            found = true;
+            if constexpr (std::is_same_v<FieldType, GenericVector<Storage>>) {
+                importGenericVector(src, index, field);
+            } else if constexpr (!std::is_same_v<FieldType, storm::umb::ModelIndex>) {
+                importVector(src, field);
+            }
+        }
+    });
+    return found;
 }
 
-template<StorageType Storage>
-void loadSource(SourceType auto& src, UmbModel<Storage>& umbModel) {
-    std::cout << "loading file: " << getFilePath(src) << "\n";
-
-    if (*getFilePath(src).begin() == "annotations") {
-        if (!loadAnnotations(src, umbModel)) {
-            STORM_LOG_WARN("Unable to process file " << getFilePath(src) << " for annotations.");
-        }
-    } else {
-        if (!loadStatesChoicesBranches(src, umbModel)) {
-            STORM_LOG_WARN("Unable to process file " << getFilePath(src) << ".");
-        }
-    }
-}
-
-std::unique_ptr<UmbModelBase> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& options) {
+std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& options) {
+    storm::utility::Stopwatch stopwatch;
+    stopwatch.start();
     STORM_LOG_THROW(std::filesystem::is_directory(umbDir), storm::exceptions::FileIoException, "The given path is not a directory.");
     auto result = std::make_unique<UmbModel<StorageType::Disk>>();
     internal::parseIndexFromDisk(umbDir / "index.json", result->index);
-    std::cout << "umb dir is " << umbDir << "\n";
     std::string umbDirString = umbDir.string();
     if (umbDirString.back() != '/') {
         umbDirString.push_back('/');
     }
+    prepareAnnotations(*result);
     for (auto f : std::filesystem::recursive_directory_iterator(umbDir)) {
-        std::cout << "Reading file: " << f.path() << " aka " << f << "\n";
         // get the suffix of file f without the umbDir prefix
         // This is a bit hacky, but there does not seem to be a more elegant way (?)
         std::string fString = f.path().string();
-        STORM_LOG_THROW(fString.starts_with(umbDirString), storm::exceptions::UnexpectedException,
+        STORM_LOG_THROW(fString.starts_with(umbDirString), storm::exceptions::WrongFormatException,
                         "Unexpected String: " << fString << " does not start with " << umbDirString);
         UmbPath entry{umbDir, fString.substr(umbDirString.length())};
-        std::cout << "Entry is " << entry.filepath << "\n";
         if (entry.filepath == "index.json" || f.is_directory() || entry.filepath.empty()) {
             continue;  // skip the index file and directories
         }
-        loadSource(entry, *result);
+        bool found = importVector<StorageType::Disk>(entry, result->index, *result, "");
+        STORM_LOG_WARN_COND(
+            found, "File '" << entry.filepath << "' in UMB directory '" << entry.base << "' will be ignored as it could not be associated with any UMB field.");
     }
+    std::cout << "Time for loading UMB as directory: " << stopwatch << " seconds.\n";
     return result;
 }
 
-std::unique_ptr<UmbModelBase> fromArchive(std::filesystem::path const& umbArchive, ImportOptions const& options) {
+std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path const& umbArchive, ImportOptions const& options) {
     storm::utility::Stopwatch stopwatch;
     stopwatch.start();
     auto result = std::make_unique<UmbModel<StorageType::Memory>>();
@@ -209,11 +247,14 @@ std::unique_ptr<UmbModelBase> fromArchive(std::filesystem::path const& umbArchiv
     std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";
     stopwatch.restart();
     // Second pass: load the bin files
+    prepareAnnotations(*result);
     for (auto entry : storm::io::openArchive(umbArchive)) {
         if (entry.name() == "index.json" || entry.isDir()) {
             continue;  // skip the index file and directories
         }
-        loadSource(entry, *result);
+        bool found = importVector<StorageType::Memory>(entry, result->index, *result, "");
+        STORM_LOG_WARN_COND(
+            found, "File " << getFilePath(entry) << " in UMB archive " << umbArchive << " will be ignored as it could not be associated with any UMB field.");
     }
     std::cout << "Second pass: bin files loaded in " << stopwatch << " seconds.\n";
     return result;
@@ -224,9 +265,9 @@ std::unique_ptr<UmbModelBase> fromArchive(std::filesystem::path const& umbArchiv
 std::unique_ptr<UmbModelBase> fromDisk(std::filesystem::path const& umbLocation, ImportOptions const& options) {
     STORM_LOG_THROW(std::filesystem::exists(umbLocation), storm::exceptions::FileIoException, "The given path '" << umbLocation << "' does not exist.");
     if (std::filesystem::is_directory(umbLocation)) {
-        return internal::fromDirectory(umbLocation, options);
+        return std::make_unique<UmbModelBase>(internal::fromDirectory(umbLocation, options));
     } else {
-        return internal::fromArchive(umbLocation, options);
+        return std::make_unique<UmbModelBase>(internal::fromArchive(umbLocation, options));
     }
 }
 
