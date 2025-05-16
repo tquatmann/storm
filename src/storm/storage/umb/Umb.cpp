@@ -11,17 +11,17 @@ namespace storm::umb {
 
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> parseModelFromUmb(std::filesystem::path const& umbLocation, ImportOptions const& options) {
-    auto umb = storm::umb::fromDisk(umbLocation, options);
-    return storm::umb::sparseModelFromUmb<ValueType>(*umb);
+    auto umb = storm::umb::importUmb(umbLocation, options);
+    return storm::umb::sparseModelFromUmb<ValueType>(umb);
 }
 
 template<typename ValueType>
 void exportModelToUmb(storm::models::sparse::Model<ValueType> const& model, std::filesystem::path const& targetLocation, ExportOptions const& options) {
     auto umb = storm::umb::sparseModelToUmb(model, options);
     if (targetLocation.has_extension() && targetLocation.extension() == ".umb") {
-        storm::umb::toArchive(*umb, targetLocation, options);
+        storm::umb::toArchive(umb, targetLocation, options);
     } else {
-        storm::umb::toDisk(*umb, targetLocation, options);
+        storm::umb::toDisk(umb, targetLocation, options);
     }
 }
 

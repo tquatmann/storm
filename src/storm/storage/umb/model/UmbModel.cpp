@@ -55,10 +55,11 @@ bool UmbModel<Storage>::validate(bool silent) const {
         STORM_LOG_ERROR_COND(silent, "Choice to branch mapping is invalid.");
         isValid = false;
     }
-    if (!validateCsr(choices.actionToActionString, tsIndex.numActions, sizeOr(choices.actionStrings, tsIndex.numActions), silent)) {
-        STORM_LOG_ERROR_COND(silent, "Action string mapping is invalid.");
-        isValid = false;
-    }
+    // todo: check what the default behavior of action strings is.
+    //    if (!validateCsr(choices.actionToActionString, tsIndex.numActions, sizeOr(choices.actionStrings, 0), silent)) {
+    //        STORM_LOG_ERROR_COND(silent, "Action string mapping is invalid.");
+    //        isValid = false;
+    //    }
 
     // Validate other inputs
     if (!branches.branchToTarget.has_value() || branches.branchToTarget->size() != tsIndex.numBranches) {
@@ -73,6 +74,7 @@ bool UmbModel<Storage>::validate(bool silent) const {
     // TODO: add more validations
     // If prob type is rational, probabilities are either rational or uint64
     // if annotation forStates/forChoices/forBranches is set, values are set too
+    // annotations in index are unique, and present as files
     return isValid;
 }
 

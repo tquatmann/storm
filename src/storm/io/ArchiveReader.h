@@ -81,19 +81,17 @@ class ArchiveReadEntry {
         requires(std::is_arithmetic_v<T>)
     VectorType<T> toVector() {
         using BucketType = decltype(std::declval<storm::storage::BitVector&>().getBucket({}));
-        constexpr bool isBitVector = std::is_same_v<T, bool>;
-        using DataType = std::conditional_t<std::is_same_v<T, bool>, BucketType, T>;  // for BitVectors, we use uint64_t as the underlying type
+        constexpr bool IsBitVector = std::is_same_v<T, bool>;
+        using DataType = std::conditional_t<IsBitVector, BucketType, T>;  // for BitVectors, we use uint64_t as the underlying type
         constexpr bool NativeEndianness = Endianness == std::endian::native;
         STORM_LOG_THROW(_currentEntry, storm::exceptions::FileIoException, "No valid entry loaded.");
 
         // Prepare the vector to store the data, using given size (if available)
         VectorType<T> content;
         auto entrySize = archive_entry_size(_currentEntry);
-        std::cout << "Entry size: " << entrySize << "\n";
         checkResult(_archive, entrySize);
         entrySize = std::max<decltype(entrySize)>(entrySize, 0);
-        std::cout << "Reading entry: " << name() << " (size=" << entrySize << " bytes, " << sizeof(DataType) << " bytes per entry)\n";
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (IsBitVector) {
             content.resize(entrySize * 8);  // 8 bits in a byte
         } else {
             // For other types, we reserve the number of elements
@@ -103,7 +101,7 @@ class ArchiveReadEntry {
         [[maybe_unused]] uint64_t bucketCount = 0;  // only used for BitVector content
         // Helper function to add data to the content
         auto append = [&content, &bucketCount](std::ranges::input_range auto&& data) {
-            if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (IsBitVector) {
                 content.grow(bucketCount + data.size() * sizeof(BucketType) * 8);  // 8 bits in a byte
                 for (auto bits : data) {
                     content.setBucket(
@@ -113,6 +111,7 @@ class ArchiveReadEntry {
                     ++bucketCount;
                 }
             } else {
+                (void)bucketCount;  // silences unused lambda capture warning
                 content.insert(content.end(), data.begin(), data.end());
             }
         };
@@ -135,7 +134,6 @@ class ArchiveReadEntry {
             // put the next chunk into the buffer
             auto offsetBytes = bytesRead % sizeof(DataType);  // number of bytes that could not be processed in this round
             if (offsetBytes > 0 && numValues > 0) {
-                std::cout << " have offset bytes: " << offsetBytes << " bytes\n";
                 // if some of the bytes could not be processed, we copy them to the beginning of the buffer for the next read
                 std::copy(buffer.data() + bytesRead - offsetBytes, buffer.data() + bytesRead, buffer.data());
             }
@@ -149,10 +147,9 @@ class ArchiveReadEntry {
             }
             bytesRead += offsetBytes;  // actual number of bytes to process in the buffer
         }
-        std::cout << "\t actual size of vector is " << (content.size()) << " entries.\n";
 
         // Resize the content to the actual size
-        if constexpr (std::is_same_v<T, bool>) {
+        if constexpr (IsBitVector) {
             content.resize(bucketCount * sizeof(BucketType) * 8);  // 8 bits in a byte
         } else {
             content.shrink_to_fit();
@@ -238,8 +235,8 @@ class ArchiveReadHandle {
         }
 
        private:
-        archive_entry* _currentEntry{nullptr};
         std::unique_ptr<archive, ArchiveDeleter> _archive;
+        archive_entry* _currentEntry{nullptr};
     };
 
     ArchiveReadHandle(std::string const& filename) : filename(filename){};

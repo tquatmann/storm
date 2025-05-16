@@ -110,18 +110,24 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
     boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t i) {
         // potentially create directory for sub-field
         std::filesystem::path fieldName = std::data(UmbStructure::FileNames)[i];
-        if (!fieldName.empty() && !fieldName.has_extension()) {
-            createDirectory(target, context / fieldName);
-        }
         // export the field, either with a recursive call or via writeVector
         using FieldType = std::remove_cvref_t<decltype(field)>;
         if constexpr (HasFileNames<FieldType>) {
+            if (!fieldName.empty()) {
+                createDirectory(target, context / fieldName);
+            }
             exportFiles(field, target, context / fieldName);
         } else if constexpr (IsOptionalWithFileNames<FieldType>) {
             if (field) {
+                if (!fieldName.empty()) {
+                    createDirectory(target, context / fieldName);
+                }
                 exportFiles(*field, target, context / fieldName);
             }
         } else if constexpr (FileNameMap<FieldType>) {
+            if (!field.empty() && !fieldName.empty()) {
+                createDirectory(target, context / fieldName);
+            }
             for (auto const& [key, value] : field) {
                 createDirectory(target, context / fieldName / key);
                 exportFiles(value, target, context / fieldName / key);

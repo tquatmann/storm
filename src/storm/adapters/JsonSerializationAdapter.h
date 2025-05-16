@@ -21,7 +21,6 @@ class SerializedEnum {
     E static constexpr Uninitialized = static_cast<E>(std::numeric_limits<std::underlying_type_t<E>>::max());
 
     SerializedEnum() = default;
-    SerializedEnum(SerializedEnum const&) = default;
     SerializedEnum(E value) : value(value) {}
     SerializedEnum(std::string_view str) {
         auto findRes = std::find(std::begin(Keys), std::end(Keys), str);
@@ -47,7 +46,7 @@ class SerializedEnum {
     std::string_view toString() const {
         auto const index = static_cast<std::underlying_type_t<E>>(value);
         if (isInitialized()) {
-            STORM_LOG_ASSERT(index < Keys.size(), "Enum value with index " << index << " does not have a key.");
+            STORM_LOG_ASSERT(std::cmp_less(index, Keys.size()), "Enum value with index " << index << " does not have a key.");
             return *(std::begin(Keys) + index);
         } else {
             return "__UNINITIALIZED__";

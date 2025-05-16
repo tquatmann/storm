@@ -73,8 +73,6 @@ class ArchiveWriter {
     void addBinaryFile(std::string const& archivePath, std::vector<T> const& data) {
         auto const numBytes = data.size() * sizeof(T);
         if constexpr (Endianness == std::endian::native || sizeof(T) == 1) {
-            std::cout << " writing binary file " << archivePath << " of size " << data.size() << " with type " << boost::core::demangle(typeid(T).name())
-                      << std::endl;
             // can write directly without a buffer
             addFile(archivePath, reinterpret_cast<char const*>(data.data()), numBytes);
         } else {
@@ -132,7 +130,7 @@ class ArchiveWriter {
      */
     void checkResult(auto resultCode, archive_entry* entry = nullptr) {
         STORM_LOG_THROW(_archive, storm::exceptions::FileIoException, "Unexpected result: Archive not loaded.");
-        
+
         STORM_LOG_WARN_COND(std::cmp_greater_equal(resultCode, ARCHIVE_OK), "Unexpected result from archive: " << archive_error_string(_archive.get()) << ".");
         if (std::cmp_less(resultCode, ARCHIVE_WARN)) {
             if (entry) {

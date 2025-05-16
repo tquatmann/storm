@@ -50,13 +50,13 @@ void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix
 }
 
 void labelingToUmb(storm::models::sparse::ItemLabeling const& labeling, storm::umb::UmbModel<StorageType::Memory>& umb) {
-    for (auto const labelName : labeling.getLabels()) {
+    for (auto const& labelName : labeling.getLabels()) {
         if (labeling.isStateLabeling() && labelName == "init") {
             continue;  // skip initial state labeling.
         }
         auto const name = umb.index.annotations.findAtomicPropositionName(labelName);
-        STORM_LOG_ASSERT(!name.empty(), "Label '" << labelName << "' not found in the model index.");
-        auto& annotation = umb.atomicPropositions[name];
+        STORM_LOG_ASSERT(name.has_value(), "Label '" << labelName << "' not found in the model index.");
+        auto& annotation = umb.atomicPropositions[*name];
         if (labeling.isStateLabeling()) {
             annotation.forStates.emplace().values = labeling.asStateLabeling().getStates(labelName);
         } else {
@@ -70,10 +70,10 @@ template<typename ValueType, typename TargetValueType>
 void rewardToUmb(std::string const& identifier, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel,
                  storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::umb::UmbModel<StorageType::Memory>& umb) {
     auto const rewardName = umb.index.annotations.findRewardName(identifier);
-    STORM_LOG_ASSERT(!rewardName.empty(), "Reward '" << identifier << "' not found in the model index.");
+    STORM_LOG_ASSERT(rewardName.has_value(), "Reward '" << identifier << "' not found in the model index.");
     // auto const& rewardIndex = umb.index.annotations.rewards.at(rewardName);
-    STORM_LOG_ASSERT(!umb.rewards.contains(rewardName), "Reward '" << identifier << "' already exists in the umb model.");
-    auto& rewardAnnotation = umb.rewards[rewardName];
+    STORM_LOG_ASSERT(!umb.rewards.contains(*rewardName), "Reward '" << identifier << "' already exists in the umb model.");
+    auto& rewardAnnotation = umb.rewards[*rewardName];
     if (rewardModel.hasStateRewards()) {
         rewardAnnotation.forStates.emplace().values.template set<TargetValueType>(
             storm::utility::vector::convertNumericVector<TargetValueType>(rewardModel.getStateRewardVector()));
@@ -185,58 +185,62 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
 
     // annotations:
     // rewards:
-    auto& rewards = index.annotations.rewards;
-    for (auto const& [rewardModelName, rewardModel] : model.getRewardModels()) {
-        auto const [name, alias] = index.annotations.getAllowedNameAndAlias(rewardModelName);
-        STORM_LOG_THROW(!rewards.contains(name), storm::exceptions::WrongFormatException, "Reward id '" << name << "' already exists.");
-        auto& rewardIndex = rewards[name];
-        rewardIndex.alias = alias;
-        rewardIndex.type = rewardType;
-        rewardIndex.appliesTo.emplace();
-        using enum storm::umb::ModelIndex::Annotations::AppliesTo;
-        if (rewardModel.hasStateRewards()) {
-            rewardIndex.appliesTo->push_back(States);
-        }
-        if (rewardModel.hasStateActionRewards()) {
-            rewardIndex.appliesTo->push_back(Choices);
-        }
-        if (rewardModel.hasTransitionRewards()) {
-            rewardIndex.appliesTo->push_back(Branches);
+    if (model.hasRewardModel()) {
+        auto& rewards = index.annotations.rewards.emplace();
+        for (auto const& [rewardModelName, rewardModel] : model.getRewardModels()) {
+            auto const [name, alias] = index.annotations.getAllowedNameAndAlias(rewardModelName);
+            STORM_LOG_THROW(!rewards.contains(name), storm::exceptions::WrongFormatException, "Reward id '" << name << "' already exists.");
+            auto& rewardIndex = rewards[name];
+            rewardIndex.alias = alias;
+            rewardIndex.type = rewardType;
+            rewardIndex.appliesTo.emplace();
+            using enum storm::umb::ModelIndex::Annotations::AppliesTo;
+            if (rewardModel.hasStateRewards()) {
+                rewardIndex.appliesTo->push_back(States);
+            }
+            if (rewardModel.hasStateActionRewards()) {
+                rewardIndex.appliesTo->push_back(Choices);
+            }
+            if (rewardModel.hasTransitionRewards()) {
+                rewardIndex.appliesTo->push_back(Branches);
+            }
         }
     }
 
     // aps:
-    auto& aps = index.annotations.atomicPropositions;
-    for (auto const& label : model.getStateLabeling().getLabels()) {
-        if (label == "init") {
-            continue;
-        }
-        auto const [name, alias] = index.annotations.getAllowedNameAndAlias(label);
-        STORM_LOG_THROW(!aps.contains(name), storm::exceptions::WrongFormatException, "AP for state label '" << label << "' already exists.");
-        auto& apIndex = aps[name];
-        apIndex.alias = alias;
-        apIndex.appliesTo.emplace();
-        apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::States);
-    }
-    if (model.hasChoiceLabeling()) {
-        for (auto const& label : model.getChoiceLabeling().getLabels()) {
-            auto const [name, alias] = index.annotations.getAllowedNameAndAlias(label);
-            // Note: An AP might exist as both, choice and state label
-            bool const existsAlready = aps.contains(name);
-            auto& apIndex = aps[name];
-            if (existsAlready) {
-                // Assert that the labelling only exists as state label
-                STORM_LOG_THROW(apIndex.appliesTo->size() == 1 && apIndex.appliesTo->front() == storm::umb::ModelIndex::Annotations::AppliesTo::States,
-                                storm::exceptions::WrongFormatException, "AP for choice label '" << label << "' already exists.");
-                // Assert that the alias match
-                STORM_LOG_THROW(
-                    apIndex.alias == alias, storm::exceptions::WrongFormatException,
-                    "AP '" << name << "' exists under two different alias: '" << apIndex.alias.value_or("<none>") << " and " << alias.value_or("<none>"));
-            } else {
-                apIndex.alias = alias;
-                apIndex.appliesTo.emplace();
+    if (model.getStateLabeling().getNumberOfLabels() > 0 || model.hasChoiceLabeling()) {
+        auto& aps = index.annotations.atomicPropositions.emplace();
+        for (auto const& label : model.getStateLabeling().getLabels()) {
+            if (label == "init") {
+                continue;
             }
-            apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::Choices);
+            auto const [name, alias] = index.annotations.getAllowedNameAndAlias(label);
+            STORM_LOG_THROW(!aps.contains(name), storm::exceptions::WrongFormatException, "AP for state label '" << label << "' already exists.");
+            auto& apIndex = aps[name];
+            apIndex.alias = alias;
+            apIndex.appliesTo.emplace();
+            apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::States);
+        }
+        if (model.hasChoiceLabeling()) {
+            for (auto const& label : model.getChoiceLabeling().getLabels()) {
+                auto const [name, alias] = index.annotations.getAllowedNameAndAlias(label);
+                // Note: An AP might exist as both, choice and state label
+                bool const existsAlready = aps.contains(name);
+                auto& apIndex = aps[name];
+                if (existsAlready) {
+                    // Assert that the labelling only exists as state label
+                    STORM_LOG_THROW(apIndex.appliesTo->size() == 1 && apIndex.appliesTo->front() == storm::umb::ModelIndex::Annotations::AppliesTo::States,
+                                    storm::exceptions::WrongFormatException, "AP for choice label '" << label << "' already exists.");
+                    // Assert that the alias match
+                    STORM_LOG_THROW(
+                        apIndex.alias == alias, storm::exceptions::WrongFormatException,
+                        "AP '" << name << "' exists under two different alias: '" << apIndex.alias.value_or("<none>") << " and " << alias.value_or("<none>"));
+                } else {
+                    apIndex.alias = alias;
+                    apIndex.appliesTo.emplace();
+                }
+                apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::Choices);
+            }
         }
     }
 }
@@ -263,7 +267,7 @@ void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbM
 }  // namespace detail
 
 template<typename ValueType>
-std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options) {
+storm::umb::UmbModelBase sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options) {
     auto umbModel = std::make_unique<UmbModel<StorageType::Memory>>();
     detail::setIndexInformation(model, umbModel->index, options);
     using enum ExportOptions::ValueType;
@@ -284,10 +288,10 @@ std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unexpected value type.");
     }
     STORM_LOG_ASSERT(umbModel->validate(), "Created umb model is not valid.");
-    return std::make_unique<UmbModelBase>(std::move(umbModel));
+    return storm::umb::UmbModelBase(std::move(umbModel));
 }
 
-template std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb<double>(storm::models::sparse::Model<double> const& model, ExportOptions const& options);
-template std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                                           ExportOptions const& options);
+template storm::umb::UmbModelBase sparseModelToUmb<double>(storm::models::sparse::Model<double> const& model, ExportOptions const& options);
+template storm::umb::UmbModelBase sparseModelToUmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
+                                                                          ExportOptions const& options);
 }  // namespace storm::umb

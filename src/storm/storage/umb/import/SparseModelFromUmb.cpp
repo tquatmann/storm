@@ -67,6 +67,7 @@ auto valueVectorView(storm::umb::GenericVector<Storage> const& input, typename s
         } else {
             STORM_LOG_ASSERT(input.template isType<uint64_t>(), "Unexpected type for rational representation. Expected uint64.");
             // TODO: complete
+            (void)csr;  // silences warning
             assert(false);
             return std::vector<TargetType>{};
         }
@@ -190,9 +191,9 @@ std::pair<storm::models::sparse::StateLabeling, std::optional<storm::models::spa
         STORM_LOG_WARN("No initial states given in UMB model.");
     }
     for (auto const& [apName, ap] : umbModel.atomicPropositions) {
-        STORM_LOG_THROW(umbModel.index.annotations.atomicPropositions.contains(apName), storm::exceptions::WrongFormatException,
+        STORM_LOG_THROW(umbModel.index.annotations.atomicPropositions->contains(apName), storm::exceptions::WrongFormatException,
                         "Atomic proposition '" << apName << "' not found in index.");
-        auto const& apIndex = umbModel.index.annotations.atomicPropositions.at(apName);
+        auto const& apIndex = umbModel.index.annotations.atomicPropositions->at(apName);
         auto labelName = apIndex.alias.value_or(apName);  // prefer alias as label name if it exists
         if (ap.forStates) {
             STORM_LOG_THROW(!stateLabelling.containsLabel(labelName), storm::exceptions::WrongFormatException,
@@ -215,11 +216,10 @@ std::pair<storm::models::sparse::StateLabeling, std::optional<storm::models::spa
 template<typename ValueType, StorageType Storage>
 auto constructRewardModels(storm::umb::UmbModel<Storage> const& umbModel) {
     using RewardModel = storm::models::sparse::StandardRewardModel<ValueType>;
-    auto const& ts = umbModel.index.transitionSystem;
     std::unordered_map<std::string, RewardModel> rewardModels;
     for (auto const& [rewName, rew] : umbModel.rewards) {
         STORM_LOG_THROW(umbModel.rewards.contains(rewName), storm::exceptions::WrongFormatException, "Reward '" << rewName << "' not found in index.");
-        auto const& rewIndex = umbModel.index.annotations.rewards.at(rewName);
+        auto const& rewIndex = umbModel.index.annotations.rewards->at(rewName);
         auto usedRewName = rewIndex.alias.value_or(rewName);  // prefer alias as reward name if it exists
         STORM_LOG_THROW(!rewardModels.contains(usedRewName), storm::exceptions::WrongFormatException,
                         "Reward '" << usedRewName << "' already exists in reward models.");

@@ -46,11 +46,15 @@ void parseIndexFromString(std::string const& indexFileString, storm::umb::ModelI
  */
 template<StorageType Storage>
 void prepareAnnotations(storm::umb::UmbModel<Storage>& umbModel) {
-    for (auto const& [name, rew] : umbModel.index.annotations.rewards) {
-        umbModel.rewards[name];
+    if (umbModel.index.annotations.rewards) {
+        for (auto const& [name, rew] : umbModel.index.annotations.rewards.value()) {
+            umbModel.rewards[name];
+        }
     }
-    for (auto const& [name, ap] : umbModel.index.annotations.atomicPropositions) {
-        umbModel.atomicPropositions[name];
+    if (umbModel.index.annotations.atomicPropositions) {
+        for (auto const& [name, ap] : umbModel.index.annotations.atomicPropositions.value()) {
+            umbModel.atomicPropositions[name];
+        }
     }
 }
 
@@ -132,9 +136,9 @@ void importGenericVector(SourceType auto& src, storm::umb::ModelIndex const& ind
         if (p.size() == 5 && p[0] == "annotations" && p[1] == "rewards" && p[4] == "values.bin") {
             auto const& annotationId = p[2];
             auto const& rewards = index.annotations.rewards;
-            STORM_LOG_THROW(rewards.contains(annotationId), storm::exceptions::WrongFormatException,
+            STORM_LOG_THROW(rewards->contains(annotationId), storm::exceptions::WrongFormatException,
                             "Annotation id '" << annotationId << "'referenced in file but not found in index.");
-            importGenericVector(src, rewards.at(annotationId).type, target);
+            importGenericVector(src, rewards->at(annotationId).type, target);
         } else {
             STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
                             "Unexpected file path '" << srcPath << "'. Expected 'annotations/rewards/<annotationId>/for-<somewhere>/values.bin'.");
@@ -152,7 +156,7 @@ bool importVector(SourceType auto& src, storm::umb::ModelIndex const& index, Umb
         auto srcPath = getFilePath(src);
         auto srcIt = srcPath.begin();
         for (auto const& o : other) {
-            if (srcIt == srcPath.end() || *srcIt != o && !o.empty()) {
+            if (srcIt == srcPath.end() || (*srcIt != o && !o.empty())) {
                 return false;
             }
             ++srcIt;
@@ -201,7 +205,7 @@ bool importVector(SourceType auto& src, storm::umb::ModelIndex const& index, Umb
     return found;
 }
 
-std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& options) {
+std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path const& umbDir, ImportOptions const& /* options */) {
     storm::utility::Stopwatch stopwatch;
     stopwatch.start();
     STORM_LOG_THROW(std::filesystem::is_directory(umbDir), storm::exceptions::FileIoException, "The given path is not a directory.");
@@ -211,6 +215,7 @@ std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path
     if (umbDirString.back() != '/') {
         umbDirString.push_back('/');
     }
+    STORM_LOG_TRACE("Index file found in umb directory " << umbDir << ": \n" << storm::dumpJson(storm::json<storm::RationalNumber>(result->index)));
     prepareAnnotations(*result);
     for (auto f : std::filesystem::recursive_directory_iterator(umbDir)) {
         // get the suffix of file f without the umbDir prefix
@@ -223,6 +228,7 @@ std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path
             continue;  // skip the index file and directories
         }
         bool found = importVector<StorageType::Disk>(entry, result->index, *result, "");
+        STORM_LOG_TRACE("File " << getFilePath(entry) << " found in UMB directory " << umbDir << ".");
         STORM_LOG_WARN_COND(
             found, "File '" << entry.filepath << "' in UMB directory '" << entry.base << "' will be ignored as it could not be associated with any UMB field.");
     }
@@ -230,7 +236,7 @@ std::unique_ptr<UmbModel<StorageType::Disk>> fromDirectory(std::filesystem::path
     return result;
 }
 
-std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path const& umbArchive, ImportOptions const& options) {
+std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path const& umbArchive, ImportOptions const& /* options */) {
     storm::utility::Stopwatch stopwatch;
     stopwatch.start();
     auto result = std::make_unique<UmbModel<StorageType::Memory>>();
@@ -244,6 +250,7 @@ std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path
         }
     }
     STORM_LOG_THROW(indexFound, storm::exceptions::FileIoException, "File 'index.json' not found in UMB archive.");
+    STORM_LOG_TRACE("Index file found in umb archive " << umbArchive << ": \n" << storm::dumpJson(storm::json<storm::RationalNumber>(result->index)));
     std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";
     stopwatch.restart();
     // Second pass: load the bin files
@@ -253,6 +260,7 @@ std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path
             continue;  // skip the index file and directories
         }
         bool found = importVector<StorageType::Memory>(entry, result->index, *result, "");
+        STORM_LOG_TRACE("File " << getFilePath(entry) << " in UMB archive " << umbArchive << "' loaded.");
         STORM_LOG_WARN_COND(
             found, "File " << getFilePath(entry) << " in UMB archive " << umbArchive << " will be ignored as it could not be associated with any UMB field.");
     }
@@ -262,12 +270,12 @@ std::unique_ptr<UmbModel<StorageType::Memory>> fromArchive(std::filesystem::path
 
 }  // namespace internal
 
-std::unique_ptr<UmbModelBase> fromDisk(std::filesystem::path const& umbLocation, ImportOptions const& options) {
+UmbModelBase importUmb(std::filesystem::path const& umbLocation, ImportOptions const& options) {
     STORM_LOG_THROW(std::filesystem::exists(umbLocation), storm::exceptions::FileIoException, "The given path '" << umbLocation << "' does not exist.");
     if (std::filesystem::is_directory(umbLocation)) {
-        return std::make_unique<UmbModelBase>(internal::fromDirectory(umbLocation, options));
+        return UmbModelBase(internal::fromDirectory(umbLocation, options));
     } else {
-        return std::make_unique<UmbModelBase>(internal::fromArchive(umbLocation, options));
+        return UmbModelBase(internal::fromArchive(umbLocation, options));
     }
 }
 

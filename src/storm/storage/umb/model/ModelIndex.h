@@ -91,7 +91,7 @@ struct ModelIndex {
             auto static constexpr JsonKeys = {"alias", "description", "lower", "upper", "type", "applies-to"};
             using JsonSerialization = storm::JsonSerialization;
         };
-        std::map<std::string, Reward> rewards;
+        std::optional<std::map<std::string, Reward>> rewards;
 
         struct AtomicProposition {
             std::optional<std::string> alias, description;
@@ -99,7 +99,7 @@ struct ModelIndex {
             auto static constexpr JsonKeys = {"alias", "description", "applies-to"};
             using JsonSerialization = storm::JsonSerialization;
         };
-        std::map<std::string, AtomicProposition> atomicPropositions;
+        std::optional<std::map<std::string, AtomicProposition>> atomicPropositions;
 
         static std::pair<std::string, std::optional<std::string>> getAllowedNameAndAlias(std::string const& inputName) {
             auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };
@@ -120,11 +120,14 @@ struct ModelIndex {
         }
 
         template<typename MapType>
-        static std::string findAnnotationName(MapType const& map, std::string const& id) {
-            if (map.contains(id)) {
+        static std::optional<std::string> findAnnotationName(std::optional<MapType> const& map, std::string const& id) {
+            if (!map) {
+                return {};
+            }
+            if (map->contains(id)) {
                 return id;
             }
-            for (auto const& [name, annotation] : map) {
+            for (auto const& [name, annotation] : map.value()) {
                 if (annotation.alias == id) {
                     return name;
                 }
@@ -132,11 +135,11 @@ struct ModelIndex {
             return {};
         }
 
-        std::string findRewardName(std::string const& id) const {
+        std::optional<std::string> findRewardName(std::string const& id) const {
             return findAnnotationName(rewards, id);
         }
 
-        std::string findAtomicPropositionName(std::string const& id) const {
+        std::optional<std::string> findAtomicPropositionName(std::string const& id) const {
             return findAnnotationName(atomicPropositions, id);
         }
 

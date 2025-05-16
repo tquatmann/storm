@@ -8,6 +8,6 @@
 
 namespace storm::umb {
 template<typename ValueType>
-std::unique_ptr<storm::umb::UmbModelBase> sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options);
+storm::umb::UmbModelBase sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options);
 
 }  // namespace storm::umb
