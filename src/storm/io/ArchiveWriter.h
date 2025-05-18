@@ -18,6 +18,14 @@
 namespace storm::io {
 static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big, "This code is not supported for mixed endian systems.");
 
+template<typename R>
+concept WritableRange = std::ranges::input_range<R> && std::is_arithmetic_v<std::ranges::range_value_t<R>>;
+
+template<typename R, std::endian Endianness>
+concept WritableWithoutBuffer =
+    WritableRange<R> && std::same_as<std::remove_cvref_t<R>, std::vector<std::ranges::range_value_t<R>>> &&
+    !std::is_same_v<std::ranges::range_value_t<R>, bool> && (Endianness == std::endian::native || sizeof(std::ranges::range_value_t<R>) == 1);
+
 /*!
   Create a new archive and open it as a file on disk.
  */
@@ -68,33 +76,40 @@ class ArchiveWriter {
         addFileFromChunks(archivePath, getNextChunk, size);
     }
 
-    template<typename T, std::endian Endianness = std::endian::little>
-        requires(std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
-    void addBinaryFile(std::string const& archivePath, std::vector<T> const& data) {
-        auto const numBytes = data.size() * sizeof(T);
-        if constexpr (Endianness == std::endian::native || sizeof(T) == 1) {
-            // can write directly without a buffer
-            addFile(archivePath, reinterpret_cast<char const*>(data.data()), numBytes);
-        } else {
-            // need to swap bytes. This uses a buffer
-            static_assert(BufferSize % sizeof(T) == 0, "Buffer size must be a multiple of sizeof(T).");
-            std::vector<T> buffer(BufferSize / sizeof(T));  // todo check array
+    template<WritableRange Range, std::endian Endianness = std::endian::little>
+        requires(WritableWithoutBuffer<Range, Endianness>)
+    void addBinaryFile(std::string const& archivePath, Range&& data) {
+        auto const numBytes = data.size() * sizeof(std::ranges::range_value_t<Range>);
+        addFile(archivePath, reinterpret_cast<char const*>(data.data()), numBytes);
+    }
 
-            uint64_t startOfChunk = 0;
-            auto getNextChunk = [&data, &buffer, &startOfChunk]() {
-                auto const endOfChunk = std::min<uint64_t>(startOfChunk + buffer.size(), data.bucketCount());
-                auto bufferIt = buffer.begin();
-                for (uint64_t i = startOfChunk; i < endOfChunk; ++i) {
-                    // reverse bits so that the first bit of the first byte is data.get(0).
+    template<WritableRange Range, std::endian Endianness = std::endian::little>
+        requires(!WritableWithoutBuffer<Range, Endianness> && !std::is_same_v<std::ranges::range_value_t<Range>, bool>)
+    void addBinaryFile(std::string const& archivePath, Range const& data) {
+        using T = std::ranges::range_value_t<Range>;
+        auto const numBytes = data.size() * sizeof(T);
+        static_assert(BufferSize % sizeof(T) == 0, "Buffer size must be a multiple of sizeof(T).");
+        std::vector<T> buffer(BufferSize / sizeof(T));  // todo check array
+
+        uint64_t startOfChunk = 0;
+        auto getNextChunk = [&data, &buffer, &startOfChunk]() {
+            auto const endOfChunk = std::min<uint64_t>(startOfChunk + buffer.size(), data.size());
+            auto bufferIt = buffer.begin();
+            for (uint64_t i = startOfChunk; i < endOfChunk; ++i) {
+                if constexpr (std::endian::native != Endianness && sizeof(T) > 1) {
+                    // copy into buffer with byteswap
                     *bufferIt = storm::utility::byteSwap(data[i]);
-                    ++bufferIt;
+                } else {
+                    // copy into buffer
+                    *bufferIt = data[i];
                 }
-                std::span<const char> chunk(reinterpret_cast<const char*>(buffer.data()), (endOfChunk - startOfChunk) * sizeof(T));
-                startOfChunk = endOfChunk;
-                return chunk;
-            };
-            addFile(archivePath, getNextChunk, numBytes);
-        }
+                ++bufferIt;
+            }
+            std::span<const char> chunk(reinterpret_cast<const char*>(buffer.data()), (endOfChunk - startOfChunk) * sizeof(T));
+            startOfChunk = endOfChunk;
+            return chunk;
+        };
+        addFileFromChunks(archivePath, getNextChunk, numBytes);
     }
 
     void addBinaryFile(std::string const& archivePath, storm::storage::BitVector const& data) {

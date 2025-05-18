@@ -3,6 +3,7 @@
 #include <boost/pfr.hpp>
 
 #include "storm/storage/umb/model/UmbModel.h"
+#include "storm/storage/umb/model/ValueEncoding.h"
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
@@ -32,7 +33,7 @@ void createDirectory(storm::io::ArchiveWriter& archiveWriter, std::filesystem::p
  * The file path must have the extension .bin.
  */
 template<typename VectorType>
-    requires storm::io::IsBinaryFileWritable<typename VectorType::value_type> || std::same_as<VectorType, storm::storage::BitVector> ||
+    requires storm::io::IsBinaryFileWritable<std::ranges::range_value_t<VectorType>> || std::same_as<VectorType, storm::storage::BitVector> ||
              std::same_as<VectorType, storm::umb::UmbBitVector>
 void writeVector(VectorType const& vector, std::filesystem::path const& umbDir, std::filesystem::path const& filepath) {
     STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
@@ -45,7 +46,7 @@ void writeVector(VectorType const& vector, std::filesystem::path const& umbDir, 
             writer.write(storm::utility::reverseBits(vector.getBucket(i)));
         }
     } else {
-        storm::io::BinaryFileWriter<typename VectorType::value_type, std::endian::little> writer(umbDir / filepath);
+        storm::io::BinaryFileWriter<std::ranges::range_value_t<VectorType>, std::endian::little> writer(umbDir / filepath);
         writer.write(vector);
     }
 }
@@ -55,7 +56,7 @@ void writeVector(VectorType const& vector, std::filesystem::path const& umbDir, 
  * The file path must have the extension .bin.
  */
 template<typename VectorType>
-    requires storm::io::IsBinaryFileWritable<typename VectorType::value_type> || std::same_as<VectorType, storm::storage::BitVector>
+    requires storm::io::IsBinaryFileWritable<std::ranges::range_value_t<VectorType>> || std::same_as<VectorType, storm::storage::BitVector>
 void writeVector(VectorType const& vector, storm::io::ArchiveWriter& archiveWriter, std::filesystem::path const& filepath) {
     STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
     archiveWriter.addBinaryFile(filepath.string(), vector);
@@ -136,8 +137,13 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
             writeIndexFile(field, target, context / fieldName);
         } else if constexpr (std::is_same_v<FieldType, GenericVector<StorageType::Memory>> || std::is_same_v<FieldType, GenericVector<StorageType::Disk>>) {
             if (field.template isType<storm::RationalNumber>()) {
-                // TODO: handle case
-                assert(false);
+                if (ValueEncoding::rationalVectorRequiresCsr(field.template get<storm::RationalNumber>())) {
+                    assert(false);  // todo
+                } else {
+                    writeVector(ValueEncoding::rationalToUint64View(field.template get<storm::RationalNumber>()), target, context / fieldName);
+                }
+            } else if (field.template isType<storm::Interval>()) {
+                writeVector(ValueEncoding::intervalToDoubleRangeView(field.template get<storm::Interval>()), target, context / fieldName);
             } else {
                 writeVector(field, target, context / fieldName);
             }

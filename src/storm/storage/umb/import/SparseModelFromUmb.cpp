@@ -14,6 +14,7 @@
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/storage/sparse/ModelComponents.h"
+#include "storm/storage/umb/model/ValueEncoding.h"
 #include "storm/utility/builder.h"
 #include "storm/utility/macros.h"
 
@@ -24,96 +25,6 @@
 namespace storm::umb {
 
 namespace detail {
-
-template<typename TargetType, typename SourceType>
-auto conversionView(std::ranges::input_range auto&& input) {
-    if constexpr (std::same_as<TargetType, SourceType>) {
-        return input;
-    } else {
-        return input | std::ranges::views::transform(
-                           [](SourceType const& value) -> TargetType { return storm::utility::convertNumber<TargetType, SourceType>(value); });
-    }
-}
-
-template<StorageType Storage>
-bool hasType(storm::umb::GenericVector<Storage> const& input, auto type) {
-    switch (type) {
-        case decltype(type)::Double:
-            return input.template isType<double>();
-        case decltype(type)::Rational:
-            return input.template isType<storm::RationalNumber>();
-        case decltype(type)::DoubleInterval:
-            return input.template isType<storm::Interval>();
-        default:
-            return false;
-    }
-}
-
-template<auto Source, bool IsInSourceTypeRepresentation, typename TargetType, StorageType Storage>
-auto valueVectorView(storm::umb::GenericVector<Storage> const& input, typename storm::umb::UmbModel<Storage>::CSR const& csr = {}) {
-    STORM_LOG_ASSERT(IsInSourceTypeRepresentation == hasType(input, Source), "Inconsistent arguments.");
-    if constexpr (Source == decltype(Source)::Double) {
-        static_assert(IsInSourceTypeRepresentation, "Double is the only valid source type in this case.");
-        STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for values. Expected double.");
-        STORM_LOG_WARN_COND(!storm::NumberTraits<TargetType>::IsExact,
-                            "Some values are given in type double but will be converted to an exact (arbitrary precision) type. Rounding errors may occur.");
-        return conversionView<TargetType, double>(input.template get<double>());
-
-    } else if constexpr (Source == decltype(Source)::Rational) {
-        STORM_LOG_WARN_COND(storm::NumberTraits<TargetType>::IsExact,
-                            "Some values are given in an exact type but converted to an inexact type. Rounding errors may occur.");
-        if constexpr (IsInSourceTypeRepresentation) {
-            return conversionView<TargetType, storm::RationalNumber>(input.template get<storm::RationalNumber>());
-        } else {
-            STORM_LOG_ASSERT(input.template isType<uint64_t>(), "Unexpected type for rational representation. Expected uint64.");
-            // TODO: complete
-            (void)csr;  // silences warning
-            assert(false);
-            return std::vector<TargetType>{};
-        }
-    } else if constexpr (Source == decltype(Source)::DoubleInterval) {
-        if constexpr (!std::is_same_v<TargetType, storm::Interval>) {
-            STORM_LOG_THROW(false, storm::exceptions::UnexpectedException,
-                            "Some values are given as double intervals but a model with a non-interval type is requested.");
-            return std::vector<TargetType>{};
-        } else if constexpr (IsInSourceTypeRepresentation) {
-            return input.template get<storm::Interval>();
-        } else {
-            STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for double interval representation. Expected double.");
-            // TODO: complete
-            assert(false);
-            return std::vector<TargetType>{};
-        }
-    } else {
-        static_assert(false, "Unexpected type for values.");
-    }
-}
-
-template<typename ValueType, StorageType Storage>
-auto createHelper(auto sourceType, storm::umb::GenericVector<Storage> const& input, typename storm::umb::UmbModel<Storage>::CSR const& csr, auto&& create) {
-    using E = decltype(sourceType)::E;
-
-    // find out how to interpret the input values
-    switch (sourceType) {
-        case E::Double:
-            return create(valueVectorView<E::Double, true, ValueType, Storage>(input));
-        case E::Rational:
-            if (hasType(input, E::Rational)) {
-                return create(valueVectorView<E::Rational, true, ValueType, Storage>(input));
-            } else {
-                // Only this case might require the csr. It is useless in all other cases.
-                return create(valueVectorView<E::Rational, false, ValueType, Storage>(input, csr));
-            }
-        case E::DoubleInterval:
-            if (hasType(input, E::DoubleInterval)) {
-                return create(valueVectorView<E::DoubleInterval, true, ValueType, Storage>(input));
-            } else {
-                return create(valueVectorView<E::DoubleInterval, false, ValueType, Storage>(input));
-            }
-        default:
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Values have unsupported type " << sourceType << ".");
-    }
-}
 
 auto csrRange(auto&& csr, uint64_t i) {
     if (csr) {
@@ -152,13 +63,8 @@ template<typename ValueType, StorageType Storage>
 storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel<Storage> const& umbModel, auto sourceType,
                                                      storm::umb::GenericVector<Storage> const& branchValues,
                                                      typename storm::umb::UmbModel<Storage>::CSR const& csr) {
-    return createHelper<ValueType, Storage>(sourceType, branchValues, csr,
-                                            [&umbModel](auto&& input) { return createMatrix<ValueType, Storage>(umbModel, input); });
-}
-
-template<typename ValueType, StorageType Storage>
-std::vector<ValueType> createVector(auto sourceType, storm::umb::GenericVector<Storage> const& input, typename storm::umb::UmbModel<Storage>::CSR const& csr) {
-    return createHelper<ValueType, Storage>(sourceType, input, csr, [](auto&& input) { return std::vector<ValueType>(input.begin(), input.end()); });
+    return ValueEncoding::applyDecodedVector<ValueType, Storage>([&umbModel](auto&& input) { return createMatrix<ValueType, Storage>(umbModel, input); },
+                                                                 branchValues, sourceType, csr);
 }
 
 template<StorageType Storage>
@@ -226,10 +132,10 @@ auto constructRewardModels(storm::umb::UmbModel<Storage> const& umbModel) {
         std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
         std::optional<storm::storage::SparseMatrix<ValueType>> transitionRewards;
         if (rew.forStates) {
-            stateRewards = createVector<ValueType, Storage>(rewIndex.type, rew.forStates->values, rew.forStates->toValue);
+            stateRewards = ValueEncoding::createDecodedVector<ValueType, Storage>(rew.forStates->values, rewIndex.type, rew.forStates->toValue);
         }
         if (rew.forChoices) {
-            stateActionRewards = createVector<ValueType, Storage>(rewIndex.type, rew.forChoices->values, rew.forChoices->toValue);
+            stateActionRewards = ValueEncoding::createDecodedVector<ValueType, Storage>(rew.forChoices->values, rewIndex.type, rew.forChoices->toValue);
         }
         if (rew.forBranches) {
             transitionRewards = createMatrix<ValueType, Storage>(umbModel, rewIndex.type, rew.forBranches->values, rew.forBranches->toValue);
