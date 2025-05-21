@@ -158,9 +158,8 @@ void DARewardProductBuilder<ValueType, RewardModelType>::computeConversionsFromM
 
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, RewardModelType>::build() {
-    auto transitionMatrix = product.getProductModel().getTransitionMatrix();
-    auto backwardTransitions = product.getProductModel().getBackwardTransitions();
-    auto acceptance = *product.getAcceptance();
+    auto transitionMatrix = productModel.getTransitionMatrix();
+    auto backwardTransitions = productModel.getBackwardTransitions();
 
     // MatrixBuilder to build the transition matrix for the demerged MDP
     storage::SparseMatrixBuilder<ValueType> transitionMatrixBuilder(0, 0, 0, false, true, 0);
@@ -168,6 +167,7 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     storm::storage::MaximalEndComponentDecomposition<ValueType> mecs(transitionMatrix, backwardTransitions);
     STORM_LOG_INFO(mecs.statistics(transitionMatrix.getRowGroupCount()));
     // Compute accepting end components for the product model
+
     std::list<storage::MaximalEndComponent> accEcs = computeAcceptingECs(acceptance, transitionMatrix, backwardTransitions);
 
     // Maps every state to the MEC it is in, or to InvalidMecIndex if it does not belong to any MEC.

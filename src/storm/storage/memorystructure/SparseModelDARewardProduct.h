@@ -13,10 +13,9 @@ namespace storage {
 template <typename ValueType, typename RewardModelType>
 class SparseModelDARewardProduct {
 public:
-    using CheckFormulaCallback = std::function<storm::storage::BitVector(storm::logic::Formula const&)>;
     using Mdp = storm::models::sparse::Mdp<ValueType, RewardModelType>;
 
-    SparseModelDARewardProduct(Mdp const& model, storm::logic::PathFormula const& formula, CheckFormulaCallback const& formulaChecker): originalModel(model), formula(formula), formulaChecker(formulaChecker) {}
+    SparseModelDARewardProduct(Mdp const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas): originalModel(model), formulas(formulas) {}
 
     /*!
      * Assembles the modified model by lifting the state labeling and reward models
@@ -27,8 +26,7 @@ public:
     private:
         Mdp originalModel;
         std::shared_ptr<transformer::DAProduct<Mdp>> product;
-        storm::logic::PathFormula const& formula;
-        CheckFormulaCallback const& formulaChecker;
+        std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas;
 
         /*!
          *

@@ -2,6 +2,7 @@
 
 #include "DARewardProduct.h"
 #include "storm/logic/Formula.h"
+#include "storm/automata/acceptanceCondition.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/transformer/DAProductBuilder.h"
@@ -14,14 +15,14 @@ class DARewardProductBuilder {
     public:
         using Mdp = storm::models::sparse::Mdp<ValueType, RewardModelType>;
 
-        DARewardProductBuilder(DAProduct<Mdp>& product, Mdp const& originalModel, storm::storage::BitVector const& initialStatesProduct): product(product), originalModel(originalModel), initialStatesProduct(initialStatesProduct) {}
+        DARewardProductBuilder(Mdp& productModel, std::vector<storm::automata::AcceptanceCondition> const& acceptanceConditions, Mdp const& originalModel): productModel(productModel), acceptanceConditions(acceptanceConditions), originalModel(originalModel) {}
 
         std::shared_ptr<DARewardProduct<ValueType>> build();
 
     private:
         using Row = typename storage::SparseMatrix<ValueType>::const_rows;
-        DAProduct<Mdp>& product;
-        storm::storage::BitVector initialStatesProduct;
+        Mdp& productModel;
+        std::vector<storm::automata::AcceptanceCondition> const& acceptanceConditions;
         Mdp const& originalModel;
         uint64_t InvalidIndex = std::numeric_limits<uint64_t>::max();
 

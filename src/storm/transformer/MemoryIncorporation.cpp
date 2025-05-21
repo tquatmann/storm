@@ -59,20 +59,46 @@ storm::storage::MemoryStructure getUntilFormulaMemory(SparseModelType const& mod
 }
 
 template<class SparseModelType>
+std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<typename SparseModelType::ValueType>>()) {
+        std::vector<std::shared_ptr<storm::logic::Formula const>> ltlFormulas;
+        std::vector<std::shared_ptr<storm::logic::PathFormula const>> test;
+
+        for (auto const& subFormula : formulas) {
+            STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
+            auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
+
+            if (subFormula->isProbabilityOperatorFormula()) {
+                ltlFormulas.push_back(subFormula);
+            }
+        }
+
+        storage::SparseModelDARewardProduct<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType> productBuilder(model, ltlFormulas);
+        return productBuilder.build();
+    } else {
+        throw storm::exceptions::NotImplementedException() << "The LTL memory incorporation is only implemented for MDPs.";
+    }
+}
+
+template<class SparseModelType>
 std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
     SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, CheckFormulaCallback const& formulaChecker) {
+
+    for (auto const& subFormula : formulas) {
+        STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
+        auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
+        if (subsubFormula.info(false).containsComplexPathFormula()) {
+            return incorporateLTLMemory(model, formulas);
+        }
+    }
+
     storm::storage::MemoryStructure memory = storm::storage::MemoryStructureBuilder<ValueType, RewardModelType>::buildTrivialMemoryStructure(model);
 
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
         auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
 
-        if (subsubFormula.info(false).containsComplexPathFormula()) {
-            if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<ValueType>>()) {
-                storage::SparseModelDARewardProduct<ValueType, RewardModelType> productBuilder(model, subsubFormula.asPathFormula(), formulaChecker);
-                return std::dynamic_pointer_cast<SparseModelType>(productBuilder.build());
-            }
-        } else if (subsubFormula.isEventuallyFormula()) {
+        if (subsubFormula.isEventuallyFormula()) {
             memory = memory.product(getGoalMemory(model, subsubFormula.asEventuallyFormula().getSubformula()));
         } else if (subsubFormula.isUntilFormula()) {
             memory = memory.product(

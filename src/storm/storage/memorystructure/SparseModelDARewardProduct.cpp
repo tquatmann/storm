@@ -9,15 +9,18 @@ namespace storage {
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
-    std::tie(product, initialStatesProduct)  = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormula(originalModel, formula, formulaChecker);
+    //std::tie(product, initialStatesProduct)
+    typename transformer::DAMultiProduct<Mdp>::ptr test = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas);
 
-    transformer::DARewardProductBuilder<ValueType, RewardModelType> builder(*product, originalModel, initialStatesProduct);
+    /*transformer::DARewardProductBuilder<ValueType, RewardModelType> builder(*product, originalModel, initialStatesProduct);
     auto result = builder.build();
 
     auto rewardModels = buildRewardModels(result->getTransitionMatrix(), result->getStateToModelState(), result->getActionToModelAction(), result->getReachingAccEcChoices());
     auto stateLabeling = buildStateLabeling(result->getTransitionMatrix(), result->getStateToModelState(), result->getInitialStates());
 
     return std::make_shared<Mdp>(result->getTransitionMatrix(), stateLabeling, rewardModels);
+    */
+    return nullptr;
 }
 
 template<typename ValueType, typename RewardModelType>
