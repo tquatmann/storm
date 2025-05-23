@@ -305,14 +305,14 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
     // Insert all blocks into the queue for refinement
     std::deque<typename Partition::Block> blocksQueue;
 
-    std::unordered_set<uint64_t> enqueuedSplitterBlocks;
+    storm::storage::Partition::BlockSet enqueuedSplitterBlocks;
     // Initially, add all current blocks to the queue
     this->partition.forEachBlock([&](auto const& block) {
         // TODO: maybe one has to handle the absorbing blocks differently for weak bisimulation, i.e., that they are still enqueued here and handled differently
         // while splitting based on the computed signatures
         if (!this->absorbingBlocks.contains(block.front())) {
             blocksQueue.push_back(block);
-            enqueuedSplitterBlocks.insert(block.front());
+            enqueuedSplitterBlocks.insert(block);
         }
     });
 
@@ -327,7 +327,7 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
 
         auto blockToRefine = blocksQueue.back();
         blocksQueue.pop_back();
-        enqueuedSplitterBlocks.erase(blockToRefine.front());
+        enqueuedSplitterBlocks.erase(blockToRefine);
 
         // Detect if splitting is necessary
         size_t firstSignature = 0;
@@ -357,16 +357,21 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
             continue;
         }
 
+        auto oldFront = blockToRefine.front();
         // split blocks according to their state signatures, if possible
         auto wasSplit = this->partition.splitBlockByOrder(blockToRefine, [&stateToSignature]
                                                           (auto const& a, auto const& b) { return stateToSignature.at(a) < stateToSignature.at(b); });
 
         if (wasSplit) {
+            auto newFront = blockToRefine.front();
+            if (newFront != oldFront) {
+                std::cout << "[LOG] Block front changed: was " << oldFront << ", now " << newFront << std::endl;
+            }
             this->partition.forEachSubBlock(blockToRefine, [this, &blocksQueue, &statesWithInvalidSignature, &enqueuedSplitterBlocks](auto const& block) {
                 // TODO: If representative state is already on queue, then don't add it
-                if (block.size() > 1 && !enqueuedSplitterBlocks.contains(block.front())) {
+                if (block.size() > 1 && !enqueuedSplitterBlocks.contains(block)) {
                     blocksQueue.push_back(block);
-                    enqueuedSplitterBlocks.insert(block.front());
+                    enqueuedSplitterBlocks.insert(block);
                 }
 
                 for (auto state : block) {
@@ -375,9 +380,9 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
                         auto predecessorBlock = partition.getBlockOfElement(predecessorState);
 
                         // place target block on queue only if it is not already there
-                        if (predecessorBlock.size() > 1 && !enqueuedSplitterBlocks.contains(predecessorBlock.front())) {
+                        if (predecessorBlock.size() > 1 && !enqueuedSplitterBlocks.contains(predecessorBlock)) {
                             blocksQueue.push_back(predecessorBlock);
-                            enqueuedSplitterBlocks.insert(predecessorBlock.front());
+                            enqueuedSplitterBlocks.insert(predecessorBlock);
                         }
 
                         // remember which states have an invalid signature now

@@ -133,25 +133,23 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
             this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this]
                                                   (auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
 
+        // TODO: Change check to BlockSet (enqueuedBlocks)
         if (noPredecessors.size() > 0) {
             splitterQueue.push_back(noPredecessors);
-            enqueuedSplitterBlocks.insert(noPredecessors.front());
         }
 
         if (predecessors.size() > 0) {
             bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this]
                                                               (auto const& a, auto const& b) {
-                                                                  return probabilitiesToCurrentSplitter[a] < probabilitiesToCurrentSplitter[b];
+                                                                  return this->comparator.isLess(probabilitiesToCurrentSplitter[a], probabilitiesToCurrentSplitter[b]);
                                                               });
 
             // Add all blocks that were split to splitter queue
             if (wasSplit) {
                 this->partition.forEachSubBlock(predecessors, [&splitterQueue, &enqueuedSplitterBlocks](auto const& block) {
-                    // If representative state is already on queue, then do not add it
-                    if (!enqueuedSplitterBlocks.contains(block.front())) {
-                        splitterQueue.push_back(block);
-                        enqueuedSplitterBlocks.insert(block.front());
-                    }
+                    // TODO: Change check to BlockSet (enqueuedBlocks)
+                    splitterQueue.push_back(block);
+                    enqueuedSplitterBlocks.insert(block.front());
                 });
             }
         }
