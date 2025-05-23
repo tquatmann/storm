@@ -26,16 +26,27 @@ class Partition {
     // Typedefs for readability
     using ElementIndex = uint64_t;
     using Block = std::span<ElementIndex const>;
-    static constexpr auto BlockCompare = [](Block const& lhs, Block const& rhs) {
-        if (lhs.data() < rhs.data()) {
-            return true;
+    struct BlockCompare {
+        bool operator()(Block const& lhs, Block const& rhs) const {
+            if (lhs.data() < rhs.data()) {
+                return true;
+            }
+            if (lhs.data() > rhs.data()) {
+                return false;
+            }
+            return lhs.size() < rhs.size();
         }
-        if (lhs.data() > rhs.data()) {
-            return false;
-        }
-        return lhs.size() < rhs.size();
     };
-    using BlockSet = std::set<Block, decltype(BlockCompare)>;
+    // static constexpr auto BlockCompare = [](Block const& lhs, Block const& rhs) {
+    //     if (lhs.data() < rhs.data()) {
+    //         return true;
+    //     }
+    //     if (lhs.data() > rhs.data()) {
+    //         return false;
+    //     }
+    //     return lhs.size() < rhs.size();
+    // };
+    using BlockSet = std::set<Block, BlockCompare>;
 
     Partition(Partition const& other) = default;
     Partition& operator=(Partition const& other) = default;

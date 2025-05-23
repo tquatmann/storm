@@ -243,7 +243,7 @@ class BisimulationDecomposition {
      * @param splitterBlock The splitter to use.
      */
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                std::unordered_set<uint64_t>& enqueuedSplitterBlocks) = 0;
+                                                bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) = 0;
 
     /*!
      * Builds the quotient model based on the previously computed equivalence classes (stored in the blocks

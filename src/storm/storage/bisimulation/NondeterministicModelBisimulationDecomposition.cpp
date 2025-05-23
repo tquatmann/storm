@@ -138,7 +138,7 @@ bool NondeterministicModelBisimulationDecomposition<ModelType>::quotientDistribu
 
 template<typename ModelType>
 void NondeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                                                               std::unordered_set<uint64_t>& enqueuedSplitterBlocks) {
+                                                                                               bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
 
 }
 

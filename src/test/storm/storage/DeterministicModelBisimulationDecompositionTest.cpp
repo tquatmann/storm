@@ -63,11 +63,11 @@ TEST(DeterministicModelBisimulationDecomposition, Die) {
     EXPECT_EQ(8ul, result->getNumberOfTransitions());
 }
 
-TEST(DeterministicModelBisimulationDecomposition, Nand4) {
+TEST(DeterministicModelBisimulationDecomposition, Nand3) {
     std::string programFile = STORM_TEST_RESOURCES_DIR "/dtmc/nand-20-4.pm";
     storm::prism::Program program = storm::api::parseProgram(programFile);
     program = storm::utility::prism::preprocess(program, "");
-    std::string formulasAsString = "Pmin=? [F ((s = 4) & ((z / 40) < 1/10))]";
+    std::string formulasAsString = "Pmin=? [F ((s = 4) & ((z / 20) < 1/10))]";
     std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<double>> dtmc =

@@ -260,13 +260,12 @@ void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::performPartitionRefinement() {
     std::deque<typename Partition::Block> splitterQueue;
-    std::unordered_set<uint64_t> enqueuedSplitterBlocks;
+    bisimulation::Partition::BlockSet enqueuedSplitterBlocks;
 
     // Initially, add all current blocks to the queue
     this->partition.forEachBlock([&](auto const& block) {
         splitterQueue.push_back(block);
-        // TODO: enqueuedSplitterBlocks mit BlockSet anstatt erstem representativen Zustand
-        enqueuedSplitterBlocks.insert(block.front());
+        enqueuedSplitterBlocks.insert(block);
     });
 
     uint_fast64_t iterations = 0;
@@ -275,7 +274,7 @@ void BisimulationDecomposition<ModelType>::performPartitionRefinement() {
 
         auto splitterBlock = splitterQueue.front();
         splitterQueue.pop_front();
-        enqueuedSplitterBlocks.erase(splitterBlock.front());
+        enqueuedSplitterBlocks.erase(splitterBlock);
 
         refinePartitionBasedOnSplitter(splitterBlock, splitterQueue, enqueuedSplitterBlocks);
     }

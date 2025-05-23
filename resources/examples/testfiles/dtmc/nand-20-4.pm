@@ -5,8 +5,8 @@
 
 dtmc
 
-const int N = 4; // number of inputs in each bundle
-const int K = 1; // number of restorative stages
+const int N = 20; // number of inputs in each bundle
+const int K = 4; // number of restorative stages
 
 const int M = 2*K+1; // total number of multiplexing units
 

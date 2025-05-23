@@ -100,7 +100,7 @@ typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType Deter
 
 template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                                                            std::unordered_set<uint64_t>& enqueuedSplitterBlocks) {
+                                                                                            bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
 
     // std::fill(probabilitiesToCurrentSplitter.begin(), probabilitiesToCurrentSplitter.end(), storm::utility::zero<ValueType>());
@@ -133,9 +133,11 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
             this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this]
                                                   (auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
 
-        // TODO: Change check to BlockSet (enqueuedBlocks)
         if (noPredecessors.size() > 0) {
-            splitterQueue.push_back(noPredecessors);
+            if (!enqueuedSplitterBlocks.contains(noPredecessors)) {
+                splitterQueue.push_back(noPredecessors);
+                enqueuedSplitterBlocks.insert(noPredecessors);
+            }
         }
 
         if (predecessors.size() > 0) {
@@ -147,9 +149,10 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
             // Add all blocks that were split to splitter queue
             if (wasSplit) {
                 this->partition.forEachSubBlock(predecessors, [&splitterQueue, &enqueuedSplitterBlocks](auto const& block) {
-                    // TODO: Change check to BlockSet (enqueuedBlocks)
-                    splitterQueue.push_back(block);
-                    enqueuedSplitterBlocks.insert(block.front());
+                    if (!enqueuedSplitterBlocks.contains(block)) {
+                        splitterQueue.push_back(block);
+                        enqueuedSplitterBlocks.insert(block);
+                    }
                 });
             }
         }

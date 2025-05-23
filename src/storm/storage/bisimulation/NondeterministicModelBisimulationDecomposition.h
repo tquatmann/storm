@@ -35,7 +35,7 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
     virtual void buildQuotient() override;
 
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                std::unordered_set<uint64_t>& enqueuedSplitterBlocks) override;
+                                                bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) override;
 
     virtual void initialize() override;
 
