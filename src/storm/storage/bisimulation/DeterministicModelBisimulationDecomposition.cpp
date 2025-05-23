@@ -31,7 +31,8 @@ template<typename ModelType>
 DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimulationDecomposition(
     ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options)
     : BisimulationDecomposition<ModelType>(model, options),
-      probabilitiesToCurrentSplitter(model.getNumberOfStates(), storm::utility::zero<ValueType>()) {
+      probabilitiesToCurrentSplitter(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
+      touchedProbabilitiesToSplitter(model.getNumberOfStates(), false)  {
     // Intentionally left empty.
 }
 
@@ -102,13 +103,11 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
                                                                                             std::unordered_set<uint64_t>& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
 
-    // TODO: Add marker logic to omit the complete reset of the vector?
-    std::fill(probabilitiesToCurrentSplitter.begin(), probabilitiesToCurrentSplitter.end(), storm::utility::zero<ValueType>());
+    // std::fill(probabilitiesToCurrentSplitter.begin(), probabilitiesToCurrentSplitter.end(), storm::utility::zero<ValueType>());
     for (auto currentState : splitterBlock) {
         // Compute probability to enter splitter block for each predecessor
         for (const auto& predecessorEntry : this->backwardTransitions.getRow(currentState)) {
             auto predecessorState = predecessorEntry.getColumn();
-            // TODO: check again if the predecessorBlock is necessary here
             auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
             auto transitionProbability = predecessorEntry.getValue();
 
@@ -116,33 +115,50 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
                 continue;
             }
 
-            probabilitiesToCurrentSplitter[predecessorState] += transitionProbability;
+            if (touchedProbabilitiesToSplitter.get(predecessorState)) {
+                probabilitiesToCurrentSplitter[predecessorState] += transitionProbability;
+            } else {
+                probabilitiesToCurrentSplitter[predecessorState] = transitionProbability;
+                touchedProbabilitiesToSplitter.set(predecessorState, true);
+            }
 
-            // Remember which blocks contain predecessors of the splitter to split them later on
+            // Remember which blocks contain predecessors to split them w.r.t. the splitter afterwards
             blocksToSplit.insert(predecessorBlock);
         }
     }
 
     for (auto predecessorBlockToSplit : blocksToSplit) {
-        // TODO: optimize sorting, search for std:sort; how many states are sorted per iteration?
-        // TODO: again split by predicate before if states are really predecessors
-        // TODO: check in release mode
+        // First split the block by whether it is a predecessor of the splitter block or not
+        auto [noPredecessors, predecessors] =
+            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this]
+                                                  (auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
 
+        if (noPredecessors.size() > 0) {
+            splitterQueue.push_back(noPredecessors);
+            enqueuedSplitterBlocks.insert(noPredecessors.front());
+        }
 
-        bool wasSplit = this->partition.splitBlockByOrder(predecessorBlockToSplit, [this]
-                                          (auto const& a, auto const& b) { return probabilitiesToCurrentSplitter[a] < probabilitiesToCurrentSplitter[b]; });
+        if (predecessors.size() > 0) {
+            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this]
+                                                              (auto const& a, auto const& b) {
+                                                                  return probabilitiesToCurrentSplitter[a] < probabilitiesToCurrentSplitter[b];
+                                                              });
 
-        // Add all blocks that were split to splitter queue
-        if (wasSplit) {
-            this->partition.forEachSubBlock(predecessorBlockToSplit, [&splitterQueue, &enqueuedSplitterBlocks](auto const& block) {
-                // If representative state is already on queue, then don't add it
-                if (!enqueuedSplitterBlocks.contains(block.front())) {
-                    splitterQueue.push_back(block);
-                    enqueuedSplitterBlocks.insert(block.front());
-                }
-            });
+            // Add all blocks that were split to splitter queue
+            if (wasSplit) {
+                this->partition.forEachSubBlock(predecessors, [&splitterQueue, &enqueuedSplitterBlocks](auto const& block) {
+                    // If representative state is already on queue, then do not add it
+                    if (!enqueuedSplitterBlocks.contains(block.front())) {
+                        splitterQueue.push_back(block);
+                        enqueuedSplitterBlocks.insert(block.front());
+                    }
+                });
+            }
         }
     }
+
+    // Reset the touched entries of the probabilitiesToCurrentSplitter vector
+    touchedProbabilitiesToSplitter.clear();
 }
 
 // template<typename ModelType>

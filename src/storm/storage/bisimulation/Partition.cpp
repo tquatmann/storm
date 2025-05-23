@@ -1,10 +1,12 @@
 #include "storm/storage/bisimulation/Partition.h"
-
 #include <ranges>
 
 namespace storm::storage::bisimulation {
 
-Partition::Partition(ElementIndex numElements) : blockIndices(numElements, false), elementToBlockIndex(numElements, 0) {
+Partition::Partition(ElementIndex numElements)
+    : blockIndices(numElements, false),
+      elementToBlockIndex(numElements, 0),
+      blockEndCache(numElements, std::numeric_limits<BlockIndex>::max()) {
     auto indexRange = std::ranges::iota_view<ElementIndex, ElementIndex>(0, numElements);
     blockContents.assign(indexRange.begin(), indexRange.end());
     blockIndices.set(0);
@@ -18,7 +20,7 @@ std::size_t Partition::getNumberOfElements() const {
     return elementToBlockIndex.size();
 }
 
-typename Partition::Block Partition::getBlockOfElement(ElementIndex element) const {
+Partition::Block Partition::getBlockOfElement(ElementIndex element) const {
     return getBlockFromIndex(elementToBlockIndex[element]);
 }
 
@@ -29,32 +31,50 @@ bool Partition::contains(Block const& block, ElementIndex element) const {
     return eBlockIndex >= blockStart && eBlockIndex < blockStart + block.size();
 }
 
-bool Partition::checkBlockValidity(const storm::storage::bisimulation::Partition::Block& block) const {
-    if (block.empty()) {
-        STORM_LOG_ERROR("Block is empty.");
-        return false;
+Partition::Block Partition::getBlockFromIndex(BlockIndex index) const {
+    STORM_LOG_ASSERT(index < blockIndices.size() && blockIndices.get(index), "Invalid block index " << index << ".");
+
+    if (blockEndCache.size() <= index) {
+        blockEndCache.resize(blockIndices.size(), std::numeric_limits<BlockIndex>::max());
     }
-    if (block.data() < blockContents.data() || block.data() + block.size() > blockContents.data() + blockContents.size()) {
-        STORM_LOG_ERROR("Block does not belong to this partition. Accidentally copy of partition?");
-        return false;
+
+    if (blockEndCache[index] == std::numeric_limits<BlockIndex>::max()) {
+        blockEndCache[index] = blockIndices.getNextSetIndex(index + 1);
     }
-    auto const blockIndex = std::distance(blockContents.data(), block.data());  // can't use ::getBlockIndex() to avoid infinite recursion
+
+    return getBlockFromIndexRange(index, blockEndCache[index]);
+}
+
+Partition::Block Partition::getBlockFromIndexRange(BlockIndex start, BlockIndex end) const {
+    STORM_LOG_ASSERT(start < end && end <= blockIndices.size() && blockIndices.get(start), "Invalid block index range [" << start << ", " << end << ").");
+    STORM_LOG_ASSERT(end == blockIndices.size() || blockIndices.get(end), "Invalid block index end in range [" << start << ", " << end << ").");
+    return {blockContents.begin() + start, blockContents.begin() + end};
+}
+
+Partition::BlockIndex Partition::getBlockIndex(Block const& block) const {
+    STORM_LOG_ASSERT(checkBlockValidity(block), "Tried to get the index of an invalid block.");
+    return std::distance(blockContents.data(), block.data());
+}
+
+void Partition::invalidateCache(Partition::BlockIndex index) {
+    if (index < blockEndCache.size()) {
+        blockEndCache[index] = std::numeric_limits<BlockIndex>::max();
+    }
+}
+
+bool Partition::checkBlockValidity(Block const& block) const {
+    if (block.empty()) return false;
+    if (block.data() < blockContents.data() || block.data() + block.size() > blockContents.data() + blockContents.size()) return false;
+
+    auto const blockIndex = std::distance(blockContents.data(), block.data());
     auto const blockEndIndex = blockIndex + block.size();
-    if (!blockIndices.get(blockIndex) || (blockEndIndex < blockIndices.size() && !blockIndices.get(blockEndIndex))) {
-        STORM_LOG_ERROR("Block indices are not set correctly.");
-        return false;
-    }
-    if (elementToBlockIndex[block[0]] != blockIndex) {
-        STORM_LOG_ERROR("Block index of first element is not set correctly.");
-        return false;
-    }
-    if (std::any_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
-            return elementToBlockIndex[e] < blockIndex || elementToBlockIndex[e] > blockEndIndex;
-        })) {
-        STORM_LOG_ERROR("Block index of one of its elements is not set correctly.");
-        return false;
-    }
-    return true;
+
+    if (!blockIndices.get(blockIndex) || (blockEndIndex < blockIndices.size() && !blockIndices.get(blockEndIndex))) return false;
+    if (elementToBlockIndex[block[0]] != blockIndex) return false;
+
+    return !std::any_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
+        return elementToBlockIndex[e] < blockIndex || elementToBlockIndex[e] > blockEndIndex;
+    });
 }
 
 bool Partition::isProperSuperBlock(Block const& block) const {
@@ -63,33 +83,13 @@ bool Partition::isProperSuperBlock(Block const& block) const {
     return blockIndices.getNextSetIndex(blockStart + 1) != blockEnd;
 }
 
-typename Partition::BlockIndex Partition::getBlockIndex(Block const& block) const {
-    STORM_LOG_ASSERT(checkBlockValidity(block), "Tried to get the index of an invalid block.");
-    return std::distance(blockContents.data(), block.data());
-}
-
-typename Partition::Block Partition::getBlockFromIndexRange(BlockIndex const start, BlockIndex const end) const {
-    STORM_LOG_ASSERT(start < end && end <= blockIndices.size() && blockIndices.get(start), "Invalid block index range [" << start << ", " << end << ").");
-    STORM_LOG_ASSERT(end == blockIndices.size() || blockIndices.get(end), "Invalid block index end in range [" << start << ", " << end << ").");
-    return {blockContents.begin() + start, blockContents.begin() + end};
-}
-
-typename Partition::Block Partition::getBlockFromIndex(BlockIndex const index) const {
-    STORM_LOG_ASSERT(index < blockIndices.size() && blockIndices.get(index), "Invalid block index " << index << ".");
-    auto const blockEnd = blockIndices.getNextSetIndex(index + 1);
-    return getBlockFromIndexRange(index, blockEnd);
-}
-
 std::ostream& operator<<(std::ostream& os, const Partition& partition) {
     os << "Partition (" << partition.getNumberOfBlocks() << " block(s), " << partition.getNumberOfElements() << " element(s)): {\n";
     partition.forEachBlock([&os](Partition::Block const& block) {
         os << "\t{";
-        for (bool first{true}; auto const e : block) {
-            if (first) {
-                first = false;
-            } else {
-                os << ", ";
-            }
+        for (bool first = true; auto const e : block) {
+            if (!first) os << ", ";
+            first = false;
             os << e;
         }
         os << "}\n";

@@ -222,8 +222,8 @@ void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
     this->initialize();
 
     std::chrono::high_resolution_clock::time_point refinementStart = std::chrono::high_resolution_clock::now();
-    // this->performPartitionRefinement();
-    this->performSignatureRefinement();
+    this->performPartitionRefinement();
+    // this->performSignatureRefinement();
     std::chrono::high_resolution_clock::duration refinementTime = std::chrono::high_resolution_clock::now() - refinementStart;
 
     std::chrono::milliseconds refinementTimeInMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(refinementTime);
@@ -304,8 +304,8 @@ template<typename ModelType>
 void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
     // Insert all blocks into the queue for refinement
     std::deque<typename Partition::Block> blocksQueue;
-    std::unordered_set<uint64_t> enqueuedSplitterBlocks;
 
+    std::unordered_set<uint64_t> enqueuedSplitterBlocks;
     // Initially, add all current blocks to the queue
     this->partition.forEachBlock([&](auto const& block) {
         // TODO: maybe one has to handle the absorbing blocks differently for weak bisimulation, i.e., that they are still enqueued here and handled differently

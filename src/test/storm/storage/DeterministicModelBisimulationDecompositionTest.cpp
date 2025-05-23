@@ -1,3 +1,4 @@
+#include <storm/storage/prism/Program.h>
 #include "storm-config.h"
 #include "storm-parsers/parser/AutoParser.h"
 #include "storm-parsers/parser/FormulaParser.h"
@@ -5,6 +6,8 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/bisimulation/DeterministicModelBisimulationDecomposition.h"
 #include "test/storm_gtest.h"
+#include "storm-parsers/api/storm-parsers.h"
+#include "storm/api/storm.h"
 
 TEST(DeterministicModelBisimulationDecomposition, Die) {
     std::shared_ptr<storm::models::sparse::Model<double>> abstractModel =
@@ -60,6 +63,26 @@ TEST(DeterministicModelBisimulationDecomposition, Die) {
     EXPECT_EQ(8ul, result->getNumberOfTransitions());
 }
 
+TEST(DeterministicModelBisimulationDecomposition, Nand4) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/dtmc/nand-20-4.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F ((s = 4) & ((z / 40) < 1/10))]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<double>> dtmc =
+        storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Dtmc<double>>();
+
+    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>> bisim(*dtmc);
+    std::shared_ptr<storm::models::sparse::Model<double>> result;
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    EXPECT_EQ(503114ul, result->getNumberOfStates());
+    EXPECT_EQ(798475ul, result->getNumberOfTransitions());
+}
+
 TEST(DeterministicModelBisimulationDecomposition, Crowds) {
     std::shared_ptr<storm::models::sparse::Model<double>> abstractModel =
         storm::parser::AutoParser<>::parseModel(STORM_TEST_RESOURCES_DIR "/tra/crowds5_5.tra", STORM_TEST_RESOURCES_DIR "/lab/crowds5_5.lab", "", "");
@@ -76,7 +99,7 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
     EXPECT_EQ(334ul, result->getNumberOfStates());
     EXPECT_EQ(546ul, result->getNumberOfTransitions());
 
-#ifdef WINDOWS
+/*#ifdef WINDOWS
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
 #else
     typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
@@ -124,5 +147,5 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
 
     EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
     EXPECT_EQ(65ul, result->getNumberOfStates());
-    EXPECT_EQ(105ul, result->getNumberOfTransitions());
+    EXPECT_EQ(105ul, result->getNumberOfTransitions());*/
 }

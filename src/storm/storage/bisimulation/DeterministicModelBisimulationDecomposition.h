@@ -132,6 +132,11 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
     // refines a block based on probabilities.
     std::vector<ValueType> probabilitiesToCurrentSplitter;
 
+    // A bitvector indicating which positions of the probabilitiesToCurrentSplitter were touched in this iteration.
+    // This is an alternative solution to the marker1-logic that was part of the old implementation.
+    // Note that this bitvector also indicates whether a state is a direct predecessor of the splitter block or not.
+    storm::storage::BitVector touchedProbabilitiesToSplitter;
+
     // A vector mapping each state to its silent probability.
     std::vector<ValueType> silentProbabilities;
 };

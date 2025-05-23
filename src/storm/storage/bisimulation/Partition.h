@@ -7,6 +7,8 @@
 #include <span>
 #include <type_traits>
 #include <vector>
+#include <boost/sort/block_indirect_sort/block_indirect_sort.hpp>
+#include <unordered_set>
 
 #include "storm/storage/BitVector.h"
 #include "storm/utility/macros.h"
@@ -123,8 +125,10 @@ class Partition {
         // Sort the contents of the block first
         STORM_LOG_ASSERT(!isProperSuperBlock(block), "Tried to split a block that consists of multiple sub-blocks.");
         auto const blockStart = getBlockIndex(block);
+        invalidateCache(blockStart);
+
         auto const blockEnd = blockStart + block.size();
-        std::sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
+        boost::sort::block_indirect_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
 
         // Catch the special case where there is no split
         if (!less(blockContents[blockStart], blockContents[blockEnd - 1])) {
@@ -146,6 +150,7 @@ class Partition {
             STORM_LOG_ASSERT(!blockIndices.get(newBlockIndex),
                              "Partition in inconsistent state: Block index " << newBlockIndex << " already set as start index.");
             blockIndices.set(newBlockIndex);
+            invalidateCache(newBlockIndex);
             auto const newBlockEnd = getEndOfBlock(newBlockIndex);
             std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + newBlockEnd,
                           [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
@@ -168,6 +173,7 @@ class Partition {
 
         // swap the block contents so that all elements e with f(e) == false come first
         auto const blockStart = getBlockIndex(block);
+        invalidateCache(blockStart);
         auto const blockEnd = blockStart + block.size();
         auto l = blockStart;
         auto r = blockEnd - 1;
@@ -205,6 +211,7 @@ class Partition {
         // Perform a split
         auto const newBlockIndex = l;
         blockIndices.set(newBlockIndex);
+        invalidateCache(newBlockIndex);
         std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + blockEnd,
                       [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
         return {getBlockFromIndexRange(blockStart, newBlockIndex), getBlockFromIndexRange(newBlockIndex, blockEnd)};
@@ -251,6 +258,8 @@ class Partition {
         }
     }
 
+    void invalidateCache(Partition::BlockIndex index);
+
     /// Stores for each block the elements in that block (cf. blockIndices)
     /// Stores where a new block begins in the blockContents vector.
     /// The number of set bits equals the number of blocks. The first bit is always set.
@@ -263,6 +272,8 @@ class Partition {
     /// for all elements s, blockIndices.get(elementToBlockIndex[s]) is true and s is in { blockContents[j] | elementToBlockIndex[s] ≤ j <
     /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
     std::vector<BlockIndex> elementToBlockIndex;
+
+    mutable std::vector<BlockIndex> blockEndCache; // Caching block end indices
 };
 
 std::ostream& operator<<(std::ostream& os, const Partition& partition);
