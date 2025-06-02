@@ -66,7 +66,6 @@ std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& mod
 
         for (auto const& subFormula : formulas) {
             STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
-            auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
 
             if (subFormula->isProbabilityOperatorFormula()) {
                 ltlFormulas.push_back(subFormula);
@@ -82,7 +81,7 @@ std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& mod
 
 template<class SparseModelType>
 std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
-    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, CheckFormulaCallback const& formulaChecker) {
+    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
 
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");

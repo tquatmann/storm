@@ -104,7 +104,7 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      */
     static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula);
 
-    static typename transformer::DAMultiProduct<productModelType>::ptr buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
 
    private:
     /*!

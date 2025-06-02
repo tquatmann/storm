@@ -18,14 +18,7 @@ typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> C
 
 template<typename SparseModelType>
 std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment const& env, SparseModelType const& model,
-                                                                storm::logic::MultiObjectiveFormula const& formula,
-                                                                CheckFormulaCallback const& formulaChecker);
-
-template<typename SparseModelType>
-std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment const& env, SparseModelType const& model,
-                                                                storm::logic::MultiObjectiveFormula const& formula) {
-    return performMultiObjectiveModelChecking(env, model, formula, nullptr);
-}
+                                                                storm::logic::MultiObjectiveFormula const& formula);
 
 }
 }  // namespace modelchecker

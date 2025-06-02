@@ -306,10 +306,7 @@ std::unique_ptr<CheckResult> SparseMarkovAutomatonCslModelChecker<SparseMarkovAu
 template<typename SparseMarkovAutomatonModelType>
 std::unique_ptr<CheckResult> SparseMarkovAutomatonCslModelChecker<SparseMarkovAutomatonModelType>::checkMultiObjectiveFormula(
     Environment const& env, CheckTask<storm::logic::MultiObjectiveFormula, ValueType> const& checkTask) {
-    auto formulaChecker = [&](storm::logic::Formula const& formula) {
-        return this->check(env, formula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
-    };
-    return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula(), formulaChecker);
+    return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula());
 }
 
 template class SparseMarkovAutomatonCslModelChecker<storm::models::sparse::MarkovAutomaton<double>>;

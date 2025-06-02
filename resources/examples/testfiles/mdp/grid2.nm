@@ -1,0 +1,36 @@
+mdp
+
+module grid
+
+	state: [0..3] init 0;
+
+	[right0] state=0 -> 0.8: (state'=1) + 0.1: (state'=0) + 0.1: (state'=2);
+	[down0] state=0 -> 0.8: (state'=2) + 0.1: (state'=0) + 0.1: (state'=1);
+	[left0] state=0 -> 0.9: (state'=0) + 0.1: (state'=2);
+	[up0] state=0 -> 0.9: (state'=0) + 0.1: (state'=1);
+
+	[right1] state=1 -> 0.9: (state'=1) + 0.1: (state'=3);
+	[down1] state=1 -> 0.8: (state'=3) + 0.1: (state'=0) + 0.1: (state'=1);
+	[left1] state=1 -> 0.8: (state'=0) + 0.1: (state'=1) + 0.1: (state'=3);
+	[up1] state=1 -> 0.9: (state'=1) + 0.1: (state'=0);
+
+	[right2] state=2 -> 0.8: (state'=3) + 0.1: (state'=2) + 0.1: (state'=0);
+	[down2] state=2 -> 0.9: (state'=2) + 0.1: (state'=3);
+	[left2] state=2 -> 0.9: (state'=2) + 0.1: (state'=0);
+	[up2] state=2 -> 0.8: (state'=0) + 0.1: (state'=2) + 0.1: (state'=3);
+
+	[right3] state=3 -> 0.9: (state'=3) + 0.1: (state'=1);
+	[down3] state=3 -> 0.9: (state'=3) + 0.1: (state'=2);
+	[left3] state=3 -> 0.8: (state'=2) + 0.1: (state'=3) + 0.1: (state'=1);
+	[up3] state=3 -> 0.8: (state'=1) + 0.1: (state'=2) + 0.1: (state'=3);
+
+endmodule
+
+label "a" = state=1 | state=0;
+label "b" = state=2;
+label "c" = state=3 | state=2;
+label "d" = state=1;
+
+rewards "default"
+    state=3 | state=2 : 1;
+endrewards 

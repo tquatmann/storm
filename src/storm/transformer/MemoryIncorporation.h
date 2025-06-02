@@ -18,16 +18,14 @@ template<class SparseModelType>
 class MemoryIncorporation {
     typedef typename SparseModelType::ValueType ValueType;
     typedef typename SparseModelType::RewardModelType RewardModelType;
-    typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
 
-   public:
+public:
     /*!
      * Incorporates memory that stores whether a 'goal' state has already been reached. This supports operatorformulas whose subformula is
      * a (bounded-) until formula, eventually formula, or a globally formula. Total reward formulas and cumulative reward formulas will be ignored.
      */
     static std::shared_ptr<SparseModelType> incorporateGoalMemory(SparseModelType const& model,
-                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-                                                                  CheckFormulaCallback const& formulaChecker);
+                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
 
     /*!
      * Incorporates a memory structure where the nondeterminism of the model decides which successor state to choose.

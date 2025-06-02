@@ -418,9 +418,15 @@ typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondetermini
 }
 
 template<typename ValueType, bool Nondeterministic>
-typename transformer::DAMultiProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
     std::vector<storm::automata::AcceptanceCondition::ptr> acceptanceConditions(formulas.size());
     productModelType productModel(model.getTransitionMatrix(), model.getStateLabeling());
+    std::vector<storm::storage::BitVector> modelStateToProductStates(model.getNumberOfStates());
+    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
+        auto iAsVector = storage::BitVector(model.getNumberOfStates());
+        iAsVector.set(i);
+        modelStateToProductStates[i] = iAsVector;
+    }
 
     for (int i = 0; i < formulas.size(); i++) {
         //compute product
@@ -428,26 +434,40 @@ typename transformer::DAMultiProduct<typename SparseLTLHelper<ValueType, Nondete
         auto product = buildFromFormula(productModel, pathformula);
         acceptanceConditions[i] = product->getAcceptance();
 
-        // lift statelabeling
+        // lift state labeling
         models::sparse::StateLabeling productLabeling(product->getProductModel().getNumberOfStates());
         for (auto const& label: productModel.getStateLabeling().getLabels()) {
             productLabeling.addLabel(label);
+            if (label == "init") continue;
+
             auto statesModel = productModel.getStateLabeling().getStates(label);
             auto statesProduct = product->liftFromModel(statesModel);
             productLabeling.setStates(label, statesProduct);
         }
 
-        // lift reward models
-
+        productLabeling.setStates("init", product->getProductModel().getStateLabeling().getStates("soi"));
         productModel = productModelType(product->getProductModel().getTransitionMatrix(), productLabeling);
+
+        // lift state mapping
+        for (int j = 0; j < model.getNumberOfStates(); j++) {
+            modelStateToProductStates[j] = product->liftFromModel(modelStateToProductStates[j]);
+        }
 
         for (int j = 0; j < i; j++) {
             // lift product acceptance condition
             acceptanceConditions[j] = acceptanceConditions[j]->lift(
-            product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getAutomatonState(prodState); });
+            product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getModelState(prodState); });
         }
     }
-    return std::make_shared<transformer::DAMultiProduct<productModelType>>(std::move(*product), acceptanceConditions);
+
+    std::vector<uint64_t> indexToModelState(productModel.getNumberOfStates());
+    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
+        for (auto const j: modelStateToProductStates[i]) {
+            indexToModelState[j] = i;
+        }
+    }
+
+    return std::make_tuple(productModel, acceptanceConditions, indexToModelState);
 }
 
 template class SparseLTLHelper<double, false>;

@@ -2,7 +2,7 @@
 
 #include "DARewardProduct.h"
 #include "storm/logic/Formula.h"
-#include "storm/automata/acceptanceCondition.h"
+#include "storm/automata/AcceptanceCondition.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/transformer/DAProductBuilder.h"
@@ -15,15 +15,16 @@ class DARewardProductBuilder {
     public:
         using Mdp = storm::models::sparse::Mdp<ValueType, RewardModelType>;
 
-        DARewardProductBuilder(Mdp& productModel, std::vector<storm::automata::AcceptanceCondition> const& acceptanceConditions, Mdp const& originalModel): productModel(productModel), acceptanceConditions(acceptanceConditions), originalModel(originalModel) {}
+        DARewardProductBuilder(Mdp& productModel, std::vector<storm::automata::AcceptanceCondition::ptr> const& acceptanceConditions, std::vector<uint64_t> const& productToModelState, Mdp const& originalModel): productModel(productModel), acceptanceConditions(acceptanceConditions), productToModelState(productToModelState), originalModel(originalModel) {}
 
         std::shared_ptr<DARewardProduct<ValueType>> build();
 
     private:
         using Row = typename storage::SparseMatrix<ValueType>::const_rows;
         Mdp& productModel;
-        std::vector<storm::automata::AcceptanceCondition> const& acceptanceConditions;
+        std::vector<storm::automata::AcceptanceCondition::ptr> const& acceptanceConditions;
         Mdp const& originalModel;
+        std::vector<uint64_t> const& productToModelState;
         uint64_t InvalidIndex = std::numeric_limits<uint64_t>::max();
 
         /*!
@@ -33,7 +34,12 @@ class DARewardProductBuilder {
          * @param row the state-action pair from the original model
          * @param numMecs the number of MECs in the original model
          */
-        void modifyStateActionPair(storage::SparseMatrixBuilder<ValueType>& builder, std::vector<uint64_t> const& stateToMec, Row row, uint64_t numMecs, bool builderEmpty=false);
+        void modifyStateActionPair(storage::SparseMatrixBuilder<ValueType>& builder,
+            std::vector<uint64_t> const& stateToMec,
+            Row row,
+            uint64_t numMecs,
+            uint64_t numStatesInMecs,
+            bool builderEmpty=false);
 
         /*!
          * Processes the product by determining the quotient-MDP
@@ -44,7 +50,11 @@ class DARewardProductBuilder {
          * @param choiceToModelChoice a mapping of choices in the modified model to ones in the original model
          * @return a mapping of each MEC to the actions that leave it with some probability
          */
-        std::vector<std::list<uint64_t>> processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::vector<uint64_t>& choiceToModelChoice);
+        std::vector<std::list<uint64_t>> processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+                    std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
+                    std::vector<uint64_t>& stateToModelState, std::vector<uint64_t>& choiceToModelChoice,
+                    uint64_t numStatesInMecs);
 
         /*!
          *
@@ -56,21 +66,20 @@ class DARewardProductBuilder {
          * @param mecsToLeavingActions
          * @return a list of actions that lead to an accepting end component in the modified model a.s.
          */
-        std::list<uint64_t> addRepresentativeStates(storage::SparseMatrix<ValueType> const& transitionMatrix,
-                                                    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec,
-                                                    storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
-                                                    std::list<storage::MaximalEndComponent>& accEcs,
-                                                    std::vector<std::list<uint64_t>> const& mecsToLeavingActions);
+        std::vector<std::list<uint64_t>> addRepresentativeStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+                                                    std::vector<uint64_t> const& stateToMec,
+                                                    std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
+                                                    std::vector<std::list<uint64_t>> const& mecsToLeavingActions,
+                                                    uint64_t numStatesInMecs);
 
         /*!
          * Adds copies of the MACs to the modified model
          * @param transitionMatrix
          * @param transitionMatrixBuilder
-         * @param stateToMec
-         * @param mecs
          * @param accEcs
          */
-        void addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, uint64_t numberMECs, std::list<storage::MaximalEndComponent> accEcs);
+        void addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::list<storage::MaximalEndComponent> const& accEcs);
 
         /*!
          *
@@ -78,7 +87,11 @@ class DARewardProductBuilder {
          * @param mecs
          * @param accEcs
          */
-        void computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent> const& accEcs, std::vector<uint64_t>& stateToModelState, std::vector<uint64_t>& choiceToModelChoice);
+        void computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                        std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
+                                        std::vector<uint64_t>& stateToModelState,
+                                        std::vector<uint64_t>& choiceToModelChoice,
+                                        uint64_t stateCounter, uint64_t choiceCounter);
 
         /*!
          * Computes the set of maximal accepting end components
@@ -100,7 +113,10 @@ class DARewardProductBuilder {
          * @param numberOfStates the number of states of the modified model
          * @return the initial states of the modified transition matrix
          */
-        storm::storage::BitVector liftInitialStates(std::vector<uint64_t> const& stateToMec, uint64_t numberOfStates);
+        storm::storage::BitVector liftInitialStates(std::vector<uint64_t> const& stateToMec,
+            uint64_t numberOfStates,
+            uint64_t numStatesInMecs,
+            storm::storage::BitVector const& initialStates) const;
 };
 }
 }

@@ -8,7 +8,7 @@ namespace transformer {
 template <typename ValueType>
 class DARewardProduct {
     public:
-        DARewardProduct(storage::SparseMatrix<ValueType> transitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& actionToModelAction, std::list<uint64_t> const& reachingAccEcChoices, storm::storage::BitVector const& initialStates):
+        DARewardProduct(storage::SparseMatrix<ValueType> transitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& actionToModelAction, std::vector<std::list<uint64_t>> const& reachingAccEcChoices, storm::storage::BitVector const& initialStates):
             transitionMatrix(transitionMatrix),
             stateToModelState(stateToModelState),
             actionToModelAction(actionToModelAction),
@@ -31,7 +31,7 @@ class DARewardProduct {
             return actionToModelAction;
         }
 
-        std::list<uint64_t> getReachingAccEcChoices() {
+        std::vector<std::list<uint64_t>> getReachingAccEcChoices() {
             return reachingAccEcChoices;
         }
 
@@ -39,7 +39,7 @@ class DARewardProduct {
         storage::SparseMatrix<ValueType> transitionMatrix;
         std::vector<uint64_t> stateToModelState;
         std::vector<uint64_t> actionToModelAction;
-        std::list<uint64_t> reachingAccEcChoices;
+        std::vector<std::list<uint64_t>> reachingAccEcChoices;
         storm::storage::BitVector initialStates;
 };
 

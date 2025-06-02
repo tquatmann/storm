@@ -25,8 +25,7 @@ namespace multiobjective {
 
 template<typename SparseModelType>
 std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment const& env, SparseModelType const& model,
-                                                                storm::logic::MultiObjectiveFormula const& formula,
-                                                                CheckFormulaCallback const& formulaChecker) {
+                                                                storm::logic::MultiObjectiveFormula const& formula) {
 
     storm::utility::Stopwatch swTotal(true);
     storm::utility::Stopwatch swPreprocessing(true);
@@ -40,7 +39,7 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
     }
 
     // Preprocess the model
-    auto preprocessorResult = preprocessing::SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(env, model, formula, formulaChecker);
+    auto preprocessorResult = preprocessing::SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(env, model, formula);
     swPreprocessing.stop();
 
     if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
@@ -138,13 +137,13 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
 }
 
 template std::unique_ptr<CheckResult> performMultiObjectiveModelChecking<storm::models::sparse::Mdp<double>>(
-    Environment const& env, storm::models::sparse::Mdp<double> const& model, storm::logic::MultiObjectiveFormula const& formula, CheckFormulaCallback const& formulaCallback);
+    Environment const& env, storm::models::sparse::Mdp<double> const& model, storm::logic::MultiObjectiveFormula const& formula);
 template std::unique_ptr<CheckResult> performMultiObjectiveModelChecking<storm::models::sparse::MarkovAutomaton<double>>(
-    Environment const& env, storm::models::sparse::MarkovAutomaton<double> const& model, storm::logic::MultiObjectiveFormula const& formula, CheckFormulaCallback const& formulaCallback);
+    Environment const& env, storm::models::sparse::MarkovAutomaton<double> const& model, storm::logic::MultiObjectiveFormula const& formula);
 template std::unique_ptr<CheckResult> performMultiObjectiveModelChecking<storm::models::sparse::Mdp<storm::RationalNumber>>(
-    Environment const& env, storm::models::sparse::Mdp<storm::RationalNumber> const& model, storm::logic::MultiObjectiveFormula const& formula, CheckFormulaCallback const& formulaCallback);
+    Environment const& env, storm::models::sparse::Mdp<storm::RationalNumber> const& model, storm::logic::MultiObjectiveFormula const& formula);
 template std::unique_ptr<CheckResult> performMultiObjectiveModelChecking<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>(
-    Environment const& env, storm::models::sparse::MarkovAutomaton<storm::RationalNumber> const& model, storm::logic::MultiObjectiveFormula const& formula, CheckFormulaCallback const& formulaCallback);
+    Environment const& env, storm::models::sparse::MarkovAutomaton<storm::RationalNumber> const& model, storm::logic::MultiObjectiveFormula const& formula);
 
 }  // namespace multiobjective
 }  // namespace modelchecker
