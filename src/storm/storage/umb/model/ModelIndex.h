@@ -111,7 +111,7 @@ struct ModelIndex {
             auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };
 
             if (std::all_of(inputName.begin(), inputName.end(), isAllowed)) {
-                return {inputName, std::nullopt};  // no alias needed
+                return {inputName, inputName};  // no alias needed, but we still set it to the original name as a named annotation usually should have an alias
             } else {
                 std::string newName;
                 for (auto ch : inputName) {
@@ -130,13 +130,13 @@ struct ModelIndex {
             if (!map) {
                 return {};
             }
-            if (map->contains(id)) {
-                return id;
-            }
             for (auto const& [name, annotation] : map.value()) {
                 if (annotation.alias == id) {
                     return name;
                 }
+            }
+            if (map->contains(id)) {
+                return id;
             }
             return {};
         }
