@@ -218,6 +218,7 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
             STORM_LOG_THROW(!aps.contains(name), storm::exceptions::WrongFormatException, "AP for state label '" << label << "' already exists.");
             auto& apIndex = aps[name];
             apIndex.alias = alias;
+            apIndex.type = storm::umb::ModelIndex::Annotations::AtomicProposition::Type::Bool;
             apIndex.appliesTo.emplace();
             apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::States);
         }
@@ -237,6 +238,7 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
                         "AP '" << name << "' exists under two different alias: '" << apIndex.alias.value_or("<none>") << " and " << alias.value_or("<none>"));
                 } else {
                     apIndex.alias = alias;
+                    apIndex.type = storm::umb::ModelIndex::Annotations::AtomicProposition::Type::Bool;
                     apIndex.appliesTo.emplace();
                 }
                 apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::AppliesTo::Choices);

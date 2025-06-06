@@ -95,8 +95,14 @@ struct ModelIndex {
 
         struct AtomicProposition {
             std::optional<std::string> alias, description;
+            enum class Type { Bool };
+            struct TypeDeclaration {
+                using Values = Type;
+                auto static constexpr Keys = {"bool"};
+            };
+            std::optional<storm::SerializedEnum<TypeDeclaration>> type;                         // todo: check if this stays here
             std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;  // todo check if this stays here
-            auto static constexpr JsonKeys = {"alias", "description", "applies-to"};
+            auto static constexpr JsonKeys = {"alias", "description", "type", "applies-to"};
             using JsonSerialization = storm::JsonSerialization;
         };
         std::optional<std::map<std::string, AtomicProposition>> atomicPropositions;
