@@ -188,7 +188,11 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
     if (model.hasRewardModel()) {
         auto& rewards = index.annotations.rewards.emplace();
         for (auto const& [rewardModelName, rewardModel] : model.getRewardModels()) {
-            auto const [name, alias] = index.annotations.getAllowedNameAndAlias(rewardModelName);
+            auto [name, alias] = index.annotations.getAllowedNameAndAlias(rewardModelName);
+            if (rewardModelName.empty()) {
+                alias = std::nullopt;  // unnamed reward model does not get an alias
+                name = "default";
+            }
             STORM_LOG_THROW(!rewards.contains(name), storm::exceptions::WrongFormatException, "Reward id '" << name << "' already exists.");
             auto& rewardIndex = rewards[name];
             rewardIndex.alias = alias;
