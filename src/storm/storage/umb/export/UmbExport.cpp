@@ -106,6 +106,15 @@ template<typename T>
 concept IsOptionalWithFileNames = std::same_as<std::remove_cvref_t<T>, std::optional<typename T::value_type>> && HasFileNames<typename T::value_type>;
 
 template<typename UmbStructure>
+    requires HasFileNames<UmbStructure>
+void applyToFieldWithName(UmbStructure const& umbStructure, auto&& fieldName, auto&& func) {
+    auto constexpr i = std::find(UmbStructure::FileNames.begin(), UmbStructure::FileNames.end(), fieldName) - UmbStructure::FileNames.begin();
+    static_assert(i < UmbStructure::FileNames.size(), "Field name not found in file names.");
+    func(boost::pfr::get<i>(umbStructure));
+}
+
+template<typename UmbStructure>
+    requires HasFileNames<UmbStructure>
 void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std::filesystem::path const& context) {
     static_assert(UmbStructure::FileNames.size() == boost::pfr::tuple_size_v<UmbStructure>, "Number of file names does not match number of fields in struct.");
     boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t i) {
@@ -138,9 +147,21 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
         } else if constexpr (std::is_same_v<FieldType, GenericVector<StorageType::Memory>> || std::is_same_v<FieldType, GenericVector<StorageType::Disk>>) {
             if (field.template isType<storm::RationalNumber>()) {
                 if (ValueEncoding::rationalVectorRequiresCsr(field.template get<storm::RationalNumber>())) {
-                    assert(false);  // todo
+                    // TODO: This is not very memory efficient as we create the entire vector in memory first instead of writing it in chunks.
+                    auto [values, csr] = ValueEncoding::createUint64AndCsrFromRationalRange(field.template get<storm::RationalNumber>());
+                    writeVector(std::move(values), target, context / fieldName);
+                    std::string csrFieldName;
+                    if (fieldName == "branch-probabilities.bin") {
+                        csrFieldName = "branch-to-probability.bin";
+                    } else if (fieldName == "values.bin") {
+                        csrFieldName = "to-value.bin";
+                    } else {
+                        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException,
+                                        "Unexpected field name '" << fieldName << "' has no associated CSR file name.");
+                    }
+                    writeVector(std::move(csr), target, context / csrFieldName);
                 } else {
-                    writeVector(ValueEncoding::rationalToUint64View(field.template get<storm::RationalNumber>()), target, context / fieldName);
+                    writeVector(ValueEncoding::rationalToUint64ViewNoCsr(field.template get<storm::RationalNumber>()), target, context / fieldName);
                 }
             } else if (field.template isType<storm::Interval>()) {
                 writeVector(ValueEncoding::intervalToDoubleRangeView(field.template get<storm::Interval>()), target, context / fieldName);

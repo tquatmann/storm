@@ -3,6 +3,7 @@
 #include <span>
 #include <vector>
 
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/storage/umb/model/GenericVector.h"
 #include "storm/storage/umb/model/VectorType.h"
@@ -96,14 +97,56 @@ class ValueEncoding {
                });
     }
 
-    template<std::ranges::input_range InputRange>
+    template<bool Signed, std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
-    static auto uint64ToRationalRangeView(InputRange&& input, InputRange&& csr) {
-        STORM_LOG_ASSERT(std::ranges::size(input) % 2 == 0, "Input size is not even: " << std::ranges::size(input));
-        return std::ranges::iota_view(0ull, std::ranges::size(input) / 2) | std::ranges::views::transform([&input](auto i) -> storm::RationalNumber {
+    static storm::RationalNumber decodeArbitraryPrecisionInteger(InputRange&& input) {
+        using IntegerType = typename storm::NumberTraits<storm::RationalNumber>::IntegerType;
+        auto const twoTo64 = storm::utility::pow<IntegerType>(2, 64);
+
+        STORM_LOG_ASSERT(std::ranges::size(input) > 0, "Input range must not be empty.");
+        // We assume a little endian representation, so we reverse the input to start with the most significant bits.
+        auto reverse_input = std::ranges::reverse_view(std::forward<InputRange>(input));
+
+        // Helper function to decode from an unsigned range (with the most significant bits first).
+        auto decodeFromUnsignedRange = [](auto&& input) -> storm::RationalNumber {
+            auto const twoTo64 = storm::utility::pow<IntegerType>(2, 64);
+            auto inputIt = std::ranges::begin(input);
+            auto const inputEnd = std::ranges::end(input);
+            auto result = storm::utility::convertNumber<storm::RationalNumber>(*inputIt);
+            for (++inputIt; inputIt != inputEnd; ++inputIt) {
+                result *= twoTo64;
+                result += storm::utility::convertNumber<storm::RationalNumber>(*inputIt);
+            }
+            return result;
+        };
+
+        if constexpr (Signed) {
+            // Find out if the number is negative, in which case we would compute the two's complement.
+            uint64_t constexpr mostSignificantBitMask = 1ull << 63;
+            if (*std::ranges::begin(reverse_input) & mostSignificantBitMask) {
+                // Two's complement (e.g. 1111...1101 is -3)
+                return -decodeFromUnsignedRange(reverse_input | std::ranges::views::transform([](uint64_t value) { return ~value; })) - 1;
+            }
+        }
+        // Reaching this point means that the number is positive (i.e. signed and unsigned representations coincide).
+        return decodeFromUnsignedRange(reverse_input);
+    }
+
+    template<std::ranges::input_range InputRange, std::ranges::input_range CsrRange>
+        requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t> and std::same_as<std::ranges::range_value_t<CsrRange>, uint64_t>
+    static auto uint64ToRationalRangeView(InputRange&& input, CsrRange&& csr) {
+        STORM_LOG_ASSERT(std::ranges::size(csr) > 0, "CSR must not be empty.");
+        auto const numEntries = std::ranges::size(csr) - 1;
+        STORM_LOG_ASSERT(std::ranges::size(csr) % 2 == 0, "Input size is not even: " << std::ranges::size(input));
+        return std::ranges::iota_view(0ull, numEntries) | std::ranges::views::transform([&input, csr](auto i) -> storm::RationalNumber {
+                   auto const left = 2 * csr[i];
+                   auto const right = 2 * csr[i + 1];
+                   auto mid = left + (right - left) / 2;
+                   std::ranges::subrange numeratorRange{std::ranges::begin(input) + left, std::ranges::begin(input) + mid};
+                   std::ranges::subrange denominatorRange{std::ranges::begin(input) + mid, std::ranges::begin(input) + right};
+
                    // numerator is signed
-                   return storm::utility::convertNumber<storm::RationalNumber>(static_cast<int64_t>(input[2 * i])) /
-                          storm::utility::convertNumber<storm::RationalNumber>(input[2 * i + 1]);
+                   return decodeArbitraryPrecisionInteger<true>(numeratorRange) / decodeArbitraryPrecisionInteger<false>(denominatorRange);
                });
     }
 
@@ -118,27 +161,118 @@ class ValueEncoding {
     }
     template<std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
-    static auto rationalToUint64View(InputRange&& input) {
+    static auto rationalToUint64ViewNoCsr(InputRange&& input) {
+        static_assert(storm::RationalNumberDenominatorAlwaysPositive);
         return std::ranges::iota_view(0ull, std::ranges::size(input) * 2) | std::views::transform([&input](auto i) -> uint64_t {
                    storm::RationalNumber const& r = input[i / 2];
                    if (i % 2 == 0) {
                        // numerator
                        return static_cast<uint64_t>(storm::utility::convertNumber<int64_t, storm::RationalNumber>(storm::utility::numerator(r)));
                    } else {
-                       // denominator (we expect that they are always positive)
+                       // denominator
+                       // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
                        STORM_LOG_ASSERT(storm::utility::denominator(r) > 0, "Denominator is not positive: " << storm::utility::denominator(r));
                        return storm::utility::convertNumber<uint64_t, storm::RationalNumber>(storm::utility::denominator(r));
                    }
                });
     }
 
+    template<bool Signed>
+    static uint64_t appendEncodedInteger(std::vector<uint64_t>& result, typename storm::NumberTraits<storm::RationalNumber>::IntegerType const& value) {
+        if constexpr (Signed) {
+            if (value < 0) {
+                // Two's complement representation (e.g. -3 is 1111...1101)
+                // We encode the corresponding positive value and then invert the bits.
+                auto buckets = appendEncodedInteger<true>(result, -(value + 1));
+                // Invert the bits
+                for (auto& v : std::span<uint64_t>(result.end() - buckets, buckets)) {
+                    v = ~v;
+                }
+                return buckets;
+            } else {
+                // We encode the non-negative value as if it were unsigned.
+                auto buckets = appendEncodedInteger<false>(result, value);
+                // Special case: the most significant bit must not be set. Otherwise, it would indicate a negative number in two's complement.
+                uint64_t constexpr mostSignificantBitMask = 1ull << 63;
+                if (result.back() & mostSignificantBitMask) {
+                    result.push_back(0);
+                    ++buckets;
+                }
+                return buckets;
+            }
+        } else {
+            using IntegerType = typename storm::NumberTraits<storm::RationalNumber>::IntegerType;
+            auto const twoTo64 = storm::utility::pow<IntegerType>(2, 64);
+            // We assume a little endian representation, so we start with the least significant bits.
+
+            STORM_LOG_ASSERT(value >= 0, "Value must be non-negative for unsigned encoding.");
+            auto divisionResult = storm::utility::divide<IntegerType>(value, twoTo64);
+            result.push_back(storm::utility::convertNumber<uint64_t, storm::RationalNumber>(divisionResult.second));
+            uint64_t buckets = 1;
+            while (divisionResult.first != 0) {
+                divisionResult = storm::utility::divide<IntegerType>(divisionResult.first, twoTo64);
+                result.push_back(storm::utility::convertNumber<uint64_t, storm::RationalNumber>(divisionResult.second));
+                ++buckets;
+            }
+            return buckets;
+        }
+    }
+
+    static uint64_t appendEncodedRational(std::vector<uint64_t>& result, storm::RationalNumber const& value) {
+        // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
+        static_assert(storm::RationalNumberDenominatorAlwaysPositive);
+        auto const numeratorBuckets = appendEncodedInteger<true>(result, storm::utility::numerator(value));       // signed
+        auto const denominatorBuckets = appendEncodedInteger<false>(result, storm::utility::denominator(value));  // unsigned
+
+        if (numeratorBuckets < denominatorBuckets) {
+            // add numerator buckets, requiring to move the denominator buckets to the end
+            auto const oldStartOfDenominator = result.size() - denominatorBuckets;
+            uint64_t const bucketsToAdd = denominatorBuckets - numeratorBuckets;
+            auto const newStartOfDenominator = oldStartOfDenominator + bucketsToAdd;
+
+            // move the denominator buckets to the new position
+            result.resize(result.size() + bucketsToAdd);
+            uint64_t i = result.size() - 1;
+            for (; i >= newStartOfDenominator; --i) {
+                result[i] = result[i - bucketsToAdd];
+            }
+            // fill the added numerator buckets with zeros
+            for (; i >= oldStartOfDenominator; --i) {
+                result[i] = 0;
+            }
+            return denominatorBuckets * 2;
+        } else if (numeratorBuckets > denominatorBuckets) {
+            // add denominator buckets to the end
+            result.resize(result.size() + numeratorBuckets - denominatorBuckets, 0);
+            return numeratorBuckets * 2;
+        } else {
+            // numeratorBuckets == denominatorBuckets
+            return numeratorBuckets * 2;
+        }
+    }
+
+    template<std::ranges::input_range InputRange>
+        requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
+    static std::pair<std::vector<uint64_t>, std::vector<uint64_t>> createUint64AndCsrFromRationalRange(InputRange&& input) {
+        std::vector<uint64_t> values, csr;
+        csr.reserve(std::ranges::size(input) + 1);
+        csr.push_back(0);
+        values.reserve(std::ranges::size(input) * 4);  // we guess that on average 256 bits are required per rational number...
+        for (auto const& r : input) {
+            appendEncodedRational(values, r);
+            csr.push_back(values.size() / 2);  // we store the number of 128-bit buckets used for the numerator and denominator
+        }
+        values.shrink_to_fit();
+        csr.shrink_to_fit();
+        return {values, csr};
+    }
+
     template<std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, double>
     static auto doubleToIntervalRangeView(InputRange&& input) {
         STORM_LOG_ASSERT(std::ranges::size(input) % 2 == 0, "Input size is not even: " << std::ranges::size(input));
-        return std::ranges::iota_view(0ull, std::ranges::size(input) / 2) | std::views::transform([&input](auto i) -> storm::Interval {
-                   return storm::Interval{input[2 * i], input[2 * i + 1]};
-               });
+        return std::ranges::iota_view(0ull, std::ranges::size(input) / 2) |
+               std::views::transform([&input](auto i) -> storm::Interval { return storm::Interval{input[2 * i], input[2 * i + 1]}; });
     }
 
     template<std::ranges::input_range InputRange>
