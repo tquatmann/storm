@@ -44,25 +44,12 @@ list(APPEND STORM_DEP_TARGETS l3pp)
 ## LibArchive
 ##
 #############################################################
-# following https://stackoverflow.com/a/76916842
-if(MACOSX)
-    # Homebrew ships libarchive keg only, include dirs have to be set manually
-    execute_process(
-            COMMAND brew --prefix libarchive
-            ERROR_QUIET
-            OUTPUT_VARIABLE LIBARCHIVE_PREFIX
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    if (NOT "${LIBARCHIVE_PREFIX}" STREQUAL "")
-        set(LibArchive_INCLUDE_DIR "${LIBARCHIVE_PREFIX}/include")
-    endif()
-endif()
 find_package(LibArchive QUIET)
 set(STORM_HAVE_LIBARCHIVE ${LibArchive_FOUND})
-if(LibArchive_FOUND)
-    message (STATUS "Storm - Linking with LibArchive (version ${LibArchive_VERSION}).")
+if(STORM_HAVE_LIBARCHIVE)
+    message (STATUS "Storm - Linking with LibArchive (version: ${LibArchive_VERSION}, libraries:  ${LibArchive_LIBRARIES}, include: ${LibArchive_INCLUDE_DIRS}).")
     add_imported_library(LibArchive SHARED ${LibArchive_LIBRARIES} ${LibArchive_INCLUDE_DIRS})
-    list(APPEND STORM_DEP_TARGETS LibArchive_SHARED)
+    list(APPEND STORM_DEP_TARGETS LibArchive::LibArchive)
 else()
     message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files such will not be supported.")
 endif(LibArchive_FOUND)
