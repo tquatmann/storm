@@ -10,27 +10,33 @@
 
 namespace storm::umb {
 
+namespace detail {
+template<typename T, StorageType Storage>
+using OptionalVec = std::optional<VectorType<T, Storage>>;
+
+struct AnyType {};
+
+template<typename T, StorageType Storage>
+struct TO1Helper {
+    using type = OptionalVec<T, Storage>;
+};
+template<StorageType Storage>
+struct TO1Helper<AnyType, Storage> {
+    using type = GenericVector<Storage>;
+};
+}  // namespace detail
+
 template<StorageType Storage>
 class UmbModel {
    public:
-    template<typename T>
-    using OptionalVec = std::optional<VectorType<T, Storage>>;
-    struct AnyType {};
+    using AnyType = detail::AnyType;
 
     template<typename T>
-    struct TO1Helper {
-        using type = OptionalVec<T>;
-    };
-    template<>
-    struct TO1Helper<AnyType> {
-        using type = GenericVector<Storage>;
-    };
-    template<typename T>
-    using TO1 = typename TO1Helper<T>::type;
+    using TO1 = typename detail::TO1Helper<T, Storage>::type;
 
     template<typename T>
     using SEQ = TO1<T>;
-    using CSR = OptionalVec<uint64_t>;
+    using CSR = detail::OptionalVec<uint64_t, Storage>;
 
     ModelIndex index;
 

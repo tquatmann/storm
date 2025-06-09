@@ -185,6 +185,7 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
                             "Urgent stochastic time models with multiple or no players are not supported.");
             return ModelType::MarkovAutomaton;
     }
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected transition system time type" << ts.time << ".");
 }
 
 template<typename ValueType>
