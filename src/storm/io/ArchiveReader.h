@@ -239,7 +239,7 @@ class ArchiveReadHandle {
         archive_entry* _currentEntry{nullptr};
     };
 
-    ArchiveReadHandle(std::string const& filename) : filename(filename){};
+    ArchiveReadHandle(std::string const& filename) : filename(filename) {};
 
     Iterator begin() const {
         return Iterator(filename);

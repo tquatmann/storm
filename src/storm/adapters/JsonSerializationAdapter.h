@@ -24,9 +24,7 @@ class SerializedEnum {
     SerializedEnum(E value) : value(value) {}
     SerializedEnum(std::string_view str) {
         auto findRes = std::find(std::begin(Keys), std::end(Keys), str);
-        STORM_LOG_THROW(findRes != std::end(Keys), storm::exceptions::WrongFormatException,
-                        "Invalid enum value "
-                            << "'str'");
+        STORM_LOG_THROW(findRes != std::end(Keys), storm::exceptions::WrongFormatException, "Invalid enum value " << "'str'");
         value = static_cast<E>(std::distance(std::begin(Keys), findRes));
     }
 

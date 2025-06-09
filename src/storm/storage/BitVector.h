@@ -784,7 +784,7 @@ class BitVector {
      * @param out Stream to print to.
      */
     void printBits(std::ostream& out) const;
-    
+
     // The number of bits that this bit vector can hold.
     uint_fast64_t bitCount;
 

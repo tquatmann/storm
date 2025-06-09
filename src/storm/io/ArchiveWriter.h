@@ -124,7 +124,8 @@ class ArchiveWriter {
             auto bufferIt = buffer.begin();
             for (uint64_t i = startOfChunk; i < endOfChunk; ++i) {
                 // reverse bits so that the first bit of the first byte is data.get(0).
-                *bufferIt = storm::utility::reverseBits<BucketType, std::endian::native == std::endian::little>(data.getBucket(i));
+                bool constexpr NativeLittleEndian = std::endian::native == std::endian::little;
+                *bufferIt = storm::utility::reverseBits<BucketType, NativeLittleEndian>(data.getBucket(i));
                 ++bufferIt;
             }
             std::span<const char> chunk(reinterpret_cast<const char*>(buffer.data()), (endOfChunk - startOfChunk) * sizeof(BucketType));
