@@ -52,7 +52,7 @@ if(STORM_HAVE_LIBARCHIVE)
     list(APPEND STORM_DEP_TARGETS LibArchive::LibArchive)
 else()
     message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files such will not be supported.")
-endif(LibArchive_FOUND)
+endif(STORM_HAVE_LIBARCHIVE)
 
 
 #############################################################
