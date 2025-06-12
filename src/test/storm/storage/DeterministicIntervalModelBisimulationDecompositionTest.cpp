@@ -16,7 +16,7 @@
 
 namespace {
 
-TEST(PolytopeTest, CreatePolytopesfromIDTMC) {
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, CreatePolytopesfromIDTMC) {
     std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
         storm::parser::DirectEncodingParser<storm::Interval>::parseModel(STORM_TEST_RESOURCES_DIR "/idtmc/brp-16-2.drn");
     std::shared_ptr<storm::models::sparse::Dtmc<storm::Interval>> dtmc = modelPtr->as<storm::models::sparse::Dtmc<storm::Interval>>();
@@ -26,6 +26,9 @@ TEST(PolytopeTest, CreatePolytopesfromIDTMC) {
 
     storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>> bisim(*dtmc);
     ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    ASSERT_NO_THROW(bisim.getQuotient());
 }
+
+// TODO: Create test case for toy example on Remarkable
 
 }

@@ -41,6 +41,24 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
 
     std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound,
                      storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound);
+
+    // Retrieves whether the given predecessor of the splitters possibly needs refinement.
+    bool possiblyNeedsRefinement(std::span<uint64_t const> block) const;
+
+    ValueType computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks);
+
+        // A vector that holds the probabilities of states going into the splitter. This is used by the method that
+    // refines a block based on probabilities.
+    std::vector<ValueType> probabilitiesToCurrentSplitter;
+
+    // A vector that holds the probabilities of states going into the splitter. This is used by the method that
+    // refines a block based on probabilities.
+    std::vector<ValueType> probabilitiesToOtherBlocks;
+
+    // A bitvector indicating which positions of the probabilitiesToCurrentSplitter were touched in this iteration.
+    // This is an alternative solution to the marker1-logic that was part of the old implementation.
+    // Note that this bitvector also indicates whether a state is a direct predecessor of the splitter block or not.
+    storm::storage::BitVector touchedProbabilitiesToSplitter;
 };
 
 }
