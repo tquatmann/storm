@@ -38,6 +38,8 @@ std::string Signature<ValueType>::toString() const {
 }
 
 template class Signature<double>;
+template class Signature<storm::Interval>;
+
 
 #ifdef STORM_HAVE_CARL
 template class Signature<storm::RationalNumber>;

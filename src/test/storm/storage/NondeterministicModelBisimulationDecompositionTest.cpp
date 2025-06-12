@@ -60,3 +60,20 @@ TEST(NondeterministicModelBisimulationDecomposition, TwoDice) {
     EXPECT_EQ(26ul, result->getNumberOfTransitions());
     EXPECT_EQ(14ul, result->as<storm::models::sparse::Mdp<double>>()->getNumberOfChoices());
 }
+
+TEST(NondeterministicModelBisimulationDecomposition, MiniExample) {
+    storm::prism::Program program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/mdp/nondeterministic_transitions_based_memory_product.nm");
+
+    // Build the die model without its reward model.
+    std::shared_ptr<storm::models::sparse::Model<double>> model =
+        storm::builder::ExplicitModelBuilder<double>(program, storm::generator::NextStateGeneratorOptions(false, true)).build();
+
+    ASSERT_EQ(model->getType(), storm::models::ModelType::Mdp);
+    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = model->as<storm::models::sparse::Mdp<double>>();
+
+    storm::storage::NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<double>> bisim(*mdp);
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    std::shared_ptr<storm::models::sparse::Model<double>> result;
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+}
+

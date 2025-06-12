@@ -58,6 +58,7 @@ SparseModelType const& SparsePropositionalModelChecker<SparseModelType>::getMode
 // Explicitly instantiate the template class.
 template class SparsePropositionalModelChecker<storm::models::sparse::Model<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Dtmc<double>>;
+template class SparsePropositionalModelChecker<storm::models::sparse::Dtmc<storm::Interval>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Ctmc<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Mdp<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Pomdp<double>>;

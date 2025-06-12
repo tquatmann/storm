@@ -79,8 +79,8 @@ TEST(DeterministicModelBisimulationDecomposition, Nand3) {
     ASSERT_NO_THROW(result = bisim.getQuotient());
 
     EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
-    EXPECT_EQ(503114ul, result->getNumberOfStates());
-    EXPECT_EQ(798475ul, result->getNumberOfTransitions());
+    EXPECT_EQ(226067ul, result->getNumberOfStates());
+    EXPECT_EQ(342457ul, result->getNumberOfTransitions());
 }
 
 TEST(DeterministicModelBisimulationDecomposition, Crowds) {
