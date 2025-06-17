@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <ctime>
-#include <format>
 #include <optional>
 
 #include "storm/adapters/JsonAdapter.h"
@@ -107,23 +106,7 @@ struct ModelIndex {
         };
         std::optional<std::map<std::string, AtomicProposition>> atomicPropositions;
 
-        static std::pair<std::string, std::optional<std::string>> getAllowedNameAndAlias(std::string const& inputName) {
-            auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };
-
-            if (std::all_of(inputName.begin(), inputName.end(), isAllowed)) {
-                return {inputName, inputName};  // no alias needed, but we still set it to the original name as a named annotation usually should have an alias
-            } else {
-                std::string newName;
-                for (auto ch : inputName) {
-                    if (isAllowed(ch)) {
-                        newName += ch;
-                    } else {
-                        newName += "_0x" + std::format("{:x}", ch) + '_';
-                    }
-                }
-                return {newName, inputName};  // alias is the original name
-            }
-        }
+        static std::pair<std::string, std::optional<std::string>> getAllowedNameAndAlias(std::string const& inputName);
 
         template<typename MapType>
         static std::optional<std::string> findAnnotationName(std::optional<MapType> const& map, std::string const& id) {
