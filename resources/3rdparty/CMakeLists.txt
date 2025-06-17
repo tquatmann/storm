@@ -38,22 +38,31 @@ install(DIRECTORY ${STORM_3RDPARTY_BINARY_DIR}/l3pp/ DESTINATION ${STORM_RESOURC
 add_dependencies(storm_resources l3pp)
 list(APPEND STORM_DEP_TARGETS l3pp)
 
+#############################################################
+##
+## LibArchive (optional)
+##
+############################################################# 
 
-#############################################################
-##
-## LibArchive
-##
-#############################################################
-find_package(LibArchive QUIET)
-set(STORM_HAVE_LIBARCHIVE ${LibArchive_FOUND})
-if(STORM_HAVE_LIBARCHIVE)
-    message (STATUS "Storm - Linking with LibArchive (version: ${LibArchive_VERSION}, libraries:  ${LibArchive_LIBRARIES}, include: ${LibArchive_INCLUDE_DIRS}).")
-    add_imported_library(LibArchive SHARED ${LibArchive_LIBRARIES} ${LibArchive_INCLUDE_DIRS})
-    list(APPEND STORM_DEP_TARGETS LibArchive::LibArchive)
+if(NOT STORM_DISABLE_LIBARCHIVE)
+    find_package(LibArchive QUIET)
+    set(STORM_HAVE_LIBARCHIVE ${LibArchive_FOUND})
+    if(STORM_HAVE_LIBARCHIVE)
+        message (STATUS "Storm - Linking with LibArchive (version: ${LibArchive_VERSION}, libraries: ${LibArchive_LIBRARIES}, include: ${LibArchive_INCLUDE_DIRS}).")
+        add_library(LibArchive SHARED IMPORTED)
+        set_target_properties(
+                LibArchive
+                PROPERTIES
+                IMPORTED_LOCATION ${LibArchive_LIBRARIES}
+                INTERFACE_INCLUDE_DIRECTORIES ${LibArchive_INCLUDE_DIRS}
+        )
+        list(APPEND STORM_DEP_IMP_TARGETS LibArchive::LibArchive)
+    else()
+        message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files not be supported.")
+	endif()
 else()
-    message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files such will not be supported.")
-endif(STORM_HAVE_LIBARCHIVE)
-
+    message (WARNING "Storm - Not linking with LibArchive. Loading and exporting compressed files such will not be supported.")
+endif()
 
 #############################################################
 ##
@@ -126,7 +135,7 @@ list(APPEND STORM_DEP_TARGETS eigen3storm)
 
 # Boost Option variables
 set(Boost_NO_WARN_NEW_VERSIONS ON)
-find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE)
+find_package(Boost 1.70.0 QUIET REQUIRED COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided
 if (${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
     message(STATUS "Storm - Using workaround for Boost >= 1.81")
     add_compile_options(-DBOOST_PHOENIX_STL_TUPLE_H_) # or add compile_definitions?
@@ -134,7 +143,7 @@ if (${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
 endif()
 
 message(STATUS "Storm - Using boost ${Boost_VERSION} (library version ${Boost_LIB_VERSION}).")
-list(APPEND STORM_DEP_IMP_TARGETS Boost::boost)
+list(APPEND STORM_DEP_IMP_TARGETS Boost::boost Boost::iostreams) # todo: iostreams still required?
 
 #############################################################
 ##
@@ -611,4 +620,3 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 list(APPEND STORM_DEP_IMP_TARGETS Threads::Threads)
-
