@@ -26,7 +26,7 @@ class ValueEncoding {
         requires std::is_enum_v<typename SourceTypeEnum::E>
     static auto applyDecodedVector(auto&& func, storm::umb::GenericVector<Storage> const& input, SourceTypeEnum sourceType,
                                    std::optional<VectorType<uint64_t, Storage>> const& csr = {}) {
-        using E = decltype(sourceType)::E;
+        using E = typename decltype(sourceType)::E;
         static_assert(std::is_enum_v<E>, "Source type must be an enum.");
 
         // find out how to interpret the input values
