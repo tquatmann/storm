@@ -135,7 +135,7 @@ list(APPEND STORM_DEP_TARGETS eigen3storm)
 
 # Boost Option variables
 set(Boost_NO_WARN_NEW_VERSIONS ON)
-find_package(Boost 1.70.0 QUIET REQUIRED COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided
+find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided. Also check stormConfig.cmake.in
 if (${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
     message(STATUS "Storm - Using workaround for Boost >= 1.81")
     add_compile_options(-DBOOST_PHOENIX_STL_TUPLE_H_) # or add compile_definitions?
