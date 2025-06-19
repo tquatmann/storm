@@ -53,6 +53,9 @@ if(@STORM_HAVE_GLPK@)
     )
 endif()
 
+if(@STORM_HAVE_LIBARCHIVE@) # STORM_HAVE_LIBARCHIVE
+     find_dependency(LibArchive)
+endif()
 if(@STORM_HAVE_XERCES@) # STORM_HAVE_XERCES
     find_dependency(XercesC)
 endif()

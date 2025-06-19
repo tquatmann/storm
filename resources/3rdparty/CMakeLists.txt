@@ -46,21 +46,16 @@ list(APPEND STORM_DEP_TARGETS l3pp)
 
 if(NOT STORM_DISABLE_LIBARCHIVE)
     find_package(LibArchive QUIET)
-    set(STORM_HAVE_LIBARCHIVE ${LibArchive_FOUND})
-    if(STORM_HAVE_LIBARCHIVE)
+    if(TARGET LibArchive::LibArchive)
+        SET(STORM_HAVE_LIBARCHIVE ON)
         message (STATUS "Storm - Linking with LibArchive (version: ${LibArchive_VERSION}, libraries: ${LibArchive_LIBRARIES}, include: ${LibArchive_INCLUDE_DIRS}).")
-        add_library(LibArchive SHARED IMPORTED)
-        set_target_properties(
-                LibArchive
-                PROPERTIES
-                IMPORTED_LOCATION ${LibArchive_LIBRARIES}
-                INTERFACE_INCLUDE_DIRECTORIES ${LibArchive_INCLUDE_DIRS}
-        )
         list(APPEND STORM_DEP_IMP_TARGETS LibArchive::LibArchive)
     else()
+        SET(STORM_HAVE_LIBARCHIVE OFF)
         message (WARNING "Storm - LibArchive not found. Loading and exporting compressed files not be supported.")
 	endif()
 else()
+    SET(STORM_HAVE_LIBARCHIVE OFF)
     message (WARNING "Storm - Not linking with LibArchive. Loading and exporting compressed files such will not be supported.")
 endif()
 
@@ -135,7 +130,7 @@ list(APPEND STORM_DEP_TARGETS eigen3storm)
 
 # Boost Option variables
 set(Boost_NO_WARN_NEW_VERSIONS ON)
-find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided. Also check stormConfig.cmake.in
+find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided. Also check stormConfig.cmake.[install.]in
 if (${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
     message(STATUS "Storm - Using workaround for Boost >= 1.81")
     add_compile_options(-DBOOST_PHOENIX_STL_TUPLE_H_) # or add compile_definitions?
