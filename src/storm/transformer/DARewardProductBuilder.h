@@ -27,51 +27,68 @@ class DARewardProductBuilder {
         std::vector<uint64_t> const& productToModelState;
         uint64_t InvalidIndex = std::numeric_limits<uint64_t>::max();
 
+        struct MecDecompositionInfo{
+            storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs;
+            const uint64_t numStatesInMecs;
+            const uint64_t numChoicesInMecs;
+            std::vector<uint64_t> const& stateToMec;
+
+            MecDecompositionInfo(
+                storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs_,
+                uint64_t numStatesInMecs_,
+                uint64_t numChoicesInMecs_,
+                std::vector<uint64_t> const& stateToMec_
+            ) : mecs(mecs_),
+                numStatesInMecs(numStatesInMecs_),
+                numChoicesInMecs(numChoicesInMecs_),
+                stateToMec(stateToMec_)
+            {
+            }
+        };
+
+        struct Conversions {
+            std::vector<uint64_t> stateToModelState;
+            std::vector<uint64_t> choiceToModelChoice;
+            std::vector<uint64_t> modelStateToState;
+        };
+
         /*!
          * Adds a modified row to the matrix builder, where entries of states in the same MEC summed up
          * @param builder the matrix builder where the state-action pair is saved
-         * @param stateToMec mapping of states to the MEC they are in or the numerical limit otherwise
          * @param row the state-action pair from the original model
-         * @param numMecs the number of MECs in the original model
+         * @param builderEmpty
          */
         void modifyStateActionPair(storage::SparseMatrixBuilder<ValueType>& builder,
-            std::vector<uint64_t> const& stateToMec,
             Row row,
-            uint64_t numMecs,
-            uint64_t numStatesInMecs,
+            MecDecompositionInfo const& mecDecompositionInfo,
+            Conversions& conversions,
             bool builderEmpty=false);
 
         /*!
          * Processes the product by determining the quotient-MDP
          * @param transitionMatrix the transition matrix of the product
          * @param transitionMatrixBuilder the matrix builder for the modified matrix
-         * @param stateToMec
-         * @param mecs
-         * @param choiceToModelChoice a mapping of choices in the modified model to ones in the original model
          * @return a mapping of each MEC to the actions that leave it with some probability
          */
         std::vector<std::list<uint64_t>> processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                     storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
-                    std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
-                    std::vector<uint64_t>& stateToModelState, std::vector<uint64_t>& choiceToModelChoice,
-                    uint64_t numStatesInMecs);
+                    MecDecompositionInfo const& mecDecompositionInfo,
+                    Conversions& conversions);
 
         /*!
          *
          * @param transitionMatrix
          * @param transitionMatrixBuilder
-         * @param stateToMec
-         * @param mecs
          * @param accEcs
          * @param mecsToLeavingActions
          * @return a list of actions that lead to an accepting end component in the modified model a.s.
          */
         std::vector<std::list<uint64_t>> addRepresentativeStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                     storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
-                                                    std::vector<uint64_t> const& stateToMec,
                                                     std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
                                                     std::vector<std::list<uint64_t>> const& mecsToLeavingActions,
-                                                    uint64_t numStatesInMecs);
+                                                    MecDecompositionInfo const& mecDecompositionInfo,
+                                                    Conversions& conversions);
 
         /*!
          * Adds copies of the MACs to the modified model
@@ -79,18 +96,20 @@ class DARewardProductBuilder {
          * @param transitionMatrixBuilder
          * @param accEcs
          */
-        void addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::list<storage::MaximalEndComponent> const& accEcs);
+        void addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                            storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+                            std::list<storage::MaximalEndComponent> const& accEcs,
+                            MecDecompositionInfo mecDecompositionInfo);
 
         /*!
          *
          * @param transitionMatrix
-         * @param mecs
          * @param accEcs
          */
         void computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                         std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
-                                        std::vector<uint64_t>& stateToModelState,
-                                        std::vector<uint64_t>& choiceToModelChoice,
+                                        MecDecompositionInfo const& mecDecompositionInfo,
+                                        Conversions& conversions,
                                         uint64_t stateCounter, uint64_t choiceCounter);
 
         /*!
@@ -113,9 +132,8 @@ class DARewardProductBuilder {
          * @param numberOfStates the number of states of the modified model
          * @return the initial states of the modified transition matrix
          */
-        storm::storage::BitVector liftInitialStates(std::vector<uint64_t> const& stateToMec,
+        storm::storage::BitVector liftInitialStates(MecDecompositionInfo const& mecDecompositionInfo,
             uint64_t numberOfStates,
-            uint64_t numStatesInMecs,
             storm::storage::BitVector const& initialStates) const;
 };
 }

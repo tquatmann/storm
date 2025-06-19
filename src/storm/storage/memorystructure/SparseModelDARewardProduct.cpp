@@ -13,14 +13,17 @@ template<typename ValueType, typename RewardModelType>
 void printMDP(
     const storm::storage::SparseMatrix<ValueType>& transitionMatrix,
     const storm::models::sparse::StateLabeling& stateLabeling,
-    const std::unordered_map<std::string, RewardModelType>& rewardModels
+    const std::unordered_map<std::string, RewardModelType>& rewardModels,
+    int numStatesToPrint=0,
+    bool printCompleteRow=true
 ) {
     std::cout << "Markov Decision Process (MDP) Details:" << std::endl;
     std::cout << "-------------------------------------" << std::endl;
+    if (!numStatesToPrint) numStatesToPrint = transitionMatrix.getRowGroupCount();
 
     // 1. Zustandsbeschreibung (Labels)
     std::cout << "State Labels:" << std::endl;
-    for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
+    for (uint64_t state = 0; state < numStatesToPrint; ++state) {
         std::cout << "  State " << state << ": ";
         auto labels = stateLabeling.getLabelsOfState(state);
         if (!labels.empty()) {
@@ -36,7 +39,7 @@ void printMDP(
 
     // 2. Transitionsmatrix (Wahrscheinlichkeiten)
     std::cout << "Transition Matrix:" << std::endl;
-    for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
+    for (uint64_t state = 0; state < numStatesToPrint; ++state) {
         std::cout << "  State " << state << ":" << std::endl;
 
         for (auto const& choice : transitionMatrix.getRowGroupIndices(state)) {
@@ -45,19 +48,22 @@ void printMDP(
             std::cout << "    Choice " << choice << ": ";
             uint64_t currentColumn = 0;
 
-            for (auto const& entry : row) {
-                // Fülle Lücken mit Nullen bis zur nächsten belegten Spalte
-                for (; currentColumn < entry.getColumn(); ++currentColumn) {
+            if (printCompleteRow) {
+                for (auto const& entry : row) {
+                    for (; currentColumn < entry.getColumn(); ++currentColumn) {
+                        std::cout << "0 ";
+                    }
+                    std::cout << entry.getValue() << " ";
+                    ++currentColumn;
+                }
+
+                for (; currentColumn < numStatesToPrint; ++currentColumn) {
                     std::cout << "0 ";
                 }
-                // Gebe Wert aus
-                std::cout << entry.getValue() << " ";
-                ++currentColumn;
-            }
-
-            // Fülle verbleibende Nullspalten auf
-            for (; currentColumn < transitionMatrix.getColumnCount(); ++currentColumn) {
-                std::cout << "0 ";
+            } else {
+                for (auto const& entry : row) {
+                    std::cout << "(" << entry.getColumn() << ": " << entry.getValue() << ") ";
+                }
             }
             std::cout << std::endl;
         }
@@ -69,13 +75,14 @@ void printMDP(
     for (const auto& [rewardName, rewardModel] : rewardModels) {
         std::cout << "  Reward Model \"" << rewardName << "\":" << std::endl;
         if (rewardModel.hasStateRewards()) {
-            for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
+            for (uint64_t state = 0; state < numStatesToPrint; ++state) {
                 auto reward = rewardModel.getStateReward(state);
                 std::cout << "    State " << state << ": " << reward << std::endl;
             }
         }
         if (rewardModel.hasStateActionRewards()) {
-            for (uint64_t choice = 0; choice < transitionMatrix.getRowCount(); ++choice) {
+            uint64_t lastChoice = transitionMatrix.getRowGroupIndices(numStatesToPrint-1).back();
+            for (uint64_t choice = 0; choice < lastChoice; ++choice) {
                 auto reward = rewardModel.getStateActionReward(choice);
                 std::cout << "    Choice " << choice << ": " << reward << std::endl;
             }
@@ -89,8 +96,8 @@ void printMDP(
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
-    //std::tie(product, initialStatesProduct)
     auto [productModel, acceptanceConditions, indexToModelState] = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas);
+    //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
 
     transformer::DARewardProductBuilder<ValueType, RewardModelType> builder(productModel, acceptanceConditions, indexToModelState, originalModel);
     auto result = builder.build();
@@ -101,7 +108,8 @@ std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseMo
 
     auto stateLabeling = buildStateLabeling(result->getTransitionMatrix(), result->getStateToModelState(), result->getInitialStates());
 
-    //printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels);
+    //printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels, 5, false);
+
     return std::make_shared<Mdp>(result->getTransitionMatrix(), stateLabeling, rewardModels);
 }
 
@@ -186,7 +194,6 @@ storm::models::sparse::StateLabeling SparseModelDARewardProduct<ValueType, Rewar
         }
     }
 
-    //std::cout << initialStates << std::endl;
     resultLabeling.setStates("init", initialStates);
 
     return resultLabeling;

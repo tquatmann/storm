@@ -70,7 +70,6 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         STORM_LOG_THROW(data.objectives.back()->originalFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
 
-        auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
         if (subFormula->isProbabilityOperatorFormula()) {
             auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
             std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
@@ -112,16 +111,22 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
     storm::storage::SparseMatrix<ValueType> backwardTransitions = model->getBackwardTransitions();
 
     for (auto const& opFormula : originalFormula.getSubformulas()) {
+        STORM_LOG_THROW(opFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
+                        "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
+        auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
+        if (opFormula->isProbabilityOperatorFormula() && pathFormula.info(false).containsComplexPathFormula()) {
+            return;
+        }
+    }
+
+    for (auto const& opFormula : originalFormula.getSubformulas()) {
         // Compute a set of states from which we can make any subset absorbing without affecting this subformula
         storm::storage::BitVector absorbingStatesForSubformula;
         STORM_LOG_THROW(opFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
                         "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
         auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
         if (opFormula->isProbabilityOperatorFormula()) {
-            if (pathFormula.info(false).containsComplexPathFormula()) {
-                // we are dealing with an LTL formula
-                absorbingStatesForSubformula = storm::storage::BitVector(model->getNumberOfStates(), false);
-            } else if (pathFormula.isUntilFormula()) {
+            if (pathFormula.isUntilFormula()) {
                 auto lhs = mc.check(pathFormula.asUntilFormula().getLeftSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 auto rhs = mc.check(pathFormula.asUntilFormula().getRightSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 absorbingStatesForSubformula = storm::utility::graph::performProb0A(backwardTransitions, lhs, rhs);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <storm/utility/macros.h>
+
 #include <numeric>
 
 #include "../utility/logging.h"
@@ -101,54 +103,61 @@ public:
   *
   * @param acceptanceConditions The vector of acceptance conditions for the LTL objectives
   */
- static std::vector<AcceptanceCondition::ptr> liftAcceptanceSets(std::vector<AcceptanceCondition::ptr>& acceptanceConditions) {
+ static std::vector<AcceptanceCondition::ptr> liftAcceptanceSets(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
         // flattened vector storing unique acceptance sets
         auto numAcceptanceSets = 0;
         auto numStates = 0;
         for (const auto& acceptanceCondition : acceptanceConditions) {
             numAcceptanceSets += acceptanceCondition->getNumberOfAcceptanceSets();
         }
-        uint64_t offset = 0;
-        for (auto& ac : acceptanceConditions) {
+        std::vector<storm::storage::BitVector> acceptanceSets(numAcceptanceSets);
+        std::vector<AcceptanceCondition::ptr> liftedAcceptanceConditions(acceptanceConditions.size());
+
+        uint64_t offset = 0, index = 0;
+        for (const auto& ac : acceptanceConditions) {
             auto acceptanceExpr = cpphoafparser::addOffsetAcceptanceSets(ac->getAcceptanceExpression(), offset);
-            auto liftedCondition = std::make_shared<AcceptanceCondition>(numStates, numAcceptanceSets, acceptanceExpr);
+            liftedAcceptanceConditions[index++] = std::make_shared<AcceptanceCondition>(numStates, numAcceptanceSets, acceptanceExpr);
 
             for (uint64_t i = 0; i < ac->getNumberOfAcceptanceSets(); ++i) {
-                liftedCondition->getAcceptanceSet(i+offset) = ac->getAcceptanceSet(i);
+                acceptanceSets[i+offset] = ac->getAcceptanceSet(i);
             }
-
             offset += ac->getNumberOfAcceptanceSets();
-            ac = liftedCondition;
         }
 
-        for (uint64_t i = 0; i < acceptanceConditions.size(); ++i) {
-            for (uint64_t j = 0; j < acceptanceConditions.size(); ++j) {
-                if (i == j) continue;
-                for (uint64_t k = 0; k < acceptanceConditions[i]->getNumberOfAcceptanceSets(); ++k) {
-                    if (!acceptanceConditions[i]->getAcceptanceSet(k).getNumberOfSetBits()) continue;
-                    acceptanceConditions[j]->getAcceptanceSet(k) = acceptanceConditions[i]->getAcceptanceSet(k);
-                }
+        for (const auto& ac : liftedAcceptanceConditions) {
+            for (uint64_t i = 0; i < numAcceptanceSets; ++i) {
+                ac->getAcceptanceSet(i) = acceptanceSets[i];
             }
         }
 
-        return acceptanceConditions;
+        return liftedAcceptanceConditions;
     }
 
-    static std::vector<AcceptanceCondition::ptr> getAllCombinations(std::vector<AcceptanceCondition::ptr> acceptanceConditions) {
+    static std::vector<AcceptanceCondition::ptr> getAllCombinations(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
         uint64_t numberAcceptanceConditionCombinations = pow(2, acceptanceConditions.size());
         std::vector<AcceptanceCondition::ptr> objectivesCombinations(numberAcceptanceConditionCombinations);
 
-        acceptanceConditions = liftAcceptanceSets(acceptanceConditions);
-        auto numAccSets = acceptanceConditions[0]->getNumberOfAcceptanceSets();
-        auto numStates = acceptanceConditions[0]->getAcceptanceSet(0).size();
+        for (int i = 0; i < acceptanceConditions.size(); i++) {
+            STORM_LOG_INFO(acceptanceConditions[i]->getAcceptanceExpression()->toString());
+            STORM_LOG_INFO(acceptanceConditions[i]->getNumberOfAcceptanceSets());
+        }
+        STORM_LOG_INFO("");
+
+        auto liftedAcceptanceConditions = liftAcceptanceSets(acceptanceConditions);
+        auto numAccSets = liftedAcceptanceConditions[0]->getNumberOfAcceptanceSets();
+        auto numStates = liftedAcceptanceConditions[0]->getAcceptanceSet(0).size();
+
+        for (int i = 0; i < liftedAcceptanceConditions.size(); i++) {
+            STORM_LOG_INFO(liftedAcceptanceConditions[i]->getAcceptanceExpression()->toString());
+        }
 
         for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
             auto acceptanceExpression = std::make_shared<cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>>(true);
-            for (uint64_t j = 0; j < acceptanceConditions.size(); j++) {
+            for (uint64_t j = 0; j < liftedAcceptanceConditions.size(); j++) {
                 if (i & (1 << j)) {
-                    acceptanceExpression = acceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
+                    acceptanceExpression = liftedAcceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
                 } else {
-                    acceptanceExpression = !acceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
+                    acceptanceExpression = !liftedAcceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
                 }
             }
             acceptanceExpression = toDNF(acceptanceExpression);
@@ -157,7 +166,9 @@ public:
 
             // set acceptance sets
             for (uint j = 0; j < numAccSets; j++) {
-                objectivesCombinations[i]->getAcceptanceSet(j) = acceptanceConditions[0]->getAcceptanceSet(j);
+                auto acceptanceSet = liftedAcceptanceConditions[0]->getAcceptanceSet(j);
+                STORM_LOG_ASSERT(acceptanceSet.size() == numStates, "Number of states " << numStates << " does not match size " << acceptanceSet.size() << " of acceptance set " << j << ".");
+                objectivesCombinations[i]->getAcceptanceSet(j) = acceptanceSet;
             }
         }
 
