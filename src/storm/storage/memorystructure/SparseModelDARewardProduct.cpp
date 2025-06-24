@@ -142,30 +142,31 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
     typedef typename RewardModelType::ValueType RewardValueType;
     std::unordered_map<std::string, RewardModelType> result;
     uint64_t numResStates = resultTransitionMatrix.getRowGroupCount();
+    uint64_t numResChoices = resultTransitionMatrix.getRowCount();
 
     for (auto const rewardModel: originalModel.getRewardModels()) {
         std::optional<std::vector<RewardValueType>> stateRewards;
         if (rewardModel.second.hasStateRewards()) {
             stateRewards = std::vector<RewardValueType>(numResStates, storm::utility::zero<RewardValueType>());
             for (uint64_t state = 0; state < numResStates; ++state) {
-                if (stateToModelState[state] != std::numeric_limits<uint64_t>::max()) {
-                    stateRewards.value()[state] = rewardModel.second.getStateReward(stateToModelState[state]);
-                }
+                if (stateToModelState[state] == std::numeric_limits<uint64_t>::max()) continue;
+
+                stateRewards.value()[state] = rewardModel.second.getStateReward(stateToModelState[state]);
             }
         }
 
-        std::optional<std::vector<RewardValueType>> stateActionRewards;
+        std::optional<std::vector<RewardValueType>> actionRewards;
         if (rewardModel.second.hasStateActionRewards()) {
-            stateActionRewards = std::vector<RewardValueType>(numResStates, storm::utility::zero<RewardValueType>());
+            actionRewards = std::vector<RewardValueType>(numResChoices, storm::utility::zero<RewardValueType>());
 
-            for (uint64_t choice = 0; choice < resultTransitionMatrix.getRowCount(); ++choice) {
-                if (choiceToModelChoice[choice] != std::numeric_limits<uint64_t>::max()) {
-                    stateActionRewards.value()[choice] += rewardModel.second.getStateActionReward(choiceToModelChoice[choice]);
-                }
+            for (uint64_t choice = 0; choice < numResChoices; ++choice) {
+                if (choiceToModelChoice[choice] == std::numeric_limits<uint64_t>::max()) continue;
+
+                actionRewards.value()[choice] += rewardModel.second.getStateActionReward(choiceToModelChoice[choice]);
             }
         }
 
-        result.insert(std::make_pair(rewardModel.first, RewardModelType(stateRewards, stateActionRewards)));
+        result.insert(std::make_pair(rewardModel.first, RewardModelType(stateRewards, actionRewards)));
     }
 
     return result;

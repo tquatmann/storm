@@ -219,19 +219,20 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     }
     MecDecompositionInfo mecDecompositionInfo(mecs, numStatesInMec, numChoicesInMec, stateToMec);
 
-    uint64_t numberOfChoicesAccEcs = 0, numberOfStatesAccEcs = 0;
+    uint64_t numberOfChoicesAccEcs = 0, numberOfStatesAccEcs = 0, numberOfAccEcs = 0;
     for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
         for (auto const& ec: accEcs[i]) {
             for (auto const& [_, choices] : ec) {
                 numberOfChoicesAccEcs += choices.size();
             }
             numberOfStatesAccEcs += ec.size();
+            numberOfAccEcs++;
         }
     }
 
     STORM_LOG_INFO("Found " << accEcs.size() << " accepting end components with a total number of " << numberOfStatesAccEcs << " states and " << numberOfChoicesAccEcs << " choices." );
     const uint64_t totalNumberOfStates = numberOfStatesAccEcs + transitionMatrix.getRowGroupCount() - numStatesInMec + mecs.size();
-    const uint64_t totalNumberOfChoices = numberOfChoicesAccEcs + transitionMatrix.getRowCount() - numChoicesInMec;
+    const uint64_t totalNumberOfChoices = numberOfChoicesAccEcs + transitionMatrix.getRowCount() - numChoicesInMec + numberOfAccEcs;
     Conversions conversions;
     conversions.stateToModelState.resize(totalNumberOfStates, InvalidIndex);
     conversions.choiceToModelChoice.resize(totalNumberOfChoices, InvalidIndex);
@@ -249,6 +250,7 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     auto modifiedTransitionMatrix = transitionMatrixBuilder.build();
     STORM_LOG_ASSERT(modifiedTransitionMatrix.isProbabilistic(), "The resulting transition matrix is not probabilistic");
     STORM_LOG_ASSERT(modifiedTransitionMatrix.getRowGroupCount() == totalNumberOfStates, "The resulting transition matrix has the wrong number of states");
+    STORM_LOG_ASSERT(modifiedTransitionMatrix.getRowCount() == totalNumberOfChoices, "The resulting transition matrix has the wrong number of choices");
     STORM_LOG_INFO("The modified model has " << modifiedTransitionMatrix.getRowGroupCount() << " states and " << modifiedTransitionMatrix.getRowCount() << " choices.");
     auto initialStates = liftInitialStates(mecDecompositionInfo, totalNumberOfStates, productModel.getInitialStates());
 
