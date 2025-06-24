@@ -1,5 +1,7 @@
 #include "SparseLTLHelper.h"
 
+#include <boost/spirit/home/qi/string.hpp>
+
 #include "storm/automata/DeterministicAutomaton.h"
 #include "storm/automata/LTL2DeterministicAutomaton.h"
 
@@ -9,6 +11,8 @@
 
 #include "storm/modelchecker/prctl/helper/SparseDtmcPrctlHelper.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
+#include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
+#include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
@@ -374,16 +378,20 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
 }
 
 template<typename ValueType, bool Nondeterministic>
-std::pair<typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr, storm::storage::BitVector> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, CheckFormulaCallback const& formulaChecker) {
+std::pair<storm::automata::DeterministicAutomaton::ptr, std::vector<storm::storage::BitVector>> SparseLTLHelper<ValueType, Nondeterministic>::buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula) {
     storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
     std::shared_ptr<storm::logic::Formula> ltlFormula = storm::logic::ExtractMaximalStateFormulasVisitor::extract(formula, extracted);
     STORM_LOG_ASSERT(ltlFormula->isPathFormula(), "Unexpected formula type.");
 
+    storm::modelchecker::SparsePropositionalModelChecker<productModelType> mc(model);
+    auto formulaChecker = [&](storm::logic::Formula const& f) {
+        return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    };
     // Compute Satisfaction sets for the APs (which represent the state-subformulae)
     auto apSatSets = computeApSets(extracted, formulaChecker);
 
     STORM_LOG_INFO("Resulting LTL path formula: " << ltlFormula->toString());
-    std::shared_ptr<storm::automata::DeterministicAutomaton> da = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
+    auto da = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
 
     std::vector<storm::storage::BitVector> statesForAP;
     for (const std::string& ap : da->getAPSet().getAPs()) {
@@ -393,24 +401,73 @@ std::pair<typename transformer::DAProduct<typename SparseLTLHelper<ValueType, No
         statesForAP.push_back(std::move(it->second));
     }
 
-    storm::storage::BitVector statesOfInterest(model.getNumberOfStates(), true);
+    return std::make_pair(da, statesForAP);
+}
+
+template<typename ValueType, bool Nondeterministic>
+typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula) {
+    auto [da, statesForAP] = buildDAFromFormula(model, formula);
     transformer::DAProductBuilder productBuilder(*da, statesForAP);
-
-    auto product = productBuilder.build<productModelType>(model.getTransitionMatrix(), statesOfInterest);
-
-    // retrieve the initial state from the product model
-    auto initialStateModel = model.getInitialStates().getNextSetIndex(0);
-    auto initialStateAutomaton = productBuilder.getInitialState(initialStateModel);
-    auto initialStateIndex = product->getProductStateIndex(initialStateModel, initialStateAutomaton);
-
-    storm::storage::BitVector initialStates(product->getProductModel().getNumberOfStates(), false);
-    initialStates.set(initialStateIndex);
+    auto product = productBuilder.build<productModelType>(model.getTransitionMatrix(), model.getInitialStates());
 
     STORM_LOG_INFO("Product has "
                    << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfChoices()
                    << " transitions.");
 
-    return std::make_pair(product, initialStates);
+    return product;
+}
+
+template<typename ValueType, bool Nondeterministic>
+std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    std::vector<storm::automata::AcceptanceCondition::ptr> acceptanceConditions(formulas.size());
+    productModelType productModel(model.getTransitionMatrix(), model.getStateLabeling());
+    std::vector<storm::storage::BitVector> modelStateToProductStates(model.getNumberOfStates());
+    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
+        auto iAsVector = storage::BitVector(model.getNumberOfStates());
+        iAsVector.set(i);
+        modelStateToProductStates[i] = iAsVector;
+    }
+
+    for (int i = 0; i < formulas.size(); i++) {
+        //compute product
+        auto const& pathformula = formulas[i]->asOperatorFormula().getSubformula().asPathFormula();
+        auto product = buildFromFormula(productModel, pathformula);
+        acceptanceConditions[i] = product->getAcceptance();
+
+        // lift state labeling
+        models::sparse::StateLabeling productLabeling(product->getProductModel().getNumberOfStates());
+        for (auto const& label: productModel.getStateLabeling().getLabels()) {
+            productLabeling.addLabel(label);
+            if (label == "init") continue;
+
+            auto statesModel = productModel.getStateLabeling().getStates(label);
+            auto statesProduct = product->liftFromModel(statesModel);
+            productLabeling.setStates(label, statesProduct);
+        }
+
+        productLabeling.setStates("init", product->getProductModel().getStateLabeling().getStates("soi"));
+        productModel = productModelType(product->getProductModel().getTransitionMatrix(), productLabeling);
+
+        // lift state mapping
+        for (int j = 0; j < model.getNumberOfStates(); j++) {
+            modelStateToProductStates[j] = product->liftFromModel(modelStateToProductStates[j]);
+        }
+
+        for (int j = 0; j < i; j++) {
+            // lift product acceptance condition
+            acceptanceConditions[j] = acceptanceConditions[j]->lift(
+            product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getModelState(prodState); });
+        }
+    }
+
+    std::vector<uint64_t> indexToModelState(productModel.getNumberOfStates());
+    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
+        for (auto const j: modelStateToProductStates[i]) {
+            indexToModelState[j] = i;
+        }
+    }
+
+    return std::make_tuple(productModel, acceptanceConditions, indexToModelState);
 }
 
 template class SparseLTLHelper<double, false>;

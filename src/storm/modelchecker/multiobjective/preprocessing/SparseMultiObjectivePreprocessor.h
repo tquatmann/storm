@@ -32,7 +32,7 @@ class SparseMultiObjectivePreprocessor {
      * @param originalModel The considered model
      * @param originalFormula the considered formula. The subformulas should only contain one OperatorFormula at top level.
      */
-    static ReturnType preprocess(Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula, CheckFormulaCallback const& checkFormulaCallback);
+    static ReturnType preprocess(Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula);
 
    private:
     struct PreprocessorData {

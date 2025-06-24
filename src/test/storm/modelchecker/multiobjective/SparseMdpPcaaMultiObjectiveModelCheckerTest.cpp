@@ -490,7 +490,7 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, resource_gathering) {
     }
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_LTL_LRA) {
+TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, single_LTL) {
     if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
         GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
     }
@@ -498,11 +498,21 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_LTL_LRA) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);\
 
-    std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/simple_LTL_LRA.nm";
-    std::string formulasAsString = "multi(R{\"default\"}max=? [S], P>=0.5 [F G \"a\"]);\n";
-    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [F G \"a\"]);\n";
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/grid2.nm";
+    std::string formulasAsString = "multi(R{\"default\"}max=? [S], Pmax=? [F G \"a\"]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [G F \"a\"]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(F \"a\") & (F \"b\") & (F \"c\")]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(F \"a\") U \"b\"]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(G F \"a\") | (F G \"b\")]);\n";
+    formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(G (! \"b\")) & (G F \"a\")]);\n";
 
-    // programm, model,  formula
+    /*
+    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(F \"a\") & (F \"b\") & (F \"c\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
+    formulasAsString += "multi(R{\"default\"}max=? [S], P>=1 [(F \"a\") U \"b\"], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
+    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(G F \"a\") | (F G \"b\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
+    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(G (! \"b\")) & (G F \"a\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
+    */
+    // 0.99 0.99 0.99 0.9 
     storm::prism::Program program = storm::api::parseProgram(programFile);
     program = storm::utility::prism::preprocess(program, "");
     program.checkValidity();
@@ -511,6 +521,82 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_LTL_LRA) {
     storm::generator::NextStateGeneratorOptions options(formulas);
     auto mdp = storm::builder::ExplicitModelBuilder<double>(program, options).build()->as<storm::models::sparse::Mdp<double>>();
 
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"0", "1"}));
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "0"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[1]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "1"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[2]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "1"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[3]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "1"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[4]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "1"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
+    {
+        std::unique_ptr<storm::modelchecker::CheckResult> result =
+            storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[5]->asMultiObjectiveFormula());
+        ASSERT_TRUE(result->isExplicitParetoCurveCheckResult());
+        std::vector<std::vector<std::string>> expectedPoints;
+        expectedPoints.emplace_back(std::vector<std::string>({"1", "0"}));
+        expectedPoints.emplace_back(std::vector<std::string>({"0.8", "1"}));
+        double eps = 1e-4;
+        EXPECT_TRUE(expectSubset(result->asExplicitParetoCurveCheckResult<double>().getPoints(), convertPointset<double>(expectedPoints), eps))
+            << "Non-Pareto point found.";
+        EXPECT_TRUE(expectSubset(convertPointset<double>(expectedPoints), result->asExplicitParetoCurveCheckResult<double>().getPoints(), eps))
+            << "Pareto point missing.";
+    }
 }
+
+
 
 #endif /* STORM_HAVE_Z3_OPTIMIZE */

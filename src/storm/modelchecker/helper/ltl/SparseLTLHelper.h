@@ -6,6 +6,7 @@
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/transformer/DAProductBuilder.h"
+#include "storm/transformer/DAMultiProduct.h"
 
 namespace storm {
 
@@ -86,6 +87,13 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
     std::vector<ValueType> computeLTLProbabilities(Environment const& env, storm::logic::PathFormula const& formula,
                                                    std::map<std::string, storm::storage::BitVector>& apSatSets);
 
+
+    /**
+     * Builds a DGRA from the formula
+     * @return a pair of the deterministic automaton and a mapping of ap's to states satisfying them
+     */
+    static std::pair<storm::automata::DeterministicAutomaton::ptr, std::vector<storm::storage::BitVector>> buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula);
+
     /*!
      *
      * @tparam Model
@@ -94,7 +102,9 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * @param formulaChecker
      * @return a pair the DAProduct and its initial state
      */
-    static std::pair<typename transformer::DAProduct<productModelType>::ptr, storm::storage::BitVector> buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
+    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula);
+
+    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
 
    private:
     /*!

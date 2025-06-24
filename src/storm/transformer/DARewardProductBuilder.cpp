@@ -1,7 +1,8 @@
 #include "DARewardProductBuilder.h"
 
-#include "../modelchecker/CheckTask.h"
-#include "../modelchecker/helper/ltl/SparseLTLHelper.h"
+#include "storm/modelchecker/CheckTask.h"
+#include "storm/modelchecker/helper/ltl/SparseLTLHelper.h"
+#include "storm/automata/AcceptanceConditionSynthesizer.h"
 
 #include <gmpxx.h>  //???
 
@@ -10,36 +11,68 @@
 namespace storm {
 namespace transformer {
 
-template<typename ValueType, typename RewardModelType>
-std::vector<std::list<uint64_t>> DARewardProductBuilder<ValueType, RewardModelType>::processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::vector<uint64_t>& choiceToModelChoice) {
+template<typename ValueType>
+void printCompactTransitionMatrix(const storm::storage::SparseMatrix<ValueType>& transitionMatrix) {
+    std::cout << "Transition Matrix:" << std::endl;
+    for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
+        std::cout << "  State " << state << ":" << std::endl;
 
-    std::vector<std::list<uint64_t>> mecsToLeavingActions(mecs.size(), std::list<uint64_t>());
+        for (auto const& choice : transitionMatrix.getRowGroupIndices(state)) {
+            auto row = transitionMatrix.getRow(choice);
+
+            std::cout << "    Choice " << choice << ": ";
+            uint64_t currentColumn = 0;
+
+            for (auto const& entry : row) {
+                // Fülle Lücken mit Nullen bis zur nächsten belegten Spalte
+                for (; currentColumn < entry.getColumn(); ++currentColumn) {
+                    std::cout << "0 ";
+                }
+                // Gebe Wert aus
+                std::cout << entry.getValue() << " ";
+                ++currentColumn;
+            }
+
+            for (; currentColumn < transitionMatrix.getColumnCount(); ++currentColumn) {
+                std::cout << "0 ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+template<typename ValueType, typename RewardModelType>
+std::vector<std::list<uint64_t>> DARewardProductBuilder<ValueType, RewardModelType>::processProductMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+    MecDecompositionInfo const& mecDecompositionInfo,
+    Conversions& conversions) {
+    std::vector<std::list<uint64_t>> mecsToLeavingActions(mecDecompositionInfo.mecs.size(), std::list<uint64_t>());
     bool isMatrixBuilderEmpty = true;
 
+    for (uint64_t state=0, newState=0; state < transitionMatrix.getRowGroupCount(); state++) {
+        if (mecDecompositionInfo.stateToMec[state] != InvalidIndex) continue;
+        conversions.modelStateToState[state] = newState;
+        conversions.stateToModelState[newState] = productToModelState[state];
+        newState++;
+    }
+    
     // Iterates over all state-action pairs and modifies them for new model
     for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); state++) {
-        uint64_t const mecIndex = stateToMec[state];
-        transitionMatrixBuilder.newRowGroup(isMatrixBuilderEmpty ? 0 : transitionMatrixBuilder.getLastRow() + 1);
+        uint64_t const mecIndex = mecDecompositionInfo.stateToMec[state];
+        if (mecIndex == InvalidIndex) {
+            transitionMatrixBuilder.newRowGroup(isMatrixBuilderEmpty ? 0 : transitionMatrixBuilder.getLastRow() + 1);
+        }
 
         for (auto const& choice: transitionMatrix.getRowGroupIndices(state)) {
-            auto row = transitionMatrix.getRow(choice);
-            uint64_t nextRow = isMatrixBuilderEmpty ? 0 : transitionMatrixBuilder.getLastRow() + 1;
-
             if (mecIndex == InvalidIndex) {
-                modifyStateActionPair(transitionMatrixBuilder, stateToMec, row, mecs.size(), isMatrixBuilderEmpty);
-                choiceToModelChoice[transitionMatrixBuilder.getLastRow()] = choice;
+                modifyStateActionPair(transitionMatrixBuilder, transitionMatrix.getRow(choice), mecDecompositionInfo, conversions, isMatrixBuilderEmpty);
+                conversions.choiceToModelChoice[transitionMatrixBuilder.getLastRow()] = choice;
                 isMatrixBuilderEmpty = false;
                 continue;
             }
 
-            if (mecs[mecIndex].containsChoice(state, choice)) {
-                // The choice is part of an MEC and therefore cannot leave it
-                for (auto& entry: row) {
-                    transitionMatrixBuilder.addNextValue(nextRow, entry.getColumn(), entry.getValue());
-                }
-                choiceToModelChoice[transitionMatrixBuilder.getLastRow()] = choice;
-                isMatrixBuilderEmpty = false;
-            }   else {
+            if (!mecDecompositionInfo.mecs[mecIndex].containsChoice(state, choice)) {
                 mecsToLeavingActions[mecIndex].push_back(choice);
             }
         }
@@ -50,79 +83,72 @@ std::vector<std::list<uint64_t>> DARewardProductBuilder<ValueType, RewardModelTy
 
 
 template<typename ValueType, typename RewardModelType>
-std::list<uint64_t> DARewardProductBuilder<ValueType, RewardModelType>::addRepresentativeStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, std::vector<uint64_t> const& stateToMec, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent>& accEcs, std::vector<std::list<uint64_t>> const& mecsToLeavingActions) {
+std::vector<std::list<uint64_t>> DARewardProductBuilder<ValueType, RewardModelType>::addRepresentativeStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+    std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
+    std::vector<std::list<uint64_t>> const& mecsToLeavingActions,
+    MecDecompositionInfo const& mecDecompositionInfo,
+    Conversions& conversions) {
 
-    std::list<uint64_t> reachingAccEcChoices;
-    storm::storage::BitVector isMECaccepting(mecs.size(), false);
+    std::vector reachingAccEcChoices(accEcs.size(), std::list<uint64_t>());
+    uint64_t numMECs = mecsToLeavingActions.size();
     // add MEC matrix to main matrix
-    std::vector<std::list<uint64_t> > mecToMacStates(mecs.size(), std::list<uint64_t>());
+    std::vector mecToMacStates(numMECs, std::vector(accEcs.size(), std::list<uint64_t>()));
     // represents the first state of each MAC so we can later add an action that leads there a.s.
-    uint64_t representativeColumn = transitionMatrix.getColumnCount() + mecs.size();
+    uint64_t representativeColumn = transitionMatrix.getRowGroupCount() - mecDecompositionInfo.numStatesInMecs + numMECs;
 
-    // determining to which MEC the end component belongs to
-    for (auto it=accEcs.begin(); it!=accEcs.end(); ++it) {
-        uint64_t representativeEcState = it->begin()->first;
-        auto const mec_index = stateToMec[representativeEcState];
-        STORM_LOG_ASSERT(mec_index < mecs.size(), "MEC index out of range.");
-        std::cout << std::distance(accEcs.begin(), it) << ", " << mec_index << ", " << mecs[mec_index].size() << ", " << it->size() << std::endl;
-        // check if the entire MEC is accepting
-        if (mecs[mec_index].size() == it->size()) {
-            mecToMacStates[mec_index].push_back(representativeEcState);
-            isMECaccepting.set(mec_index, true);
-            // we do not need to add the accepting ec since the entire MEC is accepting
-            it = accEcs.erase(it);
-            --it;
-        } else {
-            mecToMacStates[mec_index].push_back(representativeColumn);
-            representativeColumn += it->size();
+    for (int i = 0; i < accEcs.size(); i++) {
+        // determining to which MEC the end component belongs to
+        for (auto const& ec: accEcs[i]) {
+            uint64_t representativeEcState = ec.begin()->first;
+            auto const mec_index = mecDecompositionInfo.stateToMec[representativeEcState];
+            STORM_LOG_ASSERT(mec_index < numMECs, "MEC index out of range.");
+            mecToMacStates[mec_index][i].push_back(representativeColumn);
+            representativeColumn += ec.size();
         }
     }
 
+    bool isMatrixBuilderEmpty = mecDecompositionInfo.numStatesInMecs == mecDecompositionInfo.stateToMec.size();
     // add states representing MECs and the enabled actions that leave them
-    for (uint64_t mecIndex = 0; mecIndex < mecs.size(); ++mecIndex) {
-        transitionMatrixBuilder.newRowGroup(transitionMatrixBuilder.getLastRow() + 1);
+    for (uint64_t mecIndex = 0; mecIndex < numMECs; ++mecIndex) {
+        transitionMatrixBuilder.newRowGroup(isMatrixBuilderEmpty ? 0 : transitionMatrixBuilder.getLastRow() + 1);
 
+        // actions that might reach states not in some end component
         for (auto const& choice: mecsToLeavingActions[mecIndex]) {
-            auto row = transitionMatrix.getRow(choice);
-            modifyStateActionPair(transitionMatrixBuilder, stateToMec, row, mecs.size());
+            modifyStateActionPair(transitionMatrixBuilder, transitionMatrix.getRow(choice), mecDecompositionInfo, conversions);
         }
 
-        // actions that reach copies of accepting end components
-        for (auto const& macState: mecToMacStates[mecIndex]) {
-            uint64_t choice = transitionMatrixBuilder.getLastRow() + 1;
-            reachingAccEcChoices.push_back(choice);
-            transitionMatrixBuilder.addNextValue(choice, macState, 1);
+        for (int i = 0; i < accEcs.size(); i++) {
+            // actions that reach copies of accepting end components
+            for (auto const& macState: mecToMacStates[mecIndex][i]) {
+                uint64_t choice = isMatrixBuilderEmpty ? 0 : transitionMatrixBuilder.getLastRow() + 1;
+                isMatrixBuilderEmpty = false;
+                reachingAccEcChoices[i].push_back(choice);
+                transitionMatrixBuilder.addNextValue(choice, macState, 1);
+            }
         }
-
-        // action to representative state of MEC
-        if (!isMECaccepting[mecIndex]) {
-            auto representativeState = mecs[mecIndex].begin()->first;
-            transitionMatrixBuilder.addNextValue(transitionMatrixBuilder.getLastRow() + 1, representativeState, 1);
-        }
-    }
-
-    if (!accEcs.size()) {
-        transitionMatrixBuilder.addNextValue(transitionMatrixBuilder.getLastRow() + 1, transitionMatrix.getColumnCount() + mecs.size() - 1, 1);
     }
 
     return reachingAccEcChoices;
 }
 
 template<typename ValueType, typename RewardModelType>
-void DARewardProductBuilder<ValueType, RewardModelType>::addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder, uint64_t numberMecs, std::list<storage::MaximalEndComponent> accEcs) {
-    uint64_t column_offset = transitionMatrix.getColumnCount() + numberMecs;
+void DARewardProductBuilder<ValueType, RewardModelType>::addMACStates(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    storage::SparseMatrixBuilder<ValueType>& transitionMatrixBuilder,
+    std::list<storage::MaximalEndComponent> const& accEcs,
+    MecDecompositionInfo mecDecompositionInfo) {
+    uint64_t column_offset = transitionMatrixBuilder.getCurrentRowGroupCount();
     // add MACs to matrix
     for (auto const& mac: accEcs) {
         auto stateSet = mac.getStateSet();
 
         //states and choices from original matrix
-        for (auto const& [state, choices]: mac) {
+        for (auto const& state: stateSet) {
             transitionMatrixBuilder.newRowGroup(transitionMatrixBuilder.getLastRow() + 1);
 
-            for (auto const& choice: choices) {
+            for (auto const& choice: mac.getChoicesForState(state)) {
                 auto row = transitionMatrix.getRow(choice);
                 uint64_t choiceModified = transitionMatrixBuilder.getLastRow() + 1;
-
                 for (auto& entry: row) {
                     uint64_t nextState = std::distance(stateSet.begin(), stateSet.find(entry.getColumn()));
                     transitionMatrixBuilder.addNextValue(choiceModified, nextState + column_offset, entry.getValue());
@@ -134,23 +160,27 @@ void DARewardProductBuilder<ValueType, RewardModelType>::addMACStates(storm::sto
 }
 
 template<typename ValueType, typename RewardModelType>
-void DARewardProductBuilder<ValueType, RewardModelType>::computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::list<storage::MaximalEndComponent> const& accEcs, std::vector<uint64_t>& stateToModelState, std::vector<uint64_t>& choiceToModelChoice) {
-    for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); state++) {
-        stateToModelState[state] = product.getModelState(state);
+void DARewardProductBuilder<ValueType, RewardModelType>::computeConversionsFromModel(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    std::vector<std::list<storage::MaximalEndComponent>> const& accEcs,
+    MecDecompositionInfo const& mecDecompositionInfo,
+    Conversions& conversions,
+    uint64_t stateCounter,
+    uint64_t choiceCounter) {
+    std::list<storage::MaximalEndComponent> flattenedEcs;
+    for (auto ecs: accEcs) {
+        flattenedEcs.splice(flattenedEcs.end(), ecs);
     }
-
-    uint64_t stateCounter = transitionMatrix.getRowGroupCount() + mecs.size();
-    uint64_t choiceCounter = transitionMatrix.getRowCount() + mecs.size() + accEcs.size();
+    std::cout << flattenedEcs.size() << std::endl;
     // add MACs to matrix
-    for (auto const& mac: accEcs) {
+    for (auto const& mac: flattenedEcs) {
         //states and choices from original matrix
-        for (auto const& [state, choices]: mac) {
-            auto modelState = product.getModelState(state);
-            stateToModelState[stateCounter++] = modelState;
-            for (auto const& choice: choices) {
+        for (auto const& state: mac.getStateSet()) {
+            auto modelState = productToModelState[state];
+            conversions.stateToModelState[stateCounter++] = modelState;
+            for (auto const& choice: mac.getChoicesForState(state)) {
                 uint64_t rowOffset = choice - transitionMatrix.getRowGroupIndices()[state];
                 auto modelChoice = originalModel.getTransitionMatrix().getRowGroupIndices()[modelState] + rowOffset;
-                choiceToModelChoice[choiceCounter++] = modelChoice;
+                conversions.choiceToModelChoice[choiceCounter++] = modelChoice;
             }
         }
     }
@@ -158,67 +188,94 @@ void DARewardProductBuilder<ValueType, RewardModelType>::computeConversionsFromM
 
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, RewardModelType>::build() {
-    auto transitionMatrix = product.getProductModel().getTransitionMatrix();
-    auto backwardTransitions = product.getProductModel().getBackwardTransitions();
-    auto acceptance = *product.getAcceptance();
-
+    auto transitionMatrix = productModel.getTransitionMatrix();
+    auto backwardTransitions = productModel.getBackwardTransitions();
     // MatrixBuilder to build the transition matrix for the demerged MDP
     storage::SparseMatrixBuilder<ValueType> transitionMatrixBuilder(0, 0, 0, false, true, 0);
     //Compute MECs for entire MDP
     storm::storage::MaximalEndComponentDecomposition<ValueType> mecs(transitionMatrix, backwardTransitions);
     STORM_LOG_INFO(mecs.statistics(transitionMatrix.getRowGroupCount()));
     // Compute accepting end components for the product model
-    std::list<storage::MaximalEndComponent> accEcs = computeAcceptingECs(acceptance, transitionMatrix, backwardTransitions);
+    uint64_t numberAcceptanceConditionCombinations = pow(2, acceptanceConditions.size());
+
+    auto objectivesCombinations = storm::automata::AcceptanceConditionSynthesizer::getAllCombinations(acceptanceConditions);
+    std::vector<std::list<storage::MaximalEndComponent>> accEcs(numberAcceptanceConditionCombinations);
+
+    for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; ++i) {
+        accEcs[i] = computeAcceptingECs(*objectivesCombinations[i], transitionMatrix, backwardTransitions);
+        STORM_LOG_INFO("Found " << accEcs[i].size() << " accepting end components for combination " << i);
+    }
 
     // Maps every state to the MEC it is in, or to InvalidMecIndex if it does not belong to any MEC.
     std::vector<uint64_t> stateToMec(transitionMatrix.getRowGroupCount(), InvalidIndex);
+    uint64_t numStatesInMec = 0, numChoicesInMec = 0;
     for (uint64_t mec_counter = 0; auto const& mec : mecs) {
-        for (auto const& [state, _] : mec) {
+        for (auto const& [state, choices] : mec) {
             stateToMec[state] = mec_counter;
+            numChoicesInMec += choices.size();
         }
+        numStatesInMec += mec.size();
         ++mec_counter;
     }
+    MecDecompositionInfo mecDecompositionInfo(mecs, numStatesInMec, numChoicesInMec, stateToMec);
 
-    uint64_t numberOfChoicesAccEcs = 0, numberOfStatesAccEcs = 0;
-    for (auto const& ec: accEcs) {
-        for (auto const& [_, choices] : ec) {
-            numberOfChoicesAccEcs += choices.size();
+    uint64_t numberOfChoicesAccEcs = 0, numberOfStatesAccEcs = 0, numberOfAccEcs = 0;
+    for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
+        for (auto const& ec: accEcs[i]) {
+            for (auto const& [_, choices] : ec) {
+                numberOfChoicesAccEcs += choices.size();
+            }
+            numberOfStatesAccEcs += ec.size();
+            numberOfAccEcs++;
         }
-        numberOfStatesAccEcs += ec.size();
     }
 
     STORM_LOG_INFO("Found " << accEcs.size() << " accepting end components with a total number of " << numberOfStatesAccEcs << " states and " << numberOfChoicesAccEcs << " choices." );
-    std::vector<uint64_t> stateToModelState(numberOfStatesAccEcs + transitionMatrix.getRowGroupCount() + mecs.size(), InvalidIndex);
-    std::vector<uint64_t> choiceToModelChoice(numberOfChoicesAccEcs + transitionMatrix.getRowCount() + mecs.size() + accEcs.size(), InvalidIndex);
+    const uint64_t totalNumberOfStates = numberOfStatesAccEcs + transitionMatrix.getRowGroupCount() - numStatesInMec + mecs.size();
+    const uint64_t totalNumberOfChoices = numberOfChoicesAccEcs + transitionMatrix.getRowCount() - numChoicesInMec + numberOfAccEcs;
+    Conversions conversions;
+    conversions.stateToModelState.resize(totalNumberOfStates, InvalidIndex);
+    conversions.choiceToModelChoice.resize(totalNumberOfChoices, InvalidIndex);
+    conversions.modelStateToState.resize(transitionMatrix.getRowGroupCount(), InvalidIndex);
 
     // Processes the stated from the product model for the modified one
-    auto mecsToLeavingActions = processProductMatrix(transitionMatrix, transitionMatrixBuilder, stateToMec, mecs, choiceToModelChoice);
-    // Adds states representing MECs to the matrix builder
-    auto reachingAccEcChoices = addRepresentativeStates(transitionMatrix, transitionMatrixBuilder, stateToMec, mecs, accEcs, mecsToLeavingActions);
-
-    addMACStates(transitionMatrix, transitionMatrixBuilder, mecs.size(), accEcs);
+    auto mecsToLeavingActions = processProductMatrix(transitionMatrix, transitionMatrixBuilder, mecDecompositionInfo, conversions);
+    //printCompactTransitionMatrix(transitionMatrixBuilder.build());
+    auto reachingAccEcChoices = addRepresentativeStates(transitionMatrix, transitionMatrixBuilder, accEcs, mecsToLeavingActions, mecDecompositionInfo, conversions);
+    for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
+        addMACStates(transitionMatrix, transitionMatrixBuilder, accEcs[i], mecDecompositionInfo);
+        STORM_LOG_INFO("Added " << accEcs[i].size() << " MACs to the modified model.");
+    }
 
     auto modifiedTransitionMatrix = transitionMatrixBuilder.build();
     STORM_LOG_ASSERT(modifiedTransitionMatrix.isProbabilistic(), "The resulting transition matrix is not probabilistic");
+    STORM_LOG_ASSERT(modifiedTransitionMatrix.getRowGroupCount() == totalNumberOfStates, "The resulting transition matrix has the wrong number of states");
+    STORM_LOG_ASSERT(modifiedTransitionMatrix.getRowCount() == totalNumberOfChoices, "The resulting transition matrix has the wrong number of choices");
     STORM_LOG_INFO("The modified model has " << modifiedTransitionMatrix.getRowGroupCount() << " states and " << modifiedTransitionMatrix.getRowCount() << " choices.");
-    auto initialStates = liftInitialStates(stateToMec, modifiedTransitionMatrix.getRowGroupCount());
-    computeConversionsFromModel(transitionMatrix, mecs, accEcs, stateToModelState, choiceToModelChoice);
+    auto initialStates = liftInitialStates(mecDecompositionInfo, totalNumberOfStates, productModel.getInitialStates());
 
-    return std::make_shared<DARewardProduct<ValueType>>(modifiedTransitionMatrix, stateToModelState, choiceToModelChoice, reachingAccEcChoices, initialStates);
+    uint64_t stateCounter = totalNumberOfStates - numberOfStatesAccEcs;
+    uint64_t choiceCounter = totalNumberOfChoices - numberOfChoicesAccEcs;
+    computeConversionsFromModel(transitionMatrix, accEcs, mecDecompositionInfo, conversions, stateCounter, choiceCounter);
+
+    return std::make_shared<DARewardProduct<ValueType>>(modifiedTransitionMatrix, conversions.stateToModelState, conversions.choiceToModelChoice, reachingAccEcChoices, initialStates);
 }
 
 template<typename ValueType, typename RewardModelType>
-void DARewardProductBuilder<ValueType, RewardModelType>::modifyStateActionPair(storage::SparseMatrixBuilder<ValueType>& builder, std::vector<uint64_t> const& stateToMec, Row row, uint64_t numMecs, bool builderEmpty) {
-    std::vector<ValueType> mecValues(numMecs, 0);
+void DARewardProductBuilder<ValueType, RewardModelType>::modifyStateActionPair(storage::SparseMatrixBuilder<ValueType>& builder,
+    Row row,
+    MecDecompositionInfo const& mecDecompositionInfo,
+    Conversions& conversions,
+    bool builderEmpty) {
+    std::vector<ValueType> mecValues(mecDecompositionInfo.mecs.size(), 0);
     uint64_t choice = builderEmpty ? 0 : builder.getLastRow() + 1;
-    ValueType sumEntries = 0;
+    const uint64_t numStates = mecDecompositionInfo.stateToMec.size() - mecDecompositionInfo.numStatesInMecs;
 
     for (auto& entry: row) {
-        uint64_t mecIndexNextState = stateToMec[entry.getColumn()];
-
+        uint64_t mecIndexNextState = mecDecompositionInfo.stateToMec[entry.getColumn()];
         if (mecIndexNextState == std::numeric_limits<uint64_t>::max()) {
-            builder.addNextValue(choice, entry.getColumn(), entry.getValue());
-            sumEntries += entry.getValue();
+            uint64_t nextState = conversions.modelStateToState[entry.getColumn()];
+            builder.addNextValue(choice, nextState, entry.getValue());
         }
         else {
             mecValues[mecIndexNextState] += entry.getValue();
@@ -227,8 +284,7 @@ void DARewardProductBuilder<ValueType, RewardModelType>::modifyStateActionPair(s
 
     for (uint64_t i=0; auto& entry: mecValues) {
         if (entry) {
-            builder.addNextValue(choice, stateToMec.size() + i,entry);
-            sumEntries += entry;
+            builder.addNextValue(choice, numStates + i,entry);
         }
         i++;
     }
@@ -346,15 +402,18 @@ void DARewardProductBuilder<ValueType, RewardModelType>::removeSubsetEndComponen
 
 
 template<typename ValueType, typename RewardModelType>
-storm::storage::BitVector DARewardProductBuilder<ValueType, RewardModelType>::liftInitialStates(std::vector<uint64_t> const& stateToMec, uint64_t const numberOfStates) {
-    storm::storage::BitVector initialStatesModified(numberOfStates, false);
+storm::storage::BitVector DARewardProductBuilder<ValueType, RewardModelType>::liftInitialStates(MecDecompositionInfo const& mecDecompositionInfo,
+    uint64_t numberOfStates,
+    storm::storage::BitVector const& initialStates) const {
+    storm::storage::BitVector initialStatesModified(numberOfStates);
+    uint64_t offset = mecDecompositionInfo.stateToMec.size() - mecDecompositionInfo.numStatesInMecs;
 
-    for (uint64_t prodInitState: initialStatesProduct) {
-        uint64_t mecIndex = stateToMec[prodInitState];
+    for (uint64_t prodInitState: initialStates) {
+        uint64_t mecIndex = mecDecompositionInfo.stateToMec[prodInitState];
         if (mecIndex == InvalidIndex) {
             initialStatesModified.set(prodInitState, true);
         } else {
-            initialStatesModified.set(stateToMec.size() + mecIndex, true);
+            initialStatesModified.set(offset + mecIndex, true);
         }
     }
     return initialStatesModified;
