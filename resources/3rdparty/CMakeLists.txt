@@ -154,8 +154,8 @@ if (${Boost_VERSION} VERSION_LESS "1.75.0") # Debian 12 ships with Boost 1.74.0
     add_library(boost_pfr INTERFACE) # Not imported, we are in control of the sources.
     add_dependencies(boost_pfr boost_pfr_src)
     target_include_directories(boost_pfr INTERFACE
-            $<BUILD_INTERFACE:${STORM_3RDPARTY_BINARY_DIR}>/boost_pfr/include
-            $<INSTALL_INTERFACE:${STORM_RESOURCE_INCLUDE_INSTALL_DIR}>/boost_pfr/include
+            $<BUILD_INTERFACE:${STORM_3RDPARTY_BINARY_DIR}/boost_pfr/include>
+            $<INSTALL_INTERFACE:${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/boost_pfr/include>
     )
     install(TARGETS boost_pfr EXPORT storm_Targets)
     install(DIRECTORY ${STORM_3RDPARTY_BINARY_DIR}/boost_pfr/include/
