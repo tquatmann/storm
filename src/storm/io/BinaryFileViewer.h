@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <ranges>
 #include <span>
 
@@ -22,7 +23,7 @@ class BinaryFileViewer {
     static const bool NativeEndianness = Endianness == std::endian::native;
     using value_type = T;
 
-    BinaryFileViewer(std::string const& filename) : file(createMappedFile(filename)), rangeView(createRangeView(file)) {}
+    BinaryFileViewer(std::filesystem::path const& filename) : file(createMappedFile(filename)), rangeView(createRangeView(file)) {}
 
     const T& operator[](std::size_t index) const {
         return rangeView[index];
@@ -40,9 +41,18 @@ class BinaryFileViewer {
         return rangeView.end();
     }
 
+    auto data() const
+        requires(NativeEndianness || sizeof(T) == 1)
+    {
+        return rangeView.data();
+    }
+
    private:
     using MappedFileType = boost::iostreams::mapped_file_source;
-    static auto createMappedFile(std::string const& filename) {
+    static MappedFileType createMappedFile(std::filesystem::path const& filename) {
+        if (std::filesystem::is_empty(filename)) {
+            return MappedFileType();
+        }
         MappedFileType file(filename);
         STORM_LOG_THROW(file.is_open(), storm::exceptions::FileIoException, "Could not open file '" << filename << "'.");
         STORM_LOG_THROW(file.size() % sizeof(T) == 0, storm::exceptions::FileIoException,
@@ -53,11 +63,12 @@ class BinaryFileViewer {
     }
 
     static auto createRangeView(MappedFileType const& file) {
+        const T* data = file.is_open() ? reinterpret_cast<const T*>(file.data()) : nullptr;
+        std::size_t size = file.is_open() ? file.size() / sizeof(T) : 0;
         if constexpr (NativeEndianness || sizeof(T) == 1) {
-            return std::span<const T>(reinterpret_cast<const T*>(file.data()), file.size() / sizeof(T));
+            return std::span<const T>(data, size);
         } else {
-            return std::span<const T>(reinterpret_cast<const T*>(file.data()), file.size() / sizeof(T)) |
-                   std::ranges::views::transform(storm::utility::byteSwap<T>);
+            return std::span<const T>(data, size) | std::ranges::views::transform(storm::utility::byteSwap<T>);
         }
     }
 

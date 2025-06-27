@@ -21,12 +21,11 @@ template<std::ranges::contiguous_range InputRange>
 auto stringVectorViewOptionalCsr(InputRange&& chars, auto&& csr) {
     STORM_LOG_ASSERT(!csr.has_value() || std::ranges::size(csr.value()) > 0, "CSR must not be empty.");
     auto const numEntries = csr.has_value() ? std::ranges::size(csr.value()) - 1 : chars.size();
-    auto const charIt = chars.begin();
-    return std::ranges::iota_view(0ull, numEntries) | std::ranges::views::transform([&charIt, &csr](auto i) -> std::string_view {
+    return std::ranges::iota_view(0ull, numEntries) | std::ranges::views::transform([&chars, &csr](auto i) -> std::string_view {
                if (csr.has_value()) {
-                   return std::string_view(charIt + csr.value()[i], charIt + csr.value()[i + 1]);
+                   return std::string_view(chars.data() + csr.value()[i], csr.value()[i + 1] - csr.value()[i]);
                } else {
-                   return std::string_view(charIt + i, charIt + i + 1);  // single character
+                   return std::string_view(chars.data() + i, 1);  // single character
                }
            });
 }

@@ -136,7 +136,7 @@ storm::models::sparse::ChoiceLabeling constructChoiceLabeling(storm::umb::UmbMod
         if (actionIndex == emptyActionIndex) {
             continue;
         }
-        choiceLabeling.setChoices(std::string(actionStrings[actionIndex]), std::move(actionToLabels[actionIndex]));
+        choiceLabeling.addLabel(std::string(actionStrings[actionIndex]), std::move(actionToLabels[actionIndex]));
     }
     return choiceLabeling;
 }
@@ -197,7 +197,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
         if (modelType == MarkovAutomaton) {
             STORM_LOG_THROW(umbModel.states.markovianStates.has_value(), storm::exceptions::WrongFormatException,
                             "Markovian states are required for Markov automaton models but not present in the UMB model.");
-            components.markovianStates = createBitVector<Storage>(umbModel.states.initialStates, umbModel.index.transitionSystem.numStates);
+            components.markovianStates = createBitVector<Storage>(umbModel.states.markovianStates, umbModel.index.transitionSystem.numStates);
         }
     } else if (modelType == Smg) {
         STORM_LOG_THROW(umbModel.states.stateToPlayer.has_value(), storm::exceptions::WrongFormatException,
