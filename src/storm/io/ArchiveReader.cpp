@@ -245,6 +245,7 @@ template Vec<char> ArchiveReader::ArchiveReadEntry::toVector<char, std::endian::
 template Vec<bool> ArchiveReader::ArchiveReadEntry::toVector<bool, std::endian::little>();
 template Vec<uint32_t> ArchiveReader::ArchiveReadEntry::toVector<uint32_t, std::endian::little>();
 template Vec<uint64_t> ArchiveReader::ArchiveReadEntry::toVector<uint64_t, std::endian::little>();
+template Vec<int64_t> ArchiveReader::ArchiveReadEntry::toVector<int64_t, std::endian::little>();
 template Vec<double> ArchiveReader::ArchiveReadEntry::toVector<double, std::endian::little>();
 
 }  // namespace storm::io

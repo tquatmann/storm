@@ -12,7 +12,7 @@ namespace storm::umb {
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> parseModelFromUmb(std::filesystem::path const& umbLocation, ImportOptions const& options) {
     auto umb = storm::umb::importUmb(umbLocation, options);
-    return storm::umb::sparseModelFromUmb<ValueType>(umb);
+    return storm::umb::sparseModelFromUmb<ValueType>(umb, options);
 }
 
 template<typename ValueType>

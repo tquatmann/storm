@@ -64,12 +64,15 @@ void writeVector(VectorType const& vector, storm::io::ArchiveWriter& archiveWrit
 
 template<StorageType Storage>
 void writeVector(GenericVector<Storage> const& vector, TargetType auto& target, std::filesystem::path const& filepath) {
+    if (!vector.hasValue()) {
+        return;
+    }
     if (vector.template isType<bool>()) {
         writeVector(vector.template get<bool>(), target, filepath);
-    } else if (vector.template isType<int32_t>()) {
-        writeVector(vector.template get<int32_t>(), target, filepath);
     } else if (vector.template isType<uint64_t>()) {
         writeVector(vector.template get<uint64_t>(), target, filepath);
+    } else if (vector.template isType<int64_t>()) {
+        writeVector(vector.template get<int64_t>(), target, filepath);
     } else if (vector.template isType<double>()) {
         writeVector(vector.template get<double>(), target, filepath);
     } else {
@@ -117,9 +120,9 @@ template<typename UmbStructure>
     requires HasFileNames<UmbStructure>
 void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std::filesystem::path const& context) {
     static_assert(UmbStructure::FileNames.size() == boost::pfr::tuple_size_v<UmbStructure>, "Number of file names does not match number of fields in struct.");
-    boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t i) {
+    boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t fieldIndex) {
         // potentially create directory for sub-field
-        std::filesystem::path fieldName = std::data(UmbStructure::FileNames)[i];
+        std::filesystem::path fieldName = std::data(UmbStructure::FileNames)[fieldIndex];
         // export the field, either with a recursive call or via writeVector
         using FieldType = std::remove_cvref_t<decltype(field)>;
         if constexpr (HasFileNames<FieldType>) {
@@ -153,6 +156,8 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
                     std::string csrFieldName;
                     if (fieldName == "branch-probabilities.bin") {
                         csrFieldName = "branch-to-probability.bin";
+                    } else if (fieldName == "exit-rates.bin") {
+                        csrFieldName = "state-to-exit-rate.bin";
                     } else if (fieldName == "values.bin") {
                         csrFieldName = "to-value.bin";
                     } else {

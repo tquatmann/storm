@@ -75,6 +75,8 @@ bool UmbModel<Storage>::validate(bool silent) const {
     // If prob type is rational, probabilities are either rational or uint64
     // if annotation forStates/forChoices/forBranches is set, values are set too
     // annotations in index are unique, and present as files
+    // rewards are numeric, aps are boolean
+    // annotations appliesTo is consistent with present files, annotation types are consistent (aps = bool, rewards = numeric)
     return isValid;
 }
 

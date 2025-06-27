@@ -510,7 +510,8 @@ std::shared_ptr<storm::models::ModelBase> buildModelExplicit(storm::settings::mo
         result = storm::api::buildExplicitDRNModel<ValueType>(ioSettings.getExplicitDRNFilename(), options);
     } else if (ioSettings.isExplicitUmbSet()) {
         storm::umb::ImportOptions options;
-        // options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
+        options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
+        options.buildStateValuations = buildSettings.isBuildStateValuationsSet();
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "RationalFunction currently not supported for UMB models.");
         } else {

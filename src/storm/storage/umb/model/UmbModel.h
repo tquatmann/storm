@@ -44,7 +44,11 @@ class UmbModel {
         CSR stateToChoice;
         TO1<uint32_t> stateToPlayer;
         TO1<bool> initialStates;
-        auto static constexpr FileNames = {"state-to-choice.bin", "state-to-player.bin", "initial-states.bin"};
+        TO1<bool> markovianStates;
+        CSR stateToExitRate;
+        SEQ<AnyType> exitRates;
+        auto static constexpr FileNames = {"state-to-choice.bin",  "state-to-player.bin",    "initial-states.bin",
+                                           "markovian-states.bin", "state-to-exit-rate.bin", "exit-rates.bin"};
     } states;
     struct Choices {
         CSR choiceToBranch;
@@ -65,22 +69,11 @@ class UmbModel {
             CSR toValue;
             SEQ<AnyType> values;
             auto static constexpr FileNames = {"to-value.bin", "values.bin"};
-            // TODO: Support for distributions, string-valued annotations, ...
         };
         std::optional<Values> forStates, forChoices, forBranches;
         auto static constexpr FileNames = {"for-states/", "for-choices/", "for-branches/"};
     };
-    std::map<std::string, Annotation> rewards;
-
-    struct BooleanAnnotation {
-        struct Values {
-            TO1<bool> values;
-            auto static constexpr FileNames = {"values.bin"};
-        };
-        std::optional<Values> forStates, forChoices, forBranches;
-        auto static constexpr FileNames = {"for-states/", "for-choices/", "for-branches/"};
-    };
-    std::map<std::string, BooleanAnnotation> atomicPropositions;
+    std::map<std::string, Annotation> rewards, aps;
 
     auto static constexpr FileNames = {"index.json", "", "", "", "annotations/rewards/", "annotations/aps/"};
 

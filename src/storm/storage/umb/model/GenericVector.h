@@ -33,11 +33,13 @@ class GenericVector {
 
     template<typename T>
     Vec<T>& get() {
+        STORM_LOG_ASSERT(std::holds_alternative<Vec<T>>(data), "GenericVector does not hold a value of requested type.");
         return std::get<Vec<T>>(data);
     }
 
     template<typename T>
     Vec<T> const& get() const {
+        STORM_LOG_ASSERT(std::holds_alternative<Vec<T>>(data), "GenericVector does not hold a value of requested type.");
         return std::get<Vec<T>>(data);
     }
 
@@ -66,13 +68,12 @@ class GenericVector {
             return std::vector<T>(get<T>().begin(), get<T>().end());
         } else {
             if constexpr (!std::is_same_v<T, bool>) {
-                //                if (isType<int32_t>()) {
-                //                    auto convertedView = convertFromTo<int32_t, T>();
-                //                    return std::vector<T>(convertedView.begin(), convertedView.end());
                 if (isType<uint64_t>()) {
                     auto convertedView = convertFromTo<uint64_t, T>();
                     return std::vector<T>(convertedView.begin(), convertedView.end());
-
+                } else if (isType<int64_t>()) {
+                    auto convertedView = convertFromTo<int64_t, T>();
+                    return std::vector<T>(convertedView.begin(), convertedView.end());
                 } else if (isType<double>()) {
                     auto convertedView = convertFromTo<double, T>();
                     return std::vector<T>(convertedView.begin(), convertedView.end());
@@ -96,6 +97,6 @@ class GenericVector {
     }
 
    private:
-    std::variant<std::monostate, Vec<bool>, Vec<int32_t>, Vec<uint64_t>, Vec<double>, Vec<storm::RationalNumber>, Vec<storm::Interval>> data;
+    std::variant<std::monostate, Vec<bool>, Vec<uint64_t>, Vec<int64_t>, Vec<double>, Vec<storm::RationalNumber>, Vec<storm::Interval>> data;
 };
 }  // namespace storm::umb

@@ -9,7 +9,6 @@
 #include "storm/utility/macros.h"
 
 #include "storm/exceptions/FileIoException.h"
-#include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
 #include "storm/exceptions/WrongFormatException.h"
 
@@ -51,9 +50,9 @@ void prepareAnnotations(storm::umb::UmbModel<Storage>& umbModel) {
             umbModel.rewards[name];
         }
     }
-    if (umbModel.index.annotations.atomicPropositions) {
-        for (auto const& [name, ap] : umbModel.index.annotations.atomicPropositions.value()) {
-            umbModel.atomicPropositions[name];
+    if (umbModel.index.annotations.aps) {
+        for (auto const& [name, ap] : umbModel.index.annotations.aps.value()) {
+            umbModel.aps[name];
         }
     }
 }
@@ -114,12 +113,28 @@ template<typename TypeDecl, StorageType Storage>
     requires std::is_enum_v<typename TypeDecl::E>
 void importGenericVector(SourceType auto& src, TypeDecl const& type, GenericVector<Storage>& target) {
     using E = typename TypeDecl::E;
+    // handle common types
     if (type == E::Double || type == E::DoubleInterval) {
         importGenericVector<double>(src, target);
     } else if (type == E::Rational || type == E::RationalInterval) {
         importGenericVector<uint64_t>(src, target);
     } else {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Type " << type << " is not handled.");
+        if constexpr (std::is_same_v<E, storm::umb::ModelIndex::Annotations::Annotation::Type>) {
+            // Handle annotation-specific types.
+            if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Bool) {
+                importGenericVector<bool>(src, target);
+            } else if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Uint64) {
+                importGenericVector<uint64_t>(src, target);
+            } else if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Int64) {
+                importGenericVector<int64_t>(src, target);
+            } else {
+                STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
+                                "Annotation type " << type << " for vector located in '" << getFilePath(src) << "' is not handled");
+            }
+        } else {
+            STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
+                            "Type " << type << " for numeric vector located in '" << getFilePath(src) << "' is not handled");
+        }
     }
 }
 
@@ -129,19 +144,33 @@ void importGenericVector(SourceType auto& src, storm::umb::ModelIndex const& ind
     auto srcPath = getFilePath(src);
     if (srcPath == "branch-probabilities.bin") {
         importGenericVector(src, index.transitionSystem.branchProbabilityType, target);
+    } else if (srcPath == "exit-rates.bin") {
+        auto const& rateType = index.transitionSystem.exitRateType;
+        STORM_LOG_THROW(rateType.has_value(), storm::exceptions::WrongFormatException,
+                        "Exit rate type is not set in the index, but exit rates are present in '" << srcPath << "'.");
+        importGenericVector(src, rateType.value(), target);
     } else {
-        // Reaching this means that we must have reward values. We expect a path of the form
-        // "annotations/rewards/<annotationId>/for-<somewhere>/values.bin"
+        // Reaching this point means that we must have annotation values.
         std::vector<std::string> p(srcPath.begin(), srcPath.end());
-        if (p.size() == 5 && p[0] == "annotations" && p[1] == "rewards" && p[4] == "values.bin") {
-            auto const& annotationId = p[2];
+        // We expect a path of the form "annotations/<annotationType>>/<annotationId>/for-<somewhere>/values.bin"
+        STORM_LOG_THROW(p.size() == 5 && p[0] == "annotations" && p[4] == "values.bin", storm::exceptions::WrongFormatException,
+                        "Unexpected file path '" << srcPath << "'. Expected 'annotations/<annotationType>/<annotationId>/for-<somewhere>/values.bin'.");
+        auto const& annotationType = p[1];
+        auto const& annotationId = p[2];
+        if (annotationType == "aps") {
+            auto const& aps = index.annotations.aps;
+            STORM_LOG_THROW(aps->contains(annotationId), storm::exceptions::WrongFormatException,
+                            "Annotation id '" << annotationId << "' for aps referenced in files but not found in index.");
+            auto const annotationType = aps->at(annotationId).type;
+            importGenericVector(src, annotationType.value_or(storm::umb::ModelIndex::Annotations::Annotation::Type::Bool), target);
+        } else if (annotationType == "rewards") {
             auto const& rewards = index.annotations.rewards;
             STORM_LOG_THROW(rewards->contains(annotationId), storm::exceptions::WrongFormatException,
-                            "Annotation id '" << annotationId << "'referenced in file but not found in index.");
-            importGenericVector(src, rewards->at(annotationId).type, target);
-        } else {
-            STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
-                            "Unexpected file path '" << srcPath << "'. Expected 'annotations/rewards/<annotationId>/for-<somewhere>/values.bin'.");
+                            "Annotation id '" << annotationId << "' for rewards referenced in files but not found in index.");
+            auto const rewType = rewards->at(annotationId).type;
+            STORM_LOG_THROW(rewType.has_value(), storm::exceptions::WrongFormatException,
+                            "Reward type is not set in the index, but rewards are present in '" << srcPath << "'.");
+            importGenericVector(src, rewType.value(), target);
         }
     }
 }

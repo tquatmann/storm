@@ -132,7 +132,6 @@ class ArchiveWriter {
 #ifdef STORM_HAVE_LIBARCHIVE
         archive_entry* entry = archive_entry_new();
         STORM_LOG_THROW(entry, storm::exceptions::FileIoException, "Failed to create archive entry.");
-        STORM_LOG_THROW(size > 0, storm::exceptions::FileIoException, "Data buffer is empty.");
 
         // Fill in metadata: path, file size, file type, permissions, etc.
         archive_entry_set_pathname(entry, archivePath.c_str());

@@ -10,7 +10,7 @@
 namespace storm::umb {
 
 struct ModelIndex {
-    uint64_t formatVersion{0}, formatRevision{0};
+    uint64_t formatVersion{0}, formatRevision{0};  // TODO: set to 1
 
     struct ModelData {
         std::optional<std::string> name, version;
@@ -65,72 +65,41 @@ struct ModelIndex {
             auto static constexpr Keys = {"none", "double", "rational", "double-interval", "rational-interval"};
         };
         storm::SerializedEnum<BranchProbabilityTypeDeclaration> branchProbabilityType;
+        std::optional<storm::SerializedEnum<BranchProbabilityTypeDeclaration>> exitRateType;
 
-        auto static constexpr JsonKeys = {"time", "#players", "#states", "#initial-states", "#choices", "#actions", "#branches", "branch-probability-type"};
+        auto static constexpr JsonKeys = {
+            "time", "#players", "#states", "#initial-states", "#choices", "#actions", "#branches", "branch-probability-type", "exit-rate-type"};
         using JsonSerialization = storm::JsonSerialization;
 
     } transitionSystem;
 
     struct Annotations {
-        enum class AppliesTo { States, Choices, Branches };
-        struct AppliesToDeclaration {
-            using Values = AppliesTo;
-            auto static constexpr Keys = {"states", "choices", "branches"};
-        };
-        struct Reward {
+        struct Annotation {
+            static std::string getValidIdentifierFromAlias(std::string const& alias);
+
             std::optional<std::string> alias, description;
             std::optional<storm::RationalNumber> lower, upper;
-            enum class Type { Double, Rational, DoubleInterval, RationalInterval };
+            enum class AppliesTo { States, Choices, Branches };
+            struct AppliesToDeclaration {
+                using Values = AppliesTo;
+                auto static constexpr Keys = {"states", "choices", "branches"};
+            };
+            std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;
+            enum class Type { Bool, Uint64, Uint64Interval, Int64, Int64Interval, Double, DoubleInterval, Rational, RationalInterval, String };
             struct TypeDeclaration {
                 using Values = Type;
-                auto static constexpr Keys = {"double", "rational", "double-interval", "rational-interval"};
+                auto static constexpr Keys = {
+                    "bool", "uint64", "uint64-interval", "int64", "int64-interval", "double", "double-interval", "rational", "rational-interval", "string"};
             };
-            storm::SerializedEnum<TypeDeclaration> type;
-            std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;  // todo check if this stays here
-            auto static constexpr JsonKeys = {"alias", "description", "lower", "upper", "type", "applies-to"};
+            std::optional<storm::SerializedEnum<TypeDeclaration>> type;
+            auto static constexpr JsonKeys = {"alias", "description", "lower", "upper", "applies-to", "type"};
             using JsonSerialization = storm::JsonSerialization;
         };
-        std::optional<std::map<std::string, Reward>> rewards;
+        using AnnotationMap = std::map<std::string, Annotation>;
+        std::optional<AnnotationMap> rewards, aps;
 
-        struct AtomicProposition {
-            std::optional<std::string> alias, description;
-            enum class Type { Bool };
-            struct TypeDeclaration {
-                using Values = Type;
-                auto static constexpr Keys = {"bool"};
-            };
-            std::optional<storm::SerializedEnum<TypeDeclaration>> type;                         // todo: check if this stays here
-            std::optional<std::vector<storm::SerializedEnum<AppliesToDeclaration>>> appliesTo;  // todo check if this stays here
-            auto static constexpr JsonKeys = {"alias", "description", "type", "applies-to"};
-            using JsonSerialization = storm::JsonSerialization;
-        };
-        std::optional<std::map<std::string, AtomicProposition>> atomicPropositions;
-
-        static std::pair<std::string, std::optional<std::string>> getAllowedNameAndAlias(std::string const& inputName);
-
-        template<typename MapType>
-        static std::optional<std::string> findAnnotationName(std::optional<MapType> const& map, std::string const& id) {
-            if (!map) {
-                return {};
-            }
-            for (auto const& [name, annotation] : map.value()) {
-                if (annotation.alias == id) {
-                    return name;
-                }
-            }
-            if (map->contains(id)) {
-                return id;
-            }
-            return {};
-        }
-
-        std::optional<std::string> findRewardName(std::string const& id) const {
-            return findAnnotationName(rewards, id);
-        }
-
-        std::optional<std::string> findAtomicPropositionName(std::string const& id) const {
-            return findAnnotationName(atomicPropositions, id);
-        }
+        std::optional<std::string> findRewardName(std::string const& id) const;
+        std::optional<std::string> findAtomicPropositionName(std::string const& id) const;
 
         auto static constexpr JsonKeys = {"rewards", "aps"};
         using JsonSerialization = storm::JsonSerialization;
