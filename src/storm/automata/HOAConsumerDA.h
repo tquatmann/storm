@@ -20,7 +20,7 @@
 namespace storm {
 namespace automata {
 
-class HOAConsumerDA : public HOAConsumerDAHeader {
+class HOAConsumerDA : public HOAConsumerLDBAHeader {
    private:
     AcceptanceCondition::ptr acceptance;
 
@@ -124,8 +124,8 @@ class HOAConsumerDA : public HOAConsumerDAHeader {
      * <br/>
      * @param stateId the index of the 'from' state
      * @param labelExpr a boolean expression over labels (empty pointer if none provided, only in case of state-labeled states)
-     * @param conjSuccessors a list of successors state indizes, interpreted as a conjunction
-     * @param accSignature an optional list of acceptance set indizes (transition-labeled acceptance) (empty pointer if none provided)
+     * @param conjSuccessors a list of successors state indices, interpreted as a conjunction
+     * @param accSignature an optional list of acceptance set indices (transition-labeled acceptance) (empty pointer if none provided)
      */
     virtual void addEdgeWithLabel(unsigned int stateId, label_expr::ptr labelExpr, const int_list& conjSuccessors, std::shared_ptr<int_list> accSignature) {
         if (conjSuccessors.size() != 1) {

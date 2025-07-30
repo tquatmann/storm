@@ -5,6 +5,7 @@
 #include "storm/logic/Formula.h"
 #include "storm/logic/MultiObjectiveFormula.h"
 #include "storm/storage/memorystructure/MemoryStructure.h"
+#include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
 
 namespace storm {
 namespace transformer {
@@ -25,7 +26,8 @@ public:
      * a (bounded-) until formula, eventually formula, or a globally formula. Total reward formulas and cumulative reward formulas will be ignored.
      */
     static std::shared_ptr<SparseModelType> incorporateGoalMemory(SparseModelType const& model,
-                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+                                                                  Environment const& env);
 
     /*!
      * Incorporates a memory structure where the nondeterminism of the model decides which successor state to choose.

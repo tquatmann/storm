@@ -39,7 +39,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     if (env.modelchecker().multi().isSchedulerRestrictionSet()) {
         auto const& schedRestr = env.modelchecker().multi().getSchedulerRestriction();
         if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::GoalMemory) {
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas());
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), env);
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Arbitrary && schedRestr.getMemoryStates() > 1) {
             model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateFullMemory(originalModel, schedRestr.getMemoryStates());
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Counter && schedRestr.getMemoryStates() > 1) {
@@ -50,7 +50,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
             STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "The given scheduler restriction has not been implemented.");
         }
     } else {
-        model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas());
+        model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), env);
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
@@ -71,10 +71,17 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
 
         if (subFormula->isProbabilityOperatorFormula()) {
-            auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
             std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
-            logic::RewardOperatorFormula operatorFormula(totalRewardFormulaPtr, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
-            preprocessOperatorFormula(operatorFormula, data);
+            auto rewardAccumulation = logic::RewardAccumulation(true, false, false);
+            if (env.modelchecker().isLtl2daToolSet()) {
+                auto lraFormula = std::make_shared<logic::LongRunAverageRewardFormula>(rewardAccumulation);
+                logic::RewardOperatorFormula operatorFormula(lraFormula, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
+                preprocessOperatorFormula(operatorFormula, data);
+            } else {
+                auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
+                logic::RewardOperatorFormula operatorFormula(totalRewardFormulaPtr, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
+                preprocessOperatorFormula(operatorFormula, data);
+            }
         } else {
             preprocessOperatorFormula(data.objectives.back()->originalFormula->asOperatorFormula(), data);
         }

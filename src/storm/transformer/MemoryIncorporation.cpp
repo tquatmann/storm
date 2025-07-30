@@ -59,7 +59,7 @@ storm::storage::MemoryStructure getUntilFormulaMemory(SparseModelType const& mod
 }
 
 template<class SparseModelType>
-std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env) {
     if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<typename SparseModelType::ValueType>>()) {
         std::vector<std::shared_ptr<storm::logic::Formula const>> ltlFormulas;
         std::vector<std::shared_ptr<storm::logic::PathFormula const>> test;
@@ -72,7 +72,7 @@ std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& mod
             }
         }
 
-        storage::SparseModelDARewardProduct<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType> productBuilder(model, ltlFormulas);
+        storage::SparseModelDARewardProduct<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType> productBuilder(model, ltlFormulas, env);
         return productBuilder.build();
     } else {
         throw storm::exceptions::NotImplementedException() << "The LTL memory incorporation is only implemented for MDPs.";
@@ -81,13 +81,13 @@ std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& mod
 
 template<class SparseModelType>
 std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
-    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env) {
 
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
         auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
         if (subsubFormula.info(false).containsComplexPathFormula()) {
-            return incorporateLTLMemory(model, formulas);
+            return incorporateLTLMemory(model, formulas, env);
         }
     }
 

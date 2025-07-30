@@ -1,9 +1,12 @@
 
 #include "SparseModelDARewardProduct.h"
 
+#include <storm/environment/modelchecker/ModelCheckerEnvironment.h>
+
 #include <boost/spirit/home/qi/string.hpp>
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/environment/Environment.h"
 #include "storm/transformer/DARewardProductBuilder.h"
 
 namespace storm {
@@ -96,8 +99,14 @@ void printMDP(
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
-    auto [productModel, acceptanceConditions, indexToModelState] = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas);
+    auto [productModel, acceptanceConditions, indexToModelState] = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
     //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
+
+    if (env.modelchecker().isLtl2daToolSet()) {
+        auto rewardModels = buildRewardModelsForLDBA(productModel, acceptanceConditions, indexToModelState);
+        //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
+        return std::make_shared<Mdp>(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
+    }
 
     transformer::DARewardProductBuilder<ValueType, RewardModelType> builder(productModel, acceptanceConditions, indexToModelState, originalModel);
     auto result = builder.build();
@@ -108,7 +117,7 @@ std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseMo
 
     auto stateLabeling = buildStateLabeling(result->getTransitionMatrix(), result->getStateToModelState(), result->getInitialStates());
 
-    //printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels, 5, false);
+    //printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels);
 
     return std::make_shared<Mdp>(result->getTransitionMatrix(), stateLabeling, rewardModels);
 }
@@ -198,6 +207,75 @@ storm::models::sparse::StateLabeling SparseModelDARewardProduct<ValueType, Rewar
     resultLabeling.setStates("init", initialStates);
 
     return resultLabeling;
+}
+
+template<typename ValueType, typename RewardModelType>
+std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildRewardModelsForLDBA(
+    Mdp& productModel, std::vector<storm::automata::AcceptanceCondition::ptr> const& acceptanceConditions, std::vector<uint64_t> indexToModelState) {
+    storm::storage::MaximalEndComponentDecomposition<ValueType> mecs(productModel.getTransitionMatrix(), productModel.getBackwardTransitions());
+    typedef typename RewardModelType::ValueType RewardValueType;
+    std::unordered_map<std::string, RewardModelType> rewardModels;
+    uint64_t numStates = productModel.getTransitionMatrix().getRowGroupCount();
+    uint64_t numChoices = productModel.getTransitionMatrix().getRowCount();
+
+    for (int i = 0; i < acceptanceConditions.size(); i++) {
+        std::optional<std::vector<RewardValueType>> stateRewards = std::vector<RewardValueType>(numStates, storm::utility::zero<RewardValueType>());
+        auto expr = acceptanceConditions[i]->getAcceptanceExpression();
+        STORM_LOG_ASSERT(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF,
+                         "For Büchi acceptance, the acceptance expression has to be of the form INF(0)");
+
+        auto const& acceptanceSet = expr->getAtom().getAcceptanceSet();
+        auto const& acceptingStates = acceptanceConditions[i]->getAcceptanceSet(acceptanceSet);
+
+        for (auto const& ec : mecs) {
+            bool containsAcceptingStates = false;
+            for (auto const& state : acceptingStates) {
+                if (ec.containsState(state)) {
+                    containsAcceptingStates = true;
+                    break;
+                }
+            }
+            if (!containsAcceptingStates)
+                continue;
+
+            for (auto const& state : ec.getStateSet()) {
+                stateRewards.value()[state] = 1;
+            }
+        }
+        rewardModels.insert(std::make_pair("accEc_" + std::to_string(i), RewardModelType(stateRewards)));
+    }
+
+    for (auto const rewardModel : originalModel.getRewardModels()) {
+        std::optional<std::vector<RewardValueType>> stateRewards;
+        if (rewardModel.second.hasStateRewards()) {
+            stateRewards = std::vector<RewardValueType>(numStates, storm::utility::zero<RewardValueType>());
+            for (uint64_t state = 0; state < numStates; ++state) {
+                stateRewards.value()[state] = rewardModel.second.getStateReward(indexToModelState[state]);
+            }
+        }
+
+        /* todo later
+        std::optional<std::vector<RewardValueType>> actionRewards;
+        if (rewardModel.second.hasStateActionRewards()) {
+            actionRewards = std::vector<RewardValueType>(numChoices, storm::utility::zero<RewardValueType>());
+            for (uint64_t state = 0; state < originalModel.getNumberOfStates(); ++state) {
+                for (uint64_t choice = 0; choice < originalModel.getTransitionMatrix().getRowGroupSize(state); ++choice) {
+                    auto modelChoice = BitVector(originalModel.getTransitionMatrix().getRowCount(), false);
+                    modelChoice.set(originalModel.getTransitionMatrix().getRowGroupIndices(state)[choice], true);
+                    auto liftedChoices = productModel.liftFromModel(modelChoice);
+
+                    for (auto const& productChoice : liftedChoices) {
+                        actionRewards.value()[productChoice] =
+                            rewardModel.second.getStateActionReward(originalModel.getTransitionMatrix().getRowGroupIndices(state)[choice]);
+                    }
+                }
+            }
+        }
+        */
+        rewardModels.insert(std::make_pair(rewardModel.first, RewardModelType(stateRewards)));
+    }
+
+    return rewardModels;
 }
 
 template class SparseModelDARewardProduct<double, storm::models::sparse::StandardRewardModel<double>>;

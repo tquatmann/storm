@@ -6,7 +6,7 @@
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/transformer/DAProductBuilder.h"
-#include "storm/transformer/DAMultiProduct.h"
+#include "storm/transformer/LDBAProductBuilder.h"
 
 namespace storm {
 
@@ -32,7 +32,8 @@ template<typename ValueType, bool Nondeterministic>
 class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
     typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
-
+    template<typename Automaton>
+    using AutomatonAndApSets = std::pair<typename Automaton::ptr, std::vector<storm::storage::BitVector>>;
     /*!
      * The type of the product model (DTMC or MDP) that is used during the computation.
      */
@@ -92,19 +93,20 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * Builds a DGRA from the formula
      * @return a pair of the deterministic automaton and a mapping of ap's to states satisfying them
      */
-    static std::pair<storm::automata::DeterministicAutomaton::ptr, std::vector<storm::storage::BitVector>> buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula);
+    template <typename Automaton>
+    static AutomatonAndApSets<Automaton> buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env);
 
     /*!
      *
      * @tparam Model
      * @param model
      * @param formula
-     * @param formulaChecker
+     * @param env The environment to retrieve the ltl2da tool
      * @return a pair the DAProduct and its initial state
      */
-    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula);
+    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env);
 
-    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env);
 
    private:
     /*!

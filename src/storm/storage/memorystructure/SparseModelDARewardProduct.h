@@ -15,7 +15,7 @@ class SparseModelDARewardProduct {
 public:
     using Mdp = storm::models::sparse::Mdp<ValueType, RewardModelType>;
 
-    SparseModelDARewardProduct(Mdp const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas): originalModel(model), formulas(formulas) {}
+    SparseModelDARewardProduct(Mdp const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env): originalModel(model), formulas(formulas), env(env) {}
 
     /*!
      * Assembles the modified model by lifting the state labeling and reward models
@@ -27,7 +27,7 @@ public:
         Mdp originalModel;
         std::shared_ptr<transformer::DAProduct<Mdp>> product;
         std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas;
-
+        Environment const& env;
         /*!
          *
          * @param transitionMatrix the transition matrix of the modified product model
@@ -47,6 +47,8 @@ public:
         std::unordered_map<std::string, RewardModelType> buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& choiceToModelChoice);
 
         std::unordered_map<std::string, RewardModelType> buildLTLRewardModel(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<std::list<uint64_t>> const& reachingAccECsChoices);
+
+        std::unordered_map<std::string, RewardModelType> buildRewardModelsForLDBA(Mdp& productModel, std::vector<storm::automata::AcceptanceCondition::ptr> const& acceptanceConditions, std::vector<uint64_t> indexToModelState);
 };
 }
 }

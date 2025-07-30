@@ -27,14 +27,15 @@ class LTL2DeterministicAutomaton {
 
     /*!
      * Converts an LTL formula into a deterministic omega-automaton using an external LTL2DA tool.
-     * The external tool must guarantee transition-based acceptance.
+     * The external tool must guarantee transition-based acceptance.  todo really?
      * Additionally, for MDP model checking, the acceptance condition of the resulting automaton must be in DNF.
      *
      * @param f The LTL formula.
      * @param ltl2daTool The external tool.
      * @return An automaton equivalent to the formula.
      */
-    static std::shared_ptr<DeterministicAutomaton> ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool);
+    template <typename Automaton>
+    static std::shared_ptr<Automaton> ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool);
 };
 
 }  // namespace automata

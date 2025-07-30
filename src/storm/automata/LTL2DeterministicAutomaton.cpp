@@ -1,6 +1,7 @@
 #include "storm/automata/LTL2DeterministicAutomaton.h"
 #include "storm/adapters/SpotAdapter.h"
 #include "storm/automata/DeterministicAutomaton.h"
+#include "limitdeterministicautomata/LimitDeterministicAutomaton.h"
 
 #include "storm/exceptions/ExpressionEvaluationException.h"
 #include "storm/exceptions/FileIoException.h"
@@ -57,10 +58,9 @@ std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daSpot(s
 #endif
 }
 
-std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool) {
-    std::string prefixLtl = f.toPrefixString();
-
-    STORM_LOG_INFO("Calling external LTL->DA tool:   " << ltl2daTool << " '" << prefixLtl << "' da.hoa");
+template <typename Automaton>
+std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool) {
+    STORM_LOG_INFO("Calling external LTL->DA tool:   " << ltl2daTool << " '" << f << "' da.hoa");
 
     pid_t pid;
 
@@ -69,12 +69,12 @@ std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExtern
 
     if (pid == 0) {
         // we are in the child process
-        if (execlp(ltl2daTool.c_str(), ltl2daTool.c_str(), prefixLtl.c_str(), "da.hoa", NULL) < 0) {
+        if (execlp(ltl2daTool.c_str(), ltl2daTool.c_str(), f.toString().c_str(), "da.hoa", NULL) < 0) {
             std::cerr << "ERROR: exec failed: " << strerror(errno) << '\n';
             std::exit(1);
         }
         // never reached
-        return std::shared_ptr<DeterministicAutomaton>();
+        return std::shared_ptr<Automaton>();
     } else {  // in the parent
         int status;
 
@@ -88,14 +88,16 @@ std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExtern
             STORM_LOG_THROW(false, storm::exceptions::FileIoException, "Could not construct deterministic automaton: process aborted");
         }
         STORM_LOG_THROW(rv == 0, storm::exceptions::FileIoException,
-                        "Could not construct deterministic automaton for " << prefixLtl << ", return code = " << rv);
+                        "Could not construct deterministic automaton for " << f << ", return code = " << rv);
 
-        STORM_LOG_INFO("Reading automaton for " << prefixLtl << " from da.hoa");
+        STORM_LOG_INFO("Reading automaton for " << f << " from da.hoa");
 
-        return DeterministicAutomaton::parseFromFile("da.hoa");
+        return Automaton::parseFromFile("da.hoa");
     }
 }
 
-}  // namespace automata
+template std::shared_ptr<storm::automata::DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::DeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
+template std::shared_ptr<storm::automata::LimitDeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::LimitDeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
 
+}  // namespace automata
 }  // namespace storm
