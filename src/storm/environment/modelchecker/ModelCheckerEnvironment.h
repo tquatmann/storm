@@ -25,6 +25,7 @@ class ModelCheckerEnvironment {
     void setSteadyStateDistributionAlgorithm(SteadyStateDistributionAlgorithm value);
 
     bool isLtl2daToolSet() const;
+    bool isLtl2deterministicAutomatonSet() const;
     std::string const& getLtl2daTool() const;
     void setLtl2daTool(std::string const& value);
     void unsetLtl2daTool();
@@ -32,6 +33,7 @@ class ModelCheckerEnvironment {
    private:
     SubEnvironment<MultiObjectiveModelCheckerEnvironment> multiObjectiveModelCheckerEnvironment;
     boost::optional<std::string> ltl2daTool;
+    bool ltl2deterministicAutomatonSet;
     SteadyStateDistributionAlgorithm steadyStateDistributionAlgorithm;
 };
 }  // namespace storm

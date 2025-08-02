@@ -39,6 +39,19 @@ class LDBAProductBuilder {
             }
         }
 
+        /*
+        std::cout << "Automaton" << std::endl;
+        for (int i = 0; i < ldba.getNumberOfStates(); i++) {
+            for (int j = 0; j < 4; j++) {
+                std::cout << "(" << i << "," << j << "): " << ldba.getSuccessors(i, j) << std::endl;
+            }
+        }
+
+        std::cout << "Labels" << std::endl;
+        for (int i = 0; i < transitionMatrix.getRowGroupCount(); i++) {
+            std::cout << i << ": " << getLabelForState(i) << std::endl;
+        }
+        */
         typename Product<Model>::ptr product = ProductBuilder<Model>::buildLimitDeterministicProduct(transitionMatrix, *this, statesOfInterest, mecStates);
         storm::automata::AcceptanceCondition::ptr prodAcceptance = ldba.getAcceptance()->lift(
             product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getAutomatonState(prodState); });
@@ -50,11 +63,15 @@ class LDBAProductBuilder {
         return ldba.getInitialState();
     }
 
-    const std::vector<storm::storage::sparse::state_type>& getSuccessors(storm::storage::sparse::state_type automatonFrom, storm::storage::sparse::state_type modelTo) const {
-        return ldba.getSuccessors(automatonFrom, getLabelForState(modelTo));
+    const std::vector<storm::storage::sparse::state_type> getSuccessors(storm::storage::sparse::state_type automatonFrom, storm::storage::sparse::state_type modelTo) const {
+        std::vector<storm::storage::sparse::state_type> succs;
+        for (auto const& succ: ldba.getSuccessors(automatonFrom, getLabelForState(modelTo))) {
+            succs.push_back(succ);
+        }
+        return succs;
     }
 
-    const storm::storage::BitVector& getAcceptingPart() const {
+    const storm::storage::BitVector getAcceptingPart() const {
         return ldba.getAcceptingPart();
     }
 

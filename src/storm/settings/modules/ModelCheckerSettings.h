@@ -35,6 +35,13 @@ class ModelCheckerSettings : public ModuleSettings {
      */
     std::string getLtl2daTool() const;
 
+    /*!
+     * Retrieves whether the deterministic or limit-deterministic automata are used for the LTL model checking.
+     *
+     * @return True if deterministic Rabin automata are to be used
+     */
+    bool isLtl2DeterministicAutomatonSet() const;
+
     // The name of the module.
     static const std::string moduleName;
 
@@ -42,6 +49,8 @@ class ModelCheckerSettings : public ModuleSettings {
     // Define the string names of the options as constants.
     static const std::string filterRewZeroOptionName;
     static const std::string ltl2daToolOptionName;
+    static const std::string ltl2daSyntax;
+
 };
 
 }  // namespace modules

@@ -17,14 +17,14 @@ public:
 
     const APSet& getAPSet() const;
     storm::storage::sparse::state_type getInitialState() const;
-    const std::vector<storm::storage::sparse::state_type>& getSuccessors(storm::storage::sparse::state_type from, APSet::alphabet_element label) const;
+    const storm::storage::BitVector& getSuccessors(storm::storage::sparse::state_type from, APSet::alphabet_element label) const;
     void addSuccessor(storm::storage::sparse::state_type from, APSet::alphabet_element label, storm::storage::sparse::state_type successor);
 
     storm::storage::sparse::state_type getNumberOfStates() const;
     storm::storage::sparse::state_type getNumberOfEdgesPerState() const;
 
     std::shared_ptr<AcceptanceCondition> getAcceptance() const;
-    storm::storage::BitVector& getAcceptingPart() const;
+    storm::storage::BitVector getAcceptingPart() const;
 
     void printHOA(std::ostream& out) const;
 
@@ -37,7 +37,7 @@ private:
     storm::storage::sparse::state_type initialState;
     storm::storage::sparse::state_type edgesPerState;
     std::shared_ptr<AcceptanceCondition> acceptance;
-    std::vector<std::vector<storm::storage::sparse::state_type>> successors;
+    std::vector<storm::storage::BitVector> successors;
     std::vector<storm::storage::BitVector> predecessors;
 
 };

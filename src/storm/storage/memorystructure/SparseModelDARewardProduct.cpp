@@ -99,6 +99,7 @@ void printMDP(
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
+    //printMDP(originalModel.getTransitionMatrix(), originalModel.getStateLabeling(), originalModel.getRewardModels());
     auto [productModel, acceptanceConditions, indexToModelState] = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
     //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
 
@@ -217,6 +218,11 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
     std::unordered_map<std::string, RewardModelType> rewardModels;
     uint64_t numStates = productModel.getTransitionMatrix().getRowGroupCount();
     uint64_t numChoices = productModel.getTransitionMatrix().getRowCount();
+    storm::storage::BitVector acc_states(numStates);
+    storm::storage::BitVector initial_states(numStates);
+    for (auto const& state: mecs[0].getStateSet()) {
+        initial_states.set(state);
+    }
 
     for (int i = 0; i < acceptanceConditions.size(); i++) {
         std::optional<std::vector<RewardValueType>> stateRewards = std::vector<RewardValueType>(numStates, storm::utility::zero<RewardValueType>());
@@ -228,6 +234,7 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
         auto const& acceptingStates = acceptanceConditions[i]->getAcceptanceSet(acceptanceSet);
 
         for (auto const& ec : mecs) {
+            //if (ec.size() != 426) continue;
             bool containsAcceptingStates = false;
             for (auto const& state : acceptingStates) {
                 if (ec.containsState(state)) {
@@ -235,11 +242,11 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
                     break;
                 }
             }
-            if (!containsAcceptingStates)
-                continue;
+            if (!containsAcceptingStates) continue;
 
             for (auto const& state : ec.getStateSet()) {
                 stateRewards.value()[state] = 1;
+                acc_states.set(state);
             }
         }
         rewardModels.insert(std::make_pair("accEc_" + std::to_string(i), RewardModelType(stateRewards)));
@@ -250,6 +257,7 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
         if (rewardModel.second.hasStateRewards()) {
             stateRewards = std::vector<RewardValueType>(numStates, storm::utility::zero<RewardValueType>());
             for (uint64_t state = 0; state < numStates; ++state) {
+                //if (!initial_states[state]) continue; //!acc_states[state] &&
                 stateRewards.value()[state] = rewardModel.second.getStateReward(indexToModelState[state]);
             }
         }

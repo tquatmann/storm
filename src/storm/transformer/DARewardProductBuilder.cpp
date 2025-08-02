@@ -201,14 +201,8 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     auto objectivesCombinations = storm::automata::AcceptanceConditionSynthesizer::getAllCombinations(acceptanceConditions);
     std::vector<std::list<storage::MaximalEndComponent>> accEcs(numberAcceptanceConditionCombinations);
 
-    //std::vector asFormulas = { 0 };
-    int asFormulas = 1;
     // computes the accepting end components for all combinations of the LTL formula
     for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; ++i) {
-        if ((i & asFormulas) != asFormulas) {
-            accEcs[i] = std::list<storage::MaximalEndComponent>();
-            continue;
-        }
         accEcs[i] = computeAcceptingECs(*objectivesCombinations[i], transitionMatrix, backwardTransitions);
         STORM_LOG_INFO("Found " << accEcs[i].size() << " accepting end components for combination " << i);
     }
@@ -225,7 +219,6 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
         ++mec_counter;
     }
     MecDecompositionInfo mecDecompositionInfo(mecs, numStatesInMec, numChoicesInMec, stateToMec);
-    std::cout << mecDecompositionInfo.mecs.size() << std::endl;
     uint64_t numberOfChoicesAccEcs = 0, numberOfStatesAccEcs = 0, numberOfAccEcs = 0;
     for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
         for (auto const& ec: accEcs[i]) {
@@ -249,6 +242,7 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     auto mecsToLeavingActions = processProductMatrix(transitionMatrix, transitionMatrixBuilder, mecDecompositionInfo, conversions);
     //printCompactTransitionMatrix(transitionMatrixBuilder.build());
     auto reachingAccEcChoices = addRepresentativeStates(transitionMatrix, transitionMatrixBuilder, accEcs, mecsToLeavingActions, mecDecompositionInfo, conversions);
+
     for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
         addMACStates(transitionMatrix, transitionMatrixBuilder, accEcs[i], mecDecompositionInfo);
         STORM_LOG_INFO("Added " << accEcs[i].size() << " MACs to the modified model.");

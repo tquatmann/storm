@@ -22,7 +22,7 @@ LimitDeterministicAutomaton::LimitDeterministicAutomaton(APSet apSet, storm::sto
       initialState(initialState),
       acceptance(acceptance) {
     edgesPerState = apSet.alphabetSize();
-    successors.resize(numberOfStates * edgesPerState);
+    successors.resize(numberOfStates * edgesPerState, storage::BitVector(numberOfStates));
     predecessors.resize(numberOfStates, storage::BitVector(numberOfStates));
 }
 
@@ -34,14 +34,14 @@ storm::storage::sparse::state_type LimitDeterministicAutomaton::getInitialState(
     return initialState;
 }
 
-const std::vector<uint64_t>& LimitDeterministicAutomaton::getSuccessors(storm::storage::sparse::state_type from, APSet::alphabet_element label) const {
+const storm::storage::BitVector& LimitDeterministicAutomaton::getSuccessors(storm::storage::sparse::state_type from, APSet::alphabet_element label) const {
     storm::storage::sparse::state_type index = from * edgesPerState + label;
     return successors.at(index);
 }
 
 void LimitDeterministicAutomaton::addSuccessor(storm::storage::sparse::state_type from, APSet::alphabet_element label, storm::storage::sparse::state_type successor) {
     storm::storage::sparse::state_type index = from * edgesPerState + label;
-    successors.at(index).push_back(successor);
+    successors.at(index).set(successor);
     predecessors.at(successor).set(from);
 }
 
@@ -57,7 +57,7 @@ std::shared_ptr<AcceptanceCondition> LimitDeterministicAutomaton::getAcceptance(
     return acceptance;
 }
 
-storm::storage::BitVector& LimitDeterministicAutomaton::getAcceptingPart() const {
+storm::storage::BitVector LimitDeterministicAutomaton::getAcceptingPart() const {
     auto expr = acceptance->getAcceptanceExpression();
     STORM_LOG_ASSERT(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF && acceptance->getNumberOfAcceptanceSets() == 1, "Büchi acceptance condition has to be of the form INF(0)");
 
@@ -117,8 +117,6 @@ void LimitDeterministicAutomaton::printHOA(std::ostream& out) const {
             if (succs.empty()) {
                 // This case should not happen in a valid automaton.
                 // Every state must have a successor for every label.
-            } else if (succs.size() == 1) {
-                out << succs.front() << "\n";
             } else {
                 out << "(";
                 for (size_t i = 0; i < succs.size(); ++i) {

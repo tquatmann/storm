@@ -421,9 +421,8 @@ template<typename ValueType, bool Nondeterministic>
 typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env) {
     typename transformer::DAProduct<productModelType>::ptr product;
 
-    if (env.modelchecker().isLtl2daToolSet()) {
+    if (env.modelchecker().isLtl2daToolSet() && !env.modelchecker().isLtl2deterministicAutomatonSet()) {
         auto [automaton, statesForAP] = buildDAFromFormula<storm::automata::LimitDeterministicAutomaton>(model, formula, env);
-        std::cout << statesForAP[0] << std::endl;
         transformer::LDBAProductBuilder productBuilder(*automaton, statesForAP);
         product = productBuilder.build(model, model.getInitialStates());
     } else {

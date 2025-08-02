@@ -73,6 +73,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         if (subFormula->isProbabilityOperatorFormula()) {
             std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
             auto rewardAccumulation = logic::RewardAccumulation(true, false, false);
+
             if (env.modelchecker().isLtl2daToolSet()) {
                 auto lraFormula = std::make_shared<logic::LongRunAverageRewardFormula>(rewardAccumulation);
                 logic::RewardOperatorFormula operatorFormula(lraFormula, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());

@@ -27,11 +27,12 @@ class DARewardProductBuilder {
         std::vector<uint64_t> const& productToModelState;
         uint64_t InvalidIndex = std::numeric_limits<uint64_t>::max();
 
-        struct MecDecompositionInfo{
-            storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs;
-            const uint64_t numStatesInMecs;
-            const uint64_t numChoicesInMecs;
-            std::vector<uint64_t> const& stateToMec;
+        class MecDecompositionInfo{
+        public:
+            storm::storage::MaximalEndComponentDecomposition<ValueType> mecs;
+            uint64_t numStatesInMecs;
+            uint64_t numChoicesInMecs;
+            std::vector<uint64_t> stateToMec;
 
             MecDecompositionInfo(
                 storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs_,
@@ -42,8 +43,7 @@ class DARewardProductBuilder {
                 numStatesInMecs(numStatesInMecs_),
                 numChoicesInMecs(numChoicesInMecs_),
                 stateToMec(stateToMec_)
-            {
-            }
+            { }
         };
 
         struct Conversions {

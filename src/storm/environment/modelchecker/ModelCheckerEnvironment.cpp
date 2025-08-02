@@ -16,6 +16,7 @@ ModelCheckerEnvironment::ModelCheckerEnvironment() {
     auto const& mcSettings = storm::settings::getModule<storm::settings::modules::ModelCheckerSettings>();
     if (mcSettings.isLtl2daToolSet()) {
         ltl2daTool = mcSettings.getLtl2daTool();
+        ltl2deterministicAutomatonSet = mcSettings.isLtl2DeterministicAutomatonSet();
     }
     auto const& ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     steadyStateDistributionAlgorithm = ioSettings.getSteadyStateDistributionAlgorithm();
@@ -43,6 +44,10 @@ MultiObjectiveModelCheckerEnvironment const& ModelCheckerEnvironment::multi() co
 
 bool ModelCheckerEnvironment::isLtl2daToolSet() const {
     return ltl2daTool.is_initialized();
+}
+
+bool ModelCheckerEnvironment::isLtl2deterministicAutomatonSet() const {
+    return ltl2deterministicAutomatonSet;
 }
 
 std::string const& ModelCheckerEnvironment::getLtl2daTool() const {

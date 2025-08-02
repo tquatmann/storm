@@ -204,6 +204,17 @@ class ProductBuilder {
             }
         }
 
+        /*
+        for (int i = 0; i < 64; i++) {
+            for (int j = 0; j < 5; j++) {
+                // looking for state (i, j)
+                product_state_type s_q(i, j);
+                if (!productStateToProductIndex.contains(s_q) ) {
+                    STORM_LOG_INFO("Product state (" << i << ", " << j << ") not found" );
+                }
+            }
+        }
+        */
         state_type numberOfProductStates = nextState;
 
         Model product(builder.build(), storm::models::sparse::StateLabeling(numberOfProductStates));
