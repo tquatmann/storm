@@ -13,6 +13,7 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/expressions/ExpressionManager.h"
+#include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
 #include "storm/transformer/EndComponentEliminator.h"
 #include "storm/transformer/MemoryIncorporation.h"
 #include "storm/transformer/SubsystemBuilder.h"
@@ -32,17 +33,26 @@ namespace preprocessing {
 
 template<typename SparseModelType>
 typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(
-    Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula) {
+    Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula, bool produceScheduler) {
     std::shared_ptr<SparseModelType> model;
+    std::optional<storm::storage::SparseModelMemoryProductReverseData> memoryIncorporationReverseData;
 
     // Incorporate the necessary memory
     if (env.modelchecker().multi().isSchedulerRestrictionSet()) {
         auto const& schedRestr = env.modelchecker().multi().getSchedulerRestriction();
         if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::GoalMemory) {
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), env);
+            if (produceScheduler) {
+                std::tie(model, memoryIncorporationReverseData) =
+                    storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(originalModel,
+                                                                                                                   originalFormula.getSubformulas());
+            } else {
+                model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(env, originalModel, originalFormula.getSubformulas());
+            }
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Arbitrary && schedRestr.getMemoryStates() > 1) {
+            STORM_LOG_THROW(!produceScheduler, storm::exceptions::NotImplementedException, "Cannot produce schedulers for the provided memory pattern.");
             model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateFullMemory(originalModel, schedRestr.getMemoryStates());
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Counter && schedRestr.getMemoryStates() > 1) {
+            STORM_LOG_THROW(!produceScheduler, storm::exceptions::NotImplementedException, "Cannot produce schedulers for the provided memory pattern.");
             model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateCountingMemory(originalModel, schedRestr.getMemoryStates());
         } else if (schedRestr.isPositional()) {
             model = std::make_shared<SparseModelType>(originalModel);
@@ -50,15 +60,25 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
             STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "The given scheduler restriction has not been implemented.");
         }
     } else {
-        model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(originalModel, originalFormula.getSubformulas(), env);
+        if (produceScheduler) {
+            std::tie(model, memoryIncorporationReverseData) =
+                storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(originalModel, originalFormula.getSubformulas());
+        } else {
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(env, originalModel, originalFormula.getSubformulas());
+        }
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
     boost::optional<std::string> deadlockLabel;
-    removeIrrelevantStates(model, deadlockLabel, originalFormula);
+    if (!produceScheduler) {
+        // When producing schedulers, removing irrelevant states requires additional bookkeeping.
+        removeIrrelevantStates(model, deadlockLabel, originalFormula);
+    }
 
     PreprocessorData data(model);
     data.deadlockLabel = deadlockLabel;
+    data.memoryIncorporationReverseData = std::move(memoryIncorporationReverseData);
+
     int ltlObjectiveCounter = 0;
     // Invoke preprocessing on the individual objectives
     for (auto const& subFormula : originalFormula.getSubformulas()) {
@@ -70,7 +90,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         STORM_LOG_THROW(data.objectives.back()->originalFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
 
-        if (subFormula->isProbabilityOperatorFormula()) {
+        if (subFormula->isProbabilityOperatorFormula()) {  // TODO: This should not depend on whether an ltl2da tool is set.
             std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
             auto rewardAccumulation = logic::RewardAccumulation(true, false, false);
 
@@ -79,6 +99,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
                 logic::RewardOperatorFormula operatorFormula(lraFormula, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
                 preprocessOperatorFormula(operatorFormula, data);
             } else {
+                // TODO: Why this else case?
                 auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
                 logic::RewardOperatorFormula operatorFormula(totalRewardFormulaPtr, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
                 preprocessOperatorFormula(operatorFormula, data);
@@ -123,7 +144,7 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
                         "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
         auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
         if (opFormula->isProbabilityOperatorFormula() && pathFormula.info(false).containsComplexPathFormula()) {
-            return;
+            return;  // don't remove anything if we're dealing with an LTL formula
         }
     }
 
@@ -750,6 +771,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     ReturnType result(originalFormula, originalModel);
     auto backwardTransitions = data.model->getBackwardTransitions();
     result.preprocessedModel = data.model;
+    result.memoryIncorporationReverseData = data.memoryIncorporationReverseData;
 
     for (auto& obj : data.objectives) {
         result.objectives.push_back(std::move(*obj));

@@ -11,9 +11,10 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/memorystructure/MemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/NondeterministicMemoryStructureBuilder.h"
-#include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
-#include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
 #include "storm/storage/memorystructure/SparseModelDARewardProduct.h"
+#include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
+#include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
+#include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
 
 #include "storm/utility/macros.h"
 
@@ -59,20 +60,23 @@ storm::storage::MemoryStructure getUntilFormulaMemory(SparseModelType const& mod
 }
 
 template<class SparseModelType>
-std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env) {
+std::shared_ptr<SparseModelType> incorporateLTLMemory(Environment const& env, SparseModelType const& model,
+                                                      std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
     if constexpr (std::is_same<SparseModelType, models::sparse::Mdp<typename SparseModelType::ValueType>>()) {
         std::vector<std::shared_ptr<storm::logic::Formula const>> ltlFormulas;
         std::vector<std::shared_ptr<storm::logic::PathFormula const>> test;
 
         for (auto const& subFormula : formulas) {
-            STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
+            STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException,
+                            "The given Formula " << *subFormula << " is not supported.");
 
             if (subFormula->isProbabilityOperatorFormula()) {
                 ltlFormulas.push_back(subFormula);
             }
         }
 
-        storage::SparseModelDARewardProduct<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType> productBuilder(model, ltlFormulas, env);
+        storage::SparseModelDARewardProduct<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType> productBuilder(model, ltlFormulas,
+                                                                                                                                           env);
         return productBuilder.build();
     } else {
         throw storm::exceptions::NotImplementedException() << "The LTL memory incorporation is only implemented for MDPs.";
@@ -80,18 +84,11 @@ std::shared_ptr<SparseModelType> incorporateLTLMemory(SparseModelType const& mod
 }
 
 template<class SparseModelType>
-std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
-    SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env) {
-
-    for (auto const& subFormula : formulas) {
-        STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
-        auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
-        if (subsubFormula.info(false).containsComplexPathFormula()) {
-            return incorporateLTLMemory(model, formulas, env);
-        }
-    }
-
-    storm::storage::MemoryStructure memory = storm::storage::MemoryStructureBuilder<ValueType, RewardModelType>::buildTrivialMemoryStructure(model);
+storm::storage::MemoryStructure incorporateGoalMemoryHelper(SparseModelType const& model,
+                                                            std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    storm::storage::MemoryStructure memory =
+        storm::storage::MemoryStructureBuilder<typename SparseModelType::ValueType, typename SparseModelType::RewardModelType>::buildTrivialMemoryStructure(
+            model);
 
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
@@ -120,8 +117,33 @@ std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorpora
         }
     }
 
-    storm::storage::SparseModelMemoryProduct<ValueType> product = memory.product(model);
-    return std::dynamic_pointer_cast<SparseModelType>(product.build());
+    return memory;
+}
+
+template<class SparseModelType>
+std::shared_ptr<SparseModelType> MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
+    Environment const& env, SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    for (auto const& subFormula : formulas) {
+        STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
+        auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
+        if (subsubFormula.info(false).containsComplexPathFormula()) {
+            return incorporateLTLMemory(env, model, formulas);
+        }
+    }
+
+    auto memory = incorporateGoalMemoryHelper(model, formulas);
+    auto product = memory.product(model);
+    return product.build()->template as<SparseModelType>();
+}
+
+template<class SparseModelType>
+std::pair<std::shared_ptr<SparseModelType>, storm::storage::SparseModelMemoryProductReverseData>
+MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(SparseModelType const& model,
+                                                                           std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    auto memory = incorporateGoalMemoryHelper(model, formulas);
+    auto product = memory.product(model);
+    auto result = product.build();
+    return std::make_pair(result->template as<SparseModelType>(), product.computeReverseData());
 }
 
 template<class SparseModelType>

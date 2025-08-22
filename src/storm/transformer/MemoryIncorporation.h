@@ -5,9 +5,11 @@
 #include "storm/logic/Formula.h"
 #include "storm/logic/MultiObjectiveFormula.h"
 #include "storm/storage/memorystructure/MemoryStructure.h"
-#include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
 
 namespace storm {
+class Environment;
+
 namespace transformer {
 
 /*!
@@ -20,14 +22,20 @@ class MemoryIncorporation {
     typedef typename SparseModelType::ValueType ValueType;
     typedef typename SparseModelType::RewardModelType RewardModelType;
 
-public:
+   public:
     /*!
      * Incorporates memory that stores whether a 'goal' state has already been reached. This supports operatorformulas whose subformula is
      * a (bounded-) until formula, eventually formula, or a globally formula. Total reward formulas and cumulative reward formulas will be ignored.
      */
-    static std::shared_ptr<SparseModelType> incorporateGoalMemory(SparseModelType const& model,
-                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-                                                                  Environment const& env);
+    static std::shared_ptr<SparseModelType> incorporateGoalMemory(Environment const& env, SparseModelType const& model,
+                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+
+    /*!
+     * Like incorporateGoalMemory, but also returns data necessary to translate results (in particular schedulers) for the product model back to the original
+     * model.
+     */
+    static std::pair<std::shared_ptr<SparseModelType>, storm::storage::SparseModelMemoryProductReverseData> incorporateGoalMemoryWithReverseData(
+        SparseModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
 
     /*!
      * Incorporates a memory structure where the nondeterminism of the model decides which successor state to choose.

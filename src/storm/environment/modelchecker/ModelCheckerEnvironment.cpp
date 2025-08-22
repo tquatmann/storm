@@ -20,6 +20,8 @@ ModelCheckerEnvironment::ModelCheckerEnvironment() {
     }
     auto const& ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     steadyStateDistributionAlgorithm = ioSettings.getSteadyStateDistributionAlgorithm();
+
+    conditionalAlgorithmSetting = mcSettings.getConditionalAlgorithmSetting();
 }
 
 ModelCheckerEnvironment::~ModelCheckerEnvironment() {
@@ -32,6 +34,14 @@ SteadyStateDistributionAlgorithm ModelCheckerEnvironment::getSteadyStateDistribu
 
 void ModelCheckerEnvironment::setSteadyStateDistributionAlgorithm(SteadyStateDistributionAlgorithm value) {
     steadyStateDistributionAlgorithm = value;
+}
+
+ConditionalAlgorithmSetting ModelCheckerEnvironment::getConditionalAlgorithmSetting() const {
+    return conditionalAlgorithmSetting;
+}
+
+void ModelCheckerEnvironment::setConditionalAlgorithmSetting(ConditionalAlgorithmSetting value) {
+    conditionalAlgorithmSetting = value;
 }
 
 MultiObjectiveModelCheckerEnvironment& ModelCheckerEnvironment::multi() {
