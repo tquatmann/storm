@@ -596,11 +596,6 @@ class BitVector {
      */
     bool hasUniqueSetBit() const;
 
-    /*
-     * @return True, if the number of set bits is 1, false otherwise.
-     */
-    bool hasUniqueSetBit() const;
-
     /*!
      * Retrieves the number of bits this bit vector can store.
      *
