@@ -44,8 +44,8 @@ class StateValuations : public storm::models::sparse::StateAnnotation {
                            typename std::map<storm::expressions::Variable, uint64_t>::const_iterator variableEnd,
                            typename std::map<std::string, uint64_t>::const_iterator labelBegin,
                            typename std::map<std::string, uint64_t>::const_iterator labelEnd, StateValuation const* valuation);
-        bool operator==(StateValueIterator const& other);
-        bool operator!=(StateValueIterator const& other);
+        bool operator==(StateValueIterator const& other) const;
+        bool operator!=(StateValueIterator const& other) const;
         StateValueIterator& operator++();
         StateValueIterator& operator--();
 
@@ -100,6 +100,21 @@ class StateValuations : public storm::models::sparse::StateAnnotation {
                                                   storm::expressions::Variable const& rationalVariable) const;
     /// Returns true, if this valuation does not contain any value.
     bool isEmpty(storm::storage::sparse::state_type const& stateIndex) const;
+
+    /*!
+     * Returns a vector of size getNumberOfStates() such that the i'th entry is the value of the given variable of state i.
+     */
+    storm::storage::BitVector getBooleanValues(storm::expressions::Variable const& booleanVariable) const;
+
+    /*!
+     * Returns a vector of size getNumberOfStates() such that the i'th entry is the value of the given variable of state i.
+     */
+    std::vector<int64_t> getIntegerValues(storm::expressions::Variable const& integerVariable) const;
+
+    /*!
+     * Returns a vector of size getNumberOfStates() such that the i'th entry is the value of the given variable of state i.
+     */
+    std::vector<storm::RationalNumber> getRationalValues(storm::expressions::Variable const& rationalVariable) const;
 
     /*!
      * Returns a string representation of the valuation.
