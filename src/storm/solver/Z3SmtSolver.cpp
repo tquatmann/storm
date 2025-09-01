@@ -121,6 +121,36 @@ void Z3SmtSolver::add(storm::expressions::Expression const& assertion) {
 #endif
 }
 
+void Z3SmtSolver::addNotCurrentModel(bool performSolverReset) {
+#ifdef STORM_HAVE_Z3
+    STORM_LOG_THROW(this->lastResult == SmtSolver::CheckResult::Sat, storm::exceptions::InvalidStateException,
+                    "Unable to create model for formula that was not determined to be satisfiable.");
+
+    auto currentModel = this->solver->get_model();
+    z3::expr notThisModel = currentModel.ctx().bool_val(true);
+    for (auto const& variable : this->getManager().getVariables()) {
+        z3::expr var = this->expressionAdapter->translateExpression(variable);
+        auto value = currentModel.eval(var);
+        if (notThisModel.is_const()) {
+            notThisModel = var == value;
+        } else {
+            notThisModel = notThisModel && (var == value);
+        }
+    }
+    // https://stackoverflow.com/questions/78261966/z3-non-incremental-search-for-multiple-models-works-incremental-search-does-no
+    if (performSolverReset) {
+        auto const allAssertions = this->solver->assertions();
+        solver->reset();
+        for (auto const& assertion : allAssertions) {
+            solver->add(assertion);
+        }
+    }
+    this->solver->add(!notThisModel);
+#else
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Storm is compiled without Z3 support.");
+#endif
+}
+
 SmtSolver::CheckResult Z3SmtSolver::check() {
 #ifdef STORM_HAVE_Z3
     lastCheckAssumptions = false;
@@ -167,7 +197,6 @@ SmtSolver::CheckResult Z3SmtSolver::checkWithAssumptions(std::set<storm::express
 #endif
 }
 
-#ifndef WINDOWS
 SmtSolver::CheckResult Z3SmtSolver::checkWithAssumptions(std::initializer_list<storm::expressions::Expression> const& assumptions) {
 #ifdef STORM_HAVE_Z3
     lastCheckAssumptions = true;
@@ -193,7 +222,7 @@ SmtSolver::CheckResult Z3SmtSolver::checkWithAssumptions(std::initializer_list<s
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Storm is compiled without Z3 support.");
 #endif
 }
-#endif
+
 storm::expressions::SimpleValuation Z3SmtSolver::getModelAsValuation() {
 #ifdef STORM_HAVE_Z3
     STORM_LOG_THROW(this->lastResult == SmtSolver::CheckResult::Sat, storm::exceptions::InvalidStateException,
