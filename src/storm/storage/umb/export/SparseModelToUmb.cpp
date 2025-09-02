@@ -181,13 +181,12 @@ void setGenericVector(storm::umb::GenericVector<storm::umb::StorageType::Memory>
 }
 
 template<typename ValueType, typename TargetValueType>
-void rewardToUmb(std::string const& identifier, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel,
+void rewardToUmb(std::string const& rewardModelName, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel,
                  storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::umb::UmbModel<StorageType::Memory>& umb) {
-    auto const rewardName = umb.index.annotations.findRewardName(identifier);
-    STORM_LOG_ASSERT(rewardName.has_value(), "Reward '" << identifier << "' not found in the model index.");
-    // auto const& rewardIndex = umb.index.annotations.rewards.at(rewardName);
-    STORM_LOG_ASSERT(!umb.rewards.contains(*rewardName), "Reward '" << identifier << "' already exists in the umb model.");
-    auto& rewardAnnotation = umb.rewards[*rewardName];
+    auto const rewardIdentifier = umb.index.annotations.findRewardName(rewardModelName);
+    STORM_LOG_ASSERT(rewardIdentifier.has_value(), "Reward '" << rewardModelName << "' not found in the model index.");
+    STORM_LOG_ASSERT(!umb.rewards.contains(*rewardIdentifier), "Reward '" << *rewardIdentifier << "' already exists in the umb model.");
+    auto& rewardAnnotation = umb.rewards[*rewardIdentifier];
     if (rewardModel.hasStateRewards()) {
         setGenericVector<TargetValueType>(rewardAnnotation.forStates.emplace().values, rewardModel.getStateRewardVector());
     }

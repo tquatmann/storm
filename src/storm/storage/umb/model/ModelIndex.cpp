@@ -5,10 +5,12 @@
 
 namespace storm::umb {
 
+constexpr std::string DefaultAnnotationAlias = "default";
+
 std::string ModelIndex::Annotations::Annotation::getValidIdentifierFromAlias(std::string const& alias) {
     auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };
     if (alias.empty()) {
-        return "default";  // empty identifier is not allowed, so we return a default name
+        return DefaultAnnotationAlias;  // empty identifier is not allowed, so we return a default name
     }
 
     std::stringstream identifier;
@@ -29,11 +31,19 @@ std::optional<std::string> findAnnotationName(std::optional<MapType> const& map,
     if (!map) {
         return {};
     }
+
+    if (id.empty()) {  // the empty id indicates that we want the default annotation
+        return findAnnotationName(map, DefaultAnnotationAlias);
+    }
+
+    // First try to find a suitable alias matching id
     for (auto const& [name, annotation] : map.value()) {
         if (annotation.alias == id) {
             return name;
         }
     }
+    
+    // If no alias matches, check if there is an annotation with the right identifier
     if (map->contains(id)) {
         return id;
     }
