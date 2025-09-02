@@ -25,11 +25,7 @@ TEST(DeterministicModelBisimulationDecomposition, Die) {
     EXPECT_EQ(13ul, result->getNumberOfStates());
     EXPECT_EQ(20ul, result->getNumberOfTransitions());
 
-#ifdef WINDOWS
-    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#else
     typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#endif
     options.respectedAtomicPropositions = std::set<std::string>({"one"});
 
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>> bisim2(*dtmc, options);
@@ -99,11 +95,7 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
     EXPECT_EQ(334ul, result->getNumberOfStates());
     EXPECT_EQ(546ul, result->getNumberOfTransitions());
 
-/*#ifdef WINDOWS
-    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#else
     typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#endif
     options.respectedAtomicPropositions = std::set<std::string>({"observe0Greater1"});
 
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>> bisim2(*dtmc, options);
@@ -147,5 +139,5 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
 
     EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
     EXPECT_EQ(65ul, result->getNumberOfStates());
-    EXPECT_EQ(105ul, result->getNumberOfTransitions());*/
+    EXPECT_EQ(105ul, result->getNumberOfTransitions());
 }

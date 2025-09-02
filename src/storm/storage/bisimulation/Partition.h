@@ -120,6 +120,23 @@ class Partition {
         forEachBlockInIndexRange(blockStart, blockEnd, f);
     }
 
+    template<typename Iterator, typename Compare>
+    void small_sort(Iterator begin, Iterator end, Compare comp) {
+        if (std::distance(begin, end) <= 32) {
+            for (auto i = begin + 1; i != end; ++i) {
+                auto key = *i;
+                auto j = i;
+                while (j > begin && comp(key, *(j - 1))) {
+                    *j = *(j - 1);
+                    --j;
+                }
+                *j = key;
+            }
+        } else {
+            boost::sort::block_indirect_sort(begin, end, comp);
+        }
+    }
+
     /*!
      * Splits the given block according to the given order.
      * Specifically, the elements in the block are sorted according to the given order and then the block is split into
@@ -139,7 +156,7 @@ class Partition {
         invalidateCache(blockStart);
 
         auto const blockEnd = blockStart + block.size();
-        boost::sort::block_indirect_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
+        small_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
 
         // Catch the special case where there is no split
         if (!less(blockContents[blockStart], blockContents[blockEnd - 1])) {
