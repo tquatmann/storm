@@ -98,6 +98,8 @@ mark_as_advanced(Z3_ROOT)
 
 option(STORM_DEBUG_CUDD "Build CUDD in debug mode." OFF)
 MARK_AS_ADVANCED(STORM_DEBUG_CUDD)
+option(STORM_DEBUG_SPOT "Build Spot in debug mode." OFF)
+MARK_AS_ADVANCED(STORM_DEBUG_SPOT)
 option(STORM_DEBUG_SYLVAN "Build Sylvan in debug mode." OFF)
 MARK_AS_ADVANCED(STORM_DEBUG_SYLVAN)
 
@@ -141,8 +143,9 @@ if (STORM_DEVELOPER)
     endif()
     # TODO Do this more targeted
     add_definitions(-DSTORM_DEV)
-	set(STORM_DEBUG_CUDD ON)
-	set(STORM_DEBUG_SYLVAN ON)
+    set(STORM_DEBUG_CUDD ON)
+    set(STORM_DEBUG_SPOT ON)
+    set(STORM_DEBUG_SYLVAN ON)
 else()
     set(STORM_LOG_DISABLE_DEBUG ON)
     if (NOT CMAKE_BUILD_TYPE)
@@ -464,7 +467,8 @@ if(STORM_VERSION_DEV GREATER 0)
 endif()
 
 message(STATUS "Storm - Version is ${STORM_VERSION_STRING}.")
-
+export_option(STORM_VERSION) # We want this information also in the more accessible stormOptions.cmake
+export_option(STORM_VERSION_DEV) # We want this information also in the more accessible stormOptions.cmake
 
 # Configure a header file to pass some of the CMake settings to the source code
 configure_file (
