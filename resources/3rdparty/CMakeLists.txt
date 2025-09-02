@@ -45,6 +45,19 @@ list(APPEND STORM_DEP_TARGETS l3pp)
 ############################################################# 
 
 if(NOT STORM_DISABLE_LIBARCHIVE)
+    if(MACOSX)
+        # following https://stackoverflow.com/a/76916842
+        # Homebrew ships libarchive keg only, include dirs have to be set manually
+        execute_process(
+                COMMAND brew --prefix libarchive
+                ERROR_QUIET
+                OUTPUT_VARIABLE LIBARCHIVE_PREFIX
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        if (NOT "${LIBARCHIVE_PREFIX}" STREQUAL "")
+            set(LibArchive_INCLUDE_DIR "${LIBARCHIVE_PREFIX}/include")
+        endif()
+    endif()
     find_package(LibArchive QUIET)
     if(TARGET LibArchive::LibArchive)
         SET(STORM_HAVE_LIBARCHIVE ON)
