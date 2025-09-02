@@ -1112,6 +1112,7 @@ template bool isOne(Interval const& value);
 template bool isZero(Interval const& value);
 template bool isInfinity(Interval const& value);
 template bool isAlmostZero(Interval const& value);
+template Interval convertNumber(Interval const&);
 
 template std::string to_string(storm::Interval const& value);
 #endif

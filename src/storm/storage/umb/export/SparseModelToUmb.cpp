@@ -415,4 +415,5 @@ storm::umb::UmbModelBase sparseModelToUmb(storm::models::sparse::Model<ValueType
 template storm::umb::UmbModelBase sparseModelToUmb<double>(storm::models::sparse::Model<double> const& model, ExportOptions const& options);
 template storm::umb::UmbModelBase sparseModelToUmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
                                                                           ExportOptions const& options);
+template storm::umb::UmbModelBase sparseModelToUmb<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model, ExportOptions const& options);
 }  // namespace storm::umb

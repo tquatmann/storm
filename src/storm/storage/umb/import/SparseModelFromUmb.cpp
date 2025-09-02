@@ -251,8 +251,12 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(stor
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Storage type not expected.");
     }
 }
+
 template std::shared_ptr<storm::models::sparse::Model<double>> sparseModelFromUmb<double>(storm::umb::UmbModelBase const& umbModel,
                                                                                           ImportOptions const& options);
 template std::shared_ptr<storm::models::sparse::Model<storm::RationalNumber>> sparseModelFromUmb<storm::RationalNumber>(
     storm::umb::UmbModelBase const& umbModel, ImportOptions const& options);
+template std::shared_ptr<storm::models::sparse::Model<storm::Interval>> sparseModelFromUmb<storm::Interval>(storm::umb::UmbModelBase const& umbModel,
+                                                                                                            ImportOptions const& options);
+
 }  // namespace storm::umb
