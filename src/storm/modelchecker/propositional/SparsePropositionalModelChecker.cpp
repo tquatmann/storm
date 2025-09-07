@@ -60,6 +60,7 @@ template class SparsePropositionalModelChecker<storm::models::sparse::Model<doub
 template class SparsePropositionalModelChecker<storm::models::sparse::Dtmc<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Dtmc<storm::Interval>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Ctmc<double>>;
+template class SparsePropositionalModelChecker<storm::models::sparse::Ctmc<storm::Interval>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Mdp<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::Pomdp<double>>;
 template class SparsePropositionalModelChecker<storm::models::sparse::MarkovAutomaton<double>>;

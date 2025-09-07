@@ -48,6 +48,7 @@ template class DistributionWithReward<double>;
 #ifdef STORM_HAVE_CARL
 template class DistributionWithReward<storm::RationalNumber>;
 template class DistributionWithReward<storm::RationalFunction>;
+template class DistributionWithReward<carl::Interval<double>>;
 #endif
 
 }  // namespace storage

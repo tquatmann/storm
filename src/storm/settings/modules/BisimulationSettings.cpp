@@ -22,6 +22,7 @@ const std::string BisimulationSettings::reuseOptionName = "reuse";
 const std::string BisimulationSettings::initialPartitionOptionName = "init";
 const std::string BisimulationSettings::refinementModeOptionName = "refine";
 const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
+const std::string BisimulationSettings::epsilonOptionName = "epsilon";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -90,6 +91,13 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(refinementModes))
                                          .setDefaultValueString("full")
                                          .build())
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, epsilonOptionName, true, "Sets the epsilon for epsilon-bisimulation on interval DTMCs.")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("epsilon", "The epsilon value to match states.")
+                                     .addValidatorDouble(ArgumentValidatorFactory::createDoubleGreaterValidator(0.0))
+                                     .build())
                         .build());
 }
 
@@ -179,6 +187,15 @@ bool BisimulationSettings::check() const {
                         "Bisimulation minimization is not selected, so setting options for bisimulation has no effect.");
     return true;
 }
+
+bool BisimulationSettings::usesEpsilonBisimulation() const {
+    return this->getOption(epsilonOptionName).getHasOptionBeenSet();
+}
+
+double BisimulationSettings::getEpsilonForIntervalBisimulation() const {
+    return this->getOption(epsilonOptionName).getArgumentByName("epsilon").getValueAsDouble();
+}
+
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm

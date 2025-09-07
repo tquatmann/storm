@@ -675,8 +675,13 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         bisimType = storm::storage::BisimulationType::Weak;
     }
 
+    double epsilon = 0.0;
+    if (bisimulationSettings.usesEpsilonBisimulation()) {
+        epsilon = bisimulationSettings.getEpsilonForIntervalBisimulation();
+    }
+
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType);
+    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true, epsilon);
 }
 
 template<typename ValueType>
@@ -705,12 +710,15 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     }
 
     if (mpi.applyBisimulation) {
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Bisimulation not supported for interval models.");
-        } else {
-            result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
-            result.second = true;
-        }
+        result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
+        result.second = true;
+        //
+        // if constexpr (storm::IsIntervalType<ValueType>) {
+        //     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Bisimulation not supported for interval models.");
+        // } else {
+        //     result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
+        //     result.second = true;
+        // }
     }
 
     if (transformationSettings.isToDiscreteTimeModelSet()) {

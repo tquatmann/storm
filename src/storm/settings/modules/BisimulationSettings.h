@@ -96,6 +96,16 @@ class BisimulationSettings : public ModuleSettings {
      */
     RefinementMode getRefinementMode() const;
 
+    /*!
+     * Retrieves whether there is an epsilon allowed to match states.
+     */
+     bool usesEpsilonBisimulation() const;
+
+     /*!
+     * Retrieves the epsilon value allowed to match states.
+      */
+     double getEpsilonForIntervalBisimulation() const;
+
     virtual bool check() const override;
 
     // The name of the module.
@@ -113,6 +123,7 @@ class BisimulationSettings : public ModuleSettings {
     static const std::string refinementModeOptionName;
     static const std::string parallelismModeOptionName;
     static const std::string exactArithmeticDdOptionName;
+    static const std::string epsilonOptionName;
 };
 }  // namespace modules
 }  // namespace settings

@@ -103,6 +103,14 @@ class BisimulationDecomposition {
             return this->bounded;
         }
 
+        double getEpsilon() const {
+            return this->epsilon;
+        }
+
+        void setEpsilon(double epsilon) {
+            this->epsilon = epsilon;
+        }
+
         bool getKeepRewards() const {
             return this->keepRewards;
         }
@@ -133,6 +141,10 @@ class BisimulationDecomposition {
 
         /// A flag that governs whether the quotient model is actually built or only the decomposition is computed.
         bool buildQuotient;
+
+        /// Represents the epsilon for epsilon-bisimulation
+        /// If this value is set, then epsilon-bisimulation will be applied for interval DMTCs
+        double epsilon;
 
        private:
         boost::optional<OptimizationDirection> optimalityType;
@@ -222,6 +234,8 @@ class BisimulationDecomposition {
      * getQuotient().
      */
     void performSignatureRefinement();
+
+    void performEpsilonSignatureRefinement(double epsilon);
 
     /*!
      * Computes the signature of the given state with respect to the given partition.

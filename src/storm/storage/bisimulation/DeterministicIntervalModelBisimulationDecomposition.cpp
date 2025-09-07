@@ -186,6 +186,8 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
     bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
 
+    std::cout << "Performing interval bisimulation!" << std::endl;
+
     for (auto currentState : splitterBlock) {
         for (const auto& predecessorEntry : this->backwardTransitions.getRow(currentState)) {
             auto predecessorState = predecessorEntry.getColumn();
@@ -321,7 +323,8 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::getStatesWithPro
     return {storm::storage::BitVector(), storm::storage::BitVector()};
 }
 
-template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>>;
+template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>>;
+template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Ctmc<carl::Interval<double>>>;
 
 }  // namespace storage
 }  // namespace storm

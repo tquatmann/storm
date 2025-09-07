@@ -35,6 +35,8 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
 
     virtual void initializeLabelBasedPartition() override;
 
+    ValueType computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks);
+
     virtual void buildQuotient() override;
 
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
@@ -131,6 +133,10 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
     // A vector that holds the probabilities of states going into the splitter. This is used by the method that
     // refines a block based on probabilities.
     std::vector<ValueType> probabilitiesToCurrentSplitter;
+
+    // A vector that holds the probabilities of states going into the splitter. This is used by the method that
+    // refines a block based on probabilities.
+    std::vector<ValueType> probabilitiesToOtherBlocks;
 
     // A bitvector indicating which positions of the probabilitiesToCurrentSplitter were touched in this iteration.
     // This is an alternative solution to the marker1-logic that was part of the old implementation.

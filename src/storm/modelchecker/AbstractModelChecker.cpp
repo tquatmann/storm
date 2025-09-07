@@ -472,6 +472,7 @@ template class AbstractModelChecker<storm::models::sparse::Smg<storm::RationalFu
 
 template class AbstractModelChecker<storm::models::sparse::Mdp<storm::Interval>>;
 template class AbstractModelChecker<storm::models::sparse::Dtmc<storm::Interval>>;
+template class AbstractModelChecker<storm::models::sparse::Ctmc<storm::Interval>>;
 
 // DD
 template class AbstractModelChecker<storm::models::symbolic::Model<storm::dd::DdType::CUDD, double>>;

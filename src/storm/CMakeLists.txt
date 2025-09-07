@@ -15,7 +15,9 @@ file(GLOB_RECURSE STORM_BUILD_HEADERS ${PROJECT_BINARY_DIR}/include/storm-config
 ##
 ###############################################################################
 # Create libstorm.
-add_library(storm SHARED)
+add_library(storm SHARED
+        storage/bisimulation/BucketKey.cpp
+        storage/bisimulation/BucketKey.h)
 target_sources(storm PRIVATE ${STORM_SOURCES})
 target_sources(storm PUBLIC FILE_SET fs_storm_headers TYPE HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/src" FILES ${STORM_HEADERS})
 target_sources(storm PUBLIC FILE_SET fs_storm_configured_headers TYPE HEADERS BASE_DIRS "${PROJECT_BINARY_DIR}/include" FILES ${STORM_BUILD_HEADERS})

@@ -147,6 +147,9 @@ template class NondeterministicModelBisimulationDecomposition<storm::models::spa
 #ifdef STORM_HAVE_CARL
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalNumber>>;
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalFunction>>;
+
+template class storm::storage::NondeterministicModelBisimulationDecomposition<
+    storm::models::sparse::Mdp<carl::Interval<double>>>;
 #endif
 }  // namespace storage
 }  // namespace storm

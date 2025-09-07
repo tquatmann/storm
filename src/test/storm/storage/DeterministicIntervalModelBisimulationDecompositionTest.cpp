@@ -16,6 +16,9 @@
 #include "storm-parsers/parser/FormulaParser.h"
 #include "storm/api/storm.h"
 
+#include "storm-parsers/api/storm-parsers.h"
+#include "storm/api/storm.h"
+
 namespace {
 
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, CreatePolytopesfromIDTMC) {
@@ -38,10 +41,30 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, CreatePolytopesfro
     // Property on BRP: Pmin=? [F (s = 5)]
 }
 
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, ParseIDTMCFromPrism) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/brp-16-2.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F (s = 5)]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
+        storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
+
+    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>> bisim(*dtmc);
+    std::shared_ptr<storm::models::sparse::Model<carl::Interval<double>>> result;
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    EXPECT_EQ(328ul, result->getNumberOfStates());
+    EXPECT_EQ(456ul, result->getNumberOfTransitions());
+}
+
 // TODO: Create quotient of toy example manually on paper and compare
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, TinyIDTMC) {
     // TODO: Parser has a bug. It does not check whether the drn-file represents a valid IDTMC.
-    // TODO: Set transition: 4 : [0.1, 0.3] of state 4 to [0.1, 0.2], then there is no possible realization s.t. p_1 + _2 = 1
+    // TODO: Set transition: 4 : [0.1, 0.3] of state 4 to [0.1, 0.2], then there is no possible realization s.t. p_1 + p_2 = 1
 
     std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
         storm::parser::DirectEncodingParser<storm::Interval>::parseModel(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-01.drn");
