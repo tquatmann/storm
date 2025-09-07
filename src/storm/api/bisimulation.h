@@ -42,13 +42,15 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
     // TODO: Make a clean distinction between interval and standard models here.
     // TODO: Instantiate the corresponding implementation for bisimulation.
 
-    //if constexpr (storm::IsIntervalType<ValueType>) {
-    //
-    //}
-
-    storm::storage::DeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
-    bisimulationDecomposition.computeBisimulationDecomposition();
-    return bisimulationDecomposition.getQuotient();
+    if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
+        storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
+        bisimulationDecomposition.computeBisimulationDecomposition();
+        return bisimulationDecomposition.getQuotient();
+    } else {
+        storm::storage::DeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
+        bisimulationDecomposition.computeBisimulationDecomposition();
+        return bisimulationDecomposition.getQuotient();
+    }
 }
 
 template<typename ModelType>

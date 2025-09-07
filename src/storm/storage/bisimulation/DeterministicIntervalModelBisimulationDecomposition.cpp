@@ -185,8 +185,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
     std::deque<typename bisimulation::Partition::Block>& splitterQueue,
     bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
-
-    std::cout << "Performing interval bisimulation!" << std::endl;
+    // std::cout << "Performing interval bisimulation!" << std::endl;
 
     for (auto currentState : splitterBlock) {
         for (const auto& predecessorEntry : this->backwardTransitions.getRow(currentState)) {
@@ -271,15 +270,16 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
     touchedProbabilitiesToSplitter.clear();
 }
 
+
 template<typename ModelType>
 ModelType::ValueType DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks) {
     // Normalize intervals
-    storm::Interval normalizedIntervalToSplitter(std::min(1.0, intervalToSplitter.lower()), std::min(1.0, intervalToSplitter.upper()));
-    storm::Interval normalizedIntervalToOtherBlocks(std::min(1.0, intervalToOtherBlocks.lower()), std::min(1.0, intervalToOtherBlocks.upper()));
+    carl::Interval normalizedIntervalToSplitter(std::min(1.0, intervalToSplitter.lower()), std::min(1.0, intervalToSplitter.upper()));
+    carl::Interval normalizedIntervalToOtherBlocks(std::min(1.0, intervalToOtherBlocks.lower()), std::min(1.0, intervalToOtherBlocks.upper()));
 
     // Compute interval projection
-    return storm::Interval(std::max(normalizedIntervalToSplitter.lower(), 1.0 - normalizedIntervalToOtherBlocks.upper()),
-                           std::min(normalizedIntervalToSplitter.upper(), 1.0 - normalizedIntervalToOtherBlocks.lower()));
+    return carl::Interval(std::max(normalizedIntervalToSplitter.lower(), 1.0 - normalizedIntervalToOtherBlocks.upper()),
+                          std::min(normalizedIntervalToSplitter.upper(), 1.0 - normalizedIntervalToOtherBlocks.lower()));
 }
 
 template<typename ModelType>

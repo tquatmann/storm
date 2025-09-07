@@ -35,8 +35,6 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
 
     virtual void initializeLabelBasedPartition() override;
 
-    ValueType computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks);
-
     virtual void buildQuotient() override;
 
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
