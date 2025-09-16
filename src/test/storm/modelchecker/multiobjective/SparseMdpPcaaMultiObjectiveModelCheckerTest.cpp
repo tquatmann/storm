@@ -599,14 +599,11 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, uav) {
             storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula(), true);
         assertParetoResult(env, *mdp, formulas[0]->asMultiObjectiveFormula(), *result, expectedPoints, true);
     }
-    
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, single_LTL) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
+}
 
+TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, single_LTL) {
     storm::Environment env;
-    env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);\
+    env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/grid2.nm";
     std::string formulasAsString = "multi(R{\"default\"}max=? [S], Pmax=? [F G \"a\"]);\n";
@@ -616,13 +613,6 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, single_LTL) {
     formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(G F \"a\") | (F G \"b\")]);\n";
     formulasAsString += "multi(R{\"default\"}max=? [S], Pmax=? [(G (! \"b\")) & (G F \"a\")]);\n";
 
-    /*
-    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(F \"a\") & (F \"b\") & (F \"c\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
-    formulasAsString += "multi(R{\"default\"}max=? [S], P>=1 [(F \"a\") U \"b\"], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
-    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(G F \"a\") | (F G \"b\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
-    formulasAsString += "multi(R{\"default\"}max=? [S], P>=0.5 [(G (! \"b\")) & (G F \"a\")], S>=0.01 [\"d\"], S<=0.5 [\"d\"])";
-    */
-    // 0.99 0.99 0.99 0.9 
     storm::prism::Program program = storm::api::parseProgram(programFile);
     program = storm::utility::prism::preprocess(program, "");
     program.checkValidity();
@@ -706,5 +696,5 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, single_LTL) {
             << "Pareto point missing.";
     }
 }
-}
+
 #endif /* STORM_HAVE_Z3_OPTIMIZE */
