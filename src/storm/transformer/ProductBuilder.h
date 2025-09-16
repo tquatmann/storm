@@ -134,8 +134,7 @@ class ProductBuilder {
     /// @return
     template<typename ProductOperator>
     static typename Product<Model>::ptr buildLimitDeterministicProduct(const matrix_type& originalMatrix, ProductOperator& prodOp,
-                                                     const storm::storage::BitVector& statesOfInterest,
-                                                     storm::storage::BitVector mecStates) {
+                                                                       const storm::storage::BitVector& statesOfInterest, storm::storage::BitVector mecStates) {
         typedef storm::storage::sparse::state_type state_type;
         typedef std::pair<state_type, state_type> product_state_type;
 
@@ -152,7 +151,7 @@ class ProductBuilder {
         for (state_type s_0 : statesOfInterest) {
             state_type q_0 = prodOp.getInitialState(s_0);
 
-            //std::cout << "Initial: " << s_0 << ", " << q_0 << " = " << nextState << "\n";
+            // std::cout << "Initial: " << s_0 << ", " << q_0 << " = " << nextState << "\n";
 
             product_state_type s_q(s_0, q_0);
             state_type index = nextState++;
@@ -169,19 +168,20 @@ class ProductBuilder {
             todo.pop_front();
 
             product_state_type from = productIndexToProductState.at(prodIndexFrom);
-            //std::cout << "Handle " << from.first << "," << from.second << " (prodIndexFrom = " << prodIndexFrom << "):\n";
+            // std::cout << "Handle " << from.first << "," << from.second << " (prodIndexFrom = " << prodIndexFrom << "):\n";
 
             std::size_t numRows = originalMatrix.getRowGroupSize(from.first);
             builder.newRowGroup(curRow);
             for (std::size_t i = 0; i < numRows; i++) {
-                for (state_type const& p: prodOp.getSuccessors(from.second, from.first)) {
-                    if (acceptingPart.get(p) && !acceptingPart.get(from.second) && !mecStates.get(from.first)) continue;
+                for (state_type const& p : prodOp.getSuccessors(from.second, from.first)) {
+                    if (acceptingPart.get(p) && !acceptingPart.get(from.second) && !mecStates.get(from.first))
+                        continue;
 
-                    //std::cout << p << "\n";
+                    // std::cout << p << "\n";
                     auto const& row = originalMatrix.getRow(from.first, i);
                     for (auto const& entry : row) {
                         state_type t = entry.getColumn();
-                        //std::cout << " p = " << p << "\n";
+                        // std::cout << " p = " << p << "\n";
                         product_state_type t_p(t, p);
                         state_type prodIndexTo;
                         auto it = productStateToProductIndex.find(t_p);
@@ -190,13 +190,13 @@ class ProductBuilder {
                             todo.push_back(prodIndexTo);
                             productIndexToProductState.push_back(t_p);
                             productStateToProductIndex[t_p] = prodIndexTo;
-                            //std::cout << " Adding " << t_p.first << "," << t_p.second << " as " << prodIndexTo << "\n";
+                            // std::cout << " Adding " << t_p.first << "," << t_p.second << " as " << prodIndexTo << "\n";
                         } else {
                             prodIndexTo = it->second;
                         }
-                        //std::cout << " " << t_p.first << "," << t_p.second << ": to = " << prodIndexTo << "\n";
+                        // std::cout << " " << t_p.first << "," << t_p.second << ": to = " << prodIndexTo << "\n";
 
-                        //std::cout << " addNextValue(" << prodIndexFrom << "," << prodIndexTo << "," << entry.getValue() << ")\n";
+                        // std::cout << " addNextValue(" << prodIndexFrom << "," << prodIndexTo << "," << entry.getValue() << ")\n";
                         builder.addNextValue(curRow, prodIndexTo, entry.getValue());
                     }
                     curRow++;

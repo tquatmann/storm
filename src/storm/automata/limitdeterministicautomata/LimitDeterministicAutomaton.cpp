@@ -15,12 +15,9 @@
 namespace storm {
 namespace automata {
 
-LimitDeterministicAutomaton::LimitDeterministicAutomaton(APSet apSet, storm::storage::sparse::state_type numberOfStates, storm::storage::sparse::state_type initialState,
-                                                     std::shared_ptr<AcceptanceCondition> acceptance)
-    : apSet(apSet),
-      numberOfStates(numberOfStates),
-      initialState(initialState),
-      acceptance(acceptance) {
+LimitDeterministicAutomaton::LimitDeterministicAutomaton(APSet apSet, storm::storage::sparse::state_type numberOfStates,
+                                                         storm::storage::sparse::state_type initialState, std::shared_ptr<AcceptanceCondition> acceptance)
+    : apSet(apSet), numberOfStates(numberOfStates), initialState(initialState), acceptance(acceptance) {
     edgesPerState = apSet.alphabetSize();
     successors.resize(numberOfStates * edgesPerState, storage::BitVector(numberOfStates));
     predecessors.resize(numberOfStates, storage::BitVector(numberOfStates));
@@ -39,7 +36,8 @@ const storm::storage::BitVector& LimitDeterministicAutomaton::getSuccessors(stor
     return successors.at(index);
 }
 
-void LimitDeterministicAutomaton::addSuccessor(storm::storage::sparse::state_type from, APSet::alphabet_element label, storm::storage::sparse::state_type successor) {
+void LimitDeterministicAutomaton::addSuccessor(storm::storage::sparse::state_type from, APSet::alphabet_element label,
+                                               storm::storage::sparse::state_type successor) {
     storm::storage::sparse::state_type index = from * edgesPerState + label;
     successors.at(index).set(successor);
     predecessors.at(successor).set(from);
@@ -59,12 +57,13 @@ std::shared_ptr<AcceptanceCondition> LimitDeterministicAutomaton::getAcceptance(
 
 storm::storage::BitVector LimitDeterministicAutomaton::getAcceptingPart() const {
     auto expr = acceptance->getAcceptanceExpression();
-    STORM_LOG_ASSERT(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF && acceptance->getNumberOfAcceptanceSets() == 1, "Büchi acceptance condition has to be of the form INF(0)");
+    STORM_LOG_ASSERT(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF && acceptance->getNumberOfAcceptanceSets() == 1,
+                     "Büchi acceptance condition has to be of the form INF(0)");
 
     auto acceptingPart = acceptance->getAcceptanceSet(0);
 
     std::queue<uint64_t> todo;
-    for (auto const& state: acceptingPart) {
+    for (auto const& state : acceptingPart) {
         todo.push(state);
     }
 
@@ -72,7 +71,7 @@ storm::storage::BitVector LimitDeterministicAutomaton::getAcceptingPart() const 
         auto state = todo.front();
         todo.pop();
 
-        for (auto const& next: predecessors.at(state) & ~acceptingPart) {
+        for (auto const& next : predecessors.at(state) & ~acceptingPart) {
             todo.push(next);
         }
         acceptingPart |= predecessors.at(state);
@@ -80,7 +79,6 @@ storm::storage::BitVector LimitDeterministicAutomaton::getAcceptingPart() const 
 
     return acceptingPart;
 }
-
 
 void LimitDeterministicAutomaton::printHOA(std::ostream& out) const {
     out << "HOA: v1\n";
@@ -143,11 +141,10 @@ LimitDeterministicAutomaton::ptr LimitDeterministicAutomaton::parseFromFile(cons
     storm::io::closeFile(in);
 
     STORM_LOG_INFO("Nondeterministic automaton from HOA file '" << filename << "' has " << ldba->getNumberOfStates() << " states, " << ldba->getAPSet().size()
-                                                             << " atomic propositions and " << *ldba->getAcceptance()->getAcceptanceExpression()
-                                                             << " as acceptance condition.");
+                                                                << " atomic propositions and " << *ldba->getAcceptance()->getAcceptanceExpression()
+                                                                << " as acceptance condition.");
     return ldba;
 }
-
 
 }  // namespace automata
 }  // namespace storm

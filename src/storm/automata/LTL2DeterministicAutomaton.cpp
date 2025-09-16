@@ -1,7 +1,7 @@
 #include "storm/automata/LTL2DeterministicAutomaton.h"
+#include "limitdeterministicautomata/LimitDeterministicAutomaton.h"
 #include "storm/adapters/SpotAdapter.h"
 #include "storm/automata/DeterministicAutomaton.h"
-#include "limitdeterministicautomata/LimitDeterministicAutomaton.h"
 
 #include "storm/exceptions/ExpressionEvaluationException.h"
 #include "storm/exceptions/FileIoException.h"
@@ -58,7 +58,7 @@ std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daSpot(s
 #endif
 }
 
-template <typename Automaton>
+template<typename Automaton>
 std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool) {
     STORM_LOG_INFO("Calling external LTL->DA tool:   " << ltl2daTool << " '" << f << "' da.hoa");
 
@@ -87,8 +87,7 @@ std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm:
         } else {
             STORM_LOG_THROW(false, storm::exceptions::FileIoException, "Could not construct deterministic automaton: process aborted");
         }
-        STORM_LOG_THROW(rv == 0, storm::exceptions::FileIoException,
-                        "Could not construct deterministic automaton for " << f << ", return code = " << rv);
+        STORM_LOG_THROW(rv == 0, storm::exceptions::FileIoException, "Could not construct deterministic automaton for " << f << ", return code = " << rv);
 
         STORM_LOG_INFO("Reading automaton for " << f << " from da.hoa");
 
@@ -96,8 +95,10 @@ std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm:
     }
 }
 
-template std::shared_ptr<storm::automata::DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::DeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
-template std::shared_ptr<storm::automata::LimitDeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::LimitDeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
+template std::shared_ptr<storm::automata::DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::DeterministicAutomaton>(
+    storm::logic::Formula const& f, std::string ltl2daTool);
+template std::shared_ptr<storm::automata::LimitDeterministicAutomaton>
+LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::LimitDeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
 
 }  // namespace automata
 }  // namespace storm

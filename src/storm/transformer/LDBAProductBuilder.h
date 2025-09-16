@@ -22,19 +22,19 @@ class LDBAProductBuilder {
     LDBAProductBuilder(const storm::automata::LimitDeterministicAutomaton& ldba, const std::vector<storm::storage::BitVector>& statesForAP)
         : ldba(ldba), statesForAP(statesForAP) {}
 
-    template <typename Model>
+    template<typename Model>
     typename DAProduct<Model>::ptr build(const Model& originalMdp, const storm::storage::BitVector& statesOfInterest) const {
         return build<Model>(originalMdp.getTransitionMatrix(), originalMdp.getBackwardTransitions(), statesOfInterest);
     }
 
-    template <typename Model>
+    template<typename Model>
     typename DAProduct<Model>::ptr build(const storm::storage::SparseMatrix<typename Model::ValueType>& transitionMatrix,
-                                        const storm::storage::SparseMatrix<typename Model::ValueType>& backwardTransitions,
-                                        const storm::storage::BitVector& statesOfInterest) const {
+                                         const storm::storage::SparseMatrix<typename Model::ValueType>& backwardTransitions,
+                                         const storm::storage::BitVector& statesOfInterest) const {
         storage::MaximalEndComponentDecomposition mecs(transitionMatrix, backwardTransitions);
         storm::storage::BitVector mecStates(transitionMatrix.getRowGroupCount());
-        for (auto const& ec: mecs) {
-            for (auto const& [state, _]: ec) {
+        for (auto const& ec : mecs) {
+            for (auto const& [state, _] : ec) {
                 mecStates.set(state, true);
             }
         }
@@ -63,9 +63,10 @@ class LDBAProductBuilder {
         return ldba.getInitialState();
     }
 
-    const std::vector<storm::storage::sparse::state_type> getSuccessors(storm::storage::sparse::state_type automatonFrom, storm::storage::sparse::state_type modelTo) const {
+    const std::vector<storm::storage::sparse::state_type> getSuccessors(storm::storage::sparse::state_type automatonFrom,
+                                                                        storm::storage::sparse::state_type modelTo) const {
         std::vector<storm::storage::sparse::state_type> succs;
-        for (auto const& succ: ldba.getSuccessors(automatonFrom, getLabelForState(modelTo))) {
+        for (auto const& succ : ldba.getSuccessors(automatonFrom, getLabelForState(modelTo))) {
             succs.push_back(succ);
         }
         return succs;

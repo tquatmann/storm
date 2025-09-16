@@ -3,10 +3,10 @@
 #include <memory>
 
 #include "storm/environment/Environment.h"
-#include "storm/storage/BitVector.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/multiobjective/MultiObjectiveModelCheckingMethod.h"
 #include "storm/modelchecker/results/CheckResult.h"
+#include "storm/storage/BitVector.h"
 
 namespace storm {
 
@@ -20,6 +20,6 @@ template<typename SparseModelType>
 std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment const& env, SparseModelType const& model,
                                                                 storm::logic::MultiObjectiveFormula const& formula, bool produceScheduler = false);
 
-}
+}  // namespace multiobjective
 }  // namespace modelchecker
 }  // namespace storm

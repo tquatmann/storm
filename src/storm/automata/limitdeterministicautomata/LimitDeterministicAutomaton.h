@@ -10,10 +10,11 @@ namespace storm {
 namespace automata {
 
 class LimitDeterministicAutomaton {
-public:
+   public:
     using ptr = std::shared_ptr<LimitDeterministicAutomaton>;
 
-    LimitDeterministicAutomaton(APSet apSet, storm::storage::sparse::state_type numberOfStates, storm::storage::sparse::state_type initialState, std::shared_ptr<AcceptanceCondition> acceptance);
+    LimitDeterministicAutomaton(APSet apSet, storm::storage::sparse::state_type numberOfStates, storm::storage::sparse::state_type initialState,
+                                std::shared_ptr<AcceptanceCondition> acceptance);
 
     const APSet& getAPSet() const;
     storm::storage::sparse::state_type getInitialState() const;
@@ -31,7 +32,7 @@ public:
     static LimitDeterministicAutomaton::ptr parse(std::istream& in);
     static LimitDeterministicAutomaton::ptr parseFromFile(const std::string& filename);
 
-private:
+   private:
     APSet apSet;
     storm::storage::sparse::state_type numberOfStates;
     storm::storage::sparse::state_type initialState;
@@ -39,8 +40,7 @@ private:
     std::shared_ptr<AcceptanceCondition> acceptance;
     std::vector<storm::storage::BitVector> successors;
     std::vector<storm::storage::BitVector> predecessors;
-
 };
 
-} // namespace automata
-} // namespace storm
+}  // namespace automata
+}  // namespace storm

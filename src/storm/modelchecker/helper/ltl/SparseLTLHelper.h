@@ -88,12 +88,11 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
     std::vector<ValueType> computeLTLProbabilities(Environment const& env, storm::logic::PathFormula const& formula,
                                                    std::map<std::string, storm::storage::BitVector>& apSatSets);
 
-
     /**
      * Builds a DGRA from the formula
      * @return a pair of the deterministic automaton and a mapping of ap's to states satisfying them
      */
-    template <typename Automaton>
+    template<typename Automaton>
     static AutomatonAndApSets<Automaton> buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env);
 
     /*!
@@ -104,9 +103,11 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * @param env The environment to retrieve the ltl2da tool
      * @return a pair the DAProduct and its initial state
      */
-    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env);
+    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula,
+                                                                                   Environment const& env);
 
-    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env);
+    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(
+        productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env);
 
    private:
     /*!

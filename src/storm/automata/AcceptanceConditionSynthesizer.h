@@ -9,8 +9,7 @@
 
 namespace cpphoafparser {
 
-BooleanExpression<AtomAcceptance>::ptr toDNF(
-    BooleanExpression<AtomAcceptance>::ptr expr) {
+BooleanExpression<AtomAcceptance>::ptr toDNF(BooleanExpression<AtomAcceptance>::ptr expr) {
     using ptr = BooleanExpression<AtomAcceptance>::ptr;
 
     if (expr->isTRUE() || expr->isFALSE() || expr->isAtom()) {
@@ -20,13 +19,13 @@ BooleanExpression<AtomAcceptance>::ptr toDNF(
     if (expr->isNOT()) {
         // Negationen behandeln und durch De Morgan'sche Regeln vereinfachen
         ptr subExpr = expr->getLeft();
-        if (subExpr->isTRUE()) return BooleanExpression<AtomAcceptance>::False();
-        if (subExpr->isFALSE()) return BooleanExpression<AtomAcceptance>::True();
+        if (subExpr->isTRUE())
+            return BooleanExpression<AtomAcceptance>::False();
+        if (subExpr->isFALSE())
+            return BooleanExpression<AtomAcceptance>::True();
         if (subExpr->isAtom()) {
             auto const& atom = subExpr->getAtom();
-            auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ?
-                AtomAcceptance::TEMPORAL_INF :
-                AtomAcceptance::TEMPORAL_FIN;
+            auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ? AtomAcceptance::TEMPORAL_INF : AtomAcceptance::TEMPORAL_FIN;
             auto const negatedAtom = std::make_shared<AtomAcceptance>(negatedAtomType, atom.getAcceptanceSet(), atom.isNegated());
             return BooleanExpression<AtomAcceptance>::Atom(negatedAtom);
         }
@@ -91,19 +90,18 @@ BooleanExpression<AtomAcceptance>::ptr addOffsetAcceptanceSets(BooleanExpression
 
 }  // namespace cpphoafparser
 
-
 namespace storm {
 namespace automata {
 class AcceptanceConditionSynthesizer {
-public:
-    AcceptanceConditionSynthesizer(std::vector<AcceptanceCondition::ptr> acceptanceConditions): acceptanceConditions(acceptanceConditions) {}
+   public:
+    AcceptanceConditionSynthesizer(std::vector<AcceptanceCondition::ptr> acceptanceConditions) : acceptanceConditions(acceptanceConditions) {}
 
- /**
-  * Makes the numbering of acceptance sets unique, e.g., [Inf(0), Inf(0)] -> [Inf(0), Inf(1)]
-  *
-  * @param acceptanceConditions The vector of acceptance conditions for the LTL objectives
-  */
- static std::vector<AcceptanceCondition::ptr> liftAcceptanceSets(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
+    /**
+     * Makes the numbering of acceptance sets unique, e.g., [Inf(0), Inf(0)] -> [Inf(0), Inf(1)]
+     *
+     * @param acceptanceConditions The vector of acceptance conditions for the LTL objectives
+     */
+    static std::vector<AcceptanceCondition::ptr> liftAcceptanceSets(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
         // flattened vector storing unique acceptance sets
         auto numAcceptanceSets = 0;
         auto numStates = 0;
@@ -119,7 +117,7 @@ public:
             liftedAcceptanceConditions[index++] = std::make_shared<AcceptanceCondition>(numStates, numAcceptanceSets, acceptanceExpr);
 
             for (uint64_t i = 0; i < ac->getNumberOfAcceptanceSets(); ++i) {
-                acceptanceSets[i+offset] = ac->getAcceptanceSet(i);
+                acceptanceSets[i + offset] = ac->getAcceptanceSet(i);
             }
             offset += ac->getNumberOfAcceptanceSets();
         }
@@ -167,7 +165,8 @@ public:
             // set acceptance sets
             for (uint j = 0; j < numAccSets; j++) {
                 auto acceptanceSet = liftedAcceptanceConditions[0]->getAcceptanceSet(j);
-                STORM_LOG_ASSERT(acceptanceSet.size() == numStates, "Number of states " << numStates << " does not match size " << acceptanceSet.size() << " of acceptance set " << j << ".");
+                STORM_LOG_ASSERT(acceptanceSet.size() == numStates,
+                                 "Number of states " << numStates << " does not match size " << acceptanceSet.size() << " of acceptance set " << j << ".");
                 objectivesCombinations[i]->getAcceptanceSet(j) = acceptanceSet;
             }
         }
@@ -175,9 +174,8 @@ public:
         return objectivesCombinations;
     }
 
-private:
+   private:
     std::vector<AcceptanceCondition::ptr> acceptanceConditions;
-
 };
-}
-}
+}  // namespace automata
+}  // namespace storm

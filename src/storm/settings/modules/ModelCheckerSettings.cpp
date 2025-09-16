@@ -30,8 +30,8 @@ ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
                                                    "Provides information about the type of automaton used, either deterministic or limit-deterministic.")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument(
-                                        "syntax", "Either 'deterministic' or 'limit-deterministic', depending on the desired type of automaton.")
-                                        .build())
+                                         "syntax", "Either 'deterministic' or 'limit-deterministic', depending on the desired type of automaton.")
+                                         .build())
                         .build());
 
     std::vector<std::string> const conditionalAlgs = {"default", "restart", "bisection", "bisection-advanced", "pi"};
@@ -59,7 +59,6 @@ std::string ModelCheckerSettings::getLtl2daTool() const {
 bool ModelCheckerSettings::isLtl2DeterministicAutomatonSet() const {
     return this->getOption(ltl2daSyntax).getArgumentByName("syntax").getValueAsString() == "deterministic";
 }
-
 
 bool ModelCheckerSettings::isConditionalAlgorithmSet() const {
     return this->getOption(conditionalAlgorithmOptionName).getHasOptionBeenSet();

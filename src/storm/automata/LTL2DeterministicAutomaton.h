@@ -34,7 +34,7 @@ class LTL2DeterministicAutomaton {
      * @param ltl2daTool The external tool.
      * @return An automaton equivalent to the formula.
      */
-    template <typename Automaton>
+    template<typename Automaton>
     static std::shared_ptr<Automaton> ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool);
 };
 

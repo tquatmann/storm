@@ -9,10 +9,11 @@ namespace transformer {
 
 template<typename Model>
 class DAMultiProduct : public Product<Model> {
-public:
+   public:
     typedef std::shared_ptr<DAMultiProduct<Model>> ptr;
 
-    DAMultiProduct(Product<Model>&& product, std::vector<storm::automata::AcceptanceCondition::ptr> acceptances) : Product<Model>(std::move(product)), acceptances(acceptances) {
+    DAMultiProduct(Product<Model>&& product, std::vector<storm::automata::AcceptanceCondition::ptr> acceptances)
+        : Product<Model>(std::move(product)), acceptances(acceptances) {
         // Intentionally left blank
     }
 
@@ -20,7 +21,7 @@ public:
         return acceptances;
     }
 
-private:
+   private:
     std::vector<storm::automata::AcceptanceCondition::ptr> acceptances;
 };
 }  // namespace transformer

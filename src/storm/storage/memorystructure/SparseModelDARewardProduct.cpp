@@ -13,16 +13,12 @@ namespace storm {
 namespace storage {
 
 template<typename ValueType, typename RewardModelType>
-void printMDP(
-    const storm::storage::SparseMatrix<ValueType>& transitionMatrix,
-    const storm::models::sparse::StateLabeling& stateLabeling,
-    const std::unordered_map<std::string, RewardModelType>& rewardModels,
-    int numStatesToPrint=0,
-    bool printCompleteRow=true
-) {
+void printMDP(const storm::storage::SparseMatrix<ValueType>& transitionMatrix, const storm::models::sparse::StateLabeling& stateLabeling,
+              const std::unordered_map<std::string, RewardModelType>& rewardModels, int numStatesToPrint = 0, bool printCompleteRow = true) {
     std::cout << "Markov Decision Process (MDP) Details:" << std::endl;
     std::cout << "-------------------------------------" << std::endl;
-    if (!numStatesToPrint) numStatesToPrint = transitionMatrix.getRowGroupCount();
+    if (!numStatesToPrint)
+        numStatesToPrint = transitionMatrix.getRowGroupCount();
 
     // 1. Zustandsbeschreibung (Labels)
     std::cout << "State Labels:" << std::endl;
@@ -84,7 +80,7 @@ void printMDP(
             }
         }
         if (rewardModel.hasStateActionRewards()) {
-            uint64_t lastChoice = transitionMatrix.getRowGroupIndices(numStatesToPrint-1).back();
+            uint64_t lastChoice = transitionMatrix.getRowGroupIndices(numStatesToPrint - 1).back();
             for (uint64_t choice = 0; choice < lastChoice; ++choice) {
                 auto reward = rewardModel.getStateActionReward(choice);
                 std::cout << "    Choice " << choice << ": " << reward << std::endl;
@@ -95,17 +91,17 @@ void printMDP(
     std::cout << "-------------------------------------" << std::endl;
 }
 
-
 template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
-    //printMDP(originalModel.getTransitionMatrix(), originalModel.getStateLabeling(), originalModel.getRewardModels());
-    auto [productModel, acceptanceConditions, indexToModelState] = modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
-    //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
+    // printMDP(originalModel.getTransitionMatrix(), originalModel.getStateLabeling(), originalModel.getRewardModels());
+    auto [productModel, acceptanceConditions, indexToModelState] =
+        modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
+    // printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
 
     if (env.modelchecker().isLtl2daToolSet()) {
         auto rewardModels = buildRewardModelsForLDBA(productModel, acceptanceConditions, indexToModelState);
-        //printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
+        // printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
         return std::make_shared<Mdp>(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
     }
 
@@ -118,13 +114,14 @@ std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseMo
 
     auto stateLabeling = buildStateLabeling(result->getTransitionMatrix(), result->getStateToModelState(), result->getInitialStates());
 
-    //printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels);
+    // printMDP(result->getTransitionMatrix(), stateLabeling, rewardModels);
 
     return std::make_shared<Mdp>(result->getTransitionMatrix(), stateLabeling, rewardModels);
 }
 
 template<typename ValueType, typename RewardModelType>
-std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildLTLRewardModel(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<std::list<uint64_t>> const& reachingAccECsChoices) {
+std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildLTLRewardModel(
+    storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<std::list<uint64_t>> const& reachingAccECsChoices) {
     typedef typename RewardModelType::ValueType RewardValueType;
     std::unordered_map<std::string, RewardModelType> result;
     const uint64_t numberOfLTLObjectives = std::log2(reachingAccECsChoices.size());
@@ -133,9 +130,10 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
         // add rewards for reaching an accepting end component
         std::vector<RewardValueType> stateActionRewards(resultTransitionMatrix.getRowCount(), storm::utility::zero<RewardValueType>());
         for (int j = 0; j < reachingAccECsChoices.size(); j++) {
-            if (!(j & (1 << i))) continue;
+            if (!(j & (1 << i)))
+                continue;
 
-            for (auto const& choice: reachingAccECsChoices[j]) {
+            for (auto const& choice : reachingAccECsChoices[j]) {
                 stateActionRewards[choice] = 1;
             }
         }
@@ -148,18 +146,21 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
 }
 
 template<typename ValueType, typename RewardModelType>
-std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildRewardModels(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, std::vector<uint64_t> const& choiceToModelChoice) {
+std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<ValueType, RewardModelType>::buildRewardModels(
+    storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState,
+    std::vector<uint64_t> const& choiceToModelChoice) {
     typedef typename RewardModelType::ValueType RewardValueType;
     std::unordered_map<std::string, RewardModelType> result;
     uint64_t numResStates = resultTransitionMatrix.getRowGroupCount();
     uint64_t numResChoices = resultTransitionMatrix.getRowCount();
 
-    for (auto const rewardModel: originalModel.getRewardModels()) {
+    for (auto const rewardModel : originalModel.getRewardModels()) {
         std::optional<std::vector<RewardValueType>> stateRewards;
         if (rewardModel.second.hasStateRewards()) {
             stateRewards = std::vector<RewardValueType>(numResStates, storm::utility::zero<RewardValueType>());
             for (uint64_t state = 0; state < numResStates; ++state) {
-                if (stateToModelState[state] == std::numeric_limits<uint64_t>::max()) continue;
+                if (stateToModelState[state] == std::numeric_limits<uint64_t>::max())
+                    continue;
 
                 stateRewards.value()[state] = rewardModel.second.getStateReward(stateToModelState[state]);
             }
@@ -170,7 +171,8 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
             actionRewards = std::vector<RewardValueType>(numResChoices, storm::utility::zero<RewardValueType>());
 
             for (uint64_t choice = 0; choice < numResChoices; ++choice) {
-                if (choiceToModelChoice[choice] == std::numeric_limits<uint64_t>::max()) continue;
+                if (choiceToModelChoice[choice] == std::numeric_limits<uint64_t>::max())
+                    continue;
 
                 actionRewards.value()[choice] += rewardModel.second.getStateActionReward(choiceToModelChoice[choice]);
             }
@@ -183,12 +185,14 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
 }
 
 template<typename ValueType, typename RewardModelType>
-storm::models::sparse::StateLabeling SparseModelDARewardProduct<ValueType, RewardModelType>::buildStateLabeling(storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState, storm::storage::BitVector const& initialStates) {
+storm::models::sparse::StateLabeling SparseModelDARewardProduct<ValueType, RewardModelType>::buildStateLabeling(
+    storm::storage::SparseMatrix<ValueType> const& resultTransitionMatrix, std::vector<uint64_t> const& stateToModelState,
+    storm::storage::BitVector const& initialStates) {
     uint64_t modelStateCount = originalModel.getNumberOfStates();
     uint64_t numResStates = resultTransitionMatrix.getRowGroupCount();
     storm::models::sparse::StateLabeling resultLabeling(numResStates);
 
-    for (auto const& label: originalModel.getStateLabeling().getLabels()) {
+    for (auto const& label : originalModel.getStateLabeling().getLabels()) {
         resultLabeling.addLabel(label);
     }
 
@@ -220,7 +224,7 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
     uint64_t numChoices = productModel.getTransitionMatrix().getRowCount();
     storm::storage::BitVector acc_states(numStates);
     storm::storage::BitVector initial_states(numStates);
-    for (auto const& state: mecs[0].getStateSet()) {
+    for (auto const& state : mecs[0].getStateSet()) {
         initial_states.set(state);
     }
 
@@ -234,7 +238,7 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
         auto const& acceptingStates = acceptanceConditions[i]->getAcceptanceSet(acceptanceSet);
 
         for (auto const& ec : mecs) {
-            //if (ec.size() != 426) continue;
+            // if (ec.size() != 426) continue;
             bool containsAcceptingStates = false;
             for (auto const& state : acceptingStates) {
                 if (ec.containsState(state)) {
@@ -242,7 +246,8 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
                     break;
                 }
             }
-            if (!containsAcceptingStates) continue;
+            if (!containsAcceptingStates)
+                continue;
 
             for (auto const& state : ec.getStateSet()) {
                 stateRewards.value()[state] = 1;
@@ -257,7 +262,7 @@ std::unordered_map<std::string, RewardModelType> SparseModelDARewardProduct<Valu
         if (rewardModel.second.hasStateRewards()) {
             stateRewards = std::vector<RewardValueType>(numStates, storm::utility::zero<RewardValueType>());
             for (uint64_t state = 0; state < numStates; ++state) {
-                //if (!initial_states[state]) continue; //!acc_states[state] &&
+                // if (!initial_states[state]) continue; //!acc_states[state] &&
                 stateRewards.value()[state] = rewardModel.second.getStateReward(indexToModelState[state]);
             }
         }
@@ -290,5 +295,5 @@ template class SparseModelDARewardProduct<double, storm::models::sparse::Standar
 
 template class SparseModelDARewardProduct<RationalNumber, storm::models::sparse::StandardRewardModel<RationalNumber>>;
 
-}
-}
+}  // namespace storage
+}  // namespace storm

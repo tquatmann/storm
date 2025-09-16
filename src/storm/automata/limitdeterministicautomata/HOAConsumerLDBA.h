@@ -92,7 +92,7 @@ class HOAConsumerLDBA : public HOAConsumerLDBAHeader {
         if (accSignature) {
             throw std::runtime_error("Parsing non-deterministic HOA automaton: Does not support transition-based acceptance");
         }
-        
+
         for (auto successor : conjSuccessors) {
             ldba->addSuccessor(stateId, edgeIndex, successor);
         }

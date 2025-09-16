@@ -14,12 +14,12 @@
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 
+#include "storm/exceptions/InvalidPropertyException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/SchedulerChoice.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
-#include "storm/exceptions/NotSupportedException.h"
-#include "storm/exceptions/InvalidPropertyException.h"
 
 namespace storm {
 namespace modelchecker {
@@ -377,18 +377,16 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
     return numericResult;
 }
 
-
 template<typename ValueType, bool Nondeterministic>
-template<typename  Automaton>
-std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHelper<ValueType, Nondeterministic>::buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env) {
+template<typename Automaton>
+std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHelper<ValueType, Nondeterministic>::buildDAFromFormula(
+    productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env) {
     storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
     std::shared_ptr<storm::logic::Formula> ltlFormula = storm::logic::ExtractMaximalStateFormulasVisitor::extract(formula, extracted);
     STORM_LOG_ASSERT(ltlFormula->isPathFormula(), "Unexpected formula type.");
 
     storm::modelchecker::SparsePropositionalModelChecker<productModelType> mc(model);
-    auto formulaChecker = [&](storm::logic::Formula const& f) {
-        return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector();
-    };
+    auto formulaChecker = [&](storm::logic::Formula const& f) { return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector(); };
     // Compute Satisfaction sets for the APs (which represent the state-subformulae)
     auto apSatSets = computeApSets(extracted, formulaChecker);
 
@@ -401,8 +399,7 @@ std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHel
         if constexpr (std::is_same_v<Automaton, storm::automata::DeterministicAutomaton>) {
             automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
         } else {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
-                            "The internal engine (Spot) can only generate deterministic automata.");
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The internal engine (Spot) can only generate deterministic automata.");
         }
     }
 
@@ -418,7 +415,9 @@ std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHel
 }
 
 template<typename ValueType, bool Nondeterministic>
-typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env) {
+typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType>::ptr
+SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula,
+                                                               Environment const& env) {
     typename transformer::DAProduct<productModelType>::ptr product;
 
     if (env.modelchecker().isLtl2daToolSet() && !env.modelchecker().isLtl2deterministicAutomatonSet()) {
@@ -431,13 +430,18 @@ typename transformer::DAProduct<typename SparseLTLHelper<ValueType, Nondetermini
         product = productBuilder.build<productModelType>(model.getTransitionMatrix(), model.getInitialStates());
     }
 
-    STORM_LOG_INFO("The product has " << product->getProductModel().getNumberOfStates() << " states, " << product->getProductModel().getNumberOfTransitions() << " transitions and, the automaton is " << (false ? "a DRA" : "an LDBA"));
+    STORM_LOG_INFO("The product has " << product->getProductModel().getNumberOfStates() << " states, " << product->getProductModel().getNumberOfTransitions()
+                                      << " transitions and, the automaton is " << (false ? "a DRA" : "an LDBA"));
 
     return product;
 }
 
 template<typename ValueType, bool Nondeterministic>
-std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env) {
+std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>,
+           std::vector<uint64_t>>
+SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model,
+                                                                std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+                                                                Environment const& env) {
     std::vector<storm::automata::AcceptanceCondition::ptr> acceptanceConditions(formulas.size());
     productModelType productModel(model.getTransitionMatrix(), model.getStateLabeling());
     std::vector<storm::storage::BitVector> modelStateToProductStates(model.getNumberOfStates());
@@ -448,16 +452,17 @@ std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelTy
     }
 
     for (int i = 0; i < formulas.size(); i++) {
-        //compute product
+        // compute product
         auto const& pathformula = formulas[i]->asOperatorFormula().getSubformula().asPathFormula();
         auto product = buildFromFormula(productModel, pathformula, env);
         acceptanceConditions[i] = product->getAcceptance();
 
         // lift state labeling
         models::sparse::StateLabeling productLabeling(product->getProductModel().getNumberOfStates());
-        for (auto const& label: productModel.getStateLabeling().getLabels()) {
+        for (auto const& label : productModel.getStateLabeling().getLabels()) {
             productLabeling.addLabel(label);
-            if (label == "init") continue;
+            if (label == "init")
+                continue;
 
             auto statesModel = productModel.getStateLabeling().getStates(label);
             auto statesProduct = product->liftFromModel(statesModel);
@@ -474,14 +479,14 @@ std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelTy
 
         for (int j = 0; j < i; j++) {
             // lift product acceptance condition
-            acceptanceConditions[j] = acceptanceConditions[j]->lift(
-            product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getModelState(prodState); });
+            acceptanceConditions[j] = acceptanceConditions[j]->lift(product->getProductModel().getNumberOfStates(),
+                                                                    [&product](std::size_t prodState) { return product->getModelState(prodState); });
         }
     }
 
     std::vector<uint64_t> indexToModelState(productModel.getNumberOfStates());
     for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
-        for (auto const j: modelStateToProductStates[i]) {
+        for (auto const j : modelStateToProductStates[i]) {
             indexToModelState[j] = i;
         }
     }
