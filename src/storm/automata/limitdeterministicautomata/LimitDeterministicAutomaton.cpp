@@ -1,5 +1,6 @@
 #include "LimitDeterministicAutomaton.h"
 
+#include <queue>
 #include <storm/automata/APSet.h>
 
 #include "HOAConsumerLDBA.h"
