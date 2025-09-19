@@ -1,10 +1,9 @@
 #include "DARewardProductBuilder.h"
 
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/automata/AcceptanceConditionSynthesizer.h"
 #include "storm/modelchecker/CheckTask.h"
 #include "storm/modelchecker/helper/ltl/SparseLTLHelper.h"
-
-#include <gmpxx.h>  //???
 
 #include <numeric>
 
