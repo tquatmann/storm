@@ -1,7 +1,7 @@
 #include "SparseLTLHelper.h"
 
 #include "storm/automata/DeterministicAutomaton.h"
-#include "storm/automata/LTL2DeterministicAutomaton.h"
+#include "storm/automata/LTL2Automaton.h"
 
 #include "storm/environment/modelchecker/ModelCheckerEnvironment.h"
 
@@ -355,12 +355,11 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
                     "Only deterministic automata are currently supported for LTL model checking.");
     if (env.modelchecker().isLtl2AutToolSet()) {
         // Use the external tool given via ltl2aut
-        da =
-            storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<automata::DeterministicAutomaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
+        da = storm::automata::LTL2Automaton::ltl2AutExternalTool<automata::DeterministicAutomaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
     } else {
         // Use the internal tool (Spot)
         // For nondeterministic models the acceptance condition is transformed into DNF
-        da = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, Nondeterministic);
+        da = storm::automata::LTL2Automaton::ltl2AutSpot(*ltlFormula, Nondeterministic);
     }
 
     STORM_LOG_INFO("Deterministic automaton for LTL formula has " << da->getNumberOfStates() << " states, " << da->getAPSet().size()
@@ -396,10 +395,10 @@ std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHel
 
     typename Automaton::ptr automaton;
     if (env.modelchecker().isLtl2AutToolSet()) {
-        automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<Automaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
+        automaton = storm::automata::LTL2Automaton::ltl2AutExternalTool<Automaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
     } else {
         if constexpr (std::is_same_v<Automaton, storm::automata::DeterministicAutomaton>) {
-            automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
+            automaton = storm::automata::LTL2Automaton::ltl2AutSpot(*ltlFormula, true);
         } else {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The internal engine (Spot) can only generate deterministic automata.");
         }

@@ -23,7 +23,7 @@ ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
                                                    "If set, use an external tool to convert LTL formulas to state-based automata in HOA format")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument(
-                                         "filename", "A script that can be called with a prefix formula and a name for the output automaton.")
+                                         "filename", "A script that can be called with a formula and a name for the output automaton.")
                                          .build())
                         .build());
 

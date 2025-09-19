@@ -1,4 +1,4 @@
-#include "storm/automata/LTL2DeterministicAutomaton.h"
+#include "storm/automata/LTL2Automaton.h"
 #include "limitdeterministicautomata/LimitDeterministicAutomaton.h"
 #include "storm/adapters/SpotAdapter.h"
 #include "storm/automata/DeterministicAutomaton.h"
@@ -14,7 +14,7 @@
 namespace storm {
 namespace automata {
 
-std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daSpot(storm::logic::Formula const& f, bool dnf) {
+std::shared_ptr<DeterministicAutomaton> LTL2Automaton::ltl2AutSpot(storm::logic::Formula const& f, bool dnf) {
 #ifdef STORM_HAVE_SPOT
     std::string prefixLtl = f.toPrefixString();
 
@@ -59,8 +59,8 @@ std::shared_ptr<DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daSpot(s
 }
 
 template<typename Automaton>
-std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm::logic::Formula const& f, std::string ltl2daTool) {
-    STORM_LOG_INFO("Calling external LTL->DA tool:   " << ltl2daTool << " '" << f << "' da.hoa");
+std::shared_ptr<Automaton> LTL2Automaton::ltl2AutExternalTool(storm::logic::Formula const& f, std::string ltl2AutTool) {
+    STORM_LOG_INFO("Calling external LTL->DA tool:   " << ltl2AutTool << " '" << f << "' da.hoa");
 
     pid_t pid;
 
@@ -69,7 +69,7 @@ std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm:
 
     if (pid == 0) {
         // we are in the child process
-        if (execlp(ltl2daTool.c_str(), ltl2daTool.c_str(), f.toString().c_str(), "da.hoa", NULL) < 0) {
+        if (execlp(ltl2AutTool.c_str(), ltl2AutTool.c_str(), f.toString().c_str(), "da.hoa", NULL) < 0) {
             std::cerr << "ERROR: exec failed: " << strerror(errno) << '\n';
             std::exit(1);
         }
@@ -79,7 +79,8 @@ std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm:
         int status;
 
         // wait for completion
-        while (wait(&status) != pid);
+        while (wait(&status) != pid)
+            ;
 
         int rv;
         if (WIFEXITED(status)) {
@@ -95,10 +96,10 @@ std::shared_ptr<Automaton> LTL2DeterministicAutomaton::ltl2daExternalTool(storm:
     }
 }
 
-template std::shared_ptr<storm::automata::DeterministicAutomaton> LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::DeterministicAutomaton>(
-    storm::logic::Formula const& f, std::string ltl2daTool);
-template std::shared_ptr<storm::automata::LimitDeterministicAutomaton>
-LTL2DeterministicAutomaton::ltl2daExternalTool<storm::automata::LimitDeterministicAutomaton>(storm::logic::Formula const& f, std::string ltl2daTool);
+template std::shared_ptr<storm::automata::DeterministicAutomaton> LTL2Automaton::ltl2AutExternalTool<storm::automata::DeterministicAutomaton>(
+    storm::logic::Formula const& f, std::string ltl2AutTool);
+template std::shared_ptr<storm::automata::LimitDeterministicAutomaton> LTL2Automaton::ltl2AutExternalTool<storm::automata::LimitDeterministicAutomaton>(
+    storm::logic::Formula const& f, std::string ltl2AutTool);
 
 }  // namespace automata
 }  // namespace storm
