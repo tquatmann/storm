@@ -20,7 +20,8 @@ AutomatonType automatonTypeFromString(std::string const& type) {
         return AutomatonType::Deterministic;
     } else if (type == "ldba") {
         return AutomatonType::LDBA;
-        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unknown automaton type: " << type);
     }
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unknown automaton type: " << type);
+}
 
-}  // namespace storm
+}  // namespace storm::automata

@@ -1,7 +1,5 @@
 #include "SparseLTLHelper.h"
 
-#include <boost/spirit/home/qi/string.hpp>
-
 #include "storm/automata/DeterministicAutomaton.h"
 #include "storm/automata/LTL2DeterministicAutomaton.h"
 
@@ -14,12 +12,13 @@
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 
-#include "storm/exceptions/InvalidPropertyException.h"
-#include "storm/exceptions/NotSupportedException.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/SchedulerChoice.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
+
+#include "storm/exceptions/InvalidPropertyException.h"
+#include "storm/exceptions/NotSupportedException.h"
 
 namespace storm {
 namespace modelchecker {

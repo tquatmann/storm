@@ -26,7 +26,6 @@ class SparseMultiObjectivePreprocessor {
    public:
     typedef typename SparseModelType::ValueType ValueType;
     typedef typename SparseModelType::RewardModelType RewardModelType;
-    typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
     typedef SparseMultiObjectivePreprocessorResult<SparseModelType> ReturnType;
 
     /*!
