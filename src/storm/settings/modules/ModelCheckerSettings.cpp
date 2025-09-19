@@ -10,8 +10,8 @@ namespace storm::settings::modules {
 
 const std::string ModelCheckerSettings::moduleName = "modelchecker";
 const std::string ModelCheckerSettings::filterRewZeroOptionName = "filterrewzero";
-const std::string ModelCheckerSettings::ltl2daToolOptionName = "ltl2datool";
-const std::string ModelCheckerSettings::ltl2daSyntax = "ltl2dasyntax";
+const std::string ModelCheckerSettings::ltl2AutToolOptionName = "ltl2auttool";
+const std::string ModelCheckerSettings::ltlAutomatonType = "ltlauttype";
 const std::string ModelCheckerSettings::conditionalAlgorithmOptionName = "conditional";
 
 ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
@@ -19,18 +19,20 @@ ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
                                                    "If set, states with reward zero are filtered out, potentially reducing the size of the equation system")
                         .setIsAdvanced()
                         .build());
-    this->addOption(storm::settings::OptionBuilder(moduleName, ltl2daToolOptionName, false,
-                                                   "If set, use an external tool to convert LTL formulas to state-based deterministic automata in HOA format")
+    this->addOption(storm::settings::OptionBuilder(moduleName, ltl2AutToolOptionName, false,
+                                                   "If set, use an external tool to convert LTL formulas to state-based automata in HOA format")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument(
                                          "filename", "A script that can be called with a prefix formula and a name for the output automaton.")
                                          .build())
                         .build());
-    this->addOption(storm::settings::OptionBuilder(moduleName, ltl2daSyntax, false,
-                                                   "Provides information about the type of automaton used, either deterministic or limit-deterministic.")
+
+    std::vector<std::string> const automatontypes = {"deterministic", "ldba"};
+    this->addOption(storm::settings::OptionBuilder(moduleName, ltlAutomatonType, false, "The type of automaton used for ltl model checking.")
                         .setIsAdvanced()
-                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument(
-                                         "syntax", "Either 'deterministic' or 'limit-deterministic', depending on the desired type of automaton.")
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("type", "The desired type of automaton.")
+                                         .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(automatontypes))
+                                         .setDefaultValueString("deterministic")
                                          .build())
                         .build());
 
@@ -48,16 +50,16 @@ bool ModelCheckerSettings::isFilterRewZeroSet() const {
     return this->getOption(filterRewZeroOptionName).getHasOptionBeenSet();
 }
 
-bool ModelCheckerSettings::isLtl2daToolSet() const {
-    return this->getOption(ltl2daToolOptionName).getHasOptionBeenSet();
+bool ModelCheckerSettings::isLtl2AutToolSet() const {
+    return this->getOption(ltl2AutToolOptionName).getHasOptionBeenSet();
 }
 
-std::string ModelCheckerSettings::getLtl2daTool() const {
-    return this->getOption(ltl2daToolOptionName).getArgumentByName("filename").getValueAsString();
+std::string ModelCheckerSettings::getLtl2AutTool() const {
+    return this->getOption(ltl2AutToolOptionName).getArgumentByName("filename").getValueAsString();
 }
 
-bool ModelCheckerSettings::isLtl2DeterministicAutomatonSet() const {
-    return this->getOption(ltl2daSyntax).getArgumentByName("syntax").getValueAsString() == "deterministic";
+storm::automata::AutomatonType ModelCheckerSettings::getLtlAutomatonType() const {
+    return storm::automata::automatonTypeFromString(this->getOption(ltlAutomatonType).getArgumentByName("type").getValueAsString());
 }
 
 bool ModelCheckerSettings::isConditionalAlgorithmSet() const {

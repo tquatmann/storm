@@ -94,7 +94,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
             std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
             auto rewardAccumulation = logic::RewardAccumulation(true, false, false);
 
-            if (env.modelchecker().isLtl2daToolSet()) {
+            if (env.modelchecker().isLtl2AutToolSet()) {
                 auto lraFormula = std::make_shared<logic::LongRunAverageRewardFormula>(rewardAccumulation);
                 logic::RewardOperatorFormula operatorFormula(lraFormula, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
                 preprocessOperatorFormula(operatorFormula, data);

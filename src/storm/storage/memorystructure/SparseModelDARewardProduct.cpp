@@ -99,7 +99,7 @@ std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseMo
         modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
     // printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
 
-    if (env.modelchecker().isLtl2daToolSet()) {
+    if (env.modelchecker().isLtl2AutToolSet()) {  // TODO: check
         auto rewardModels = buildRewardModelsForLDBA(productModel, acceptanceConditions, indexToModelState);
         // printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);
         return std::make_shared<Mdp>(productModel.getTransitionMatrix(), productModel.getStateLabeling(), rewardModels);

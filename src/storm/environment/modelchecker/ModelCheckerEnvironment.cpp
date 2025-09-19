@@ -14,9 +14,9 @@ namespace storm {
 
 ModelCheckerEnvironment::ModelCheckerEnvironment() {
     auto const& mcSettings = storm::settings::getModule<storm::settings::modules::ModelCheckerSettings>();
-    if (mcSettings.isLtl2daToolSet()) {
-        ltl2daTool = mcSettings.getLtl2daTool();
-        ltl2deterministicAutomatonSet = mcSettings.isLtl2DeterministicAutomatonSet();
+    if (mcSettings.isLtl2AutToolSet()) {
+        ltl2AutTool = mcSettings.getLtl2AutTool();
+        ltlAutomatonType = mcSettings.getLtlAutomatonType();
     }
     auto const& ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     steadyStateDistributionAlgorithm = ioSettings.getSteadyStateDistributionAlgorithm();
@@ -52,24 +52,27 @@ MultiObjectiveModelCheckerEnvironment const& ModelCheckerEnvironment::multi() co
     return multiObjectiveModelCheckerEnvironment.get();
 }
 
-bool ModelCheckerEnvironment::isLtl2daToolSet() const {
-    return ltl2daTool.is_initialized();
+bool ModelCheckerEnvironment::isLtl2AutToolSet() const {
+    return ltl2AutTool.has_value();
 }
 
-bool ModelCheckerEnvironment::isLtl2deterministicAutomatonSet() const {
-    return ltl2deterministicAutomatonSet;
+std::string const& ModelCheckerEnvironment::getLtl2AutTool() const {
+    return ltl2AutTool.value();
 }
 
-std::string const& ModelCheckerEnvironment::getLtl2daTool() const {
-    return ltl2daTool.get();
+void ModelCheckerEnvironment::setLtl2AutTool(std::string const& value) {
+    ltl2AutTool = value;
 }
 
-void ModelCheckerEnvironment::setLtl2daTool(std::string const& value) {
-    ltl2daTool = value;
+void ModelCheckerEnvironment::unsetLtl2AutTool() {
+    ltl2AutTool = std::nullopt;
 }
 
-void ModelCheckerEnvironment::unsetLtl2daTool() {
-    ltl2daTool = boost::none;
+storm::automata::AutomatonType ModelCheckerEnvironment::getLtlAutomatonType() const {
+    return ltlAutomatonType;
 }
 
+void ModelCheckerEnvironment::setLtlAutomatonType(storm::automata::AutomatonType const& type) {
+    ltlAutomatonType = type;
+}
 }  // namespace storm

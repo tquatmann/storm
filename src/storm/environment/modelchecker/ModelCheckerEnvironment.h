@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "storm/automata/AutomatonType.h"
 #include "storm/environment/Environment.h"
 #include "storm/environment/SubEnvironment.h"
 #include "storm/modelchecker/helper/conditional/ConditionalAlgorithmSetting.h"
@@ -28,16 +29,17 @@ class ModelCheckerEnvironment {
     ConditionalAlgorithmSetting getConditionalAlgorithmSetting() const;
     void setConditionalAlgorithmSetting(ConditionalAlgorithmSetting value);
 
-    bool isLtl2daToolSet() const;
-    bool isLtl2deterministicAutomatonSet() const;
-    std::string const& getLtl2daTool() const;
-    void setLtl2daTool(std::string const& value);
-    void unsetLtl2daTool();
+    bool isLtl2AutToolSet() const;
+    std::string const& getLtl2AutTool() const;
+    void setLtl2AutTool(std::string const& value);
+    void unsetLtl2AutTool();
+    storm::automata::AutomatonType getLtlAutomatonType() const;
+    void setLtlAutomatonType(storm::automata::AutomatonType const& type);
 
    private:
     SubEnvironment<MultiObjectiveModelCheckerEnvironment> multiObjectiveModelCheckerEnvironment;
-    boost::optional<std::string> ltl2daTool;
-    bool ltl2deterministicAutomatonSet;
+    std::optional<std::string> ltl2AutTool;
+    storm::automata::AutomatonType ltlAutomatonType;
     SteadyStateDistributionAlgorithm steadyStateDistributionAlgorithm;
     ConditionalAlgorithmSetting conditionalAlgorithmSetting;
 };

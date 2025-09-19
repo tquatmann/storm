@@ -1,6 +1,6 @@
 #pragma once
 
-#include "storm-config.h"
+#include "storm/automata/AutomatonType.h"
 #include "storm/modelchecker/helper/conditional/ConditionalAlgorithmSetting.h"
 #include "storm/settings/modules/ModuleSettings.h"
 
@@ -21,25 +21,25 @@ class ModelCheckerSettings : public ModuleSettings {
     bool isFilterRewZeroSet() const;
 
     /*!
-     * Retrieves whether the external ltl2da tool has been set.
+     * Retrieves whether the external ltl2Aut tool has been set.
      *
-     * @return True iff the external ltl2da has been set.
+     * @return True iff the external ltl2Aut tool has been set.
      */
-    bool isLtl2daToolSet() const;
+    bool isLtl2AutToolSet() const;
 
     /*!
-     * Retrieves the external ltl2da tool that is used for converting LTL formulas to deterministic automata.
+     * Retrieves the external ltl2aut tool that is used for converting LTL formulas to automata.
      *
-     * @return The executable to use for converting LTL formulas to deterministic automata.
+     * @return The executable to use for converting LTL formulas to automata.
      */
-    std::string getLtl2daTool() const;
+    std::string getLtl2AutTool() const;
 
     /*!
      * Retrieves whether the deterministic or limit-deterministic automata are used for the LTL model checking.
      *
      * @return True if deterministic Rabin automata are to be used
      */
-    bool isLtl2DeterministicAutomatonSet() const;
+    storm::automata::AutomatonType getLtlAutomatonType() const;
 
     /*!
      * Retrieves whether an algorithm for conditional properties has been set.
@@ -57,8 +57,8 @@ class ModelCheckerSettings : public ModuleSettings {
    private:
     // Define the string names of the options as constants.
     static const std::string filterRewZeroOptionName;
-    static const std::string ltl2daToolOptionName;
-    static const std::string ltl2daSyntax;
+    static const std::string ltl2AutToolOptionName;
+    static const std::string ltlAutomatonType;
     static const std::string conditionalAlgorithmOptionName;
 };
 

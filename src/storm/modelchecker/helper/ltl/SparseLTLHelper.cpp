@@ -352,9 +352,12 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
 
     // Convert LTL formula to a deterministic automaton
     std::shared_ptr<storm::automata::DeterministicAutomaton> da;
-    if (env.modelchecker().isLtl2daToolSet()) {
-        // Use the external tool given via ltl2da
-        da = storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<automata::DeterministicAutomaton>(*ltlFormula, env.modelchecker().getLtl2daTool());
+    STORM_LOG_THROW(env.modelchecker().getLtlAutomatonType() == storm::automata::AutomatonType::Deterministic, storm::exceptions::NotSupportedException,
+                    "Only deterministic automata are currently supported for LTL model checking.");
+    if (env.modelchecker().isLtl2AutToolSet()) {
+        // Use the external tool given via ltl2aut
+        da =
+            storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<automata::DeterministicAutomaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
     } else {
         // Use the internal tool (Spot)
         // For nondeterministic models the acceptance condition is transformed into DNF
@@ -393,8 +396,8 @@ std::pair<typename Automaton::ptr, std::vector<storage::BitVector>> SparseLTLHel
     STORM_LOG_INFO("Resulting LTL path formula: " << ltlFormula->toString());
 
     typename Automaton::ptr automaton;
-    if (env.modelchecker().isLtl2daToolSet()) {
-        automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<Automaton>(*ltlFormula, env.modelchecker().getLtl2daTool());
+    if (env.modelchecker().isLtl2AutToolSet()) {
+        automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daExternalTool<Automaton>(*ltlFormula, env.modelchecker().getLtl2AutTool());
     } else {
         if constexpr (std::is_same_v<Automaton, storm::automata::DeterministicAutomaton>) {
             automaton = storm::automata::LTL2DeterministicAutomaton::ltl2daSpot(*ltlFormula, true);
@@ -420,7 +423,7 @@ SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormula(productModelType 
                                                                Environment const& env) {
     typename transformer::DAProduct<productModelType>::ptr product;
 
-    if (env.modelchecker().isLtl2daToolSet() && !env.modelchecker().isLtl2deterministicAutomatonSet()) {
+    if (env.modelchecker().isLtl2AutToolSet() && env.modelchecker().getLtlAutomatonType() == storm::automata::AutomatonType::LDBA) {
         auto [automaton, statesForAP] = buildDAFromFormula<storm::automata::LimitDeterministicAutomaton>(model, formula, env);
         transformer::LDBAProductBuilder productBuilder(*automaton, statesForAP);
         product = productBuilder.build(model, model.getInitialStates());
