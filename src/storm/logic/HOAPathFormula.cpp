@@ -3,7 +3,7 @@
 #include <boost/any.hpp>
 #include <ostream>
 
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/exceptions/ExpressionEvaluationException.h"
 #include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/InvalidPropertyException.h"

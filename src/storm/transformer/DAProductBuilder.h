@@ -1,6 +1,6 @@
 #pragma once
 
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/storage/BitVector.h"
 #include "storm/transformer/DAProduct.h"
 #include "storm/transformer/Product.h"

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "storm/automata/APSet.h"
-#include "storm/automata/DeterministicAutomaton.h"
-#include "storm/automata/HOAConsumerDAHeader.h"
+#include "storm/automata/Automaton.h"
+#include "storm/automata/HOAConsumerHeader.h"
 #include "storm/exceptions/InvalidOperationException.h"
 #include "storm/exceptions/OutOfRangeException.h"
 #include "storm/solver/SmtSolver.h"
@@ -20,7 +20,7 @@
 namespace storm {
 namespace automata {
 
-class HOAConsumerDA : public HOAConsumerLDBAHeader {
+class HOAConsumerDA : public HOAConsumerHeader {
    private:
     AcceptanceCondition::ptr acceptance;
 

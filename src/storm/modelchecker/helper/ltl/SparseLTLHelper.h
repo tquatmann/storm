@@ -2,6 +2,7 @@
 
 #include "storm/modelchecker/helper/ltl/internal/SparseLTLSchedulerHelper.h"
 
+#include "storm/automata/AutomatonForward.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/SparseMatrix.h"
@@ -16,9 +17,6 @@ namespace logic {
 class Formula;
 class PathFormula;
 }  // namespace logic
-namespace automata {
-class DeterministicAutomaton;
-}
 
 namespace modelchecker {
 namespace helper {

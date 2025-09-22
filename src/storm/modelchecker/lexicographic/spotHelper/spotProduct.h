@@ -1,6 +1,6 @@
 #pragma once
 
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/logic/ExtractMaximalStateFormulasVisitor.h"
 #include "storm/logic/MultiObjectiveFormula.h"
 

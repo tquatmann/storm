@@ -3,16 +3,11 @@
 #include <map>
 #include <memory>
 #include <string>
+#include "storm/automata/AutomatonForward.h"
 #include "storm/logic/FormulaContext.h"
 #include "storm/logic/PathFormula.h"
 
-namespace storm {
-namespace automata {
-// fwd
-class DeterministicAutomaton;
-}  // namespace automata
-
-namespace logic {
+namespace storm::logic {
 class HOAPathFormula : public PathFormula {
    public:
     typedef std::map<std::string, std::shared_ptr<Formula const>> ap_to_formula_map;
@@ -50,5 +45,4 @@ class HOAPathFormula : public PathFormula {
 
     FormulaContext context;
 };
-}  // namespace logic
-}  // namespace storm
+}  // namespace storm::logic

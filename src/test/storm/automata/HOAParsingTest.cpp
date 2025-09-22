@@ -1,4 +1,4 @@
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "test/storm_gtest.h"
 
 #include <sstream>

@@ -1,6 +1,6 @@
 #include "SparseLTLHelper.h"
 
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/automata/LTL2Automaton.h"
 
 #include "storm/environment/modelchecker/ModelCheckerEnvironment.h"
@@ -351,7 +351,7 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
 
     // Convert LTL formula to a deterministic automaton
     std::shared_ptr<storm::automata::DeterministicAutomaton> da;
-    STORM_LOG_THROW(env.modelchecker().getLtlAutomatonType() == storm::automata::AutomatonType::Deterministic, storm::exceptions::NotSupportedException,
+    STORM_LOG_THROW(env.modelchecker().getLtlAutomatonType() == storm::automata::AutomatonType::DA, storm::exceptions::NotSupportedException,
                     "Only deterministic automata are currently supported for LTL model checking.");
     if (env.modelchecker().isLtl2AutToolSet()) {
         // Use the external tool given via ltl2aut

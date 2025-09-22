@@ -1,7 +1,7 @@
 #include "storm/modelchecker/lexicographic/lexicographicModelCheckerHelper.h"
 #include "storm//modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/automata/APSet.h"
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/environment/SubEnvironment.h"
 #include "storm/exceptions/NotImplementedException.h"
 #include "storm/logic/ExtractMaximalStateFormulasVisitor.h"

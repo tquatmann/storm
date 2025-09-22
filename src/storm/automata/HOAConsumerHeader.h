@@ -3,7 +3,7 @@
 #include "cpphoafparser/consumer/hoa_consumer.hh"
 #include "cpphoafparser/util/implicit_edge_helper.hh"
 #include "storm/automata/APSet.h"
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/automata/HOAHeader.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
@@ -14,12 +14,12 @@
 namespace storm {
 namespace automata {
 
-class HOAConsumerLDBAHeader : public cpphoafparser::HOAConsumer {
+class HOAConsumerHeader : public cpphoafparser::HOAConsumer {
    protected:
     HOAHeader header;
 
    public:
-    typedef std::shared_ptr<HOAConsumerLDBAHeader> ptr;
+    typedef std::shared_ptr<HOAConsumerHeader> ptr;
 
     struct header_parsing_done : public std::exception {};
 

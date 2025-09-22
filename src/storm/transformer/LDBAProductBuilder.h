@@ -2,15 +2,13 @@
 
 #include <storm/storage/MaximalEndComponentDecomposition.h>
 
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/storage/BitVector.h"
 #include "storm/transformer/DAProduct.h"
 #include "storm/transformer/Product.h"
 #include "storm/transformer/ProductBuilder.h"
 
 #include <vector>
-
-#include "storm/automata/limitdeterministicautomata/LimitDeterministicAutomaton.h"
 
 namespace storm::logic {
 class PathFormula;

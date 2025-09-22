@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "storm/automata/AutomatonForward.h"
 
 namespace storm {
 
@@ -10,8 +11,6 @@ class Formula;
 }  // namespace logic
 
 namespace automata {
-// fwd
-class DeterministicAutomaton;
 
 class LTL2Automaton {
    public:

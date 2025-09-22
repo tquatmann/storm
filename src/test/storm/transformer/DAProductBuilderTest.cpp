@@ -1,7 +1,7 @@
 
 #include "storm-config.h"
 #include "storm-parsers/parser/PrismParser.h"
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/builder/ExplicitModelBuilder.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/MarkovAutomaton.h"

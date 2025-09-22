@@ -6,8 +6,8 @@
 namespace storm::automata {
 std::ostream& operator<<(std::ostream& stream, AutomatonType const& algorithm) {
     switch (algorithm) {
-        case AutomatonType::Deterministic:
-            return stream << "deterministic";
+        case AutomatonType::DA:
+            return stream << "da";
         case AutomatonType::LDBA:
             return stream << "ldba";
     }
@@ -16,8 +16,8 @@ std::ostream& operator<<(std::ostream& stream, AutomatonType const& algorithm) {
 }
 
 AutomatonType automatonTypeFromString(std::string const& type) {
-    if (type == "deterministic") {
-        return AutomatonType::Deterministic;
+    if (type == "da") {
+        return AutomatonType::DA;
     } else if (type == "ldba") {
         return AutomatonType::LDBA;
     }

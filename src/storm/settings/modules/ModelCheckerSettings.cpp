@@ -27,12 +27,12 @@ ModelCheckerSettings::ModelCheckerSettings() : ModuleSettings(moduleName) {
                                          .build())
                         .build());
 
-    std::vector<std::string> const automatontypes = {"deterministic", "ldba"};
+    std::vector<std::string> const automatontypes = {"da", "ldba"};
     this->addOption(storm::settings::OptionBuilder(moduleName, ltlAutomatonType, false, "The type of automaton used for ltl model checking.")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("type", "The desired type of automaton.")
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(automatontypes))
-                                         .setDefaultValueString("deterministic")
+                                         .setDefaultValueString("da")
                                          .build())
                         .build());
 

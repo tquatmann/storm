@@ -1,7 +1,7 @@
 #pragma once
 
 #include "storm/automata/APSet.h"
-#include "storm/automata/HOAConsumerDAHeader.h"
+#include "storm/automata/HOAConsumerHeader.h"
 #include "storm/exceptions/InvalidOperationException.h"
 #include "storm/exceptions/OutOfRangeException.h"
 #include "storm/solver/SmtSolver.h"
@@ -15,12 +15,10 @@
 #include <boost/optional.hpp>
 #include <exception>
 
-#include "LimitDeterministicAutomaton.h"
-
 namespace storm {
 namespace automata {
 
-class HOAConsumerLDBA : public HOAConsumerLDBAHeader {
+class HOAConsumerLDBA : public HOAConsumerHeader {
    private:
     AcceptanceCondition::ptr acceptance;
 

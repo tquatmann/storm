@@ -1,6 +1,6 @@
 #include "storm-config.h"
 #include "storm-parsers/parser/FormulaParser.h"
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 #include "storm/exceptions/ExpressionEvaluationException.h"
 #include "storm/exceptions/WrongFormatException.h"
 #include "storm/logic/FragmentSpecification.h"

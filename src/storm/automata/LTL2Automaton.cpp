@@ -1,7 +1,6 @@
 #include "storm/automata/LTL2Automaton.h"
-#include "limitdeterministicautomata/LimitDeterministicAutomaton.h"
 #include "storm/adapters/SpotAdapter.h"
-#include "storm/automata/DeterministicAutomaton.h"
+#include "storm/automata/Automaton.h"
 
 #include "storm/exceptions/ExpressionEvaluationException.h"
 #include "storm/exceptions/FileIoException.h"
