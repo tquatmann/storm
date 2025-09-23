@@ -15,6 +15,7 @@ class AcceptanceCondition {
     typedef cpphoafparser::HOAConsumer::acceptance_expr acceptance_expr;
 
     AcceptanceCondition(std::size_t numberOfStates, unsigned int numberOfAcceptanceSets, acceptance_expr::ptr acceptance);
+    AcceptanceCondition(std::vector<storm::storage::BitVector>&& acceptanceSets, acceptance_expr::ptr acceptance);
     bool isAccepting(const storm::storage::StateBlock& scc) const;
 
     unsigned int getNumberOfAcceptanceSets() const;
@@ -31,9 +32,8 @@ class AcceptanceCondition {
     bool isAccepting(const storm::storage::StateBlock& scc, acceptance_expr::ptr expr) const;
     void extractFromDNFRecursion(acceptance_expr::ptr e, std::vector<std::vector<acceptance_expr::ptr>>& dnf, bool topLevel) const;
 
-    unsigned int numberOfAcceptanceSets;
-    acceptance_expr::ptr acceptance;
     std::vector<storm::storage::BitVector> acceptanceSets;
+    acceptance_expr::ptr acceptance;
 };
 }  // namespace automata
 }  // namespace storm

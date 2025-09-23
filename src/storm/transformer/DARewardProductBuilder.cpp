@@ -191,14 +191,12 @@ std::shared_ptr<DARewardProduct<ValueType>> DARewardProductBuilder<ValueType, Re
     // Compute accepting end components for the product model
     uint64_t numberAcceptanceConditionCombinations = pow(2, acceptanceConditions.size());
 
-    auto objectivesCombinations = storm::automata::AcceptanceConditionSynthesizer::getAllCombinations(acceptanceConditions);
-    std::vector<std::list<storage::MaximalEndComponent>> accEcs(numberAcceptanceConditionCombinations);
-
     // computes the accepting end components for all combinations of the LTL formula
-    for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; ++i) {
-        accEcs[i] = computeAcceptingECs(*objectivesCombinations[i], transitionMatrix, backwardTransitions);
-        STORM_LOG_INFO("Found " << accEcs[i].size() << " accepting end components for combination " << i);
-    }
+    std::vector<std::list<storage::MaximalEndComponent>> accEcs;
+    storm::automata::forEachAcceptanceCombination(acceptanceConditions, [&](auto accCond, auto const& enabledObj) {
+        accEcs.push_back(computeAcceptingECs(*accCond, transitionMatrix, backwardTransitions));
+        STORM_LOG_INFO("Found " << accEcs.back().size() << " accepting end components for combination " << enabledObj);
+    });
 
     // Maps every state to the MEC it is in, or to InvalidMecIndex if it does not belong to any MEC.
     std::vector<uint64_t> stateToMec(transitionMatrix.getRowGroupCount(), InvalidIndex);

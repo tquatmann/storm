@@ -1,77 +1,95 @@
 #pragma once
 
-#include <storm/utility/macros.h>
-
 #include <numeric>
+#include "storm/automata/AcceptanceCondition.h"
+#include "storm/exceptions/UnexpectedException.h"
+#include "storm/utility/macros.h"
 
-#include "../utility/logging.h"
-#include "AcceptanceCondition.h"
+namespace storm::automata {
 
-namespace cpphoafparser {
+namespace detail {
 
-BooleanExpression<AtomAcceptance>::ptr toDNF(BooleanExpression<AtomAcceptance>::ptr expr) {
-    using ptr = BooleanExpression<AtomAcceptance>::ptr;
+using HoaBoolExpr = cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>;
 
+HoaBoolExpr::ptr toNegationNormalForm(HoaBoolExpr::ptr expr) {
     if (expr->isTRUE() || expr->isFALSE() || expr->isAtom()) {
         return expr;
     }
-
+    if (expr->isAND()) {
+        return toNegationNormalForm(expr->getLeft()) & toNegationNormalForm(expr->getRight());
+    }
+    if (expr->isOR()) {
+        return toNegationNormalForm(expr->getLeft()) | toNegationNormalForm(expr->getRight());
+    }
     if (expr->isNOT()) {
-        // Negationen behandeln und durch De Morgan'sche Regeln vereinfachen
-        ptr subExpr = expr->getLeft();
+        auto subExpr = expr->getLeft();
         if (subExpr->isTRUE())
-            return BooleanExpression<AtomAcceptance>::False();
+            return HoaBoolExpr::False();
         if (subExpr->isFALSE())
-            return BooleanExpression<AtomAcceptance>::True();
+            return HoaBoolExpr::True();
         if (subExpr->isAtom()) {
+            using AtomAcceptance = cpphoafparser::AtomAcceptance;
             auto const& atom = subExpr->getAtom();
             auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ? AtomAcceptance::TEMPORAL_INF : AtomAcceptance::TEMPORAL_FIN;
             auto const negatedAtom = std::make_shared<AtomAcceptance>(negatedAtomType, atom.getAcceptanceSet(), atom.isNegated());
-            return BooleanExpression<AtomAcceptance>::Atom(negatedAtom);
+            return HoaBoolExpr::Atom(negatedAtom);
+        }
+        if (subExpr->isNOT()) {
+            return toNegationNormalForm(subExpr->getLeft());
         }
         if (subExpr->isAND()) {
             // De Morgan: !(A & B) -> !A | !B
-            return toDNF(!subExpr->getLeft() | !subExpr->getRight());
+            return toNegationNormalForm(!subExpr->getLeft() | !subExpr->getRight());
         }
         if (subExpr->isOR()) {
             // De Morgan: !(A | B) -> !A & !B
-            return toDNF(!subExpr->getLeft() & !subExpr->getRight());
+            return toNegationNormalForm(!subExpr->getLeft() & !subExpr->getRight());
         }
     }
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in negation normal form conversion");
+}
 
+HoaBoolExpr::ptr fromNNFToDNF(HoaBoolExpr::ptr expr, bool topLevel = true) {
     if (expr->isAND()) {
-        ptr left = toDNF(expr->getLeft());
-        ptr right = toDNF(expr->getRight());
+        auto left = fromNNFToDNF(expr->getLeft());
+        auto right = fromNNFToDNF(expr->getRight());
 
+        // TODO: this can be optimized, e.g., check for clauses that are always false (x & !x) or that subsume each other (x & y & z | x & y)
         if (left->isOR()) {
-            // Distributivgesetz: (A | B) & C -> (A & C) | (B & C)
-            return toDNF((left->getLeft() & right) | (left->getRight() & right));
+            // Distributive law: (A | B) & C -> (A & C) | (B & C)
+            return fromNNFToDNF((left->getLeft() & right) | (left->getRight() & right));
         }
         if (right->isOR()) {
-            // Distributivgesetz: A & (B | C) -> (A & B) | (A & C)
-            return toDNF((right->getLeft() & left) | (right->getRight() & left));
+            // Distributive law: A & (B | C) -> (A & B) | (A & C)
+            return fromNNFToDNF((right->getLeft() & left) | (right->getRight() & left));
         }
-        // Keine Änderung erforderlich
+        // Nothing to distribute, just combine
         return left & right;
     }
 
     if (expr->isOR()) {
-        // Rekursive Anwendung auf Disjunktionen
-        return toDNF(expr->getLeft()) | toDNF(expr->getRight());
+        return fromNNFToDNF(expr->getLeft()) | fromNNFToDNF(expr->getRight());
     }
 
-    throw std::logic_error("Unbekannter Operator im Ausdruck");
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in disjunctive normal form conversion");
 }
 
-BooleanExpression<AtomAcceptance>::ptr addOffsetAcceptanceSets(BooleanExpression<AtomAcceptance>::ptr const expr, uint64_t offset) {
+HoaBoolExpr::ptr toDisjunctiveNormalForm(HoaBoolExpr::ptr expr) {
+    return fromNNFToDNF(toNegationNormalForm(expr));
+}
+
+/*!
+ * Adds the given offset to all acceptance set indices in the given expression.
+ */
+HoaBoolExpr::ptr addOffsetAcceptanceSets(HoaBoolExpr::ptr const expr, uint64_t offset) {
     if (expr->isTRUE() || expr->isFALSE()) {
         return expr;
     }
 
     if (expr->isAtom()) {
         auto const& atom = expr->getAtom();
-        auto const offsetAtom = std::make_shared<AtomAcceptance>(atom.getType(), atom.getAcceptanceSet() + offset, atom.isNegated());
-        return BooleanExpression<AtomAcceptance>::Atom(offsetAtom);
+        auto const offsetAtom = std::make_shared<cpphoafparser::AtomAcceptance>(atom.getType(), atom.getAcceptanceSet() + offset, atom.isNegated());
+        return HoaBoolExpr::Atom(offsetAtom);
     }
 
     if (expr->isAND() || expr->isOR()) {
@@ -85,97 +103,52 @@ BooleanExpression<AtomAcceptance>::ptr addOffsetAcceptanceSets(BooleanExpression
         return !left;
     }
 
-    throw std::logic_error("Unbekannter Operator im Ausdruck");
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression when adding offset to acceptance sets");
+}
+}  // namespace detail
+
+/*!
+ * Calls the given callback for each combination of the acceptance conditions provided in the constructor
+ * (i.e., for each subset of the acceptance conditions).
+ * The callback is called with two parameters:
+ * 1. The combined acceptance condition (with acceptance sets merged and the acceptance expression being the conjunction of the enabled conditions)
+ * 2. A BitVector indicating which of the original acceptance conditions are enabled (true) and which are disabled (false)
+ *
+ * @param acceptanceConditions
+ * @param callback
+ */
+void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions,
+                                  std::function<void(AcceptanceCondition::ptr, storm::storage::BitVector const&)> const& callback) {
+    STORM_LOG_ASSERT(acceptanceConditions.size() > 0, "No acceptance conditions provided");
+    std::vector<detail::HoaBoolExpr::ptr> acceptanceExpressions;
+    std::vector<storm::storage::BitVector> acceptanceSets;
+    for (const auto& acceptanceCondition : acceptanceConditions) {
+        acceptanceExpressions.push_back(detail::addOffsetAcceptanceSets(acceptanceCondition->getAcceptanceExpression(), acceptanceSets.size()));
+        for (uint64_t i = 0; i < acceptanceCondition->getNumberOfAcceptanceSets(); ++i) {
+            acceptanceSets.push_back(acceptanceCondition->getAcceptanceSet(i));
+        }
+    }
+
+    detail::HoaBoolExpr::ptr accExprPtr = detail::HoaBoolExpr::True();
+    auto accCond = std::make_shared<AcceptanceCondition>(std::move(acceptanceSets), accExprPtr);
+    storm::storage::BitVector enabledConditions(acceptanceConditions.size(), false);
+    STORM_LOG_INFO("Calling callback with acceptance expression: " << accExprPtr->toString() << "\n\tand enabled conditions " << enabledConditions);
+    callback(accCond, enabledConditions);  // first call with all conditions disabled
+    do {
+        enabledConditions.increment();
+        bool first = true;
+        for (auto condIndex : enabledConditions) {
+            if (first) {
+                accExprPtr = acceptanceExpressions[condIndex];
+                first = false;
+            } else {
+                accExprPtr = accExprPtr & acceptanceExpressions[condIndex];
+            }
+        }
+        accExprPtr = detail::toDisjunctiveNormalForm(accExprPtr);
+        STORM_LOG_INFO("Calling callback with acceptance expression: " << accExprPtr->toString() << "\n\tand enabled conditions " << enabledConditions);
+        callback(accCond, enabledConditions);
+    } while (!enabledConditions.full());
 }
 
-}  // namespace cpphoafparser
-
-namespace storm {
-namespace automata {
-class AcceptanceConditionSynthesizer {
-   public:
-    AcceptanceConditionSynthesizer(std::vector<AcceptanceCondition::ptr> acceptanceConditions) : acceptanceConditions(acceptanceConditions) {}
-
-    /**
-     * Makes the numbering of acceptance sets unique, e.g., [Inf(0), Inf(0)] -> [Inf(0), Inf(1)]
-     *
-     * @param acceptanceConditions The vector of acceptance conditions for the LTL objectives
-     */
-    static std::vector<AcceptanceCondition::ptr> liftAcceptanceSets(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
-        // flattened vector storing unique acceptance sets
-        auto numAcceptanceSets = 0;
-        auto numStates = 0;
-        for (const auto& acceptanceCondition : acceptanceConditions) {
-            numAcceptanceSets += acceptanceCondition->getNumberOfAcceptanceSets();
-        }
-        std::vector<storm::storage::BitVector> acceptanceSets(numAcceptanceSets);
-        std::vector<AcceptanceCondition::ptr> liftedAcceptanceConditions(acceptanceConditions.size());
-
-        uint64_t offset = 0, index = 0;
-        for (const auto& ac : acceptanceConditions) {
-            auto acceptanceExpr = cpphoafparser::addOffsetAcceptanceSets(ac->getAcceptanceExpression(), offset);
-            liftedAcceptanceConditions[index++] = std::make_shared<AcceptanceCondition>(numStates, numAcceptanceSets, acceptanceExpr);
-
-            for (uint64_t i = 0; i < ac->getNumberOfAcceptanceSets(); ++i) {
-                acceptanceSets[i + offset] = ac->getAcceptanceSet(i);
-            }
-            offset += ac->getNumberOfAcceptanceSets();
-        }
-
-        for (const auto& ac : liftedAcceptanceConditions) {
-            for (uint64_t i = 0; i < numAcceptanceSets; ++i) {
-                ac->getAcceptanceSet(i) = acceptanceSets[i];
-            }
-        }
-
-        return liftedAcceptanceConditions;
-    }
-
-    static std::vector<AcceptanceCondition::ptr> getAllCombinations(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions) {
-        uint64_t numberAcceptanceConditionCombinations = pow(2, acceptanceConditions.size());
-        std::vector<AcceptanceCondition::ptr> objectivesCombinations(numberAcceptanceConditionCombinations);
-
-        for (int i = 0; i < acceptanceConditions.size(); i++) {
-            STORM_LOG_INFO(acceptanceConditions[i]->getAcceptanceExpression()->toString());
-            STORM_LOG_INFO(acceptanceConditions[i]->getNumberOfAcceptanceSets());
-        }
-        STORM_LOG_INFO("");
-
-        auto liftedAcceptanceConditions = liftAcceptanceSets(acceptanceConditions);
-        auto numAccSets = liftedAcceptanceConditions[0]->getNumberOfAcceptanceSets();
-        auto numStates = liftedAcceptanceConditions[0]->getAcceptanceSet(0).size();
-
-        for (int i = 0; i < liftedAcceptanceConditions.size(); i++) {
-            STORM_LOG_INFO(liftedAcceptanceConditions[i]->getAcceptanceExpression()->toString());
-        }
-
-        for (uint64_t i = 0; i < numberAcceptanceConditionCombinations; i++) {
-            auto acceptanceExpression = std::make_shared<cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>>(true);
-            for (uint64_t j = 0; j < liftedAcceptanceConditions.size(); j++) {
-                if (i & (1 << j)) {
-                    acceptanceExpression = liftedAcceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
-                } else {
-                    acceptanceExpression = !liftedAcceptanceConditions[j]->getAcceptanceExpression() & acceptanceExpression;
-                }
-            }
-            acceptanceExpression = toDNF(acceptanceExpression);
-            STORM_LOG_INFO(acceptanceExpression->toString());
-            objectivesCombinations[i] = std::make_shared<automata::AcceptanceCondition>(numStates, numAccSets, acceptanceExpression);
-
-            // set acceptance sets
-            for (uint j = 0; j < numAccSets; j++) {
-                auto acceptanceSet = liftedAcceptanceConditions[0]->getAcceptanceSet(j);
-                STORM_LOG_ASSERT(acceptanceSet.size() == numStates,
-                                 "Number of states " << numStates << " does not match size " << acceptanceSet.size() << " of acceptance set " << j << ".");
-                objectivesCombinations[i]->getAcceptanceSet(j) = acceptanceSet;
-            }
-        }
-
-        return objectivesCombinations;
-    }
-
-   private:
-    std::vector<AcceptanceCondition::ptr> acceptanceConditions;
-};
-}  // namespace automata
-}  // namespace storm
+}  // namespace storm::automata

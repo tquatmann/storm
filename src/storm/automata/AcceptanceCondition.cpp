@@ -7,15 +7,17 @@ namespace storm {
 namespace automata {
 
 AcceptanceCondition::AcceptanceCondition(std::size_t numberOfStates, unsigned int numberOfAcceptanceSets, acceptance_expr::ptr acceptance)
-    : numberOfAcceptanceSets(numberOfAcceptanceSets), acceptance(acceptance) {
-    // initialize acceptance sets
-    for (unsigned int i = 0; i < numberOfAcceptanceSets; i++) {
-        acceptanceSets.push_back(storm::storage::BitVector(numberOfStates));
-    }
+    : acceptanceSets(numberOfStates, storm::storage::BitVector(numberOfStates)), acceptance(acceptance) {
+    // intentionally left empty
+}
+
+AcceptanceCondition::AcceptanceCondition(std::vector<storm::storage::BitVector>&& acceptanceSets, acceptance_expr::ptr acceptance)
+    : acceptanceSets(std::move(acceptanceSets)), acceptance(acceptance) {
+    // intentionally left empty
 }
 
 unsigned int AcceptanceCondition::getNumberOfAcceptanceSets() const {
-    return numberOfAcceptanceSets;
+    return acceptanceSets.size();
 }
 
 storm::storage::BitVector& AcceptanceCondition::getAcceptanceSet(unsigned int index) {
@@ -121,8 +123,8 @@ void AcceptanceCondition::extractFromDNFRecursion(AcceptanceCondition::acceptanc
 }
 
 AcceptanceCondition::ptr AcceptanceCondition::lift(std::size_t productNumberOfStates, std::function<std::size_t(std::size_t)> mapping) const {
-    AcceptanceCondition::ptr lifted(new AcceptanceCondition(productNumberOfStates, numberOfAcceptanceSets, acceptance));
-    for (unsigned int i = 0; i < numberOfAcceptanceSets; i++) {
+    AcceptanceCondition::ptr lifted(new AcceptanceCondition(productNumberOfStates, getNumberOfAcceptanceSets(), acceptance));
+    for (uint64_t i = 0; i < getNumberOfAcceptanceSets(); ++i) {
         const storm::storage::BitVector& set = getAcceptanceSet(i);
         storm::storage::BitVector& liftedSet = lifted->getAcceptanceSet(i);
 
