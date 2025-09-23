@@ -43,7 +43,14 @@ class Automaton {
     std::size_t getNumberOfEdgesPerState() const;
 
     std::shared_ptr<AcceptanceCondition> getAcceptance() const;
-    storm::storage::BitVector getAcceptingPart() const
+
+    /*!
+     * Computes the partition of the LDBA states into initial and accepting part.
+     * The accepting part contains all accepting states and all of the contained states are deterministic.
+     * Furthermore, the accepting part can only be entered via a nondeterministic state.
+     * @return the set of automaton states that are in the accepting part.
+     */
+    storm::storage::BitVector computeAcceptingPart() const
         requires(Type == AutomatonType::LDBA);
 
     void printHOA(std::ostream& out) const;

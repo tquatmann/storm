@@ -8,6 +8,7 @@
 #include "storm/automata/HOAConsumerDA.h"
 #include "storm/automata/HOAConsumerLDBA.h"
 #include "storm/exceptions/NotImplementedException.h"
+#include "storm/exceptions/WrongFormatException.h"
 #include "storm/io/file.h"
 #include "storm/utility/macros.h"
 
@@ -86,31 +87,47 @@ AcceptanceCondition::ptr Automaton<Type>::getAcceptance() const {
 }
 
 template<AutomatonType Type>
-storm::storage::BitVector Automaton<Type>::getAcceptingPart() const
+storm::storage::BitVector Automaton<Type>::computeAcceptingPart() const
     requires(Type == AutomatonType::LDBA)
 {
-    auto expr = acceptance->getAcceptanceExpression();
-    STORM_LOG_ASSERT(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF && acceptance->getNumberOfAcceptanceSets() == 1,
-                     "Büchi acceptance condition has to be of the form INF(0)");
-    auto acceptingPart = acceptance->getAcceptanceSet(0);
-
-    // Find all states reachable from an accepting state
-    std::vector<StateIndex> queue(acceptingPart.begin(), acceptingPart.end());
-    while (!queue.empty()) {
-        auto const state = queue.back();
-        queue.pop_back();
-
+    // Get nondeterministic states and predecessors
+    std::vector<storm::storage::BitVector> predecessors(numberOfStates, storm::storage::BitVector(numberOfStates, false));
+    storm::storage::BitVector nondeterministicStates(numberOfStates, false);
+    for (StateIndex state = 0; state < numberOfStates; state++) {
         for (uint64_t label = 0; label < edgesPerState; label++) {
-            STORM_LOG_ASSERT(getSuccessors(state, label).hasUniqueSetBit(), "The automaton is not limit deterministic: nondeterministic choice for state "
-                                                                                << state << " and label " << label << " reachable from an accepting state.");
-            for (auto const next : getSuccessors(state, label)) {
-                if (!acceptingPart.get(next)) {
-                    queue.push_back(next);
-                    acceptingPart.set(next);
-                }
+            auto const succs = getSuccessors(state, label);
+            if (succs.getNumberOfSetBits() > 1) {
+                nondeterministicStates.set(state);
+            }
+            for (auto const succ : succs) {
+                predecessors[succ].set(state);
             }
         }
     }
+
+    storm::storage::BitVector acceptingPart = ~nondeterministicStates;
+    // Remove all states that can reach a nondeterministic state
+    std::vector<StateIndex> queue(nondeterministicStates.begin(), nondeterministicStates.end());
+    while (!queue.empty()) {
+        auto const state = queue.back();
+        queue.pop_back();
+        for (auto const pred : predecessors[state]) {
+            if (acceptingPart.get(pred)) {
+                acceptingPart.set(pred, false);
+                queue.push_back(pred);
+            }
+        }
+    }
+
+    // Assert that indeed all accepting states are in the accepting part
+    auto expr = acceptance->getAcceptanceExpression();
+    STORM_LOG_THROW(expr->isAtom() && expr->getAtom().getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF && acceptance->getNumberOfAcceptanceSets() == 1,
+                    storm::exceptions::WrongFormatException, "Büchi acceptance condition has to be of the form INF(0)");
+    auto acceptingStates = acceptance->getAcceptanceSet(0);
+    STORM_LOG_ASSERT(acceptingStates.size() == numberOfStates, "Dimension mismatch");
+    STORM_LOG_THROW(acceptingStates.isSubsetOf(acceptingPart), storm::exceptions::WrongFormatException,
+                    "Büchi acceptance condition has to be of the form INF(0)");
+
     return acceptingPart;
 }
 

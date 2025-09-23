@@ -71,7 +71,7 @@ class LDBAProductBuilder {
     }
 
     const storm::storage::BitVector getAcceptingPart() const {
-        return ldba.getAcceptingPart();
+        return ldba.computeAcceptingPart();
     }
 
    private:
