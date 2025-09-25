@@ -78,8 +78,7 @@ std::shared_ptr<Automaton> LTL2Automaton::ltl2AutExternalTool(storm::logic::Form
         int status;
 
         // wait for completion
-        while (wait(&status) != pid)
-            ;
+        while (wait(&status) != pid);
 
         int rv;
         if (WIFEXITED(status)) {
