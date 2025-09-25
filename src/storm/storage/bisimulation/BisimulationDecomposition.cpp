@@ -422,6 +422,92 @@ void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinement(dou
 }
 
 template<typename ModelType>
+void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinementUsingCompleteLinkage(double epsilon) {
+    std::cout << "Computing epsilon-bisimulation with epsilon: " << epsilon << std::endl;
+
+    if constexpr (!storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
+                        "Cannot compute epsilon-bisimulation on non-interval model!");
+    }
+
+    std::deque<typename Partition::Block> blocksQueue;
+    storm::storage::Partition::BlockSet enqueuedBlocks;
+
+    // enqueue all non-absorbing blocks
+    this->partition.forEachBlock([&](auto const& block) {
+        if (!this->absorbingBlocks.contains(block.front())) {
+            blocksQueue.push_back(block);
+            enqueuedBlocks.insert(block);
+        }
+    });
+
+    // refinement loop
+    while (!blocksQueue.empty()) {
+        auto block = blocksQueue.back();
+        blocksQueue.pop_back();
+        enqueuedBlocks.erase(block);
+
+        // helper: distance between two states
+        auto stateDistance = [&](auto s, auto t) {
+            double sum = 0.0;
+            this->partition.forEachBlock([&](auto const& C) {
+                if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
+                    ValueType totalS = storm::utility::zero<ValueType>();
+                    ValueType totalT = storm::utility::zero<ValueType>();
+                    for (auto const& e : model.getTransitionMatrix().getRow(s)) {
+                        if (partition.contains(C, e.getColumn())) totalS += e.getValue();
+                    }
+                    for (auto const& e : model.getTransitionMatrix().getRow(t)) {
+                        if (partition.contains(C, e.getColumn())) totalT += e.getValue();
+                    }
+                    sum += std::max(std::abs(std::min(1.0, totalS.lower()) - std::min(1.0, totalT.lower())),
+                                    std::abs(std::min(1.0, totalS.upper()) - std::min(1.0, totalT.upper())));
+                }
+            });
+            return sum;
+        };
+
+        // cluster states in this block
+        std::vector<std::vector<storm::storage::sparse::state_type>> groups;
+        for (auto s : block) {
+            bool placed = false;
+            for (auto& g : groups) {
+                bool fits = true;
+                for (auto t : g) {
+                    if (stateDistance(s, t) > epsilon) { fits = false; break; }
+                }
+                if (fits) { g.push_back(s); placed = true; break; }
+            }
+            if (!placed) groups.push_back({s});
+        }
+
+        if (groups.size() <= 1) continue; // nothing to split
+
+        bool wasSplit = this->partition.splitBlockByOrder(block,
+                                                          [&](auto a, auto b) {
+                                                              int ga = -1, gb = -1;
+                                                              for (int i = 0; i < (int)groups.size(); ++i) {
+                                                                  if (std::find(groups[i].begin(), groups[i].end(), a) != groups[i].end()) ga = i;
+                                                                  if (std::find(groups[i].begin(), groups[i].end(), b) != groups[i].end()) gb = i;
+                                                              }
+                                                              return (ga < gb);
+                                                          });
+
+        if (wasSplit) {
+            this->partition.forEachSubBlock(block, [&](auto const& sub) {
+                if (sub.size() > 1 && !enqueuedBlocks.contains(sub)) {
+                    blocksQueue.push_back(sub);
+                    enqueuedBlocks.insert(sub);
+                }
+            });
+        }
+    }
+
+    std::cout << "Finished epsilon-refinement." << std::endl;
+    std::cout << "Size of final partition " << partition.getNumberOfBlocks() << "." << std::endl;
+}
+
+template<typename ModelType>
 void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
     // Insert all blocks into the queue for refinement
     std::deque<typename Partition::Block> blocksQueue;

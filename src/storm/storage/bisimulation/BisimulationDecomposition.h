@@ -237,6 +237,8 @@ class BisimulationDecomposition {
 
     void performEpsilonSignatureRefinement(double epsilon);
 
+    void performEpsilonSignatureRefinementUsingCompleteLinkage(double epsilon);
+
     /*!
      * Computes the signature of the given state with respect to the given partition.
      * @param state input state whose signature shall be computed.
