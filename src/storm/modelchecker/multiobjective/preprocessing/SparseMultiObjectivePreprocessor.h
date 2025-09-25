@@ -74,6 +74,8 @@ class SparseMultiObjectivePreprocessor {
      * @param optionalRewardModelName the reward model name that is considered for the formula (if available)
      */
     static void preprocessOperatorFormula(storm::logic::OperatorFormula const& formula, PreprocessorData& data);
+    static void preprocessLTLFormula(storm::logic::ProbabilityOperatorFormula const& formula, std::string const& totalRewardModelName, bool isInverted,
+                                     PreprocessorData& data);
     static void preprocessProbabilityOperatorFormula(storm::logic::ProbabilityOperatorFormula const& formula, storm::logic::OperatorInformation const& opInfo,
                                                      PreprocessorData& data);
     static void preprocessRewardOperatorFormula(storm::logic::RewardOperatorFormula const& formula, storm::logic::OperatorInformation const& opInfo,

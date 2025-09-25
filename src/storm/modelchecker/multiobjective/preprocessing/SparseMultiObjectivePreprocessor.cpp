@@ -3,19 +3,19 @@
 #include <algorithm>
 #include <set>
 
-#include "../../../logic/FormulaInformation.h"
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/logic/FormulaInformation.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"
-#include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
-#include "storm/transformer/EndComponentEliminator.h"
+#include "storm/transformer/LTLToRabinObjectiveTransformer.h"
 #include "storm/transformer/MemoryIncorporation.h"
+#include "storm/transformer/RabinToTotalRewardTransformer.h"
 #include "storm/transformer/SubsystemBuilder.h"
 #include "storm/utility/FilteredRewardModel.h"
 #include "storm/utility/graph.h"
@@ -24,54 +24,166 @@
 
 #include "storm/exceptions/InvalidPropertyException.h"
 #include "storm/exceptions/NotImplementedException.h"
-#include "storm/exceptions/UnexpectedException.h"
 
-namespace storm {
-namespace modelchecker {
-namespace multiobjective {
-namespace preprocessing {
+namespace storm::modelchecker::multiobjective::preprocessing {
+
+namespace detail {
+
+/*!
+ * Returns whether we support LTL for the given input
+ */
+bool haveLtlSupport(Environment const& env, auto const& model, auto const& formulas, bool const produceScheduler) {
+    // We do not have LTL support for scheduler restrictions, scheduler production, and for reward or time bounded objectives.
+    // todo: check if bounded formulas are still problematic
+    return !env.modelchecker().multi().isSchedulerRestrictionSet() && !produceScheduler &&
+           std::none_of(formulas.begin(), formulas.end(), [&model](auto const& f) {
+               if (f->isProbabilityOperatorFormula() && f->asProbabilityOperatorFormula().getSubformula().isBoundedUntilFormula()) {
+                   auto const& bndUntil = f->asProbabilityOperatorFormula().getSubformula().asBoundedUntilFormula();
+                   return bndUntil.isMultiDimensional() || bndUntil.hasMultiDimensionalSubformulas() || bndUntil.getTimeBoundReference().isRewardBound() ||
+                          (bndUntil.getTimeBoundReference().isTimeBound() && !model.isDiscreteTimeModel());
+               } else if (f->isRewardOperatorFormula() && f->asRewardOperatorFormula().getSubformula().isCumulativeRewardFormula()) {
+                   auto const& cumReward = f->asRewardOperatorFormula().getSubformula().asCumulativeRewardFormula();
+                   return cumReward.isMultiDimensional() || cumReward.getTimeBoundReference().isRewardBound() ||
+                          (cumReward.getTimeBoundReference().isTimeBound() && !model.isDiscreteTimeModel());
+               }
+               return false;
+           });
+}
+
+struct LtlObjectiveInformation {
+    LtlObjectiveInformation(uint64_t numObjectives)
+        : ltlObjectiveIndices(numObjectives, false), negatedLtlObjectiveIndices(numObjectives, false), qualitativeObjectiveIndices(numObjectives, false) {}
+
+    storm::storage::BitVector ltlObjectiveIndices, negatedLtlObjectiveIndices, qualitativeObjectiveIndices;
+    std::vector<std::shared_ptr<storm::logic::Formula const>> ltlFormulas;
+    std::vector<std::string> quantitativeTotalRewardModelNames;
+};
+/*!
+ * Returns the indices of LTL objectives and the corresponding LTL path formulas.
+ * Will negate all LTL formulas inside minimizing probability operators (i.e. not(phi) for objectives P<=c[ phi ] or Pmin=?[ phi ])
+ * @note This does not include (bounded-)until, eventually, or globally formulas as we have dedicated algorithms for these.
+ * @param includeAllQualitative if set, unnested until, eventually, or globally formulas formulas will also be considered if they are inside a P>=1[...] or
+ * P<=0[...] operator.
+ * @param negateMinimizin
+ * @return The indices of LTL objectives, negated LTL objectives, and qualitative LTL objectives, as well as the (potentially negated) LTL path formulas
+ * @post result.ltlObjectiveIndices.getNumberOfSetBits == result.ltlFormulas.size()
+ */
+LtlObjectiveInformation getLtlObjectiveInfoNegateMinimizing(auto const& formulas, bool includeAllQualitative) {
+    LtlObjectiveInformation result(formulas.size());
+    for (uint64_t objIndex = 0; objIndex < formulas.size(); objIndex++) {
+        if (!formulas[objIndex]->isProbabilityOperatorFormula()) {
+            continue;
+        }
+        auto const& probOperator = formulas[objIndex]->asProbabilityOperatorFormula();
+        auto const& subFormula = probOperator.getSubformula();
+        bool isQualitative = false;
+        bool add = subFormula.info(false).containsComplexPathFormula();  // e.g. P=? [ F G a ]
+        add = add || (!subFormula.isUntilFormula() && !subFormula.isBoundedUntilFormula() && !subFormula.isEventuallyFormula() &&
+                      !subFormula.isGloballyFormula());                        // e.g. P=? [ X a ]
+        if (probOperator.hasBound() && !subFormula.isBoundedUntilFormula()) {  // bounded until not considered part of LTL here
+            auto const threshold = probOperator.template getThresholdAs<storm::RationalNumber>();
+            auto const comp = probOperator.getComparisonType();
+            using enum storm::logic::ComparisonType;
+            if ((comp == GreaterEqual && storm::utility::isOne(threshold)) || (comp == LessEqual && storm::utility::isZero(threshold))) {
+                add = add || includeAllQualitative;  // e.g. P>=1 [ G a ] or P<=0 [ F a ]
+                isQualitative = add;
+            }
+        }
+        if (add) {
+            result.ltlObjectiveIndices.set(objIndex);
+            if (isQualitative) {
+                result.qualitativeObjectiveIndices.set(objIndex);
+            } else {
+                result.quantitativeTotalRewardModelNames.push_back("ltlobj" + std::to_string(objIndex) + "_" + subFormula.toString());
+            }
+
+            bool const minimizing = (probOperator.hasBound() && !storm::logic::isLowerBound(probOperator.getComparisonType())) ||
+                                    (probOperator.hasOptimalityType() && storm::solver::minimize(probOperator.getOptimalityType()));
+            if (minimizing) {
+                result.negatedLtlObjectiveIndices.set(objIndex);
+                result.ltlFormulas.push_back(std::make_shared<storm::logic::UnaryBooleanStateFormula const>(
+                    storm::logic::UnaryBooleanStateFormula::OperatorType::Not, subFormula.asSharedPointer()));
+            } else {
+                result.ltlFormulas.push_back(subFormula.asSharedPointer());
+            }
+        }
+    }
+    return result;
+}
+
+}  // namespace detail
 
 template<typename SparseModelType>
 typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(
     Environment const& env, SparseModelType const& originalModel, storm::logic::MultiObjectiveFormula const& originalFormula, bool produceScheduler) {
+    auto const& subformulas = originalFormula.getSubformulas();
     std::shared_ptr<SparseModelType> model;
+
+    // Potentially convert LTL objectives to Rabin and then to total reward objectives
+    bool const allowLTL = detail::haveLtlSupport(env, originalModel, subformulas, produceScheduler);
+    auto const ltlInformation = detail::getLtlObjectiveInfoNegateMinimizing(subformulas, allowLTL);  // include qualitative formulas only if we have LTL support
+    auto const hasLtlObjectives = !ltlInformation.ltlObjectiveIndices.empty();
+    if (hasLtlObjectives) {
+        STORM_LOG_THROW(
+            allowLTL, storm::exceptions::NotSupportedException,
+            "The provided formula contains LTL objectives but LTL model checking is not supported for the given model, objectives, and/or settings.");
+        storm::modelchecker::SparsePropositionalModelChecker<SparseModelType> mc(originalModel);
+        auto subformulaCallback = [&mc](storm::logic::Formula const& f) { return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector(); };
+        // apply product construction with automata
+        auto ltlToRabinResult = storm::transformer::LTLToRabinObjectiveTransformer::transform(originalModel, ltlInformation.ltlFormulas, subformulaCallback);
+        // demerge MECs to convert to total reward
+        auto const qualitativeRabinLocalIndices = ltlInformation.qualitativeObjectiveIndices % ltlInformation.ltlObjectiveIndices;
+        auto const quantitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, ~qualitativeRabinLocalIndices);
+        auto const qualitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, qualitativeRabinLocalIndices);
+        auto rabinToTotalRewardResult = storm::transformer::RabinToTotalRewardTransformer::transform(
+            *ltlToRabinResult.model, quantitativeRabinObjectives, ltlInformation.quantitativeTotalRewardModelNames, qualitativeRabinObjectives);
+        STORM_LOG_THROW(rabinToTotalRewardResult.model != nullptr, storm::exceptions::NotSupportedException,
+                        "The qualitative objectives cannot be satisfied in the given model. This is not supported.");
+        model = rabinToTotalRewardResult.model;
+    }
+
+    SparseModelType const& modelRef = model != nullptr ? *model : originalModel;
     std::optional<storm::storage::SparseModelMemoryProductReverseData> memoryIncorporationReverseData;
 
     // Incorporate the necessary memory
     if (env.modelchecker().multi().isSchedulerRestrictionSet()) {
         auto const& schedRestr = env.modelchecker().multi().getSchedulerRestriction();
         if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::GoalMemory) {
+            STORM_LOG_ASSERT(!hasLtlObjectives, "No ltl objectives expected at this point.");  // should be catched above already
             if (produceScheduler) {
                 std::tie(model, memoryIncorporationReverseData) =
-                    storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(originalModel,
-                                                                                                                   originalFormula.getSubformulas());
+                    storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(modelRef, subformulas);
             } else {
-                model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(env, originalModel, originalFormula.getSubformulas());
+                model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(modelRef, subformulas);
             }
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Arbitrary && schedRestr.getMemoryStates() > 1) {
             STORM_LOG_THROW(!produceScheduler, storm::exceptions::NotImplementedException, "Cannot produce schedulers for the provided memory pattern.");
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateFullMemory(originalModel, schedRestr.getMemoryStates());
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateFullMemory(modelRef, schedRestr.getMemoryStates());
         } else if (schedRestr.getMemoryPattern() == storm::storage::SchedulerClass::MemoryPattern::Counter && schedRestr.getMemoryStates() > 1) {
             STORM_LOG_THROW(!produceScheduler, storm::exceptions::NotImplementedException, "Cannot produce schedulers for the provided memory pattern.");
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateCountingMemory(originalModel, schedRestr.getMemoryStates());
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateCountingMemory(modelRef, schedRestr.getMemoryStates());
         } else if (schedRestr.isPositional()) {
-            model = std::make_shared<SparseModelType>(originalModel);
+            model = std::make_shared<SparseModelType>(modelRef);
         } else {
             STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "The given scheduler restriction has not been implemented.");
         }
     } else {
         if (produceScheduler) {
+            STORM_LOG_ASSERT(!hasLtlObjectives, "No ltl objectives expected at this point.");  // should be catched above already
             std::tie(model, memoryIncorporationReverseData) =
-                storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(originalModel, originalFormula.getSubformulas());
+                storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemoryWithReverseData(modelRef, subformulas);
         } else {
-            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(env, originalModel, originalFormula.getSubformulas());
+            // incorporate goal memory only for non-LTL objectives as LTL objectives already have been transformed above
+            model = storm::transformer::MemoryIncorporation<SparseModelType>::incorporateGoalMemory(
+                modelRef, storm::utility::vector::filterVector(subformulas, ~ltlInformation.ltlObjectiveIndices));
         }
     }
 
     // Remove states that are irrelevant for all properties (e.g. because they are only reachable via goal states
     boost::optional<std::string> deadlockLabel;
-    if (!produceScheduler) {
-        // When producing schedulers, removing irrelevant states requires additional bookkeeping.
+    if (!produceScheduler && !hasLtlObjectives) {
+        // When producing schedulers, removing irrelevant states requires additional bookkeeping which we have not implemented yet.
+        // TODO: adding support for LTL objectives should be easy as they have already been transformed to total reward objectives above.
         removeIrrelevantStates(model, deadlockLabel, originalFormula);
     }
 
@@ -79,31 +191,29 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     data.deadlockLabel = deadlockLabel;
     data.memoryIncorporationReverseData = std::move(memoryIncorporationReverseData);
 
-    int ltlObjectiveCounter = 0;
     // Invoke preprocessing on the individual objectives
-    for (auto const& subFormula : originalFormula.getSubformulas()) {
-        STORM_LOG_INFO("Preprocessing objective " << *subFormula << ".");
+
+    for (uint64_t formulaIndex = 0; formulaIndex < subformulas.size(); ++formulaIndex) {
+        auto const& subFormula = subformulas[formulaIndex];
+        STORM_LOG_INFO("Preprocessing objective formula #" << formulaIndex << ": " << *subFormula << ".");
+        if (ltlInformation.qualitativeObjectiveIndices.get(formulaIndex)) {
+            continue;  // qualitative LTL objectives have been handled above and can be ignored from this point on.
+        }
         data.objectives.push_back(std::make_shared<Objective<ValueType>>());
         data.objectives.back()->originalFormula = subFormula;
         data.finiteRewardCheckObjectives.resize(data.objectives.size(), false);
         data.upperResultBoundObjectives.resize(data.objectives.size(), false);
         STORM_LOG_THROW(data.objectives.back()->originalFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
                         "Could not preprocess the subformula " << *subFormula << " of " << originalFormula << " because it is not supported");
+        auto const& operatorFormula = data.objectives.back()->originalFormula->asOperatorFormula();
 
-        if (subFormula->isProbabilityOperatorFormula()) {  // TODO: This should not depend on whether an ltl2da tool is set.
-            std::string rewardModelName = "accEc_" + std::to_string(ltlObjectiveCounter++);
-            auto rewardAccumulation = logic::RewardAccumulation(true, false, false);
-
-            if (env.modelchecker().isLtl2AutToolSet()) {
-                auto lraFormula = std::make_shared<logic::LongRunAverageRewardFormula>(rewardAccumulation);
-                logic::RewardOperatorFormula operatorFormula(lraFormula, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
-                preprocessOperatorFormula(operatorFormula, data);
-            } else {
-                // TODO: Why this else case?
-                auto totalRewardFormulaPtr = std::make_shared<logic::TotalRewardFormula>(logic::RewardAccumulation(true, false, false));
-                logic::RewardOperatorFormula operatorFormula(totalRewardFormulaPtr, rewardModelName, subFormula->asOperatorFormula().getOperatorInformation());
-                preprocessOperatorFormula(operatorFormula, data);
-            }
+        if (ltlInformation.ltlObjectiveIndices.get(formulaIndex)) {
+            STORM_LOG_ASSERT(operatorFormula.isProbabilityOperatorFormula(), "Unexpected formula type for ltl objective.");
+            auto const quantitativeLtlObjectiveIndices = ltlInformation.ltlObjectiveIndices & ~ltlInformation.qualitativeObjectiveIndices;
+            preprocessLTLFormula(
+                operatorFormula.asProbabilityOperatorFormula(),
+                ltlInformation.quantitativeTotalRewardModelNames.at(quantitativeLtlObjectiveIndices.getNumberOfSetBitsBeforeIndex(formulaIndex)),
+                ltlInformation.negatedLtlObjectiveIndices.get(formulaIndex), data);
         } else {
             preprocessOperatorFormula(data.objectives.back()->originalFormula->asOperatorFormula(), data);
         }
@@ -118,7 +228,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
 
     // Build the actual result
     return buildResult(originalModel, originalFormula, data);
-}
+}  // namespace detail
 
 template<typename SparseModelType>
 storm::storage::BitVector getOnlyReachableViaPhi(SparseModelType const& model, storm::storage::BitVector const& phi) {
@@ -138,15 +248,6 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
 
     storm::modelchecker::SparsePropositionalModelChecker<SparseModelType> mc(*model);
     storm::storage::SparseMatrix<ValueType> backwardTransitions = model->getBackwardTransitions();
-
-    for (auto const& opFormula : originalFormula.getSubformulas()) {
-        STORM_LOG_THROW(opFormula->isOperatorFormula(), storm::exceptions::InvalidPropertyException,
-                        "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
-        auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
-        if (opFormula->isProbabilityOperatorFormula() && pathFormula.info(false).containsComplexPathFormula()) {
-            return;  // don't remove anything if we're dealing with an LTL formula
-        }
-    }
 
     for (auto const& opFormula : originalFormula.getSubformulas()) {
         // Compute a set of states from which we can make any subset absorbing without affecting this subformula
@@ -368,6 +469,28 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessOperatorFormul
 }
 
 template<typename SparseModelType>
+void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessLTLFormula(storm::logic::ProbabilityOperatorFormula const& formula,
+                                                                             std::string const& totalRewardModelName, bool isInverted, PreprocessorData& data) {
+    Objective<ValueType>& objective = *data.objectives.back();
+
+    // Check whether the complementary event is considered
+    objective.considersComplementaryEvent = isInverted;
+
+    // Extract the operator information from the formula and potentially invert it for the complementary event
+    storm::logic::OperatorInformation opInfo = getOperatorInformation(formula, objective.considersComplementaryEvent);
+
+    // LTL objectives have been converted to total reward objectives. The construction is done in a way that any path in the model can accumulate either 0 or 1
+    // reward. We exploit this fact here by setting the result bounds accordingly and not requiring checks for reward finiteness.
+    
+    // Probabilities are between zero and one
+    data.objectives.back()->lowerResultBound = storm::utility::zero<ValueType>();
+    data.objectives.back()->upperResultBound = storm::utility::one<ValueType>();
+
+    auto totalRewardFormula = std::make_shared<logic::TotalRewardFormula>();
+    data.objectives.back()->formula = std::make_shared<storm::logic::RewardOperatorFormula>(totalRewardFormula, totalRewardModelName, opInfo);
+}
+
+template<typename SparseModelType>
 void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessProbabilityOperatorFormula(storm::logic::ProbabilityOperatorFormula const& formula,
                                                                                              storm::logic::OperatorInformation const& opInfo,
                                                                                              PreprocessorData& data) {
@@ -481,8 +604,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessUntilFormula(s
                         << *data.objectives.back()->originalFormula
                         << " is always one as the rhs of the until formula is true in the initial state. This (trivial) case is currently not implemented.");
 
-    // Whenever a state that violates the left subformula or satisfies the right subformula is reached, the objective is 'decided', i.e., no more reward should
-    // be collected from there
+    // Whenever a state that violates the left subformula or satisfies the right subformula is reached, the objective is 'decided', i.e., no more reward
+    // should be collected from there
     storm::storage::BitVector notLeftOrRight = mc.check(formula.getLeftSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
     notLeftOrRight.complement();
     notLeftOrRight |= rightSubformulaResult;
@@ -496,7 +619,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessUntilFormula(s
         storm::utility::graph::getReachableStates(data.model->getTransitionMatrix(), data.model->getInitialStates(), ~notLeftOrRight, reachableFromGoal);
     // Exclude the actual notLeftOrRight states from the states that are reachable from init
     reachableFromInit &= ~notLeftOrRight;
-    // If we can reach a state that is reachable from goal, but which is not a goal state, it means that the transformation to expected rewards is not possible.
+    // If we can reach a state that is reachable from goal, but which is not a goal state, it means that the transformation to expected rewards is not
+    // possible.
     if ((reachableFromInit & reachableFromGoal).empty()) {
         STORM_LOG_INFO("Objective " << *data.objectives.back()->originalFormula << " is transformed to an expected total/cumulative reward property.");
         // Transform to expected total rewards:
@@ -636,8 +760,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessEventuallyForm
             // TODO: this probably needs some better treatment regarding schedulers that do not reach the goal state allmost surely
             assert(optionalRewardModelName.is_initialized());
             if (data.deadlockLabel) {
-                // We made some states absorbing and created a new deadlock state. To make sure that this deadlock state gets value zero, we add it to the set
-                // of goal states of the formula.
+                // We made some states absorbing and created a new deadlock state. To make sure that this deadlock state gets value zero, we add it to the
+                // set of goal states of the formula.
                 std::shared_ptr<storm::logic::Formula const> newSubSubformula =
                     std::make_shared<storm::logic::AtomicLabelFormula const>(data.deadlockLabel.get());
                 std::shared_ptr<storm::logic::Formula const> newSubformula = std::make_shared<storm::logic::BinaryBooleanStateFormula const>(
@@ -658,8 +782,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessEventuallyForm
             std::string rewardModelName = data.rewardModelNamePrefix + std::to_string(data.objectives.size());
             std::shared_ptr<storm::logic::Formula const> newSubformula = formula.getSubformula().asSharedPointer();
             if (data.deadlockLabel) {
-                // We made some states absorbing and created a new deadlock state. To make sure that this deadlock state gets value zero, we add it to the set
-                // of goal states of the formula.
+                // We made some states absorbing and created a new deadlock state. To make sure that this deadlock state gets value zero, we add it to the
+                // set of goal states of the formula.
                 std::shared_ptr<storm::logic::Formula const> newSubSubformula =
                     std::make_shared<storm::logic::AtomicLabelFormula const>(data.deadlockLabel.get());
                 newSubformula = std::make_shared<storm::logic::BinaryBooleanStateFormula const>(storm::logic::BinaryBooleanStateFormula::OperatorType::Or,
@@ -810,7 +934,5 @@ template class SparseMultiObjectivePreprocessor<storm::models::sparse::MarkovAut
 
 template class SparseMultiObjectivePreprocessor<storm::models::sparse::Mdp<storm::RationalNumber>>;
 template class SparseMultiObjectivePreprocessor<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>;
-}  // namespace preprocessing
-}  // namespace multiobjective
-}  // namespace modelchecker
-}  // namespace storm
+
+}  // namespace storm::modelchecker::multiobjective::preprocessing
