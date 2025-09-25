@@ -1,6 +1,5 @@
 #include "MemoryIncorporation.h"
 
-#include "../logic/FormulaInformation.h"
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/logic/Formulas.h"
 #include "storm/logic/FragmentSpecification.h"
@@ -11,7 +10,6 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/memorystructure/MemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/NondeterministicMemoryStructureBuilder.h"
-#include "storm/storage/memorystructure/SparseModelDARewardProduct.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
 #include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
@@ -69,7 +67,6 @@ storm::storage::MemoryStructure incorporateGoalMemoryHelper(SparseModelType cons
     for (auto const& subFormula : formulas) {
         STORM_LOG_THROW(subFormula->isOperatorFormula(), storm::exceptions::NotSupportedException, "The given Formula " << *subFormula << " is not supported.");
         auto const& subsubFormula = subFormula->asOperatorFormula().getSubformula();
-
         if (subsubFormula.isEventuallyFormula()) {
             memory = memory.product(getGoalMemory(model, subsubFormula.asEventuallyFormula().getSubformula()));
         } else if (subsubFormula.isUntilFormula()) {
