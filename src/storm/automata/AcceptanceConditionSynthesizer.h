@@ -6,12 +6,11 @@
 #include "storm/utility/macros.h"
 
 namespace storm::automata {
+using BooleanHoaExpression = cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>;
 
 namespace detail {
 
-using HoaBoolExpr = cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>;
-
-HoaBoolExpr::ptr toNegationNormalForm(HoaBoolExpr::ptr expr) {
+inline BooleanHoaExpression::ptr toNegationNormalForm(BooleanHoaExpression::ptr expr) {
     if (expr->isTRUE() || expr->isFALSE() || expr->isAtom()) {
         return expr;
     }
@@ -24,15 +23,15 @@ HoaBoolExpr::ptr toNegationNormalForm(HoaBoolExpr::ptr expr) {
     if (expr->isNOT()) {
         auto subExpr = expr->getLeft();
         if (subExpr->isTRUE())
-            return HoaBoolExpr::False();
+            return BooleanHoaExpression::False();
         if (subExpr->isFALSE())
-            return HoaBoolExpr::True();
+            return BooleanHoaExpression::True();
         if (subExpr->isAtom()) {
             using AtomAcceptance = cpphoafparser::AtomAcceptance;
             auto const& atom = subExpr->getAtom();
             auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ? AtomAcceptance::TEMPORAL_INF : AtomAcceptance::TEMPORAL_FIN;
             auto const negatedAtom = std::make_shared<AtomAcceptance>(negatedAtomType, atom.getAcceptanceSet(), atom.isNegated());
-            return HoaBoolExpr::Atom(negatedAtom);
+            return BooleanHoaExpression::Atom(negatedAtom);
         }
         if (subExpr->isNOT()) {
             return toNegationNormalForm(subExpr->getLeft());
@@ -49,7 +48,7 @@ HoaBoolExpr::ptr toNegationNormalForm(HoaBoolExpr::ptr expr) {
     STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in negation normal form conversion");
 }
 
-HoaBoolExpr::ptr fromNNFToDNF(HoaBoolExpr::ptr expr, bool topLevel = true) {
+inline BooleanHoaExpression::ptr fromNNFToDNF(BooleanHoaExpression::ptr expr, bool topLevel = true) {
     if (expr->isAND()) {
         auto left = fromNNFToDNF(expr->getLeft());
         auto right = fromNNFToDNF(expr->getRight());
@@ -74,14 +73,23 @@ HoaBoolExpr::ptr fromNNFToDNF(HoaBoolExpr::ptr expr, bool topLevel = true) {
     STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in disjunctive normal form conversion");
 }
 
-HoaBoolExpr::ptr toDisjunctiveNormalForm(HoaBoolExpr::ptr expr) {
-    return fromNNFToDNF(toNegationNormalForm(expr));
+inline bool isConjunctionOfLiterals(BooleanHoaExpression::ptr expr) {
+    // Catch (negated) literals
+    auto e = expr->isNOT() ? expr->getLeft() : expr;
+    if (e->isTRUE() || e->isFALSE() || e->isAtom()) {
+        return true;
+    }
+
+    if (expr->isAND()) {
+        return isConjunctionOfLiterals(expr->getLeft()) && isConjunctionOfLiterals(expr->getRight());
+    }
+    return false;
 }
 
 /*!
  * Adds the given offset to all acceptance set indices in the given expression.
  */
-HoaBoolExpr::ptr addOffsetAcceptanceSets(HoaBoolExpr::ptr const expr, uint64_t offset) {
+inline BooleanHoaExpression::ptr addOffsetAcceptanceSets(BooleanHoaExpression::ptr const expr, uint64_t offset) {
     if (expr->isTRUE() || expr->isFALSE()) {
         return expr;
     }
@@ -89,7 +97,7 @@ HoaBoolExpr::ptr addOffsetAcceptanceSets(HoaBoolExpr::ptr const expr, uint64_t o
     if (expr->isAtom()) {
         auto const& atom = expr->getAtom();
         auto const offsetAtom = std::make_shared<cpphoafparser::AtomAcceptance>(atom.getType(), atom.getAcceptanceSet() + offset, atom.isNegated());
-        return HoaBoolExpr::Atom(offsetAtom);
+        return BooleanHoaExpression::Atom(offsetAtom);
     }
 
     if (expr->isAND() || expr->isOR()) {
@@ -107,6 +115,18 @@ HoaBoolExpr::ptr addOffsetAcceptanceSets(HoaBoolExpr::ptr const expr, uint64_t o
 }
 }  // namespace detail
 
+inline bool isDisjunctiveNormalForm(BooleanHoaExpression::ptr expr) {
+    if (expr->isOR()) {
+        return isDisjunctiveNormalForm(expr->getLeft()) && isDisjunctiveNormalForm(expr->getRight());
+    } else {
+        return detail::isConjunctionOfLiterals(expr);
+    }
+}
+
+inline BooleanHoaExpression::ptr toDisjunctiveNormalForm(BooleanHoaExpression::ptr expr) {
+    return detail::fromNNFToDNF(detail::toNegationNormalForm(expr));
+}
+
 /*!
  * Calls the given callback for each combination of the acceptance conditions provided in the constructor
  * (i.e., for each subset of the acceptance conditions).
@@ -117,10 +137,10 @@ HoaBoolExpr::ptr addOffsetAcceptanceSets(HoaBoolExpr::ptr const expr, uint64_t o
  * @param acceptanceConditions
  * @param callback
  */
-void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions,
-                                  std::function<void(AcceptanceCondition::ptr, storm::storage::BitVector const&)> const& callback) {
+inline void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> const& acceptanceConditions,
+                                         std::function<void(AcceptanceCondition::ptr, storm::storage::BitVector const&)> const& callback) {
     STORM_LOG_ASSERT(acceptanceConditions.size() > 0, "No acceptance conditions provided");
-    std::vector<detail::HoaBoolExpr::ptr> acceptanceExpressions;
+    std::vector<BooleanHoaExpression::ptr> acceptanceExpressions;
     std::vector<storm::storage::BitVector> acceptanceSets;
     for (const auto& acceptanceCondition : acceptanceConditions) {
         acceptanceExpressions.push_back(detail::addOffsetAcceptanceSets(acceptanceCondition->getAcceptanceExpression(), acceptanceSets.size()));
@@ -129,14 +149,14 @@ void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> const& a
         }
     }
 
-    detail::HoaBoolExpr::ptr accExprPtr = detail::HoaBoolExpr::True();
-    auto accCond = std::make_shared<AcceptanceCondition>(std::move(acceptanceSets), accExprPtr);
+    auto accCond = std::make_shared<AcceptanceCondition>(std::move(acceptanceSets), BooleanHoaExpression::True());
     storm::storage::BitVector enabledConditions(acceptanceConditions.size(), false);
-    STORM_LOG_INFO("Calling callback with acceptance expression: " << accExprPtr->toString() << "\n\tand enabled conditions " << enabledConditions);
+    STORM_LOG_INFO("Calling callback with acceptance expression: " << accCond->getAcceptanceExpression() << "\n\tand enabled conditions " << enabledConditions);
     callback(accCond, enabledConditions);  // first call with all conditions disabled
     do {
         enabledConditions.increment();
         bool first = true;
+        BooleanHoaExpression::ptr accExprPtr;
         for (auto condIndex : enabledConditions) {
             if (first) {
                 accExprPtr = acceptanceExpressions[condIndex];
@@ -145,8 +165,9 @@ void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> const& a
                 accExprPtr = accExprPtr & acceptanceExpressions[condIndex];
             }
         }
-        accExprPtr = detail::toDisjunctiveNormalForm(accExprPtr);
-        STORM_LOG_INFO("Calling callback with acceptance expression: " << accExprPtr->toString() << "\n\tand enabled conditions " << enabledConditions);
+        accCond->setAcceptanceExpression(toDisjunctiveNormalForm(accExprPtr));
+        STORM_LOG_INFO("Calling callback with acceptance expression: " << accCond->getAcceptanceExpression() << "\n\tand enabled conditions "
+                                                                       << enabledConditions);
         callback(accCond, enabledConditions);
     } while (!enabledConditions.full());
 }

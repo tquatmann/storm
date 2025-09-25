@@ -155,6 +155,15 @@ bool ItemLabeling::containsLabel(std::string const& label) const {
     return nameToLabelingIndexMap.find(label) != nameToLabelingIndexMap.end();
 }
 
+std::optional<std::string> ItemLabeling::findLabel(storm::storage::BitVector const& items) const {
+    for (auto const& labelIndexPair : this->nameToLabelingIndexMap) {
+        if (this->labelings[labelIndexPair.second] == items) {
+            return labelIndexPair.first;
+        }
+    }
+    return std::nullopt;
+}
+
 void ItemLabeling::addLabelToItem(std::string const& label, uint64_t item) {
     STORM_LOG_THROW(this->containsLabel(label), storm::exceptions::InvalidArgumentException, "Label '" << label << "' unknown.");
     STORM_LOG_THROW(item < itemCount, storm::exceptions::OutOfRangeException, "Item index out of range.");

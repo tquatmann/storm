@@ -1,13 +1,12 @@
 #include "storm/modelchecker/helper/SingleValueModelCheckerHelper.h"
 
+#include "storm/modelchecker/helper/ltl/internal/RabinObjective.h"
 #include "storm/modelchecker/helper/ltl/internal/SparseLTLSchedulerHelper.h"
 
 #include "storm/automata/AutomatonForward.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/SparseMatrix.h"
-#include "storm/transformer/DAProductBuilder.h"
-#include "storm/transformer/LDBAProductBuilder.h"
 
 namespace storm {
 
@@ -30,8 +29,7 @@ template<typename ValueType, bool Nondeterministic>
 class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
     typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
-    template<typename Automaton>
-    using AutomatonAndApSets = std::pair<typename Automaton::ptr, std::vector<storm::storage::BitVector>>;
+
     /*!
      * The type of the product model (DTMC or MDP) that is used during the computation.
      */
@@ -75,7 +73,7 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * @return a value for each state
      */
     std::vector<ValueType> computeDAProductProbabilities(Environment const& env, storm::automata::DeterministicAutomaton const& da,
-                                                         std::map<std::string, storm::storage::BitVector>& apSatSets);
+                                                         std::map<std::string, storm::storage::BitVector>&& apSatSets);
 
     /*!
      * Computes the LTL probabilities
@@ -84,28 +82,7 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
      * @return a value for each state
      */
     std::vector<ValueType> computeLTLProbabilities(Environment const& env, storm::logic::PathFormula const& formula,
-                                                   std::map<std::string, storm::storage::BitVector>& apSatSets);
-
-    /**
-     * Builds a DGRA from the formula
-     * @return a pair of the deterministic automaton and a mapping of ap's to states satisfying them
-     */
-    template<typename Automaton>
-    static AutomatonAndApSets<Automaton> buildDAFromFormula(productModelType const& model, storm::logic::PathFormula const& formula, Environment const& env);
-
-    /*!
-     *
-     * @tparam Model
-     * @param model
-     * @param formula
-     * @param env The environment to retrieve the ltl2da tool
-     * @return a pair the DAProduct and its initial state
-     */
-    static typename transformer::DAProduct<productModelType>::ptr buildFromFormula(productModelType const& model, storm::logic::PathFormula const& formula,
-                                                                                   Environment const& env);
-
-    static std::tuple<productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>, std::vector<uint64_t>> buildFromFormulas(
-        productModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Environment const& env);
+                                                   std::map<std::string, storm::storage::BitVector>&& apSatSets);
 
    private:
     /*!
@@ -137,6 +114,20 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
 
     boost::optional<storm::modelchecker::helper::internal::SparseLTLSchedulerHelper<ValueType, Nondeterministic>> _schedulerHelper;
 };
+
+template<typename SparseModelType>
+struct ToRabinReturnType {
+    std::shared_ptr<SparseModelType> model;
+    std::vector<RabinObjective> rabinObjectives;
+};
+/*!
+ * Takes as input a model and a set of LTL formulas and produces a model with equivalent Rabin acceptance conditions for each formula.
+ */
+template<typename SparseModelType>
+ToRabinReturnType<SparseModelType> LTLToRabinObjectives(Environment const& env, SparseModelType const& model,
+                                                        std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
+                                                        std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
+
 }  // namespace helper
 }  // namespace modelchecker
 }  // namespace storm

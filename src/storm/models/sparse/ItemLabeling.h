@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -121,6 +122,13 @@ class ItemLabeling {
      * @return True if the label is known, false otherwise.
      */
     bool containsLabel(std::string const& label) const;
+
+    /*!
+     * Checks if any label matches the given set of item
+     *
+     * @return the name of the label (if any)
+     */
+    std::optional<std::string> findLabel(storm::storage::BitVector const& items) const;
 
     /*!
      * Returns the number of labels managed by this object.

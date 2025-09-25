@@ -32,6 +32,10 @@ AcceptanceCondition::acceptance_expr::ptr AcceptanceCondition::getAcceptanceExpr
     return acceptance;
 }
 
+void AcceptanceCondition::setAcceptanceExpression(acceptance_expr::ptr expr) {
+    acceptance = expr;
+}
+
 bool AcceptanceCondition::isAccepting(const storm::storage::StateBlock& scc) const {
     return isAccepting(scc, acceptance);
 }

@@ -5,6 +5,7 @@
 
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
 #include "storm/logic/FormulaInformation.h"
+#include "storm/modelchecker/helper/ltl/SparseLTLHelper.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
@@ -13,7 +14,6 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
-#include "storm/transformer/LTLToRabinObjectiveTransformer.h"
 #include "storm/transformer/MemoryIncorporation.h"
 #include "storm/transformer/RabinToTotalRewardTransformer.h"
 #include "storm/transformer/SubsystemBuilder.h"
@@ -130,7 +130,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         storm::modelchecker::SparsePropositionalModelChecker<SparseModelType> mc(originalModel);
         auto subformulaCallback = [&mc](storm::logic::Formula const& f) { return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector(); };
         // apply product construction with automata
-        auto ltlToRabinResult = storm::transformer::LTLToRabinObjectiveTransformer::transform(originalModel, ltlInformation.ltlFormulas, subformulaCallback);
+        auto ltlToRabinResult = storm::modelchecker::helper::LTLToRabinObjectives(env, originalModel, ltlInformation.ltlFormulas, subformulaCallback);
         // demerge MECs to convert to total reward
         auto const qualitativeRabinLocalIndices = ltlInformation.qualitativeObjectiveIndices % ltlInformation.ltlObjectiveIndices;
         auto const quantitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, ~qualitativeRabinLocalIndices);
@@ -481,7 +481,7 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessLTLFormula(sto
 
     // LTL objectives have been converted to total reward objectives. The construction is done in a way that any path in the model can accumulate either 0 or 1
     // reward. We exploit this fact here by setting the result bounds accordingly and not requiring checks for reward finiteness.
-    
+
     // Probabilities are between zero and one
     data.objectives.back()->lowerResultBound = storm::utility::zero<ValueType>();
     data.objectives.back()->upperResultBound = storm::utility::one<ValueType>();

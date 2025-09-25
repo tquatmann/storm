@@ -95,8 +95,10 @@ template<typename ValueType, typename RewardModelType>
 std::shared_ptr<storm::models::sparse::Mdp<ValueType, RewardModelType>> SparseModelDARewardProduct<ValueType, RewardModelType>::build() {
     storm::storage::BitVector initialStatesProduct;
     // printMDP(originalModel.getTransitionMatrix(), originalModel.getStateLabeling(), originalModel.getRewardModels());
-    auto [productModel, acceptanceConditions, indexToModelState] =
-        modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
+    storm::models::sparse::Mdp<ValueType, RewardModelType> productModel(originalModel);  // todo
+    std::vector<storm::automata::AcceptanceCondition::ptr> acceptanceConditions;
+    std::vector<uint64_t> indexToModelState;
+    // modelchecker::helper::SparseLTLHelper<ValueType, true>::buildFromFormulas(originalModel, formulas, env);
     // printMDP(productModel.getTransitionMatrix(), productModel.getStateLabeling(), productModel.getRewardModels());
 
     if (env.modelchecker().isLtl2AutToolSet()) {  // TODO: check

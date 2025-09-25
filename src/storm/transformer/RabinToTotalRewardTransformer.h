@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "storm/transformer/LTLToRabinObjectiveTransformer.h"
+#include "storm/modelchecker/helper/ltl/internal/RabinObjective.h"
 #include "storm/utility/macros.h"
 
 #include "storm/exceptions/NotImplementedException.h"
@@ -22,8 +22,8 @@ namespace transformer {
  */
 class RabinToTotalRewardTransformer {
    public:
-    using RabinCondition = LTLToRabinObjectiveTransformer::RabinCondition;
-    using RabinObjective = LTLToRabinObjectiveTransformer::RabinObjective;
+    using RabinCondition = storm::modelchecker::helper::RabinCondition;
+    using RabinObjective = storm::modelchecker::helper::RabinObjective;
 
     template<typename SparseModelType>
     struct ReturnType {

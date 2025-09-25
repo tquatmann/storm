@@ -23,6 +23,7 @@ class AcceptanceCondition {
     const storm::storage::BitVector& getAcceptanceSet(unsigned int index) const;
 
     acceptance_expr::ptr getAcceptanceExpression() const;
+    void setAcceptanceExpression(acceptance_expr::ptr expr);
 
     AcceptanceCondition::ptr lift(std::size_t productNumberOfStates, std::function<std::size_t(std::size_t)> mapping) const;
 

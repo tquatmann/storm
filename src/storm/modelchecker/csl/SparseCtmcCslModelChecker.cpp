@@ -128,7 +128,7 @@ std::unique_ptr<CheckResult> SparseCtmcCslModelChecker<SparseCtmcModelType>::com
         return this->check(env, formula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
     };
     auto apSets = helper.computeApSets(pathFormula.getAPMapping(), formulaChecker);
-    std::vector<ValueType> numericResult = helper.computeDAProductProbabilities(env, *pathFormula.readAutomaton(), apSets);
+    std::vector<ValueType> numericResult = helper.computeDAProductProbabilities(env, *pathFormula.readAutomaton(), std::move(apSets));
 
     return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<ValueType>(std::move(numericResult)));
 }

@@ -67,6 +67,17 @@ class Product {
     }
 
     template<typename ValueType>
+    std::vector<ValueType> liftFromModel(const std::vector<ValueType>& vector) const {
+        state_type const n = productModel.getNumberOfStates();
+        std::vector<ValueType> lifted;
+        lifted.reserve(n);
+        for (state_type s = 0; s < n; s++) {
+            lifted.push_back(vector[getModelState(s)]);
+        }
+        return lifted;
+    }
+
+    template<typename ValueType>
     std::vector<ValueType> projectToOriginalModel(const Model& originalModel, const std::vector<ValueType>& prodValues) {
         return projectToOriginalModel(originalModel.getNumberOfStates(), prodValues);
     }
