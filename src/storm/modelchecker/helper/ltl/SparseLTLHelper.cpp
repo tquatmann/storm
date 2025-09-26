@@ -9,7 +9,6 @@
 
 #include "storm/modelchecker/prctl/helper/SparseDtmcPrctlHelper.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
-#include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
