@@ -29,7 +29,7 @@ template<typename ValueType, bool Nondeterministic>
 class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
     typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
-    
+
     /*!
      * Initializes the helper for a discrete time model (i.e. DTMC, MDP)
      * @param transitionMatrix the transition matrix of the model

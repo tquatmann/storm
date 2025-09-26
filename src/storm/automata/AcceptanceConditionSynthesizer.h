@@ -10,82 +10,6 @@ using BooleanHoaExpression = cpphoafparser::BooleanExpression<cpphoafparser::Ato
 
 namespace detail {
 
-inline BooleanHoaExpression::ptr toNegationNormalForm(BooleanHoaExpression::ptr expr) {
-    if (expr->isTRUE() || expr->isFALSE() || expr->isAtom()) {
-        return expr;
-    }
-    if (expr->isAND()) {
-        return toNegationNormalForm(expr->getLeft()) & toNegationNormalForm(expr->getRight());
-    }
-    if (expr->isOR()) {
-        return toNegationNormalForm(expr->getLeft()) | toNegationNormalForm(expr->getRight());
-    }
-    if (expr->isNOT()) {
-        auto subExpr = expr->getLeft();
-        if (subExpr->isTRUE())
-            return BooleanHoaExpression::False();
-        if (subExpr->isFALSE())
-            return BooleanHoaExpression::True();
-        if (subExpr->isAtom()) {
-            using AtomAcceptance = cpphoafparser::AtomAcceptance;
-            auto const& atom = subExpr->getAtom();
-            auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ? AtomAcceptance::TEMPORAL_INF : AtomAcceptance::TEMPORAL_FIN;
-            auto const negatedAtom = std::make_shared<AtomAcceptance>(negatedAtomType, atom.getAcceptanceSet(), atom.isNegated());
-            return BooleanHoaExpression::Atom(negatedAtom);
-        }
-        if (subExpr->isNOT()) {
-            return toNegationNormalForm(subExpr->getLeft());
-        }
-        if (subExpr->isAND()) {
-            // De Morgan: !(A & B) -> !A | !B
-            return toNegationNormalForm(!subExpr->getLeft() | !subExpr->getRight());
-        }
-        if (subExpr->isOR()) {
-            // De Morgan: !(A | B) -> !A & !B
-            return toNegationNormalForm(!subExpr->getLeft() & !subExpr->getRight());
-        }
-    }
-    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in negation normal form conversion");
-}
-
-inline BooleanHoaExpression::ptr fromNNFToDNF(BooleanHoaExpression::ptr expr, bool topLevel = true) {
-    if (expr->isAND()) {
-        auto left = fromNNFToDNF(expr->getLeft());
-        auto right = fromNNFToDNF(expr->getRight());
-
-        // TODO: this can be optimized, e.g., check for clauses that are always false (x & !x) or that subsume each other (x & y & z | x & y)
-        if (left->isOR()) {
-            // Distributive law: (A | B) & C -> (A & C) | (B & C)
-            return fromNNFToDNF((left->getLeft() & right) | (left->getRight() & right));
-        }
-        if (right->isOR()) {
-            // Distributive law: A & (B | C) -> (A & B) | (A & C)
-            return fromNNFToDNF((right->getLeft() & left) | (right->getRight() & left));
-        }
-        // Nothing to distribute, just combine
-        return left & right;
-    }
-
-    if (expr->isOR()) {
-        return fromNNFToDNF(expr->getLeft()) | fromNNFToDNF(expr->getRight());
-    }
-
-    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in disjunctive normal form conversion");
-}
-
-inline bool isConjunctionOfLiterals(BooleanHoaExpression::ptr expr) {
-    // Catch (negated) literals
-    auto e = expr->isNOT() ? expr->getLeft() : expr;
-    if (e->isTRUE() || e->isFALSE() || e->isAtom()) {
-        return true;
-    }
-
-    if (expr->isAND()) {
-        return isConjunctionOfLiterals(expr->getLeft()) && isConjunctionOfLiterals(expr->getRight());
-    }
-    return false;
-}
-
 /*!
  * Adds the given offset to all acceptance set indices in the given expression.
  */
@@ -114,18 +38,6 @@ inline BooleanHoaExpression::ptr addOffsetAcceptanceSets(BooleanHoaExpression::p
     STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression when adding offset to acceptance sets");
 }
 }  // namespace detail
-
-inline bool isDisjunctiveNormalForm(BooleanHoaExpression::ptr expr) {
-    if (expr->isOR()) {
-        return isDisjunctiveNormalForm(expr->getLeft()) && isDisjunctiveNormalForm(expr->getRight());
-    } else {
-        return detail::isConjunctionOfLiterals(expr);
-    }
-}
-
-inline BooleanHoaExpression::ptr toDisjunctiveNormalForm(BooleanHoaExpression::ptr expr) {
-    return detail::fromNNFToDNF(detail::toNegationNormalForm(expr));
-}
 
 /*!
  * Calls the given callback for each combination of the acceptance conditions provided in the constructor
@@ -165,7 +77,8 @@ inline void forEachAcceptanceCombination(std::vector<AcceptanceCondition::ptr> c
                 accExprPtr = accExprPtr & acceptanceExpressions[condIndex];
             }
         }
-        accCond->setAcceptanceExpression(toDisjunctiveNormalForm(accExprPtr));
+        accCond->setAcceptanceExpression(accExprPtr);
+        accCond->convertToDNF();
         STORM_LOG_INFO("Calling callback with acceptance expression: " << accCond->getAcceptanceExpression() << "\n\tand enabled conditions "
                                                                        << enabledConditions);
         callback(accCond, enabledConditions);

@@ -29,9 +29,19 @@ class AcceptanceCondition {
 
     std::vector<std::vector<acceptance_expr::ptr>> extractFromDNF() const;
 
+    /*!
+     * @return whether the acceptance expression is in disjunctive normal form
+     */
+    bool isInDNF() const;
+
+    /*!
+     * Replaces the acceptance expression by an equivalent one in disjunctive normal form.
+     * @note This may lead to an exponential blow-up in the size of the expression.
+     */
+    void convertToDNF();
+
    private:
     bool isAccepting(const storm::storage::StateBlock& scc, acceptance_expr::ptr expr) const;
-    void extractFromDNFRecursion(acceptance_expr::ptr e, std::vector<std::vector<acceptance_expr::ptr>>& dnf, bool topLevel) const;
 
     std::vector<storm::storage::BitVector> acceptanceSets;
     acceptance_expr::ptr acceptance;

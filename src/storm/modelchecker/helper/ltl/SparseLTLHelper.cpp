@@ -1,6 +1,5 @@
 #include "SparseLTLHelper.h"
 
-#include "storm/automata/AcceptanceConditionSynthesizer.h"
 #include "storm/automata/Automaton.h"
 #include "storm/automata/LTL2Automaton.h"
 
@@ -11,7 +10,6 @@
 #include "storm/modelchecker/prctl/helper/SparseDtmcPrctlHelper.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
-#include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
@@ -42,19 +40,18 @@ typename Automaton::ptr buildAutomatonFromFormula(Environment const& env, storm:
     typename Automaton::ptr automaton;
     if (env.modelchecker().isLtl2AutToolSet()) {
         automaton = storm::automata::LTL2Automaton::ltl2AutExternalTool<Automaton>(ltlFormula, env.modelchecker().getLtl2AutTool());
-        if (auto accExprPtr = automaton->getAcceptance()->getAcceptanceExpression();
-            forceDnfAcceptance && !storm::automata::isDisjunctiveNormalForm(accExprPtr)) {
+        if (forceDnfAcceptance && !automaton->getAcceptance()->isInDNF()) {
             STORM_LOG_WARN("Converting acceptance condition "
-                           << *accExprPtr
+                           << *automaton->getAcceptance()->getAcceptanceExpression()
                            << " into disjunctive normal form. This might blow up the size of the acceptance condition. Check if the LTL2Aut "
                               "tool can be configured to produce DNFs directly.");
-            automaton->getAcceptance()->setAcceptanceExpression(storm::automata::toDisjunctiveNormalForm(accExprPtr));
+            automaton->getAcceptance()->convertToDNF();
         }
     } else {
         if constexpr (std::is_same_v<Automaton, storm::automata::DeterministicAutomaton>) {
             automaton = storm::automata::LTL2Automaton::ltl2AutSpot(ltlFormula, forceDnfAcceptance);
-            STORM_LOG_THROW(!forceDnfAcceptance || storm::automata::isDisjunctiveNormalForm(automaton->getAcceptance()->getAcceptanceExpression()),
-                            storm::exceptions::UnexpectedException, "Spot produced an automaton whose acceptance condition is not in disjunctive normal form.");
+            STORM_LOG_THROW(!forceDnfAcceptance || automaton->getAcceptance()->isInDNF(), storm::exceptions::UnexpectedException,
+                            "Spot produced an automaton whose acceptance condition is not in disjunctive normal form.");
         } else {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The internal engine (Spot) can only generate deterministic automata.");
         }

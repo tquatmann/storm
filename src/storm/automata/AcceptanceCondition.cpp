@@ -1,6 +1,7 @@
 #include "AcceptanceCondition.h"
 
 #include "storm/exceptions/InvalidOperationException.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -85,16 +86,10 @@ bool AcceptanceCondition::isAccepting(const storm::storage::StateBlock& scc, acc
     throw std::runtime_error("Missing case statement");
 }
 
-std::vector<std::vector<AcceptanceCondition::acceptance_expr::ptr>> AcceptanceCondition::extractFromDNF() const {
-    std::vector<std::vector<AcceptanceCondition::acceptance_expr::ptr>> dnf;
+namespace detail {
+using BooleanHoaExpression = cpphoafparser::BooleanExpression<cpphoafparser::AtomAcceptance>;
 
-    extractFromDNFRecursion(getAcceptanceExpression(), dnf, true);
-
-    return dnf;
-}
-
-void AcceptanceCondition::extractFromDNFRecursion(AcceptanceCondition::acceptance_expr::ptr e, std::vector<std::vector<acceptance_expr::ptr>>& dnf,
-                                                  bool topLevel) const {
+void extractFromDNFRecursion(AcceptanceCondition::acceptance_expr::ptr e, std::vector<std::vector<BooleanHoaExpression::ptr>>& dnf, bool topLevel) {
     if (topLevel) {
         if (e->isOR()) {
             if (e->getLeft()->isOR()) {
@@ -124,6 +119,101 @@ void AcceptanceCondition::extractFromDNFRecursion(AcceptanceCondition::acceptanc
             dnf.back().push_back(e);
         }
     }
+}
+
+BooleanHoaExpression::ptr toNegationNormalForm(BooleanHoaExpression::ptr expr) {
+    if (expr->isTRUE() || expr->isFALSE() || expr->isAtom()) {
+        return expr;
+    }
+    if (expr->isAND()) {
+        return toNegationNormalForm(expr->getLeft()) & toNegationNormalForm(expr->getRight());
+    }
+    if (expr->isOR()) {
+        return toNegationNormalForm(expr->getLeft()) | toNegationNormalForm(expr->getRight());
+    }
+    if (expr->isNOT()) {
+        auto subExpr = expr->getLeft();
+        if (subExpr->isTRUE())
+            return BooleanHoaExpression::False();
+        if (subExpr->isFALSE())
+            return BooleanHoaExpression::True();
+        if (subExpr->isAtom()) {
+            using AtomAcceptance = cpphoafparser::AtomAcceptance;
+            auto const& atom = subExpr->getAtom();
+            auto negatedAtomType = atom.getType() == AtomAcceptance::TEMPORAL_FIN ? AtomAcceptance::TEMPORAL_INF : AtomAcceptance::TEMPORAL_FIN;
+            auto const negatedAtom = std::make_shared<AtomAcceptance>(negatedAtomType, atom.getAcceptanceSet(), atom.isNegated());
+            return BooleanHoaExpression::Atom(negatedAtom);
+        }
+        if (subExpr->isNOT()) {
+            return toNegationNormalForm(subExpr->getLeft());
+        }
+        if (subExpr->isAND()) {
+            // De Morgan: !(A & B) -> !A | !B
+            return toNegationNormalForm(!subExpr->getLeft() | !subExpr->getRight());
+        }
+        if (subExpr->isOR()) {
+            // De Morgan: !(A | B) -> !A & !B
+            return toNegationNormalForm(!subExpr->getLeft() & !subExpr->getRight());
+        }
+    }
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in negation normal form conversion");
+}
+
+BooleanHoaExpression::ptr fromNNFToDNF(BooleanHoaExpression::ptr expr, bool topLevel = true) {
+    if (expr->isAND()) {
+        auto left = fromNNFToDNF(expr->getLeft());
+        auto right = fromNNFToDNF(expr->getRight());
+
+        // TODO: this can be optimized, e.g., check for clauses that are always false (x & !x) or that subsume each other (x & y & z | x & y)
+        if (left->isOR()) {
+            // Distributive law: (A | B) & C -> (A & C) | (B & C)
+            return fromNNFToDNF((left->getLeft() & right) | (left->getRight() & right));
+        }
+        if (right->isOR()) {
+            // Distributive law: A & (B | C) -> (A & B) | (A & C)
+            return fromNNFToDNF((right->getLeft() & left) | (right->getRight() & left));
+        }
+        // Nothing to distribute, just combine
+        return left & right;
+    }
+
+    if (expr->isOR()) {
+        return fromNNFToDNF(expr->getLeft()) | fromNNFToDNF(expr->getRight());
+    }
+
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unhandled expression in disjunctive normal form conversion");
+}
+
+bool isDNF(BooleanHoaExpression::ptr expr, bool topLevel = true) {
+    if (topLevel && expr->isOR()) {  // OR only allowed at top level
+        return isDNF(expr->getLeft()) && isDNF(expr->getRight());
+    }
+    // Reaching this point means we are no longer at the top level
+    if (expr->isAND()) {
+        return isDNF(expr->getLeft(), false) && isDNF(expr->getRight(), false);
+    }
+
+    // Catch (negated) literals
+    auto e = expr->isNOT() ? expr->getLeft() : expr;
+    return e->isAtom() || e->isTRUE() || e->isFALSE();
+}
+
+}  // namespace detail
+
+std::vector<std::vector<AcceptanceCondition::acceptance_expr::ptr>> AcceptanceCondition::extractFromDNF() const {
+    std::vector<std::vector<AcceptanceCondition::acceptance_expr::ptr>> dnf;
+
+    detail::extractFromDNFRecursion(getAcceptanceExpression(), dnf, true);
+
+    return dnf;
+}
+
+bool AcceptanceCondition::isInDNF() const {
+    return detail::isDNF(getAcceptanceExpression());
+}
+
+void AcceptanceCondition::convertToDNF() {
+    setAcceptanceExpression(detail::fromNNFToDNF(detail::toNegationNormalForm(getAcceptanceExpression())));
 }
 
 AcceptanceCondition::ptr AcceptanceCondition::lift(std::size_t productNumberOfStates, std::function<std::size_t(std::size_t)> mapping) const {
