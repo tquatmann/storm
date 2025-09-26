@@ -12,13 +12,13 @@
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
-#include "storm/models/sparse/Mdp.h"
-
+#include "storm/models/sparse/Model.h"
 #include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponentDecomposition.h"
 #include "storm/storage/SchedulerChoice.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
+#include "storm/transformer/DAProductBuilder.h"
+#include "storm/transformer/LDBAProductBuilder.h"
 
 #include "storm/exceptions/InvalidPropertyException.h"
 #include "storm/exceptions/NotSupportedException.h"
@@ -178,7 +178,7 @@ template<typename ValueType, bool Nondeterministic>
 storm::storage::BitVector SparseLTLHelper<ValueType, Nondeterministic>::computeAcceptingECs(automata::AcceptanceCondition const& acceptance,
                                                                                             storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                                             storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
-                                                                                            typename transformer::DAProduct<productModelType>::ptr product) {
+                                                                                            typename transformer::DAProduct<ValueType>::ptr product) {
     STORM_LOG_INFO("Computing accepting states for acceptance condition " << *acceptance.getAcceptanceExpression());
     if (acceptance.getAcceptanceExpression()->isTRUE()) {
         STORM_LOG_INFO(" TRUE -> all states accepting (assumes no deadlock in the model)");
@@ -353,7 +353,8 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeDAPr
                    << statesOfInterest.getNumberOfSetBits() << " model states...");
     transformer::DAProductBuilder productBuilder(da, statesForAP);
 
-    auto product = productBuilder.build<productModelType>(this->_transitionMatrix, statesOfInterest);
+    auto product =
+        productBuilder.build(this->_transitionMatrix, Nondeterministic ? storm::models::ModelType::Mdp : storm::models::ModelType::Dtmc, statesOfInterest);
 
     STORM_LOG_INFO("Product " + (Nondeterministic ? std::string("MDP-DA") : std::string("DTMC-DA")) + " has "
                    << product->getProductModel().getNumberOfStates() << " states and " << product->getProductModel().getNumberOfTransitions()
@@ -462,75 +463,13 @@ std::vector<ValueType> SparseLTLHelper<ValueType, Nondeterministic>::computeLTLP
 
     return numericResult;
 }
-//
-// template<typename ValueType, bool Nondeterministic>
-// std::tuple<typename SparseLTLHelper<ValueType, Nondeterministic>::productModelType, std::vector<storm::automata::AcceptanceCondition::ptr>,
-//           std::vector<uint64_t>>
-// SparseLTLHelper<ValueType, Nondeterministic>::buildFromFormulas(productModelType const& model,
-//                                                                std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-//                                                                Environment const& env) {
-//    std::vector<storm::automata::AcceptanceCondition::ptr> acceptanceConditions(formulas.size());
-//    productModelType productModel(model.getTransitionMatrix(), model.getStateLabeling());
-//    std::vector<storm::storage::BitVector> modelStateToProductStates(model.getNumberOfStates());
-//    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
-//        auto iAsVector = storage::BitVector(model.getNumberOfStates());
-//        iAsVector.set(i);
-//        modelStateToProductStates[i] = iAsVector;
-//    }
-//
-//    for (int i = 0; i < formulas.size(); i++) {
-//        // compute product
-//        auto const& pathformula = formulas[i]->asOperatorFormula().getSubformula().asPathFormula();
-//        auto product = buildFromFormula(productModel, pathformula, env);
-//        acceptanceConditions[i] = product->getAcceptance();
-//
-//        // lift state labeling
-//        models::sparse::StateLabeling productLabeling(product->getProductModel().getNumberOfStates());
-//        for (auto const& label : productModel.getStateLabeling().getLabels()) {
-//            productLabeling.addLabel(label);
-//            if (label == "init")
-//                continue;
-//
-//            auto statesModel = productModel.getStateLabeling().getStates(label);
-//            auto statesProduct = product->liftFromModel(statesModel);
-//            productLabeling.setStates(label, statesProduct);
-//        }
-//
-//        productLabeling.setStates("init", product->getProductModel().getStateLabeling().getStates("soi"));
-//        productModel = productModelType(product->getProductModel().getTransitionMatrix(), productLabeling);
-//
-//        // lift state mapping
-//        for (int j = 0; j < model.getNumberOfStates(); j++) {
-//            modelStateToProductStates[j] = product->liftFromModel(modelStateToProductStates[j]);
-//        }
-//
-//        for (int j = 0; j < i; j++) {
-//            // lift product acceptance condition
-//            acceptanceConditions[j] = acceptanceConditions[j]->lift(product->getProductModel().getNumberOfStates(),
-//                                                                    [&product](std::size_t prodState) { return product->getModelState(prodState); });
-//        }
-//    }
-//
-//    std::vector<uint64_t> indexToModelState(productModel.getNumberOfStates());
-//    for (uint64_t i = 0; i < model.getNumberOfStates(); i++) {
-//        for (auto const j : modelStateToProductStates[i]) {
-//            indexToModelState[j] = i;
-//        }
-//    }
-//
-//    return std::make_tuple(productModel, acceptanceConditions, indexToModelState);
-//}
 
-template<typename SparseModelType>
-ToRabinReturnType<SparseModelType> LTLToRabinObjectives(Environment const& env, SparseModelType const& originalModel,
-                                                        std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-                                                        std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker) {
-    using ValueType = typename SparseModelType::ValueType;
-    bool constexpr Nondeterministic =
-        std::is_same_v<SparseModelType, models::sparse::Mdp<ValueType>> || std::is_same_v<SparseModelType, models::sparse::MarkovAutomaton<ValueType>>;
-    STORM_LOG_ASSERT(Nondeterministic == originalModel.isNondeterministicModel(), "Unexpected model type.");
-
-    ToRabinReturnType<SparseModelType> result;
+template<typename ValueType, bool Nondeterministic>
+typename SparseLTLHelper<ValueType, Nondeterministic>::ToRabinReturnType SparseLTLHelper<ValueType, Nondeterministic>::toRabinObjectives(
+    Environment const& env, storm::models::sparse::Model<ValueType> const& originalModel,
+    std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
+    std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker) {
+    ToRabinReturnType result;
     auto productToOriginalMap = storm::utility::vector::buildVectorForRange<uint64_t>(0, originalModel.getNumberOfStates());  // start with identity mapping
 
     for (auto const& f : ltlFormulas) {
@@ -542,24 +481,22 @@ ToRabinReturnType<SparseModelType> LTLToRabinObjectives(Environment const& env, 
         auto apSatSetsOrigModel = SparseLTLHelper<ValueType, Nondeterministic>::computeApSets(extracted, formulaChecker);
         auto const& modelRef = result.model == nullptr ? originalModel : *result.model;
 
-        typename transformer::DAProduct<SparseModelType>::ptr product;
+        typename transformer::DAProduct<ValueType>::ptr product;
         using AutomatonType = storm::automata::AutomatonType;
         if (env.modelchecker().getLtlAutomatonType() == AutomatonType::LDBA) {
             auto ldba = detail::buildAutomatonFromFormula<storm::automata::LimitDeterministicAutomaton>(env, *ltlFormula, true);  // always force DNF
             auto statesForAP = detail::computeStatesForApSet(ldba->getAPSet(), std::move(apSatSetsOrigModel), productToOriginalMap);
-            assert(false);  // todo
-            // transformer::LDBAProductBuilder productBuilder(*automaton, statesForAP);
-            // product = productBuilder.build(modelRef);
+            transformer::LDBAProductBuilder productBuilder(*ldba, statesForAP);
+            product = productBuilder.build(modelRef);
         } else {
             STORM_LOG_ASSERT(env.modelchecker().getLtlAutomatonType() == AutomatonType::DA, "Unsupported automaton type.");
             auto da = detail::buildAutomatonFromFormula<storm::automata::DeterministicAutomaton>(env, *ltlFormula, true);  // always force DNF
             auto statesForAP = detail::computeStatesForApSet(da->getAPSet(), std::move(apSatSetsOrigModel), productToOriginalMap);
-            assert(false);  // todo
-            // transformer::DAProductBuilder productBuilder(*automaton, statesForAP);
-            // product = productBuilder.build(modelRef);
+            transformer::DAProductBuilder productBuilder(*da, statesForAP);
+            product = productBuilder.build(modelRef);
         }
         productToOriginalMap = product->liftFromModel(productToOriginalMap);
-        result.model = product->getProductModel().template as<SparseModelType>();
+        result.model = product->getProductModelPtr();
         result.rabinObjectives.push_back(
             detail::extractRabinObjectiveFromProductAcceptance(std::move(*product->getAcceptance()), result.model->getStateLabeling()));
     }
@@ -569,30 +506,10 @@ ToRabinReturnType<SparseModelType> LTLToRabinObjectives(Environment const& env, 
 template class SparseLTLHelper<double, false>;
 template class SparseLTLHelper<double, true>;
 
-template ToRabinReturnType<storm::models::sparse::Mdp<double>> LTLToRabinObjectives<storm::models::sparse::Mdp<double>>(
-    Environment const& env, storm::models::sparse::Mdp<double> const& originalModel,
-    std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-    std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
-template ToRabinReturnType<storm::models::sparse::MarkovAutomaton<double>> LTLToRabinObjectives<storm::models::sparse::MarkovAutomaton<double>>(
-    Environment const& env, storm::models::sparse::MarkovAutomaton<double> const& originalModel,
-    std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-    std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
-
 #ifdef STORM_HAVE_CARL
 template class SparseLTLHelper<storm::RationalNumber, false>;
 template class SparseLTLHelper<storm::RationalNumber, true>;
 template class SparseLTLHelper<storm::RationalFunction, false>;
-
-template ToRabinReturnType<storm::models::sparse::Mdp<storm::RationalNumber>> LTLToRabinObjectives<storm::models::sparse::Mdp<storm::RationalNumber>>(
-    Environment const& env, storm::models::sparse::Mdp<storm::RationalNumber> const& originalModel,
-    std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-    std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
-template ToRabinReturnType<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>
-LTLToRabinObjectives<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>(
-    Environment const& env, storm::models::sparse::MarkovAutomaton<storm::RationalNumber> const& originalModel,
-    std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-    std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
-
 #endif
 
 }  // namespace helper

@@ -130,7 +130,8 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         storm::modelchecker::SparsePropositionalModelChecker<SparseModelType> mc(originalModel);
         auto subformulaCallback = [&mc](storm::logic::Formula const& f) { return mc.check(f)->asExplicitQualitativeCheckResult().getTruthValuesVector(); };
         // apply product construction with automata
-        auto ltlToRabinResult = storm::modelchecker::helper::LTLToRabinObjectives(env, originalModel, ltlInformation.ltlFormulas, subformulaCallback);
+        auto ltlToRabinResult = storm::modelchecker::helper::SparseLTLHelper<ValueType, true>::toRabinObjectives(env, originalModel, ltlInformation.ltlFormulas,
+                                                                                                                 subformulaCallback);
         // demerge MECs to convert to total reward
         auto const qualitativeRabinLocalIndices = ltlInformation.qualitativeObjectiveIndices % ltlInformation.ltlObjectiveIndices;
         auto const quantitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, ~qualitativeRabinLocalIndices);
@@ -139,7 +140,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
             *ltlToRabinResult.model, quantitativeRabinObjectives, ltlInformation.quantitativeTotalRewardModelNames, qualitativeRabinObjectives);
         STORM_LOG_THROW(rabinToTotalRewardResult.model != nullptr, storm::exceptions::NotSupportedException,
                         "The qualitative objectives cannot be satisfied in the given model. This is not supported.");
-        model = rabinToTotalRewardResult.model;
+        model = rabinToTotalRewardResult.model->template as<SparseModelType>();
     }
 
     SparseModelType const& modelRef = model != nullptr ? *model : originalModel;

@@ -40,8 +40,8 @@ class lexicographicModelCheckerHelper : public helper::SingleValueModelCheckerHe
      * @param formulaChecker
      * @return product-model
      */
-    std::pair<std::shared_ptr<storm::transformer::DAProduct<SparseModelType>>, std::vector<uint>> getCompleteProductModel(
-        SparseModelType const& model, CheckFormulaCallback const& formulaChecker);
+    std::pair<std::shared_ptr<storm::transformer::DAProduct<ValueType>>, std::vector<uint>> getCompleteProductModel(SparseModelType const& model,
+                                                                                                                    CheckFormulaCallback const& formulaChecker);
 
     /*!
      * Given a product of an MDP and a automaton, returns the MECs and their corresponding Lex-Arrays
@@ -52,7 +52,7 @@ class lexicographicModelCheckerHelper : public helper::SingleValueModelCheckerHe
      * @return MECs, corresp. Lex-arrays
      */
     std::pair<storm::storage::MaximalEndComponentDecomposition<ValueType>, std::vector<std::vector<bool>>> getLexArrays(
-        std::shared_ptr<storm::transformer::DAProduct<productModelType>> productModel, std::vector<uint>& acceptanceConditions);
+        std::shared_ptr<storm::transformer::DAProduct<ValueType>> productModel, std::vector<uint>& acceptanceConditions);
 
     /*!
      * Solves the reachability query for a lexicographic objective
@@ -67,7 +67,7 @@ class lexicographicModelCheckerHelper : public helper::SingleValueModelCheckerHe
      */
     MDPSparseModelCheckingHelperReturnType<ValueType> lexReachability(storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
                                                                       std::vector<std::vector<bool>> const& mecLexArray,
-                                                                      std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> const& productModel,
+                                                                      std::shared_ptr<storm::transformer::DAProduct<ValueType>> const& productModel,
                                                                       SparseModelType const& originalMdp);
 
    private:
@@ -136,8 +136,7 @@ class lexicographicModelCheckerHelper : public helper::SingleValueModelCheckerHe
      * add a new sink-state for each MEC
      */
     std::pair<storm::storage::SparseMatrix<ValueType>, std::map<uint, uint_fast64_t>> addSinkStates(
-        storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
-        std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> const& productModel);
+        storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::shared_ptr<storm::transformer::DAProduct<ValueType>> const& productModel);
 
     storm::storage::SparseMatrix<ValueType> const& _transitionMatrix;
     storm::logic::MultiObjectiveFormula const& formula;

@@ -19,11 +19,6 @@ template<typename ValueType, bool Nondeterministic>
 class SparseLTLSchedulerHelper {
    public:
     /*!
-     * The type of the product model (DTMC or MDP) that is used during the computation.
-     */
-    using productModelType = typename std::conditional<Nondeterministic, storm::models::sparse::Mdp<ValueType>, storm::models::sparse::Dtmc<ValueType>>::type;
-
-    /*!
      * Initializes the helper.
      * @param numProductStates number of product states
      */
@@ -50,7 +45,7 @@ class SparseLTLSchedulerHelper {
     void saveProductEcChoices(automata::AcceptanceCondition const& acceptance, storm::storage::MaximalEndComponent const& acceptingEC,
                               storm::storage::MaximalEndComponent const& containingMEC,
                               std::vector<automata::AcceptanceCondition::acceptance_expr::ptr> const& conjunction,
-                              typename transformer::DAProduct<productModelType>::ptr product);
+                              typename transformer::DAProduct<ValueType>::ptr product);
 
     /*!
      * Extracts scheduler choices and creates the memory structure for the LTL-Scheduler.
@@ -67,7 +62,7 @@ class SparseLTLSchedulerHelper {
      */
     void prepareScheduler(uint_fast64_t numDaStates, storm::storage::BitVector const& acceptingProductStates,
                           std::unique_ptr<storm::storage::Scheduler<ValueType>> reachScheduler, transformer::DAProductBuilder const& productBuilder,
-                          typename transformer::DAProduct<productModelType>::ptr product, storm::storage::BitVector const& modelStatesOfInterest,
+                          typename transformer::DAProduct<ValueType>::ptr product, storm::storage::BitVector const& modelStatesOfInterest,
                           storm::storage::SparseMatrix<ValueType> const& transitionMatrix);
 
     /*!

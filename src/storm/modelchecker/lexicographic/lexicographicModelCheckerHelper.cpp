@@ -19,7 +19,7 @@ namespace helper {
 namespace lexicographic {
 
 template<typename SparseModelType, typename ValueType, bool Nondeterministic>
-std::pair<std::shared_ptr<storm::transformer::DAProduct<SparseModelType>>, std::vector<uint>>
+std::pair<std::shared_ptr<storm::transformer::DAProduct<ValueType>>, std::vector<uint>>
 lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::getCompleteProductModel(const SparseModelType& model,
                                                                                                        CheckFormulaCallback const& formulaChecker) {
     storm::logic::ExtractMaximalStateFormulasVisitor::ApToFormulaMap extracted;
@@ -51,8 +51,7 @@ lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::g
 
     // create the product of automaton and MDP
     transformer::DAProductBuilder productBuilder(*productAutomaton, statesForAP);
-    std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> product =
-        productBuilder.build<SparseModelType>(model.getTransitionMatrix(), statesOfInterest);
+    auto product = productBuilder.build(model.getTransitionMatrix(), storm::models::ModelType::Mdp, statesOfInterest);
 
     return std::make_pair(product, acceptanceConditions);
 }
@@ -60,7 +59,7 @@ lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::g
 template<typename SparseModelType, typename ValueType, bool Nondeterministic>
 std::pair<storm::storage::MaximalEndComponentDecomposition<ValueType>, std::vector<std::vector<bool>>>
 lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::getLexArrays(
-    std::shared_ptr<storm::transformer::DAProduct<productModelType>> productModel, std::vector<uint>& acceptanceConditions) {
+    std::shared_ptr<storm::transformer::DAProduct<ValueType>> productModel, std::vector<uint>& acceptanceConditions) {
     storm::storage::BitVector allowed(productModel->getProductModel().getTransitionMatrix().getRowGroupCount(), true);
     // get MEC decomposition
     storm::storage::MaximalEndComponentDecomposition<ValueType> mecs(productModel->getProductModel().getTransitionMatrix(),
@@ -88,7 +87,7 @@ lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::g
             sprimeTemp.insert(sprimeTemp.end(), sub.begin(), sub.end());
 
             // check whether the Streett-condition in sprimeTemp can be fulfilled in the mec
-            bool accepts = isAcceptingStreettConditions(mec, sprimeTemp, acceptance, productModel->getProductModel());
+            bool accepts = isAcceptingStreettConditions(mec, sprimeTemp, acceptance, *productModel->getProductModel().template as<SparseModelType>());
 
             if (accepts) {
                 // if the condition can be fulfilled, add the Streett-pairs to the current list of pairs, and mark this property as true for this MEC
@@ -106,7 +105,7 @@ lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::g
 template<typename SparseModelType, typename ValueType, bool Nondeterministic>
 MDPSparseModelCheckingHelperReturnType<ValueType> lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::lexReachability(
     storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::vector<std::vector<bool>> const& mecLexArray,
-    std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> const& productModel, SparseModelType const& originalMdp) {
+    std::shared_ptr<storm::transformer::DAProduct<ValueType>> const& productModel, SparseModelType const& originalMdp) {
     // Eliminate all MECs and generate one sink state instead
     // Add first new states for each MEC
     auto stStateResult = addSinkStates(mecs, productModel);
@@ -355,8 +354,7 @@ lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::g
 template<typename SparseModelType, typename ValueType, bool Nondeterministic>
 std::pair<storm::storage::SparseMatrix<ValueType>, std::map<uint, uint_fast64_t>>
 lexicographicModelCheckerHelper<SparseModelType, ValueType, Nondeterministic>::addSinkStates(
-    storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs,
-    std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> const& productModel) {
+    storm::storage::MaximalEndComponentDecomposition<ValueType> const& mecs, std::shared_ptr<storm::transformer::DAProduct<ValueType>> const& productModel) {
     storm::storage::SparseMatrix<ValueType> const matrix = productModel->getProductModel().getTransitionMatrix();
     uint countNewRows = 0;
     std::map<uint_fast64_t, uint> stateToMEC;

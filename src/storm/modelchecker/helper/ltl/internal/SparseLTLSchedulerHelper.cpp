@@ -57,7 +57,7 @@ template<typename ValueType, bool Nondeterministic>
 void SparseLTLSchedulerHelper<ValueType, Nondeterministic>::saveProductEcChoices(
     automata::AcceptanceCondition const& acceptance, storm::storage::MaximalEndComponent const& acceptingEc,
     storm::storage::MaximalEndComponent const& containingMec, std::vector<automata::AcceptanceCondition::acceptance_expr::ptr> const& conjunction,
-    typename transformer::DAProduct<productModelType>::ptr product) {
+    typename transformer::DAProduct<ValueType>::ptr product) {
     STORM_LOG_ASSERT(std::all_of(acceptingEc.begin(), acceptingEc.end(),
                                  [&containingMec](auto const& accStateChoicesPair) { return containingMec.containsState(accStateChoicesPair.first); }),
                      "All states in the acceptingEC must be contained in the containing mec.");
@@ -150,7 +150,7 @@ template<typename ValueType, bool Nondeterministic>
 void SparseLTLSchedulerHelper<ValueType, Nondeterministic>::prepareScheduler(uint_fast64_t numDaStates, storm::storage::BitVector const& acceptingProductStates,
                                                                              std::unique_ptr<storm::storage::Scheduler<ValueType>> reachScheduler,
                                                                              transformer::DAProductBuilder const& productBuilder,
-                                                                             typename transformer::DAProduct<productModelType>::ptr product,
+                                                                             typename transformer::DAProduct<ValueType>::ptr product,
                                                                              storm::storage::BitVector const& modelStatesOfInterest,
                                                                              storm::storage::SparseMatrix<ValueType> const& transitionMatrix) {
     STORM_LOG_ASSERT(_infSets.size() > 0, "There is no inf set. Were the accepting ECs processed before?");

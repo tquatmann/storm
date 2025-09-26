@@ -28,7 +28,7 @@ helper::MDPSparseModelCheckingHelperReturnType<ValueType> check(Environment cons
     // get the product of (i) the product-automaton of all subformuale, and (ii) the model
     auto res = lMC.getCompleteProductModel(model, formulaChecker);
 
-    std::shared_ptr<storm::transformer::DAProduct<SparseModelType>> completeProductModel = res.first;
+    std::shared_ptr<storm::transformer::DAProduct<ValueType>> completeProductModel = res.first;
     std::vector<uint> accCond = res.second;
 
     // get the lexicogrpahic array for all MEC of the product-model

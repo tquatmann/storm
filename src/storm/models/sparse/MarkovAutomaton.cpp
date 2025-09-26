@@ -120,6 +120,11 @@ storm::storage::BitVector const& MarkovAutomaton<ValueType, RewardModelType>::ge
 }
 
 template<typename ValueType, typename RewardModelType>
+storm::storage::BitVector& MarkovAutomaton<ValueType, RewardModelType>::getMarkovianStates() {
+    return this->markovianStates;
+}
+
+template<typename ValueType, typename RewardModelType>
 void MarkovAutomaton<ValueType, RewardModelType>::close() {
     if (!closed) {
         // Get the choices that we will keep

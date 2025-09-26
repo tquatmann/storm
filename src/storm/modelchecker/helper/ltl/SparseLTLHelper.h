@@ -29,12 +29,7 @@ template<typename ValueType, bool Nondeterministic>
 class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
     typedef std::function<storm::storage::BitVector(storm::logic::Formula const&)> CheckFormulaCallback;
-
-    /*!
-     * The type of the product model (DTMC or MDP) that is used during the computation.
-     */
-    using productModelType = typename std::conditional<Nondeterministic, storm::models::sparse::Mdp<ValueType>, storm::models::sparse::Dtmc<ValueType>>::type;
-
+    
     /*!
      * Initializes the helper for a discrete time model (i.e. DTMC, MDP)
      * @param transitionMatrix the transition matrix of the model
@@ -84,6 +79,17 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
     std::vector<ValueType> computeLTLProbabilities(Environment const& env, storm::logic::PathFormula const& formula,
                                                    std::map<std::string, storm::storage::BitVector>&& apSatSets);
 
+    struct ToRabinReturnType {
+        std::shared_ptr<storm::models::sparse::Model<ValueType>> model;
+        std::vector<RabinObjective> rabinObjectives;
+    };
+    /*!
+     * Takes as input a model and a set of LTL formulas and produces a model with equivalent Rabin acceptance conditions for each formula.
+     */
+    static ToRabinReturnType toRabinObjectives(Environment const& env, storm::models::sparse::Model<ValueType> const& model,
+                                               std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
+                                               std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
+
    private:
     /*!
      * Computes a set S of states that admit a probability 1 strategy of satisfying the given acceptance condition (in DNF).
@@ -100,7 +106,7 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
     storm::storage::BitVector computeAcceptingECs(automata::AcceptanceCondition const& acceptance,
                                                   storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                   storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
-                                                  typename transformer::DAProduct<productModelType>::ptr product);
+                                                  typename transformer::DAProduct<ValueType>::ptr product);
 
     /*!
      * Computes a set S of states that are contained in BSCCs that satisfy the given acceptance conditon.
@@ -114,19 +120,6 @@ class SparseLTLHelper : public SingleValueModelCheckerHelper<ValueType, storm::m
 
     boost::optional<storm::modelchecker::helper::internal::SparseLTLSchedulerHelper<ValueType, Nondeterministic>> _schedulerHelper;
 };
-
-template<typename SparseModelType>
-struct ToRabinReturnType {
-    std::shared_ptr<SparseModelType> model;
-    std::vector<RabinObjective> rabinObjectives;
-};
-/*!
- * Takes as input a model and a set of LTL formulas and produces a model with equivalent Rabin acceptance conditions for each formula.
- */
-template<typename SparseModelType>
-ToRabinReturnType<SparseModelType> LTLToRabinObjectives(Environment const& env, SparseModelType const& model,
-                                                        std::vector<std::shared_ptr<storm::logic::Formula const>> const& ltlFormulas,
-                                                        std::function<storm::storage::BitVector(storm::logic::Formula const&)> const& formulaChecker);
 
 }  // namespace helper
 }  // namespace modelchecker

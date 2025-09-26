@@ -1,8 +1,10 @@
 #pragma once
 
+#include "storm/models/ModelType.h"
 #include "storm/models/sparse/StateLabeling.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
+#include "storm/utility/builder.h"
 
 #include <deque>
 #include <map>
@@ -11,14 +13,14 @@
 namespace storm {
 namespace transformer {
 
-template<typename Model>
+template<typename ValueType>
 class ProductBuilder {
    public:
-    typedef storm::storage::SparseMatrix<typename Model::ValueType> matrix_type;
+    typedef storm::storage::SparseMatrix<ValueType> matrix_type;
 
     template<typename ProductOperator>
-    static typename Product<Model>::ptr buildProduct(const matrix_type& originalMatrix, ProductOperator& prodOp,
-                                                     const storm::storage::BitVector& statesOfInterest) {
+    static typename Product<ValueType>::ptr buildProduct(const matrix_type& originalMatrix, storm::models::ModelType modelType, ProductOperator& prodOp,
+                                                         const storm::storage::BitVector& statesOfInterest, std::string statesOfInterestLabel) {
         bool deterministic = originalMatrix.hasTrivialRowGrouping();
 
         typedef storm::storage::sparse::state_type state_type;
@@ -47,7 +49,7 @@ class ProductBuilder {
             todo.push_back(index);
         }
 
-        storm::storage::SparseMatrixBuilder<typename Model::ValueType> builder(0, 0, 0, false, deterministic ? false : true, 0);
+        storm::storage::SparseMatrixBuilder<ValueType> builder(0, 0, 0, false, deterministic ? false : true, 0);
         std::size_t curRow = 0;
         while (!todo.empty()) {
             state_type prodIndexFrom = todo.front();
@@ -111,18 +113,21 @@ class ProductBuilder {
 
         state_type numberOfProductStates = nextState;
 
-        Model product(builder.build(), storm::models::sparse::StateLabeling(numberOfProductStates));
-        storm::storage::BitVector productStatesOfInterest(product.getNumberOfStates());
-        for (auto& s : prodInitial) {
-            productStatesOfInterest.set(s);
+        storm::storage::sparse::ModelComponents<ValueType> components(builder.build(), storm::models::sparse::StateLabeling(numberOfProductStates));
+        storm::storage::BitVector productStatesOfInterest(numberOfProductStates);
+        productStatesOfInterest.set(prodInitial.begin(), prodInitial.end());
+        components.stateLabeling.addLabel(statesOfInterestLabel, std::move(productStatesOfInterest));
+        if (modelType == storm::models::ModelType::MarkovAutomaton) {
+            components.markovianStates.emplace(numberOfProductStates, false);  // all states are assumed non-Markovian
+        } else {
+            STORM_LOG_ASSERT(
+                modelType == storm::models::ModelType::Dtmc || modelType == storm::models::ModelType::Ctmc || modelType == storm::models::ModelType::Mdp,
+                "Model type not supported for DA product construction");
         }
-        std::string prodSoiLabel = product.getStateLabeling().addUniqueLabel("soi", productStatesOfInterest);
+        auto product = storm::utility::builder::buildModelFromComponents(modelType, std::move(components));
 
-        // const storm::models::sparse::StateLabeling& orignalLabels = dtmc->getStateLabeling();
-        // for (originalLabels.)
-
-        return typename Product<Model>::ptr(
-            new Product<Model>(std::move(product), std::move(prodSoiLabel), std::move(productStateToProductIndex), std::move(productIndexToProductState)));
+        return typename Product<ValueType>::ptr(new Product<ValueType>(std::move(product), std::move(statesOfInterestLabel),
+                                                                       std::move(productStateToProductIndex), std::move(productIndexToProductState)));
     }
 
     /// Builds the product between an MDP and a Limit-Deterministic Büchi automaton. The transitions are of the automaton are based on the label of the current
@@ -133,8 +138,9 @@ class ProductBuilder {
     /// @param statesOfInterest
     /// @return
     template<typename ProductOperator>
-    static typename Product<Model>::ptr buildLimitDeterministicProduct(const matrix_type& originalMatrix, ProductOperator& prodOp,
-                                                                       const storm::storage::BitVector& statesOfInterest, storm::storage::BitVector mecStates) {
+    static typename Product<ValueType>::ptr buildLimitDeterministicProduct(const matrix_type& originalMatrix, storm::models::ModelType modelType,
+                                                                           ProductOperator& prodOp, const storm::storage::BitVector& statesOfInterest,
+                                                                           std::string statesOfInterestLabel, storm::storage::BitVector mecStates) {
         typedef storm::storage::sparse::state_type state_type;
         typedef std::pair<state_type, state_type> product_state_type;
 
@@ -161,7 +167,7 @@ class ProductBuilder {
             todo.push_back(index);
         }
 
-        storm::storage::SparseMatrixBuilder<typename Model::ValueType> builder(0, 0, 0, false, true, 0);
+        storm::storage::SparseMatrixBuilder<ValueType> builder(0, 0, 0, false, true, 0);
         std::size_t curRow = 0;
         while (!todo.empty()) {
             state_type prodIndexFrom = todo.front();
@@ -217,18 +223,21 @@ class ProductBuilder {
         */
         state_type numberOfProductStates = nextState;
 
-        Model product(builder.build(), storm::models::sparse::StateLabeling(numberOfProductStates));
-        storm::storage::BitVector productStatesOfInterest(product.getNumberOfStates());
-        for (auto& s : prodInitial) {
-            productStatesOfInterest.set(s);
+        storm::storage::sparse::ModelComponents<ValueType> components(builder.build(), storm::models::sparse::StateLabeling(numberOfProductStates));
+        storm::storage::BitVector productStatesOfInterest(numberOfProductStates);
+        productStatesOfInterest.set(prodInitial.begin(), prodInitial.end());
+        components.stateLabeling.addLabel(statesOfInterestLabel, std::move(productStatesOfInterest));
+        if (modelType == storm::models::ModelType::MarkovAutomaton) {
+            components.markovianStates.emplace(numberOfProductStates, false);  // all states are assumed non-Markovian
+        } else {
+            STORM_LOG_ASSERT(
+                modelType == storm::models::ModelType::Dtmc || modelType == storm::models::ModelType::Ctmc || modelType == storm::models::ModelType::Mdp,
+                "Model type not supported for DA product construction");
         }
-        std::string prodSoiLabel = product.getStateLabeling().addUniqueLabel("soi", productStatesOfInterest);
+        auto product = storm::utility::builder::buildModelFromComponents(modelType, std::move(components));
 
-        // const storm::models::sparse::StateLabeling& orignalLabels = dtmc->getStateLabeling();
-        // for (originalLabels.)
-
-        return typename Product<Model>::ptr(
-            new Product<Model>(std::move(product), std::move(prodSoiLabel), std::move(productStateToProductIndex), std::move(productIndexToProductState)));
+        return typename Product<ValueType>::ptr(new Product<ValueType>(std::move(product), std::move(statesOfInterestLabel),
+                                                                       std::move(productStateToProductIndex), std::move(productIndexToProductState)));
     }
 };
 }  // namespace transformer

@@ -5,6 +5,7 @@
 #include "storm/automata/Automaton.h"
 #include "storm/storage/BitVector.h"
 #include "storm/transformer/DAProduct.h"
+#include "storm/transformer/DAProductBuilder.h"
 #include "storm/transformer/Product.h"
 #include "storm/transformer/ProductBuilder.h"
 
@@ -20,16 +21,18 @@ class LDBAProductBuilder {
     LDBAProductBuilder(const storm::automata::LimitDeterministicAutomaton& ldba, const std::vector<storm::storage::BitVector>& statesForAP)
         : ldba(ldba), statesForAP(statesForAP) {}
 
-    template<typename Model>
-    typename DAProduct<Model>::ptr build(const Model& originalMdp, const storm::storage::BitVector& statesOfInterest) const {
-        return build<Model>(originalMdp.getTransitionMatrix(), originalMdp.getBackwardTransitions(), statesOfInterest);
+    template<typename ValueType>
+    typename DAProduct<ValueType>::ptr build(storm::models::sparse::Model<ValueType> const& originalModel) const {
+        // First build the product model which will be equipped with the initial states but no other label
+        auto result = build(originalModel.getTransitionMatrix(), originalModel.getType(), originalModel.getInitialStates(), "init");
+        DAProductBuilder::liftOriginalModelInformationToProduct(originalModel, result);
+        return result;
     }
 
-    template<typename Model>
-    typename DAProduct<Model>::ptr build(const storm::storage::SparseMatrix<typename Model::ValueType>& transitionMatrix,
-                                         const storm::storage::SparseMatrix<typename Model::ValueType>& backwardTransitions,
-                                         const storm::storage::BitVector& statesOfInterest) const {
-        storage::MaximalEndComponentDecomposition mecs(transitionMatrix, backwardTransitions);
+    template<typename ValueType>
+    typename DAProduct<ValueType>::ptr build(const storm::storage::SparseMatrix<ValueType>& transitionMatrix, storm::models::ModelType const& modelType,
+                                             const storm::storage::BitVector& statesOfInterest, std::string const& statesOfInterestLabel = "soi") const {
+        storage::MaximalEndComponentDecomposition mecs(transitionMatrix, transitionMatrix.transpose(true));
         storm::storage::BitVector mecStates(transitionMatrix.getRowGroupCount());
         for (auto const& ec : mecs) {
             for (auto const& [state, _] : ec) {
@@ -50,11 +53,12 @@ class LDBAProductBuilder {
             std::cout << i << ": " << getLabelForState(i) << std::endl;
         }
         */
-        typename Product<Model>::ptr product = ProductBuilder<Model>::buildLimitDeterministicProduct(transitionMatrix, *this, statesOfInterest, mecStates);
+        typename Product<ValueType>::ptr product =
+            ProductBuilder<ValueType>::buildLimitDeterministicProduct(transitionMatrix, modelType, *this, statesOfInterest, statesOfInterestLabel, mecStates);
         storm::automata::AcceptanceCondition::ptr prodAcceptance = ldba.getAcceptance()->lift(
             product->getProductModel().getNumberOfStates(), [&product](std::size_t prodState) { return product->getAutomatonState(prodState); });
 
-        return typename DAProduct<Model>::ptr(new DAProduct<Model>(std::move(*product), prodAcceptance));
+        return typename DAProduct<ValueType>::ptr(new DAProduct<ValueType>(std::move(*product), prodAcceptance));
     }
 
     storm::storage::sparse::state_type getInitialState(storm::storage::sparse::state_type MdpState) const {

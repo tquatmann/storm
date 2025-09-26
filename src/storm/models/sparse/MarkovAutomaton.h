@@ -136,6 +136,13 @@ class MarkovAutomaton : public NondeterministicModel<ValueType, RewardModelType>
     storm::storage::BitVector const& getMarkovianStates() const;
 
     /*!
+     * Retrieves the set of Markovian states of the model.
+     *
+     * @return A bit vector representing the Markovian states of the model.
+     */
+    storm::storage::BitVector& getMarkovianStates();
+
+    /*!
      * Closes the Markov automaton. That is, this applies the maximal progress assumption to all hybrid states.
      */
     void close();

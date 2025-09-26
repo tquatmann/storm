@@ -7,12 +7,13 @@
 namespace storm {
 namespace transformer {
 
-template<typename Model>
-class DAProduct : public Product<Model> {
+template<typename ValueType>
+class DAProduct : public Product<ValueType> {
    public:
-    typedef std::shared_ptr<DAProduct<Model>> ptr;
+    typedef std::shared_ptr<DAProduct<ValueType>> ptr;
 
-    DAProduct(Product<Model>&& product, storm::automata::AcceptanceCondition::ptr acceptance) : Product<Model>(std::move(product)), acceptance(acceptance) {
+    DAProduct(Product<ValueType>&& product, storm::automata::AcceptanceCondition::ptr acceptance)
+        : Product<ValueType>(std::move(product)), acceptance(acceptance) {
         // Intentionally left blank
     }
 

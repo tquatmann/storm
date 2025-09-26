@@ -1,30 +1,35 @@
 #pragma once
 
 #include <memory>
+#include "storm/models/sparse/Model.h"
 
 namespace storm {
 namespace transformer {
-template<typename Model>
+template<typename ValueType>
 class Product {
    public:
-    typedef std::shared_ptr<Product<Model>> ptr;
-
+    typedef std::shared_ptr<Product<ValueType>> ptr;
+    typedef storm::models::sparse::Model<ValueType> Model;
     typedef storm::storage::sparse::state_type state_type;
     typedef std::pair<state_type, state_type> product_state_type;
     typedef std::map<product_state_type, state_type> product_state_to_product_index_map;
     typedef std::vector<product_state_type> product_index_to_product_state_vector;
 
-    Product(Model&& productModel, std::string&& productStateOfInterestLabel, product_state_to_product_index_map&& productStateToProductIndex,
+    Product(std::shared_ptr<Model> productModel, std::string&& productStateOfInterestLabel, product_state_to_product_index_map&& productStateToProductIndex,
             product_index_to_product_state_vector&& productIndexToProductState)
         : productModel(productModel),
           productStateOfInterestLabel(productStateOfInterestLabel),
           productStateToProductIndex(productStateToProductIndex),
           productIndexToProductState(productIndexToProductState) {}
 
-    Product(Product<Model>&& product) = default;
-    Product& operator=(Product<Model>&& product) = default;
+    Product(Product<ValueType>&& product) = default;
+    Product& operator=(Product<ValueType>&& product) = default;
 
     Model& getProductModel() {
+        return *productModel;
+    }
+
+    std::shared_ptr<Model> getProductModelPtr() {
         return productModel;
     }
 
@@ -45,7 +50,7 @@ class Product {
     }
 
     storm::storage::BitVector liftFromAutomaton(const storm::storage::BitVector& vector) const {
-        state_type n = productModel.getNumberOfStates();
+        state_type n = productModel->getNumberOfStates();
         storm::storage::BitVector lifted(n, false);
         for (state_type s = 0; s < n; s++) {
             if (vector.get(getAutomatonState(s))) {
@@ -56,7 +61,7 @@ class Product {
     }
 
     storm::storage::BitVector liftFromModel(const storm::storage::BitVector& vector) const {
-        state_type n = productModel.getNumberOfStates();
+        state_type const n = productModel->getNumberOfStates();
         storm::storage::BitVector lifted(n, false);
         for (state_type s = 0; s < n; s++) {
             if (vector.get(getModelState(s))) {
@@ -66,10 +71,10 @@ class Product {
         return lifted;
     }
 
-    template<typename ValueType>
-    std::vector<ValueType> liftFromModel(const std::vector<ValueType>& vector) const {
-        state_type const n = productModel.getNumberOfStates();
-        std::vector<ValueType> lifted;
+    template<typename T>
+    std::vector<T> liftFromModel(const std::vector<T>& vector) const {
+        state_type const n = productModel->getNumberOfStates();
+        std::vector<T> lifted;
         lifted.reserve(n);
         for (state_type s = 0; s < n; s++) {
             lifted.push_back(vector[getModelState(s)]);
@@ -77,15 +82,29 @@ class Product {
         return lifted;
     }
 
-    template<typename ValueType>
-    std::vector<ValueType> projectToOriginalModel(const Model& originalModel, const std::vector<ValueType>& prodValues) {
+    template<typename T>
+    std::vector<T> liftChoiceVectorFromModel(const std::vector<T>& vector, std::vector<uint64_t> const& modelRowGroupIndices) const {
+        state_type const n = productModel->getNumberOfStates();
+        std::vector<T> lifted;
+        lifted.reserve(productModel->getNumberOfChoices());
+        for (state_type s = 0; s < n; s++) {
+            auto const modelState = getModelState(s);
+            for (auto choice = modelRowGroupIndices[modelState]; choice < modelRowGroupIndices[modelState + 1]; ++choice) {
+                lifted.push_back(vector[choice]);
+            }
+        }
+        return lifted;
+    }
+
+    template<typename T>
+    std::vector<T> projectToOriginalModel(const Model& originalModel, const std::vector<T>& prodValues) {
         return projectToOriginalModel(originalModel.getNumberOfStates(), prodValues);
     }
 
-    template<typename ValueType>
-    std::vector<ValueType> projectToOriginalModel(std::size_t numberOfStates, const std::vector<ValueType>& prodValues) {
-        std::vector<ValueType> origValues(numberOfStates);
-        for (state_type productState : productModel.getStateLabeling().getStates(productStateOfInterestLabel)) {
+    template<typename T>
+    std::vector<T> projectToOriginalModel(std::size_t numberOfStates, const std::vector<T>& prodValues) {
+        std::vector<T> origValues(numberOfStates);
+        for (state_type productState : productModel->getStateLabeling().getStates(productStateOfInterestLabel)) {
             state_type originalState = getModelState(productState);
             origValues.at(originalState) = prodValues.at(productState);
         }
@@ -93,7 +112,7 @@ class Product {
     }
 
     const storm::storage::BitVector& getStatesOfInterest() const {
-        return productModel.getStates(productStateOfInterestLabel);
+        return productModel->getStates(productStateOfInterestLabel);
     }
 
     void printMapping(std::ostream& out) const {
@@ -104,7 +123,7 @@ class Product {
     }
 
    private:
-    Model productModel;
+    std::shared_ptr<Model> productModel;
     std::string productStateOfInterestLabel;
     product_state_to_product_index_map productStateToProductIndex;
     product_index_to_product_state_vector productIndexToProductState;
