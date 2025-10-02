@@ -53,8 +53,13 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     STORM_LOG_THROW(preprocessorResult.preprocessedModel->getInitialStates().getNumberOfSetBits() == 1, storm::exceptions::NotSupportedException,
                     "The model has multiple initial states.");
 
-    // Build a subsystem of the preprocessor result model that discards states that yield infinite reward for all schedulers.
+    // Build a subsystem of the preprocessor result model that discards states that
+    // (a) yield infinite reward for all schedulers or
+    // (b) can not reach a non-fin state
+    // todo: (b) is currently hacked into the rewardAnalysis. intuitively, we pretend that the fin states give negative
+    //    // rewards for a maximizing objective (which implicitly always has weight 0
     // We can also merge the states that will have reward zero anyway.
+    storm::storage::BitVector allowedStates = rewardAnalysis.totalRewardLessInfinityEStates.get();
     storm::storage::BitVector maybeStates = rewardAnalysis.totalRewardLessInfinityEStates.get() & ~rewardAnalysis.reward0AStates;
     storm::storage::BitVector finiteTotalRewardChoices = preprocessorResult.preprocessedModel->getTransitionMatrix().getRowFilter(
         rewardAnalysis.totalRewardLessInfinityEStates.get(), rewardAnalysis.totalRewardLessInfinityEStates.get());

@@ -34,6 +34,9 @@ RewardBoundedMdpPcaaWeightVectorChecker<SparseMdpModelType>::RewardBoundedMdpPca
     : PcaaWeightVectorChecker<SparseMdpModelType>(preprocessorResult.objectives),
       swAll(true),
       rewardUnfolding(*preprocessorResult.preprocessedModel, preprocessorResult.objectives) {
+    STORM_LOG_THROW(!preprocessorResult.finStatesLabel.has_value(), storm::exceptions::NotImplementedException,
+                    "Some objectives require finiteness of visits to certain states whereas others consider reward-bounded measures. This combination of "
+                    "objectives is not implemented.");
     auto rewardAnalysis = preprocessing::SparseMultiObjectiveRewardAnalysis<SparseMdpModelType>::analyze(preprocessorResult);
     STORM_LOG_THROW(rewardAnalysis.rewardFinitenessType == preprocessing::RewardFinitenessType::AllFinite, storm::exceptions::NotSupportedException,
                     "There is a scheduler that yields infinite reward for one  objective. This is not supported.");

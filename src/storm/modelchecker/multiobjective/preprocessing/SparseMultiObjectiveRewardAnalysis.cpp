@@ -67,6 +67,10 @@ void SparseMultiObjectiveRewardAnalysis<SparseModelType>::setReward0States(
 
     // get the states for which there is a scheduler yielding total reward zero
     auto statesWithTotalRewardForAllChoices = transitions.getRowGroupFilter(~zeroTotalRewardChoices, true);
+    // TODO: This is a bit of a hack but we pretend that the fin states have a (bad) reward attached to them so that we avoid collecting infinite bad reward
+    if (preprocessorResult.finStatesLabel) {
+        statesWithTotalRewardForAllChoices |= preprocessorResult.preprocessedModel->getStateLabeling().getStates(preprocessorResult.finStatesLabel.value());
+    }
     result.totalReward0EStates = storm::utility::graph::performProbGreater0A(transitions, groupIndices, backwardTransitions, allStates,
                                                                              statesWithTotalRewardForAllChoices, false, 0, zeroTotalRewardChoices);
     result.totalReward0EStates.complement();
@@ -80,6 +84,9 @@ void SparseMultiObjectiveRewardAnalysis<SparseModelType>::setReward0States(
         storm::utility::graph::performProb1A(transitions, groupIndices, backwardTransitions, allStates, forallGloballyStatesWithoutLraReward);
     // Now also incorporate cumulative and total reward objectives
     auto statesWithTotalOrCumulativeReward = transitions.getRowGroupFilter(~(zeroTotalRewardChoices & zeroCumulativeRewardChoices), false);
+    if (preprocessorResult.finStatesLabel) {  // TODO: see above
+        statesWithTotalOrCumulativeReward |= preprocessorResult.preprocessedModel->getStateLabeling().getStates(preprocessorResult.finStatesLabel.value());
+    }
     result.reward0AStates &= storm::utility::graph::performProb0A(backwardTransitions, allStates, statesWithTotalOrCumulativeReward);
     assert(result.reward0AStates.isSubsetOf(result.totalReward0EStates));
 }
@@ -128,6 +135,12 @@ void SparseMultiObjectiveRewardAnalysis<SparseModelType>::checkRewardFiniteness(
     attractingInfRewardChoices.complement();
     drainingInfRewardChoices.complement();
 
+    // TODO: make this less hacky
+    if (preprocessorResult.finStatesLabel) {
+        auto const& finStates = preprocessorResult.preprocessedModel->getStateLabeling().getStates(preprocessorResult.finStatesLabel.value());
+        drainingInfRewardChoices |= transitions.getRowFilter(finStates);
+    }
+
     // Check reward finiteness under all schedulers
     storm::storage::BitVector allStates(preprocessorResult.preprocessedModel->getNumberOfStates(), true);
     if (storm::utility::graph::checkIfECWithChoiceExists(transitions, backwardTransitions, allStates, attractingInfRewardChoices | drainingInfRewardChoices)) {
@@ -140,7 +153,8 @@ void SparseMultiObjectiveRewardAnalysis<SparseModelType>::checkRewardFiniteness(
                 storm::utility::graph::performProb1E(transitions, groupIndices, backwardTransitions, allStates, result.totalReward0EStates);
             if ((result.totalRewardLessInfinityEStates.get() & preprocessorResult.preprocessedModel->getInitialStates()).empty()) {
                 // There is no scheduler that induces finite reward for the initial state
-                result.rewardFinitenessType = RewardFinitenessType::Infinite;
+                result.rewardFinitenessType =
+                    RewardFinitenessType::Infinite;  // TODO: right now this case also holds if the qualitative ltl objectives cannot be satisfied.
             } else {
                 result.rewardFinitenessType = RewardFinitenessType::ExistsParetoFinite;
             }

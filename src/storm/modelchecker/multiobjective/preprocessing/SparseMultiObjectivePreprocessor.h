@@ -54,6 +54,9 @@ class SparseMultiObjectivePreprocessor {
         // If set, some states have been merged to a deadlock state with this label.
         boost::optional<std::string> deadlockLabel;
 
+        // If set, the states with this label should only be visited finitely often under the considered schedulers.
+        std::optional<std::string> finStatesLabel;
+
         // Mapping of incorporated memory to model+memory
         std::optional<storm::storage::SparseModelMemoryProductReverseData> memoryIncorporationReverseData;
 

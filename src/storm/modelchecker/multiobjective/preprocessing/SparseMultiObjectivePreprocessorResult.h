@@ -38,6 +38,9 @@ struct SparseMultiObjectivePreprocessorResult {
     // Indices of the objectives that can potentially yield infinite reward
     storm::storage::BitVector maybeInfiniteRewardObjectives;
 
+    // If given, the label is attached to all states that should be visited only finitely often by the considered schedulers.
+    std::optional<std::string> finStatesLabel;
+
     SparseMultiObjectivePreprocessorResult(storm::logic::MultiObjectiveFormula const& originalFormula, SparseModelType const& originalModel)
         : originalFormula(originalFormula), originalModel(originalModel) {
         // Intentionally left empty

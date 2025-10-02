@@ -124,7 +124,7 @@ class MaximalEndComponent {
      * @param stateSet The states for which to query membership in the MEC.
      * @return True if any of the given states is contained in the MEC.
      */
-    bool containsAnyState(storm::storage::BitVector stateSet) const;
+    bool containsAnyState(storm::storage::BitVector const& stateSet) const;
 
     /*!
      * Retrieves whether the given choice for the given state is contained in the MEC.

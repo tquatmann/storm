@@ -80,7 +80,7 @@ bool MaximalEndComponent::containsState(uint_fast64_t state) const {
     return true;
 }
 
-bool MaximalEndComponent::containsAnyState(storm::storage::BitVector stateSet) const {
+bool MaximalEndComponent::containsAnyState(storm::storage::BitVector const& stateSet) const {
     // TODO: iteration over unordered_map is potentially inefficient?
     for (auto const& stateChoicesPair : stateToChoicesMapping) {
         if (stateSet.get(stateChoicesPair.first)) {

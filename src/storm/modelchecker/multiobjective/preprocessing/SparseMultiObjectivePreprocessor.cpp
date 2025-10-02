@@ -123,6 +123,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     bool const allowLTL = detail::haveLtlSupport(env, originalModel, subformulas, produceScheduler);
     auto const ltlInformation = detail::getLtlObjectiveInfoNegateMinimizing(subformulas, allowLTL);  // include qualitative formulas only if we have LTL support
     auto const hasLtlObjectives = !ltlInformation.ltlObjectiveIndices.empty();
+    std::optional<std::string> finStatesLabel;
     if (hasLtlObjectives) {
         STORM_LOG_THROW(
             allowLTL, storm::exceptions::NotSupportedException,
@@ -134,13 +135,12 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
                                                                                                                  subformulaCallback);
         // demerge MECs to convert to total reward
         auto const qualitativeRabinLocalIndices = ltlInformation.qualitativeObjectiveIndices % ltlInformation.ltlObjectiveIndices;
-        auto const quantitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, ~qualitativeRabinLocalIndices);
-        auto const qualitativeRabinObjectives = storm::utility::vector::filterVector(ltlToRabinResult.rabinObjectives, qualitativeRabinLocalIndices);
         auto rabinToTotalRewardResult = storm::transformer::RabinToTotalRewardTransformer::transform(
-            *ltlToRabinResult.model, quantitativeRabinObjectives, ltlInformation.quantitativeTotalRewardModelNames, qualitativeRabinObjectives);
+            *ltlToRabinResult.model, ltlToRabinResult.rabinObjectives, ltlInformation.quantitativeTotalRewardModelNames, qualitativeRabinLocalIndices);
         STORM_LOG_THROW(rabinToTotalRewardResult.model != nullptr, storm::exceptions::NotSupportedException,
                         "The qualitative objectives cannot be satisfied in the given model. This is not supported.");
         model = rabinToTotalRewardResult.model->template as<SparseModelType>();
+        finStatesLabel = rabinToTotalRewardResult.finStatesLabel;
     }
 
     SparseModelType const& modelRef = model != nullptr ? *model : originalModel;
@@ -190,6 +190,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
 
     PreprocessorData data(model);
     data.deadlockLabel = deadlockLabel;
+    data.finStatesLabel = finStatesLabel;
     data.memoryIncorporationReverseData = std::move(memoryIncorporationReverseData);
 
     // Invoke preprocessing on the individual objectives
@@ -903,6 +904,7 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
     }
     result.queryType = getQueryType(result.objectives);
     result.maybeInfiniteRewardObjectives = std::move(data.finiteRewardCheckObjectives);
+    result.finStatesLabel = std::move(data.finStatesLabel);
 
     return result;
 }

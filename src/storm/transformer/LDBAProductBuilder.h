@@ -25,6 +25,13 @@ class LDBAProductBuilder {
     typename DAProduct<ValueType>::ptr build(storm::models::sparse::Model<ValueType> const& originalModel) const {
         // First build the product model which will be equipped with the initial states but no other label
         auto result = build(originalModel.getTransitionMatrix(), originalModel.getType(), originalModel.getInitialStates(), "init");
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
+                        "LDBA products currently do not support lifting original model information to the product.");
+        // TODO: the LDBA product works a bit differently compared to the DA product because the current automaton state is based on a nondeterministic choice.
+        // need to adapt this
+        STORM_LOG_THROW(!originalModel.isOfType(storm::models::ModelType::MarkovAutomaton), storm::exceptions::NotSupportedException,
+                        "LDBA products with Markov automata are currently not supported as they might introduce nondeterministic choices at Markovian states.");
+
         DAProductBuilder::liftOriginalModelInformationToProduct(originalModel, result);
         return result;
     }

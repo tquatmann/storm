@@ -117,7 +117,9 @@ class ProductBuilder {
         storm::storage::BitVector productStatesOfInterest(numberOfProductStates);
         productStatesOfInterest.set(prodInitial.begin(), prodInitial.end());
         components.stateLabeling.addLabel(statesOfInterestLabel, std::move(productStatesOfInterest));
-        if (modelType == storm::models::ModelType::MarkovAutomaton) {
+        if (modelType == storm::models::ModelType::Ctmc) {
+            components.rateTransitions = true;
+        } else if (modelType == storm::models::ModelType::MarkovAutomaton) {
             components.markovianStates.emplace(numberOfProductStates, false);  // all states are assumed non-Markovian
         } else {
             STORM_LOG_ASSERT(

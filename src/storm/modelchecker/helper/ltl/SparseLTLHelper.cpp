@@ -87,6 +87,15 @@ std::vector<storm::storage::BitVector> computeStatesForApSet(storm::automata::AP
 }
 
 RabinObjective extractRabinObjectiveFromProductAcceptance(storm::automata::AcceptanceCondition&& acceptance, storm::models::sparse::StateLabeling& labeling) {
+    auto getOrAddAp = [&labeling](storm::storage::BitVector&& stateSet) -> std::string {
+        auto foundLabel = labeling.findLabel(stateSet);
+        if (foundLabel.has_value()) {
+            return *foundLabel;
+        } else {
+            return labeling.addUniqueLabel("rabin_obj_ap", std::move(stateSet));
+        }
+    };
+
     RabinObjective result;
     std::vector<std::vector<automata::AcceptanceCondition::acceptance_expr::ptr>> dnf = acceptance.extractFromDNF();
     for (auto const& conjunction : dnf) {
@@ -94,6 +103,7 @@ RabinObjective extractRabinObjectiveFromProductAcceptance(storm::automata::Accep
             continue;  // ignore conjunction in expression "(X && Y && false && Z) || ..."
         }
         auto& rabinCond = result.emplace_back();
+        storm::storage::BitVector finStates;  // merge conjunctions of fin states into a single set
         for (auto const& literal : conjunction) {
             if (literal->isTRUE()) {
                 continue;  // ignore true in expression "true && ..."
@@ -105,21 +115,22 @@ RabinObjective extractRabinObjectiveFromProductAcceptance(storm::automata::Accep
                 } else {
                     stateSet = std::move(acceptance.getAcceptanceSet(atom.getAcceptanceSet()));
                 }
-                std::string apName;
-                if (auto foundLabel = labeling.findLabel(stateSet); foundLabel.has_value()) {
-                    apName = *foundLabel;
-                } else {
-                    apName = labeling.addUniqueLabel("rabin_obj_ap", std::move(stateSet));
-                }
                 if (atom.getType() == cpphoafparser::AtomAcceptance::TEMPORAL_FIN) {
-                    rabinCond.fin.push_back(apName);
+                    if (finStates.size() == 0) {
+                        finStates = std::move(stateSet);
+                    } else {
+                        finStates |= stateSet;
+                    }
                 } else {
                     STORM_LOG_ASSERT(atom.getType() == cpphoafparser::AtomAcceptance::TEMPORAL_INF, "Unknown acceptance atom type.");
-                    rabinCond.inf.push_back(apName);
+                    rabinCond.inf.push_back(getOrAddAp(std::move(stateSet)));
                 }
             } else {
                 STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected acceptance literal type.");
             }
+        }
+        if (finStates.size() > 0) {
+            rabinCond.fin = getOrAddAp(std::move(finStates));
         }
     }
     return result;
