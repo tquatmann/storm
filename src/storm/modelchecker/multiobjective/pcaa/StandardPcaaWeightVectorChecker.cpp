@@ -98,7 +98,13 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     // set data for unbounded objectives
     lraObjectives = storm::storage::BitVector(this->objectives.size(), false);
     objectivesWithNoUpperTimeBound = storm::storage::BitVector(this->objectives.size(), false);
-    actionsWithoutRewardInUnboundedPhase = storm::storage::BitVector(transitionMatrix.getRowCount(), true);
+    if (preprocessorResult.finStatesLabel) {
+        actionsWithoutRewardInUnboundedPhase =
+            ~transitionMatrix.getRowFilter(preprocessorResult.preprocessedModel->getStateLabeling().getStates(*preprocessorResult.finStatesLabel) %
+                                           maybeStates);  // todo: this basically are the actions that we are allowed to take infinitely often, right?
+    } else {
+        actionsWithoutRewardInUnboundedPhase = storm::storage::BitVector(transitionMatrix.getRowCount(), true);
+    }
     for (uint_fast64_t objIndex = 0; objIndex < this->objectives.size(); ++objIndex) {
         auto const& formula = *this->objectives[objIndex].formula;
         if (formula.getSubformula().isTotalRewardFormula()) {
