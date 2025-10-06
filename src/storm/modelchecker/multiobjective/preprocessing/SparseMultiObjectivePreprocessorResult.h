@@ -65,6 +65,8 @@ struct SparseMultiObjectivePreprocessorResult {
         for (auto const& obj : objectives) {
             if (obj.formula->isRewardOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
                 ++count;
+            } else if (obj.formula->isProbabilityOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
+                ++count;
             }
         }
         return count;
@@ -81,6 +83,9 @@ struct SparseMultiObjectivePreprocessorResult {
                 continue;
             }
             if (obj.formula->isRewardOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
+                continue;
+            }
+            if (obj.formula->isProbabilityOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
                 continue;
             }
             if (obj.formula->isRewardOperatorFormula() && obj.formula->getSubformula().isCumulativeRewardFormula()) {

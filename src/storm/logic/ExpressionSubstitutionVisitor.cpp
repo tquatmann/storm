@@ -128,6 +128,23 @@ boost::any ExpressionSubstitutionVisitor::visit(InstantaneousRewardFormula const
     return std::static_pointer_cast<Formula>(std::make_shared<InstantaneousRewardFormula>(substitutionFunction(f.getBound()), f.getTimeBoundType()));
 }
 
+boost::any ExpressionSubstitutionVisitor::visit(LongRunAverageRewardFormula const& f, boost::any const& data) const {
+    auto const& substitutionFunction = *boost::any_cast<std::function<storm::expressions::Expression(storm::expressions::Expression const&)> const*>(data);
+    if (f.hasBound()) {
+        Bound newBound(f.getBound().comparisonType, substitutionFunction(f.getBound().threshold));
+        if (f.hasRewardAccumulation()) {
+            return std::static_pointer_cast<Formula>(
+                std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), newBound, f.getRewardAccumulation()));
+        } else {
+            return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), newBound));
+        }
+    } else if (f.hasRewardAccumulation()) {
+        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getRewardAccumulation()));
+    } else {
+        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>());
+    }
+}
+
 boost::any ExpressionSubstitutionVisitor::visit(AtomicExpressionFormula const& f, boost::any const& data) const {
     auto const& substitutionFunction = *boost::any_cast<std::function<storm::expressions::Expression(storm::expressions::Expression const&)> const*>(data);
     return std::static_pointer_cast<Formula>(std::make_shared<AtomicExpressionFormula>(substitutionFunction(f.getExpression())));

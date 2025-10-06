@@ -166,6 +166,7 @@ class FormulaParserGrammar : public qi::grammar<Iterator, std::vector<storm::jan
 
     // Quantitative path operators (reward)
     qi::rule<Iterator, std::shared_ptr<storm::logic::Formula const>(), Skipper> longRunAverageRewardFormula;
+    qi::rule<Iterator, std::shared_ptr<storm::logic::Formula const>(), Skipper> longRunAverageRewardFormulaWithBound;
     qi::rule<Iterator, std::shared_ptr<storm::logic::Formula const>(), Skipper> instantaneousRewardFormula;
     qi::rule<Iterator, std::shared_ptr<storm::logic::Formula const>(), Skipper> cumulativeRewardFormula;
     qi::rule<Iterator, std::shared_ptr<storm::logic::Formula const>(), Skipper> totalRewardFormula;
@@ -227,6 +228,9 @@ class FormulaParserGrammar : public qi::grammar<Iterator, std::vector<storm::jan
     std::shared_ptr<storm::logic::Formula const> createTotalRewardFormula() const;
     std::shared_ptr<storm::logic::Formula const> createDiscountedTotalRewardFormula(storm::expressions::Expression const& discountFactor) const;
     std::shared_ptr<storm::logic::Formula const> createLongRunAverageRewardFormula() const;
+    std::shared_ptr<storm::logic::Formula const> createLongRunAverageRewardFormulaWithBound(std::string const& rewardModelName,
+                                                                                            storm::logic::ComparisonType comp,
+                                                                                            storm::expressions::Expression const& threshold) const;
     std::shared_ptr<storm::logic::Formula const> createAtomicExpressionFormula(storm::expressions::Expression const& expression) const;
     std::shared_ptr<storm::logic::Formula const> createBooleanLiteralFormula(bool literal) const;
     std::shared_ptr<storm::logic::Formula const> createAtomicLabelFormula(std::string const& label) const;

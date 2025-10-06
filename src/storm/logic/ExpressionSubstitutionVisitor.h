@@ -27,6 +27,7 @@ class ExpressionSubstitutionVisitor : public CloneVisitor {
     virtual boost::any visit(DiscountedCumulativeRewardFormula const& f, boost::any const& data) const override;
     virtual boost::any visit(DiscountedTotalRewardFormula const& f, boost::any const& data) const override;
     virtual boost::any visit(InstantaneousRewardFormula const& f, boost::any const& data) const override;
+    virtual boost::any visit(LongRunAverageRewardFormula const& f, boost::any const& data) const override;
     virtual boost::any visit(AtomicExpressionFormula const& f, boost::any const& data) const override;
 };
 

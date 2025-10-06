@@ -98,9 +98,18 @@ boost::any RewardAccumulationEliminationVisitor::visit(LongRunAverageRewardFormu
     STORM_LOG_THROW(!data.empty(), storm::exceptions::UnexpectedException, "Formula " << f << " does not seem to be a subformula of a reward operator.");
     auto rewName = boost::any_cast<boost::optional<std::string>>(data);
     if (!f.hasRewardAccumulation() || canEliminate(f.getRewardAccumulation(), rewName)) {
-        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>());
+        if (f.hasBound()) {
+            return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), f.getBound()));
+        } else {
+            return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>());
+        }
     } else {
-        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getRewardAccumulation()));
+        if (f.hasBound()) {
+            return std::static_pointer_cast<Formula>(
+                std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), f.getBound(), f.getRewardAccumulation()));
+        } else {
+            return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getRewardAccumulation()));
+        }
     }
 }
 

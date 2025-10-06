@@ -79,8 +79,8 @@ LtlObjectiveInformation getLtlObjectiveInfoNegateMinimizing(auto const& formulas
         bool isQualitative = false;
         bool add = subFormula.info(false).containsComplexPathFormula();  // e.g. P=? [ F G a ]
         add = add || (!subFormula.isUntilFormula() && !subFormula.isBoundedUntilFormula() && !subFormula.isEventuallyFormula() &&
-                      !subFormula.isGloballyFormula());                        // e.g. P=? [ X a ]
-        if (probOperator.hasBound() && !subFormula.isBoundedUntilFormula()) {  // bounded until not considered part of LTL here
+                      !subFormula.isGloballyFormula() && !subFormula.isLongRunAverageRewardFormula());  // e.g. P=? [ X a ]
+        if (probOperator.hasBound() && !subFormula.isBoundedUntilFormula()) {                           // bounded until not considered part of LTL here
             auto const threshold = probOperator.template getThresholdAs<storm::RationalNumber>();
             auto const comp = probOperator.getComparisonType();
             using enum storm::logic::ComparisonType;
@@ -258,6 +258,7 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
                         "Could not preprocess the subformula " << *opFormula << " of " << originalFormula << " because it is not supported");
         auto const& pathFormula = opFormula->asOperatorFormula().getSubformula();
         if (opFormula->isProbabilityOperatorFormula()) {
+            STORM_LOG_ASSERT(pathFormula.isProbabilityPathFormula(), "Unexpected path formula type for objective " << *opFormula);
             if (pathFormula.isUntilFormula()) {
                 auto lhs = mc.check(pathFormula.asUntilFormula().getLeftSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 auto rhs = mc.check(pathFormula.asUntilFormula().getRightSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
@@ -300,10 +301,22 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
                 auto phi = mc.check(pathFormula.asEventuallyFormula().getSubformula())->asExplicitQualitativeCheckResult().getTruthValuesVector();
                 absorbingStatesForSubformula = storm::utility::graph::performProb0A(backwardTransitions, ~phi, phi);
                 absorbingStatesForSubformula |= getOnlyReachableViaPhi(*model, phi);
+            } else if (pathFormula.isLongRunAverageRewardFormula()) {
+                auto const& lraFormula = pathFormula.asLongRunAverageRewardFormula();
+                STORM_LOG_ASSERT(lraFormula.hasBound(), "Unexpected path formula type for objective " << *opFormula);
+                auto rewardModel = storm::utility::createFilteredRewardModel(model->getRewardModel(lraFormula.getBoundRewardModelName()),
+                                                                             model->isDiscreteTimeModel(), pathFormula.asLongRunAverageRewardFormula());
+                storm::storage::BitVector statesWithoutReward = rewardModel.get().getStatesWithZeroReward(model->getTransitionMatrix());
+                // Compute Sat(Forall F (Forall G "statesWithoutReward"))
+                auto forallGloballyStatesWithoutReward = storm::utility::graph::performProb0A(backwardTransitions, statesWithoutReward, ~statesWithoutReward);
+                absorbingStatesForSubformula =
+                    storm::utility::graph::performProb1A(model->getTransitionMatrix(), model->getNondeterministicChoiceIndices(), backwardTransitions,
+                                                         storm::storage::BitVector(model->getNumberOfStates(), true), forallGloballyStatesWithoutReward);
             } else {
                 STORM_LOG_THROW(false, storm::exceptions::InvalidPropertyException, "The subformula of " << pathFormula << " is not supported.");
             }
         } else if (opFormula->isRewardOperatorFormula()) {
+            STORM_LOG_ASSERT(pathFormula.isRewardOperatorFormula(), "Unexpected path formula type for objective " << *opFormula);
             auto const& baseRewardModel = opFormula->asRewardOperatorFormula().hasRewardModelName()
                                               ? model->getRewardModel(opFormula->asRewardOperatorFormula().getRewardModelName())
                                               : model->getUniqueRewardModel();
@@ -500,6 +513,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessProbabilityOpe
     data.objectives.back()->lowerResultBound = storm::utility::zero<ValueType>();
     data.objectives.back()->upperResultBound = storm::utility::one<ValueType>();
 
+    STORM_LOG_ASSERT(formula.getSubformula().isProbabilityPathFormula(), "Unexpected path formula type for objective " << formula);
+
     if (formula.getSubformula().isUntilFormula()) {
         preprocessUntilFormula(formula.getSubformula().asUntilFormula(), opInfo, data);
     } else if (formula.getSubformula().isBoundedUntilFormula()) {
@@ -508,6 +523,8 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessProbabilityOpe
         preprocessGloballyFormula(formula.getSubformula().asGloballyFormula(), opInfo, data);
     } else if (formula.getSubformula().isEventuallyFormula()) {
         preprocessEventuallyFormula(formula.getSubformula().asEventuallyFormula(), opInfo, data);
+    } else if (formula.getSubformula().isLongRunAverageRewardFormula()) {
+        preprocessLongRunAverageRewardFormula(formula.getSubformula().asLongRunAverageRewardFormula(), opInfo, data);
     } else {
         STORM_LOG_THROW(false, storm::exceptions::InvalidPropertyException, "The subformula of " << formula << " is not supported.");
     }
@@ -882,13 +899,19 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::preprocessLongRunAverage
                                                                                               storm::logic::OperatorInformation const& opInfo,
                                                                                               PreprocessorData& data,
                                                                                               boost::optional<std::string> const& optionalRewardModelName) {
-    std::string rewardModelName = optionalRewardModelName.get();
+    std::string rewardModelName = formula.hasBound() ? formula.getBoundRewardModelName() : optionalRewardModelName.get();
     auto filteredRewards = storm::utility::createFilteredRewardModel(data.model->getRewardModel(rewardModelName), data.model->isDiscreteTimeModel(), formula);
     if (filteredRewards.isDifferentFromUnfilteredModel()) {
         std::string rewardModelName = data.rewardModelNamePrefix + std::to_string(data.objectives.size());
         data.model->addRewardModel(rewardModelName, std::move(filteredRewards.extract()));
     }
-    data.objectives.back()->formula = std::make_shared<storm::logic::RewardOperatorFormula>(formula.stripRewardAccumulation(), rewardModelName, opInfo);
+    if (formula.isProbabilityPathFormula()) {
+        auto newFormula = std::make_shared<storm::logic::LongRunAverageRewardFormula>(rewardModelName, formula.getBound());
+        data.objectives.back()->formula = std::make_shared<storm::logic::ProbabilityOperatorFormula>(newFormula, opInfo);
+    } else {
+        STORM_LOG_ASSERT(formula.isRewardPathFormula(), "Unexpected path formula type for objective " << *data.objectives.back()->originalFormula);
+        data.objectives.back()->formula = std::make_shared<storm::logic::RewardOperatorFormula>(formula.stripRewardAccumulation(), rewardModelName, opInfo);
+    }
 }
 
 template<typename SparseModelType>

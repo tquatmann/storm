@@ -70,7 +70,8 @@ void FormulaParserGrammar::initialize() {
     rewardModelName = qi::eps(qi::_r1 == storm::logic::FormulaContext::Reward) >> (qi::lit("{\"") > label > qi::lit("\"}"));
     rewardModelName.name("reward model name");
     operatorFormula =
-        (operatorKeyword_[qi::_a = qi::_1] > -rewardModelName(qi::_a) > operatorInformation > qi::lit("[") > operatorSubFormula(qi::_a) >
+        ((!qi::lit("LRASAT") >> operatorKeyword_[qi::_a = qi::_1]) >  // When seeing "LRASAT", don't attempt to parse this as operatorKeyword 'LRA'
+         -rewardModelName(qi::_a) > operatorInformation > qi::lit("[") > operatorSubFormula(qi::_a) >
          qi::lit("]"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createOperatorFormula, phoenix::ref(*this), qi::_a, qi::_2, qi::_3, qi::_4)];
     operatorFormula.name("operator formula");
 
@@ -119,8 +120,8 @@ void FormulaParserGrammar::initialize() {
     basicPathFormula = propositionalFormula(FormulaKind::Path, qi::_r1)  // Bracketed case is handled here as well
                        | prefixOperatorPathFormula(
                              qi::_r1);  // Needs to be checked *after* atomic expression formulas. Otherwise e.g. variable Fail would be parsed as "F (ail)"
-    prefixOperatorPathFormula =
-        eventuallyFormula(qi::_r1) | nextFormula(qi::_r1) | globallyFormula(qi::_r1) | hoaPathFormula(qi::_r1) | multiBoundedPathFormula(qi::_r1);
+    prefixOperatorPathFormula = eventuallyFormula(qi::_r1) | nextFormula(qi::_r1) | globallyFormula(qi::_r1) | hoaPathFormula(qi::_r1) |
+                                multiBoundedPathFormula(qi::_r1) | longRunAverageRewardFormulaWithBound;
     basicPathFormula.name("basic path formula");
     timeBoundReference =
         (-qi::lit("rew") >>
@@ -186,6 +187,11 @@ void FormulaParserGrammar::initialize() {
     longRunAverageRewardFormula = (qi::lit("LRA") | qi::lit("S") |
                                    qi::lit("MP"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createLongRunAverageRewardFormula, phoenix::ref(*this))];
     longRunAverageRewardFormula.name("long run average reward formula");
+    longRunAverageRewardFormulaWithBound =
+        qi::lit("LRASAT") >> (qi::lit("{\"") > label > qi::lit("\"}") > relationalOperator_ >
+                              expressionParser)[qi::_val = phoenix::bind(&FormulaParserGrammar::createLongRunAverageRewardFormulaWithBound, phoenix::ref(*this),
+                                                                         qi::_1, qi::_2, qi::_3)];
+    longRunAverageRewardFormulaWithBound.name("long run average reward formula with bound");
     instantaneousRewardFormula =
         (qi::lit("I=") > expressionParser)[qi::_val = phoenix::bind(&FormulaParserGrammar::createInstantaneousRewardFormula, phoenix::ref(*this), qi::_1)];
     instantaneousRewardFormula.name("instantaneous reward formula");
@@ -441,6 +447,11 @@ std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createDiscoun
 
 std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createLongRunAverageRewardFormula() const {
     return std::shared_ptr<storm::logic::Formula const>(new storm::logic::LongRunAverageRewardFormula());
+}
+
+std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createLongRunAverageRewardFormulaWithBound(
+    std::string const& rewardModelName, storm::logic::ComparisonType comp, storm::expressions::Expression const& threshold) const {
+    return std::shared_ptr<storm::logic::Formula const>(new storm::logic::LongRunAverageRewardFormula(rewardModelName, storm::logic::Bound(comp, threshold)));
 }
 
 std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createAtomicExpressionFormula(storm::expressions::Expression const& expression) const {

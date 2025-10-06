@@ -87,6 +87,9 @@ class FragmentSpecification {
     bool areLongRunAverageRewardFormulasAllowed() const;
     FragmentSpecification& setLongRunAverageRewardFormulasAllowed(bool newValue);
 
+    bool areLongRunAverageRewardFormulasWithBoundAllowed() const;
+    FragmentSpecification& setLongRunAverageRewardFormulasWithBoundAllowed(bool newValue);
+
     bool areTotalRewardFormulasAllowed() const;
     FragmentSpecification& setTotalRewardFormulasAllowed(bool newValue);
 
@@ -201,6 +204,7 @@ class FragmentSpecification {
     bool instantaneousRewardFormula;
     bool reachabilityRewardFormula;
     bool longRunAverageRewardFormula;
+    bool longRunAverageRewardFormulaWithBound;
     bool totalRewardFormula;
 
     bool conditionalProbabilityFormula;

@@ -467,6 +467,8 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We have not yet implemented lra with intervals");
     } else {
+        STORM_LOG_THROW(!checkTask.getFormula().hasBound(), storm::exceptions::InvalidPropertyException,
+                        "Long-run average reward formulas with bounds are not supported.");
         STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                         "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
         auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);

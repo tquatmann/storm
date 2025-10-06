@@ -172,6 +172,7 @@ FragmentSpecification multiObjective() {
     multiObjective.setTimeBoundedUntilFormulasAllowed(true);
     multiObjective.setLongRunAverageOperatorsAllowed(true);
     multiObjective.setLongRunAverageRewardFormulasAllowed(true);
+    multiObjective.setLongRunAverageRewardFormulasWithBoundAllowed(true);
 
     return multiObjective;
 }
@@ -267,6 +268,7 @@ FragmentSpecification::FragmentSpecification() {
     instantaneousRewardFormula = false;
     reachabilityRewardFormula = false;
     longRunAverageRewardFormula = false;
+    longRunAverageRewardFormulaWithBound = false;
     totalRewardFormula = false;
 
     conditionalProbabilityFormula = false;
@@ -512,6 +514,15 @@ bool FragmentSpecification::areLongRunAverageRewardFormulasAllowed() const {
 
 FragmentSpecification& FragmentSpecification::setLongRunAverageRewardFormulasAllowed(bool newValue) {
     this->longRunAverageRewardFormula = newValue;
+    return *this;
+}
+
+bool FragmentSpecification::areLongRunAverageRewardFormulasWithBoundAllowed() const {
+    return longRunAverageRewardFormulaWithBound;
+}
+
+FragmentSpecification& FragmentSpecification::setLongRunAverageRewardFormulasWithBoundAllowed(bool newValue) {
+    this->longRunAverageRewardFormulaWithBound = newValue;
     return *this;
 }
 

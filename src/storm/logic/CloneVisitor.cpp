@@ -110,7 +110,16 @@ boost::any CloneVisitor::visit(LongRunAverageOperatorFormula const& f, boost::an
 }
 
 boost::any CloneVisitor::visit(LongRunAverageRewardFormula const& f, boost::any const&) const {
-    return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f));
+    if (f.hasRewardAccumulation() && f.hasBound()) {
+        return std::static_pointer_cast<Formula>(
+            std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), f.getBound(), f.getRewardAccumulation()));
+    } else if (f.hasRewardAccumulation()) {
+        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getRewardAccumulation()));
+    } else if (f.hasBound()) {
+        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>(f.getBoundRewardModelName(), f.getBound()));
+    } else {
+        return std::static_pointer_cast<Formula>(std::make_shared<LongRunAverageRewardFormula>());
+    }
 }
 
 boost::any CloneVisitor::visit(MultiObjectiveFormula const& f, boost::any const& data) const {
