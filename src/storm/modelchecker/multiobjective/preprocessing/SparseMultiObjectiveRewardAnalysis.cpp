@@ -62,6 +62,10 @@ void SparseMultiObjectiveRewardAnalysis<SparseModelType>::setReward0States(
                                     "Analyzing subformula " << obj.formula->getSubformula() << " is not supported properly.");
                 zeroCumulativeRewardChoices &= rewModel.getChoicesWithZeroReward(transitions);
             }
+        } else if (obj.formula->isProbabilityPathFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
+            auto const& rewModel =
+                preprocessorResult.preprocessedModel->getRewardModel(obj.formula->getSubformula().asLongRunAverageRewardFormula().getBoundRewardModelName());
+            zeroLraRewardChoices &= rewModel.getChoicesWithZeroReward(transitions);
         }
     }
 

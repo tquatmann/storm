@@ -68,6 +68,8 @@ class SparseInfiniteHorizonHelper : public SingleValueModelCheckerHelper<ValueTy
      */
     void provideLongRunComponentDecomposition(storm::storage::Decomposition<LongRunComponentType> const& decomposition);
 
+    storm::storage::SparseMatrix<ValueType> const& getTransitionMatrix() const;
+
     /*!
      * Computes the long run average probabilities, i.e., the fraction of the time we are in a psiState
      * @return a value for each state

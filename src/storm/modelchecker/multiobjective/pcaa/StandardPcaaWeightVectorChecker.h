@@ -3,6 +3,7 @@
 #include "storm/modelchecker/helper/infinitehorizon/SparseDeterministicInfiniteHorizonHelper.h"
 #include "storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h"
 #include "storm/modelchecker/multiobjective/Objective.h"
+#include "storm/modelchecker/multiobjective/pcaa/LongRunAverageSatisfactionHelper.h"
 #include "storm/modelchecker/multiobjective/pcaa/PcaaWeightVectorChecker.h"
 #include "storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessorResult.h"
 #include "storm/solver/AbstractEquationSolver.h"
@@ -74,8 +75,19 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
         storm::storage::SparseMatrix<ValueType> const& transitions) const = 0;
     virtual DeterministicInfiniteHorizonHelperType createDetInfiniteHorizonHelper(storm::storage::SparseMatrix<ValueType> const& transitions) const = 0;
 
-    void infiniteHorizonWeightedPhase(Environment const& env, std::vector<ValueType> const& weightedActionRewardVector,
-                                      boost::optional<std::vector<ValueType>> const& weightedStateRewardVector);
+    /*!
+     * Handles the weighted phase for LRA objectives in the case that no satisfaction LRA objectives are present.
+     * Specifically, this sets optimal mec values (w.r.t. the weighted sum of the LRA objectives) and the optimal choices inside those mecs.
+     */
+    void infiniteHorizonWeightedPhaseNoSat(Environment const& env, std::vector<ValueType> const& weightVector);
+
+    /*!
+     * Handles LRA objectives in the case that satisfaction LRA objectives are present.
+     * Specifically, this sets optimal mec values (w.r.t. the weighted sum of the LRA EXP+SAT objectives) and the individual objective values when moving to
+     * those MECs.
+     * @note Does not set the optimal choices! This is because randomization might be required inside the MECs.
+     */
+    void infiniteHorizonWeightedPhaseSat(Environment const& env, std::vector<ValueType> const& weightVector);
 
     /*!
      * Determines the scheduler that optimizes the weighted reward vector of the unbounded objectives
@@ -139,8 +151,9 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
     // vector will be empty.
     std::vector<std::vector<ValueType>> stateRewards;
 
-    // stores the indices of the objectives for which we need to compute the long run average values
-    storm::storage::BitVector lraObjectives;
+    // stores the indices of the objectives for which we need to compute the long run average values.
+    // Distinguish between expected and satisfaction LRA objectives.
+    storm::storage::BitVector lraObjectives, lraExpObjectives, lraSatObjectives;
     // stores the indices of the objectives for which there is no upper time bound
     storm::storage::BitVector objectivesWithNoUpperTimeBound;
 
@@ -178,10 +191,15 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
     std::vector<uint64_t> goalStateMergerReducedToInputChoiceMapping;
 
     struct LraMecDecomposition {
+        storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> lraHelper;
         storm::storage::MaximalEndComponentDecomposition<ValueType> mecs;
         std::vector<ValueType> auxMecValues;
+        // only for LRASAT objectives:
+        std::optional<LongRunAverageSatisfactionHelper<ValueType>> mecSatHelper;
+        std::vector<std::vector<ValueType>> auxMecPoints;
+        std::vector<uint64_t> stateToMecIndex;
     };
-    boost::optional<LraMecDecomposition> lraMecDecomposition;
+    std::optional<LraMecDecomposition> lraMecDecomposition;
 };
 
 }  // namespace multiobjective

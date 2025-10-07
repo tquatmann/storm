@@ -99,7 +99,7 @@ class Halfspace {
     }
 
     storm::expressions::Expression toExpression(storm::expressions::ExpressionManager const& manager,
-                                                std::vector<storm::expressions::Variable> const& variables) {
+                                                std::vector<storm::expressions::Variable> const& variables) const {
         STORM_LOG_ASSERT(variables.size() == normalVector().size(), "Dimension missmatch.");
         STORM_LOG_ASSERT(normalVector().size() != 0, "Invalid dimension.");
         storm::expressions::Expression lhs = manager.rational(normalVector()[0]) * variables[0].getExpression();

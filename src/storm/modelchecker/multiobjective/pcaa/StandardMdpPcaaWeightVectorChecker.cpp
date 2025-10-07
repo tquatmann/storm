@@ -30,17 +30,23 @@ void StandardMdpPcaaWeightVectorChecker<SparseMdpModelType>::initializeModelType
     this->actionRewards.resize(this->objectives.size());
     for (uint_fast64_t objIndex = 0; objIndex < this->objectives.size(); ++objIndex) {
         auto const& formula = *this->objectives[objIndex].formula;
-        STORM_LOG_THROW(formula.isRewardOperatorFormula() && formula.asRewardOperatorFormula().hasRewardModelName(), storm::exceptions::UnexpectedException,
-                        "Unexpected type of operator formula: " << formula);
-        if (formula.getSubformula().isCumulativeRewardFormula()) {
-            auto const& cumulativeRewardFormula = formula.getSubformula().asCumulativeRewardFormula();
-            STORM_LOG_THROW(!cumulativeRewardFormula.isMultiDimensional() && !cumulativeRewardFormula.getTimeBoundReference().isRewardBound(),
-                            storm::exceptions::UnexpectedException, "Unexpected type of sub-formula: " << formula.getSubformula());
+        std::string rewardModelName;
+        if (formula.isProbabilityOperatorFormula() && formula.getSubformula().isLongRunAverageRewardFormula()) {
+            rewardModelName = formula.getSubformula().asLongRunAverageRewardFormula().getBoundRewardModelName();
         } else {
-            STORM_LOG_THROW(formula.getSubformula().isTotalRewardFormula() || formula.getSubformula().isLongRunAverageRewardFormula(),
-                            storm::exceptions::UnexpectedException, "Unexpected type of sub-formula: " << formula.getSubformula());
+            STORM_LOG_THROW(formula.isRewardOperatorFormula() && formula.asRewardOperatorFormula().hasRewardModelName(), storm::exceptions::UnexpectedException,
+                            "Unexpected type of operator formula: " << formula);
+            rewardModelName = formula.asRewardOperatorFormula().getRewardModelName();
+            if (formula.getSubformula().isCumulativeRewardFormula()) {
+                auto const& cumulativeRewardFormula = formula.getSubformula().asCumulativeRewardFormula();
+                STORM_LOG_THROW(!cumulativeRewardFormula.isMultiDimensional() && !cumulativeRewardFormula.getTimeBoundReference().isRewardBound(),
+                                storm::exceptions::UnexpectedException, "Unexpected type of sub-formula: " << formula.getSubformula());
+            } else {
+                STORM_LOG_THROW(formula.getSubformula().isTotalRewardFormula() || formula.getSubformula().isLongRunAverageRewardFormula(),
+                                storm::exceptions::UnexpectedException, "Unexpected type of sub-formula: " << formula.getSubformula());
+            }
         }
-        typename SparseMdpModelType::RewardModelType const& rewModel = model.getRewardModel(formula.asRewardOperatorFormula().getRewardModelName());
+        typename SparseMdpModelType::RewardModelType const& rewModel = model.getRewardModel(rewardModelName);
         STORM_LOG_THROW(!rewModel.hasTransitionRewards(), storm::exceptions::NotSupportedException,
                         "Reward model has transition rewards which is not expected.");
         this->actionRewards[objIndex] = rewModel.getTotalRewardVector(model.getTransitionMatrix());

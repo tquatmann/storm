@@ -316,7 +316,7 @@ void SparseMultiObjectivePreprocessor<SparseModelType>::removeIrrelevantStates(s
                 STORM_LOG_THROW(false, storm::exceptions::InvalidPropertyException, "The subformula of " << pathFormula << " is not supported.");
             }
         } else if (opFormula->isRewardOperatorFormula()) {
-            STORM_LOG_ASSERT(pathFormula.isRewardOperatorFormula(), "Unexpected path formula type for objective " << *opFormula);
+            STORM_LOG_ASSERT(pathFormula.isRewardPathFormula(), "Unexpected path formula type for objective " << *opFormula);
             auto const& baseRewardModel = opFormula->asRewardOperatorFormula().hasRewardModelName()
                                               ? model->getRewardModel(opFormula->asRewardOperatorFormula().getRewardModelName())
                                               : model->getUniqueRewardModel();

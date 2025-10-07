@@ -42,9 +42,11 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     auto rewardAnalysis = preprocessing::SparseMultiObjectiveRewardAnalysis<SparseModelType>::analyze(preprocessorResult);
     STORM_LOG_THROW(rewardAnalysis.rewardFinitenessType != preprocessing::RewardFinitenessType::Infinite, storm::exceptions::NotSupportedException,
                     "There is no Pareto optimal scheduler that yields finite reward for all objectives. This is not supported.");
-    STORM_LOG_WARN_COND(rewardAnalysis.rewardFinitenessType == preprocessing::RewardFinitenessType::AllFinite,
+    STORM_LOG_WARN_COND(preprocessorResult.finStatesLabel.has_value() || rewardAnalysis.rewardFinitenessType == preprocessing::RewardFinitenessType::AllFinite,
                         "There might be infinite reward for some scheduler. Multi-objective model checking restricts to schedulers that yield finite reward "
                         "for all objectives. Be aware that solutions yielding infinite reward are discarded.");
+    // TODO: The warning above is currently always printed if there is a fin states label. This is a consequence of hacking item (b) below into the reward
+    // analysis.
     STORM_LOG_THROW(rewardAnalysis.totalRewardLessInfinityEStates, storm::exceptions::UnexpectedException,
                     "The set of states with reward < infinity for some scheduler has not been computed during preprocessing.");
     STORM_LOG_THROW(preprocessorResult.containsOnlyTrivialObjectives(), storm::exceptions::NotSupportedException,
@@ -96,7 +98,9 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     }
 
     // set data for unbounded objectives
-    lraObjectives = storm::storage::BitVector(this->objectives.size(), false);
+    lraObjectives.resize(this->objectives.size(), false);
+    lraExpObjectives.resize(this->objectives.size(), false);
+    lraSatObjectives.resize(this->objectives.size(), false);
     objectivesWithNoUpperTimeBound = storm::storage::BitVector(this->objectives.size(), false);
     if (preprocessorResult.finStatesLabel) {
         actionsWithoutRewardInUnboundedPhase =
@@ -114,16 +118,37 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
         if (formula.getSubformula().isLongRunAverageRewardFormula()) {
             lraObjectives.set(objIndex, true);
             objectivesWithNoUpperTimeBound.set(objIndex, true);
+            if (formula.getSubformula().isRewardPathFormula()) {
+                lraExpObjectives.set(objIndex, true);
+            } else {
+                STORM_LOG_ASSERT(formula.getSubformula().isProbabilityPathFormula(), "Unexpected LRA formula type.");
+                lraSatObjectives.set(objIndex, true);
+            }
         }
     }
 
     // Set data for LRA objectives (if available)
     if (!lraObjectives.empty()) {
-        lraMecDecomposition = LraMecDecomposition();
+        lraMecDecomposition.emplace(LraMecDecomposition{createNondetInfiniteHorizonHelper(this->transitionMatrix)});
+        // std::cout << "Transitions: " << transitionMatrix << std::endl;
+        // std::cout << "Actions without reward in unbounded phase: " << actionsWithoutRewardInUnboundedPhase << std::endl;
         lraMecDecomposition->mecs = storm::storage::MaximalEndComponentDecomposition<ValueType>(
             transitionMatrix, transitionMatrix.transpose(true), storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true),
             actionsWithoutRewardInUnboundedPhase);
-        lraMecDecomposition->auxMecValues.resize(lraMecDecomposition->mecs.size());
+        lraMecDecomposition->lraHelper.provideLongRunComponentDecomposition(lraMecDecomposition->mecs);
+        uint64_t const numMecs = lraMecDecomposition->mecs.size();
+        lraMecDecomposition->auxMecValues.resize(numMecs);
+        if (!lraSatObjectives.empty()) {
+            lraMecDecomposition->mecSatHelper.emplace(this->objectives, lraMecDecomposition->lraHelper, actionRewards, stateRewards, lraMecDecomposition->mecs);
+            lraMecDecomposition->auxMecPoints.resize(numMecs);
+            lraMecDecomposition->stateToMecIndex.assign(transitionMatrix.getRowGroupCount(), std::numeric_limits<uint64_t>::max());
+            ;
+            for (uint64_t mecIndex = 0; mecIndex < numMecs; ++mecIndex) {
+                for (auto const& [state, _] : lraMecDecomposition->mecs[mecIndex]) {
+                    lraMecDecomposition->stateToMecIndex[state] = mecIndex;
+                }
+            }
+        }
     }
 
     // initialize data for the results
@@ -157,26 +182,14 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::check(Environment const& 
                    << "\t" << storm::utility::vector::toString(storm::utility::vector::convertNumericVector<double>(weightVector)));
 
     // Prepare and invoke weighted infinite horizon (long run average) phase
-    std::vector<ValueType> weightedRewardVector(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
-    if (!lraObjectives.empty()) {
-        boost::optional<std::vector<ValueType>> weightedStateRewardVector;
-        for (auto objIndex : lraObjectives) {
-            ValueType weight =
-                storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType()) ? -weightVector[objIndex] : weightVector[objIndex];
-            storm::utility::vector::addScaledVector(weightedRewardVector, actionRewards[objIndex], weight);
-            if (!stateRewards.empty() && !stateRewards[objIndex].empty()) {
-                if (!weightedStateRewardVector) {
-                    weightedStateRewardVector = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
-                }
-                storm::utility::vector::addScaledVector(weightedStateRewardVector.get(), stateRewards[objIndex], weight);
-            }
-        }
-        infiniteHorizonWeightedPhase(env, weightedRewardVector, weightedStateRewardVector);
-        // Clear all values of the weighted reward vector
-        weightedRewardVector.assign(weightedRewardVector.size(), storm::utility::zero<ValueType>());
+    if (!lraSatObjectives.empty()) {
+        infiniteHorizonWeightedPhaseSat(env, weightVector);  // sets auxMecValues and auxMecPoints for all LRA MECs but not optimal choices
+    } else if (!lraExpObjectives.empty()) {
+        infiniteHorizonWeightedPhaseNoSat(env, weightVector);  // sets optimal choices and auxMecValues for all LRA MECs
     }
 
     // Prepare and invoke weighted indefinite horizon (unbounded total reward) phase
+    std::vector<ValueType> weightedRewardVector(transitionMatrix.getRowCount(), storm::utility::zero<ValueType>());
     auto totalRewardObjectives = objectivesWithNoUpperTimeBound & ~lraObjectives;
     for (auto objIndex : totalRewardObjectives) {
         if (storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType())) {
@@ -236,8 +249,11 @@ StandardPcaaWeightVectorChecker<SparseModelType>::computeScheduler() const {
     STORM_LOG_THROW(this->checkHasBeenCalled, storm::exceptions::IllegalFunctionCallException,
                     "Tried to retrieve results but check(..) has not been called before.");
     for (auto const& obj : this->objectives) {
-        STORM_LOG_THROW(obj.formula->getSubformula().isTotalRewardFormula() || obj.formula->getSubformula().isLongRunAverageRewardFormula(),
-                        storm::exceptions::NotImplementedException, "Scheduler retrival is only implemented for objectives without time-bound.");
+        auto const& subformula = obj.formula->getSubformula();
+        STORM_LOG_THROW(subformula.isTotalRewardFormula() || subformula.isLongRunAverageRewardFormula(), storm::exceptions::NotImplementedException,
+                        "Scheduler retrival is only implemented for objectives without time-bound.");
+        STORM_LOG_THROW(!(subformula.isLongRunAverageRewardFormula() && subformula.isProbabilityPathFormula()), storm::exceptions::NotImplementedException,
+                        "Scheduler retrival is not implemented for LRASAT objectives.");
     }
     auto const numStatesOfInputModel = goalStateMergerInputToReducedStateIndexMapping.size();
     storm::storage::Scheduler<ValueType> result(numStatesOfInputModel);
@@ -366,28 +382,64 @@ void computeSchedulerFinitelyOften(storm::storage::SparseMatrix<ValueType> const
 }
 
 template<class SparseModelType>
-void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPhase(Environment const& env,
-                                                                                    std::vector<ValueType> const& weightedActionRewardVector,
-                                                                                    boost::optional<std::vector<ValueType>> const& weightedStateRewardVector) {
+void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPhaseSat(Environment const& env, std::vector<ValueType> const& weightVector) {
     // Compute the optimal (weighted) lra value for each mec, keeping track of the optimal choices
     STORM_LOG_ASSERT(lraMecDecomposition, "Mec decomposition for lra computations not initialized.");
-    storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> helper = createNondetInfiniteHorizonHelper(this->transitionMatrix);
-    helper.provideLongRunComponentDecomposition(lraMecDecomposition->mecs);
-    helper.setOptimizationDirection(storm::solver::OptimizationDirection::Maximize);
-    helper.setProduceScheduler(true);
+    for (uint64_t mecIndex = 0; mecIndex < lraMecDecomposition->mecs.size(); ++mecIndex) {
+        auto optRes =
+            lraMecDecomposition->mecSatHelper->optimize(env, weightVector, mecIndex, storm::utility::convertNumber<ValueType>(1e-5));  // TODO: precision?
+        lraMecDecomposition->auxMecValues[mecIndex] = std::move(optRes.optimalWeightedSum);
+        lraMecDecomposition->auxMecPoints[mecIndex] = std::move(optRes.satPoint);
+        // Set some choice that stays inside the MEC as "optimal" choice.
+        // This is only to ensure that we never exit the LRA MEC once entered.
+        // The actual optimal choices might require randomization and are not computed here.
+        // We avoid evaluating the optimal choices by using the MEC Points in the individual phase.
+        for (auto const& [state, choices] : lraMecDecomposition->mecs[mecIndex]) {
+            this->optimalChoices[state] = *choices.begin() - transitionMatrix.getRowGroupIndices()[state];
+        }
+    }
+}
+
+template<class SparseModelType>
+void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPhaseNoSat(Environment const& env, std::vector<ValueType> const& weightVector) {
+    STORM_LOG_ASSERT(lraSatObjectives.empty(), "This function is only for the case without LRA sat objectives.");
+    std::vector<ValueType> adjustedWeights(weightVector.size(), storm::utility::zero<ValueType>());
+    for (auto objIndex : lraExpObjectives) {
+        adjustedWeights[objIndex] =
+            storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType()) ? -weightVector[objIndex] : weightVector[objIndex];
+    }
+
+    auto actionValueGetter = [this, &adjustedWeights](uint64_t const& a) {
+        auto rew = storm::utility::zero<ValueType>();
+        for (auto objIndex : lraExpObjectives) {
+            rew += adjustedWeights[objIndex] * actionRewards[objIndex][a];
+        }
+        return rew;
+    };
+    typename storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType>::ValueGetter stateValueGetter;
+    if (!stateRewards.empty() &&
+        std::any_of(lraExpObjectives.begin(), lraExpObjectives.end(), [this](auto const objIndex) { return !stateRewards[objIndex].empty(); })) {
+        stateValueGetter = [this, &adjustedWeights](uint64_t const& s) {
+            auto rew = storm::utility::zero<ValueType>();
+            for (auto objIndex : lraExpObjectives) {
+                rew += adjustedWeights[objIndex] * stateRewards[objIndex][s];
+            }
+            return rew;
+        };
+    } else {
+        stateValueGetter = [](uint64_t const&) { return storm::utility::zero<ValueType>(); };
+    }
+
+    // Compute the optimal (weighted) lra value for each mec, keeping track of the optimal choices
+    STORM_LOG_ASSERT(lraMecDecomposition, "Mec decomposition for lra computations not initialized.");
+    lraMecDecomposition->lraHelper.setOptimizationDirection(storm::solver::OptimizationDirection::Maximize);
+    lraMecDecomposition->lraHelper.setProduceScheduler(true);
     for (uint64_t mecIndex = 0; mecIndex < lraMecDecomposition->mecs.size(); ++mecIndex) {
         auto const& mec = lraMecDecomposition->mecs[mecIndex];
-        auto actionValueGetter = [&weightedActionRewardVector](uint64_t const& a) { return weightedActionRewardVector[a]; };
-        typename storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType>::ValueGetter stateValueGetter;
-        if (weightedStateRewardVector) {
-            stateValueGetter = [&weightedStateRewardVector](uint64_t const& s) { return weightedStateRewardVector.get()[s]; };
-        } else {
-            stateValueGetter = [](uint64_t const&) { return storm::utility::zero<ValueType>(); };
-        }
-        lraMecDecomposition->auxMecValues[mecIndex] = helper.computeLraForComponent(env, stateValueGetter, actionValueGetter, mec);
+        lraMecDecomposition->auxMecValues[mecIndex] = lraMecDecomposition->lraHelper.computeLraForComponent(env, stateValueGetter, actionValueGetter, mec);
     }
     // Extract the produced optimal choices for the MECs
-    this->optimalChoices = std::move(helper.getProducedOptimalChoices());
+    this->optimalChoices = std::move(lraMecDecomposition->lraHelper.getProducedOptimalChoices());
 }
 
 template<class SparseModelType>
@@ -514,7 +566,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
             if (objectivesWithNoUpperTimeBound.get(objIndex)) {
                 offsetsToUnderApproximation[objIndex] = storm::utility::zero<ValueType>();
                 offsetsToOverApproximation[objIndex] = storm::utility::zero<ValueType>();
-                if (lraObjectives.get(objIndex)) {
+                if (lraSatObjectives.empty() && lraExpObjectives.get(objIndex)) {
                     auto actionValueGetter = [&](uint64_t const& a) {
                         return actionRewards[objIndex][transitionMatrix.getRowGroupIndices()[a] + this->optimalChoices[a]];
                     };
@@ -525,9 +577,28 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                         stateValueGetter = [&](uint64_t const& s) { return stateRewards[objIndex][s]; };
                     }
                     objectiveResults[objIndex] = infiniteHorizonHelper.computeLongRunAverageValues(env, stateValueGetter, actionValueGetter);
-                } else {  // i.e. a total reward objective
-                    storm::utility::vector::selectVectorValues(deterministicStateRewards, this->optimalChoices, transitionMatrix.getRowGroupIndices(),
-                                                               actionRewards[objIndex]);
+                } else {
+                    // i.e. a total reward objective or an LRA (exp or sat) objective with LRA sat objectives present
+                    if (lraObjectives.get(objIndex)) {
+                        // assign a reward upon *entering* a MEC
+                        for (uint64_t state = 0; state < deterministicStateRewards.size(); ++state) {
+                            if (lraMecDecomposition->stateToMecIndex[state] < lraMecDecomposition->mecs.size()) {
+                                continue;  // state lies in a MEC and therefore should not get any (total) reward
+                            }
+                            auto& stateRew = deterministicStateRewards[state];
+                            stateRew = storm::utility::zero<ValueType>();
+                            for (auto const& entry : deterministicMatrix.getRow(state)) {
+                                auto const succMec = lraMecDecomposition->stateToMecIndex[entry.getColumn()];
+                                if (succMec < lraMecDecomposition->mecs.size()) {
+                                    stateRew += entry.getValue() * lraMecDecomposition->auxMecPoints[succMec][objIndex];
+                                }
+                            }
+                        }
+                    } else {
+                        // This is a total reward objective
+                        storm::utility::vector::selectVectorValues(deterministicStateRewards, this->optimalChoices, transitionMatrix.getRowGroupIndices(),
+                                                                   actionRewards[objIndex]);
+                    }
                     storm::storage::BitVector statesWithRewards = ~storm::utility::vector::filterZero(deterministicStateRewards);
                     // As maybestates we pick the states from which a state with reward is reachable
                     storm::storage::BitVector maybeStates = storm::utility::graph::performProbGreater0(

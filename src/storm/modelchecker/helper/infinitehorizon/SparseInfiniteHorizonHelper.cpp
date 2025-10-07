@@ -78,6 +78,11 @@ void SparseInfiniteHorizonHelper<ValueType, Nondeterministic>::provideLongRunCom
 }
 
 template<typename ValueType, bool Nondeterministic>
+storm::storage::SparseMatrix<ValueType> const& SparseInfiniteHorizonHelper<ValueType, Nondeterministic>::getTransitionMatrix() const {
+    return _transitionMatrix;
+}
+
+template<typename ValueType, bool Nondeterministic>
 std::vector<ValueType> SparseInfiniteHorizonHelper<ValueType, Nondeterministic>::computeLongRunAverageProbabilities(
     Environment const& env, storm::storage::BitVector const& psiStates) {
     return computeLongRunAverageValues(
