@@ -61,7 +61,7 @@ TEST(DAProductBuilderTest_aUb, Dtmc) {
     apLabels.push_back(apB);
 
     storm::transformer::DAProductBuilder productBuilder(*da, apLabels);
-    auto product = productBuilder.build(*dtmc, dtmc->getInitialStates());
+    auto product = productBuilder.build(*dtmc);
 
     // std::ofstream modelDot;
     // storm::io::openFile("model.dot", modelDot);
@@ -134,7 +134,7 @@ TEST(DAProductBuilderTest_aWb, Dtmc) {
     apLabels.push_back(apB);
 
     storm::transformer::DAProductBuilder productBuilder(*da, apLabels);
-    auto product = productBuilder.build(*dtmc, dtmc->getInitialStates());
+    auto product = productBuilder.build(*dtmc);
 
     storm::storage::StateBlock scc;
     scc.insert(7);
