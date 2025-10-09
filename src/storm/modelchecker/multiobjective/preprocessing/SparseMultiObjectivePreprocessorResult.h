@@ -65,7 +65,15 @@ struct SparseMultiObjectivePreprocessorResult {
         for (auto const& obj : objectives) {
             if (obj.formula->isRewardOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
                 ++count;
-            } else if (obj.formula->isProbabilityOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
+            }
+        }
+        return count;
+    }
+
+    uint64_t getNumberOfLongRunAverageSatisfactionFormulas() const {
+        uint64_t count = 0;
+        for (auto const& obj : objectives) {
+            if (obj.formula->isProbabilityOperatorFormula() && obj.formula->getSubformula().isLongRunAverageRewardFormula()) {
                 ++count;
             }
         }
@@ -114,6 +122,7 @@ struct SparseMultiObjectivePreprocessorResult {
             out << '\n';
         }
         out << "Number of Long-Run-Average Reward Objectives (after preprocessing): " << getNumberOfLongRunAverageRewardFormulas() << ".\n";
+        out << "Number of Long-Run-Average Satisfaction Objectives (after preprocessing): " << getNumberOfLongRunAverageSatisfactionFormulas() << ".\n";
         out << "Number of Total Reward Objectives (after preprocessing): " << getNumberOfTotalRewardFormulas() << ".\n";
         out << "--------------------------------------------------------------\n";
         out << "\nOriginal Model Information:\n";

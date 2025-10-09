@@ -84,20 +84,23 @@ void SparsePcaaParetoQuery<SparseModelType, GeometryValueType>::exploreSetOfAchi
         }
     }
 
-    while (!this->maxStepsPerformed(env) && !storm::utility::resources::isTerminate()) {
+    while (!this->maxStepsPerformed(env)) {
         // Get the halfspace of the underApproximation with maximal distance to a vertex of the overApproximation
         std::vector<storm::storage::geometry::Halfspace<GeometryValueType>> underApproxHalfspaces = this->underApproximation->getHalfspaces();
-        std::vector<Point> overApproxVertices = this->overApproximation->getVertices();
         uint_fast64_t farestHalfspaceIndex = underApproxHalfspaces.size();
         GeometryValueType farestDistance = storm::utility::zero<GeometryValueType>();
         for (uint_fast64_t halfspaceIndex = 0; halfspaceIndex < underApproxHalfspaces.size(); ++halfspaceIndex) {
-            for (auto const& vertex : overApproxVertices) {
-                GeometryValueType distance = underApproxHalfspaces[halfspaceIndex].euclideanDistance(vertex);
-                if (distance > farestDistance) {
-                    farestHalfspaceIndex = halfspaceIndex;
-                    farestDistance = distance;
-                }
+            auto const optRes = this->overApproximation->optimize(underApproxHalfspaces[halfspaceIndex].normalVector());
+            STORM_LOG_ASSERT(optRes.second, "Optimization of overApproximation failed unexpectedly.");
+            GeometryValueType const distance = underApproxHalfspaces[halfspaceIndex].euclideanDistance(optRes.first);
+            if (distance > farestDistance) {
+                farestHalfspaceIndex = halfspaceIndex;
+                farestDistance = distance;
             }
+        }
+        if (storm::utility::resources::isTerminate()) {
+            STORM_LOG_WARN("Pareto curve approximation aborted with current precision ~" << storm::utility::convertNumber<double>(farestDistance));
+            return;
         }
         if (farestDistance < storm::utility::convertNumber<GeometryValueType>(env.modelchecker().multi().getPrecision())) {
             // Goal precision reached!

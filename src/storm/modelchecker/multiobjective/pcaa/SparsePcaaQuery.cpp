@@ -129,8 +129,10 @@ void SparsePcaaQuery<SparseModelType, GeometryValueType>::updateOverApproximatio
     if (maximumOffset > h.offset()) {
         // We correct the issue by shifting the halfspace such that it contains the underapproximation
         h.offset() = maximumOffset;
-        STORM_LOG_WARN("Numerical issues: The overapproximation would not contain the underapproximation. Hence, a halfspace is shifted by "
-                       << storm::utility::convertNumber<double>(h.invert().euclideanDistance(refinementSteps.back().upperBoundPoint)) << ".");
+        double const dist = storm::utility::convertNumber<double>(h.invert().euclideanDistance(refinementSteps.back().upperBoundPoint));
+        STORM_LOG_WARN_COND(
+            dist < 1e-8, "Numerical issues: The overapproximation would not contain the underapproximation. Hence, a halfspace is shifted by " << dist << ".");
+        // TODO: remove magic number
     }
     overApproximation = overApproximation->intersection(h);
     STORM_LOG_DEBUG("Updated OverApproximation to " << overApproximation->toString(true));
