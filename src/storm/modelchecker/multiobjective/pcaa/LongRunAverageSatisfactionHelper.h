@@ -62,6 +62,7 @@ class LongRunAverageSatisfactionHelper {
                     minimizingObjectives.set(toInputObjectiveIndexMap.size(), true);  // todo: this currently assumes Pmax=? queries
                     threshold = -threshold;
                 }
+                //                std::cout << "have LRASAT objective with threshold " << threshold << "\n";
                 satisfactionObjectiveThresholds.push_back(threshold);
                 toInputObjectiveIndexMap.push_back(objIndex);
             }
@@ -95,6 +96,7 @@ class LongRunAverageSatisfactionHelper {
         STORM_LOG_ASSERT(objectiveStateRewards.empty() || objectiveStateRewards.size() == numInputObjectives,
                          "Number of state reward vectors does not match number of input objectives.");
 
+        //        std::cout << "Optimizing mec #" << mecIndex << " with weight vector " << storm::utility::vector::toString(inputWeightVector) << "\n";
         auto& mecApprox = mecAchievableApproximations[mecIndex];
         if (mecApprox.achievablePoints.empty()) {
             initializeMecAchievableApproximation(env, mecIndex);
@@ -104,9 +106,6 @@ class LongRunAverageSatisfactionHelper {
         storm::utility::vector::selectVectorValues(reducedInputWeightVector, toInputObjectiveIndexMap, inputWeightVector);
 
         while (true) {
-            // Determine the current point and approximation gap
-            auto overApprox = getOptimumInPolytope(mecApprox.containingHalfspaces, *mecApprox.maxAbsValue, reducedInputWeightVector);
-            auto separator = getSeparatingHalfspace(mecApprox.achievablePoints, overApprox.satPoint);
             //            std::cout << "Current achievable points are:\n";
             //            for (auto const& p : mecApprox.achievablePoints) {
             //                std::cout << "\t" << storm::utility::vector::toString(p) << "\n";
@@ -115,24 +114,28 @@ class LongRunAverageSatisfactionHelper {
             //            for (auto const& hs : mecApprox.containingHalfspaces) {
             //                std::cout << "\t" << hs.toString() << "\n";
             //            }
+            // Determine the current point and approximation gap
+            auto overApprox = getOptimumInPolytope(mecApprox.containingHalfspaces, *mecApprox.maxAbsValue, reducedInputWeightVector);
+            auto separator = getSeparatingHalfspace(mecApprox.achievablePoints, overApprox.expPoint);
             //            std::cout << "Current over-approx point is " << storm::utility::vector::toString(overApprox.satPoint) << " with weighted sum "
             //                      << overApprox.optimalWeightedSum << "\n";
-            //            std::cout << "Separating half space is " << separator.toString() << "\n";
-            ValueType const gap = separator.distance(overApprox.satPoint);
-            STORM_PRINT_AND_LOG("Current gap: " << gap << ", precision: " << precision << "\n");
+            //            std::cout << "\tSeparating half space is " << separator.toString() << "\n";
+            ValueType const gap = separator.distance(overApprox.expPoint);
+            //            std::cout << "\tCurrent gap: " << gap << ", precision: " << precision << "\n";
             if (gap <= precision) {
                 // Prepare the result and terminate
                 ResultType result;
-                result.optimalWeightedSum = overApprox.optimalWeightedSum;
+                result.optimalWeightedSum = storm::utility::vector::dotProduct(reducedInputWeightVector, overApprox.satPoint);
                 result.satPoint.assign(numInputObjectives, storm::utility::zero<ValueType>());
                 for (uint64_t localObjIndex = 0; localObjIndex < toInputObjectiveIndexMap.size(); ++localObjIndex) {
                     uint64_t const inputObjIndex = toInputObjectiveIndexMap[localObjIndex];
+                    // todo: -1 for Pmin=? queries ?
+                    // TODO: calculate with precision
+                    result.satPoint[inputObjIndex] = overApprox.satPoint[localObjIndex];
                     if (localObjIndex < satisfactionObjectiveThresholds.size()) {
                         if (overApprox.satPoint[localObjIndex] >= satisfactionObjectiveThresholds[localObjIndex]) {
-                            result.satPoint[inputObjIndex] = storm::utility::one<ValueType>();  // todo: -1 for Pmin=? queries ?
+                            result.satPoint[inputObjIndex] = storm::utility::one<ValueType>();
                         }
-                    } else {
-                        result.satPoint[inputObjIndex] = overApprox.satPoint[localObjIndex];  // TODO: calculate with precision
                     }
                 }
                 //                std::cout << "returning with sat point " << storm::utility::vector::toString(result.satPoint) << "\n";
@@ -180,7 +183,7 @@ class LongRunAverageSatisfactionHelper {
             storm::storage::StronglyConnectedComponentDecompositionOptions options;
             options.areOnlyBottomSccsConsidered = true;
             auto bsccs = storm::storage::StronglyConnectedComponentDecomposition(subMatrix, options);
-            STORM_LOG_ASSERT(bsccs.size() == 1, "The sub-MEC induced by the optimal choices has more than one BSCC.");
+            STORM_LOG_ASSERT(bsccs.size() >= 1, "The sub-MEC induced by the optimal choices has no BSCCs.");
             storm::storage::StronglyConnectedComponent const& bscc = bsccs[0];
             for (auto const& [state, _] : mec) {
                 if (bscc.containsState(toLocalMecState[state])) {
@@ -195,6 +198,8 @@ class LongRunAverageSatisfactionHelper {
         for (uint64_t i = 0; i < reducedWeightVector.size(); ++i) {
             result.satPoint.push_back(helper.computeLraForComponent(env, rew.stateValueGetter(i), rew.actionValueGetter(i), subMec));
         }
+        ValueType const diff = storm::utility::vector::dotProduct(result.satPoint, reducedWeightVector) - result.optimalWeightedSum;
+        STORM_LOG_WARN_COND(diff <= 1e-6, "Diff is " << diff << "\n");
 
         return result;
     }
@@ -214,18 +219,24 @@ class LongRunAverageSatisfactionHelper {
         }
     }
 
-    ResultType getOptimumInPolytope(std::vector<Halfspace> const& halfspaces, ValueType const& maxAbsValue, std::vector<ValueType> const& weightVector) const {
+    struct MILPResult {
+        Point expPoint;  // point with respect to expected LRA objectives
+        Point satPoint;  // corresponding point when assuming LRA objectives
+    };
+    MILPResult getOptimumInPolytope(std::vector<Halfspace> const& halfspaces, ValueType const& maxAbsValue, std::vector<ValueType> const& weightVector) const {
         // set up and solve a mixed integer linear program.
         // We use indicator variables (i.e. with domain {0,1}) to encode whether a satisfaction objective is satisfied or not.
         // Setting an indicator variable to 1 yields the weight in the objective but also requires that the sat objective threshold is met.
         auto solver = storm::utility::solver::getLpSolver<ValueType>("");
         solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
         auto maxValExpr = solver->getConstant(maxAbsValue + maxAbsValue);  // used for indicator constraints encoding
+        //        std::cout << "weight vector is " << storm::utility::vector::toString(weightVector) << "\n";
+        //        std::cout << "max abs value is " << maxAbsValue << "\n";
         // add variables and coefficients for optimization function given by the input weight vector
         std::vector<storm::expressions::Variable> valueVariables, indicatorVariables;
         for (uint64_t i = 0; i < weightVector.size(); ++i) {
             if (i < satisfactionObjectiveThresholds.size()) {
-                indicatorVariables.push_back(solver->addBinaryVariable("a" + std::to_string(i), weightVector[i]));
+                indicatorVariables.push_back(solver->addBinaryVariable("b" + std::to_string(i), weightVector[i]));
                 valueVariables.push_back(solver->addUnboundedContinuousVariable("x" + std::to_string(i)));
             } else {
                 valueVariables.push_back(solver->addUnboundedContinuousVariable("x" + std::to_string(i), weightVector[i]));
@@ -237,20 +248,29 @@ class LongRunAverageSatisfactionHelper {
         }
         // add constraints for satisfaction objectives
         for (uint64_t i = 0; i < satisfactionObjectiveThresholds.size(); ++i) {
-            // x_i + max - a_i * max >= threshold_i * a_i
+            // x_i + max - b_i * max >= threshold_i * b_i
             storm::expressions::Expression lhs = valueVariables[i].getExpression() + maxValExpr - (maxValExpr * indicatorVariables[i].getExpression());
             storm::expressions::Expression rhs = solver->getConstant(satisfactionObjectiveThresholds[i]) * indicatorVariables[i].getExpression();
+            //            std::cout << "expr is " << rhs << "\n";
             solver->addConstraint("", lhs >= rhs);
         }
         solver->update();
         solver->optimize();
         STORM_LOG_THROW(solver->isOptimal(), storm::exceptions::UnexpectedException, "MILP solver did not return an optimal solution.");
 
-        ResultType result;
-        for (auto const& var : valueVariables) {
-            result.satPoint.push_back(solver->getContinuousValue(var));
+        MILPResult result;
+        for (uint64_t i = 0; i < weightVector.size(); ++i) {
+            result.expPoint.push_back(solver->getContinuousValue(valueVariables[i]));
+            if (i < satisfactionObjectiveThresholds.size()) {
+                if (solver->getBinaryValue(indicatorVariables[i])) {
+                    result.satPoint.push_back(storm::utility::one<ValueType>());
+                } else {
+                    result.satPoint.push_back(storm::utility::zero<ValueType>());
+                }
+            } else {
+                result.satPoint.push_back(result.expPoint.back());
+            }
         }
-        result.optimalWeightedSum = solver->getObjectiveValue();
         return result;
     }
 

@@ -550,6 +550,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
     } else {
         storm::storage::SparseMatrix<ValueType> deterministicMatrix = transitionMatrix.selectRowsFromRowGroups(this->optimalChoices, false);
         storm::storage::SparseMatrix<ValueType> deterministicBackwardTransitions = deterministicMatrix.transpose();
+        std::optional<storm::storage::BitVector> bsccStates;                                  // states that are on a BSCC
         std::vector<ValueType> deterministicStateRewards(deterministicMatrix.getRowCount());  // allocate here
         storm::solver::GeneralLinearEquationSolverFactory<ValueType> linearEquationSolverFactory;
 
@@ -580,16 +581,26 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                 } else {
                     // i.e. a total reward objective or an LRA (exp or sat) objective with LRA sat objectives present
                     if (lraObjectives.get(objIndex)) {
-                        // assign a reward upon *entering* a MEC
-                        for (uint64_t state = 0; state < deterministicStateRewards.size(); ++state) {
-                            if (lraMecDecomposition->stateToMecIndex[state] < lraMecDecomposition->mecs.size()) {
-                                continue;  // state lies in a MEC and therefore should not get any (total) reward
+                        // assign a reward upon *entering* a BSCC
+                        if (!bsccStates) {
+                            storm::storage::StronglyConnectedComponentDecomposition<ValueType> bsccs(
+                                deterministicMatrix, storm::storage::StronglyConnectedComponentDecompositionOptions().onlyBottomSccs(true));
+                            bsccStates.emplace(deterministicMatrix.getRowCount(), false);
+                            for (auto const& bscc : bsccs) {
+                                for (auto const& s : bscc) {
+                                    bsccStates->set(s, true);
+                                }
                             }
-                            auto& stateRew = deterministicStateRewards[state];
+                        }
+                        for (uint64_t transientState = bsccStates->getNextUnsetIndex(0); transientState < bsccStates->size();
+                             transientState = bsccStates->getNextUnsetIndex(transientState + 1)) {
+                            auto& stateRew = deterministicStateRewards[transientState];
                             stateRew = storm::utility::zero<ValueType>();
-                            for (auto const& entry : deterministicMatrix.getRow(state)) {
-                                auto const succMec = lraMecDecomposition->stateToMecIndex[entry.getColumn()];
-                                if (succMec < lraMecDecomposition->mecs.size()) {
+                            for (auto const& entry : deterministicMatrix.getRow(transientState)) {
+                                if (bsccStates->get(entry.getColumn())) {
+                                    // We enter a BSCC here. Add the reward for this BSCC
+                                    auto const succMec = lraMecDecomposition->stateToMecIndex[entry.getColumn()];
+                                    STORM_LOG_ASSERT(succMec < lraMecDecomposition->mecs.size(), "Expected that BSCC state lies on a MEC.");
                                     stateRew += entry.getValue() * lraMecDecomposition->auxMecPoints[succMec][objIndex];
                                 }
                             }
@@ -652,6 +663,15 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                         storm::utility::vector::setVectorValues<ValueType>(objectiveResults[objIndex], maybeStates, x);
                     }
                     storm::utility::vector::setVectorValues<ValueType>(objectiveResults[objIndex], ~maybeStates, storm::utility::zero<ValueType>());
+                    if (lraObjectives.get(objIndex)) {
+                        // If we have an LRA objective, we still need to set the value for bscc states
+                        STORM_LOG_ASSERT(bsccStates->isSubsetOf(~maybeStates), "Expected that all BSCC states are non-maybe states.");
+                        for (auto const& bsccState : bsccStates.value()) {
+                            auto const mecIndex = lraMecDecomposition->stateToMecIndex[bsccState];
+                            STORM_LOG_ASSERT(mecIndex < lraMecDecomposition->mecs.size(), "Expected that BSCC state lies on a MEC.");
+                            objectiveResults[objIndex][bsccState] = lraMecDecomposition->auxMecPoints[mecIndex][objIndex];
+                        }
+                    }
                 }
                 // Update the estimate for the next objectives.
                 if (!storm::utility::isZero(weightVector[objIndex])) {
