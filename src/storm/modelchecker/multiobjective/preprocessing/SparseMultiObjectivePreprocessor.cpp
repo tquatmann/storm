@@ -133,6 +133,8 @@ typename SparseMultiObjectivePreprocessor<SparseModelType>::ReturnType SparseMul
         // apply product construction with automata
         auto ltlToRabinResult = storm::modelchecker::helper::SparseLTLHelper<ValueType, true>::toRabinObjectives(env, originalModel, ltlInformation.ltlFormulas,
                                                                                                                  subformulaCallback);
+        STORM_PRINT_AND_LOG("Converted LTL objectives to Rabin objectives. The resulting model has "
+                            << ltlToRabinResult.model->getNumberOfStates() << " states and " << ltlToRabinResult.model->getNumberOfChoices() << " choices.");
         // demerge MECs to convert to total reward
         auto const qualitativeRabinLocalIndices = ltlInformation.qualitativeObjectiveIndices % ltlInformation.ltlObjectiveIndices;
         auto rabinToTotalRewardResult = storm::transformer::RabinToTotalRewardTransformer::transform(
