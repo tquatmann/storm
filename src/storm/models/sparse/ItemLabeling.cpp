@@ -246,6 +246,7 @@ std::string ItemLabeling::generateUniqueLabel(const std::string& prefix) const {
     std::string label;
     do {
         label = prefix + "_" + std::to_string(i);
+        ++i;
     } while (containsLabel(label));
     return label;
 }
