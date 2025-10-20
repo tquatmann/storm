@@ -106,6 +106,16 @@ class BisimulationSettings : public ModuleSettings {
       */
      double getEpsilonForIntervalBisimulation() const;
 
+     /*!
+     * Retrieves whether there is an delta given to perturb states.
+      */
+     bool usesDeltaPerturbation() const;
+
+     /*!
+     * Retrieves the delta value to perturb outgoing transitions.
+      */
+     double getDeltaPerturbation() const;
+
     virtual bool check() const override;
 
     // The name of the module.
@@ -124,6 +134,7 @@ class BisimulationSettings : public ModuleSettings {
     static const std::string parallelismModeOptionName;
     static const std::string exactArithmeticDdOptionName;
     static const std::string epsilonOptionName;
+    static const std::string deltaPerturbationOptionName;
 };
 }  // namespace modules
 }  // namespace settings

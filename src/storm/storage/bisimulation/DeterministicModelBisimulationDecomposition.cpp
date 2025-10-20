@@ -198,6 +198,14 @@ bool DeterministicModelBisimulationDecomposition<ModelType>::possiblyNeedsRefine
 // }
 
 template<typename ModelType>
+void DeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+                                                bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) {
+    // TODO: Implement
+    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
+                    "Cannot compute epsilon-bisimulation on non-interval model!");
+}
+
+template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
     // In order to create the quotient model, we need to construct
     // (a) the new transition matrix,

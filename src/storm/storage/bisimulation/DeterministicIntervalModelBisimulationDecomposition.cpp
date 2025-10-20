@@ -288,6 +288,142 @@ bool DeterministicIntervalModelBisimulationDecomposition<ModelType>::possiblyNee
 }
 
 template<typename ModelType>
+void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block,
+                                                                                                        std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+                                                                                                        bisimulation::Partition::BlockSet& enqueuedBlocks,
+                                                                                                        double epsilon) {
+    const std::size_t numberOfStates = this->model.getTransitionMatrix().getRowCount();
+    const std::size_t numberOfBlocks = this->partition.getNumberOfBlocks();
+
+    auto min1 = [](double x){ return x <= 1.0 ? x : 1.0; };
+    auto clamp01 = [](double x){ return x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x); };
+
+    // compute intervals from states to blocks and cache them for comparison later on
+    std::vector<double> totalInf(numberOfStates, 0.0);
+    std::vector<double> totalSup(numberOfStates, 0.0);
+    std::vector<std::unordered_map<storm::storage::sparse::state_type, std::pair<double, double>>> intervalsToBlock(numberOfStates);
+
+    for (std::size_t s = 0; s < numberOfStates; ++s) {
+        auto& acc = intervalsToBlock[s];
+        for (auto const& e : this->model.getTransitionMatrix().getRow(s)) {
+            // find representative of the block containing e.getColumn()
+            auto blockOfElement = this->partition.getBlockOfElement(e.getColumn());
+            storm::storage::sparse::state_type blockRepresentative = blockOfElement.front();
+
+            auto l = static_cast<double>(e.getValue().lower());
+            auto u = static_cast<double>(e.getValue().upper());
+
+            auto& p = acc[blockRepresentative];          // default initializes to {0,0} on first access
+            p.first  += l;               // sumInfC
+            p.second += u;               // sumSupC
+
+            totalInf[s] += l;
+            totalSup[s] += u;
+        }
+    }
+
+    // TODO: only recompute feasible interval to block C, if C was split? Is this sufficient?
+    auto feasibleIntervalToBlock = [&](std::size_t s, storm::storage::sparse::state_type blockRepresentative) -> std::pair<double,double> {
+        auto it = intervalsToBlock[s].find(blockRepresentative);
+        double sumInfC = (it == intervalsToBlock[s].end()) ? 0.0 : it->second.first;
+        double sumSupC = (it == intervalsToBlock[s].end()) ? 0.0 : it->second.second;
+
+        double compInf = totalInf[s] - sumInfC;
+        double compSup = totalSup[s] - sumSupC;
+
+        double low  = std::max(sumInfC,  1.0 - compSup);
+        double high = std::min(sumSupC,  1.0 - compInf);
+
+        // final clamp
+        if (low < 0.0)  low  = 0.0;
+        if (high > 1.0) high = 1.0;
+        if (high < low) high = low; // numeric guard
+
+        return {low, high};
+    };
+
+    auto ivHausdorff = [](std::pair<double,double> const& A, std::pair<double,double> const& B){
+        return std::max(std::abs(A.first - B.first), std::abs(A.second - B.second));
+    };
+
+    // TODO: state distance is symmetric, cache values and reuse them
+    auto stateDistance = [&](auto s, auto t) {
+        double sum = 0.0;
+        bool infeasible = false;
+        this->partition.forEachBlock([&](auto const& C) {
+            auto Is = feasibleIntervalToBlock(s, C.front());
+            auto It = feasibleIntervalToBlock(t, C.front());
+            if (Is.first > Is.second || It.first > It.second) { infeasible = true;
+                std::cout << "Infeasible" << std::endl; return; }
+            sum += ivHausdorff(Is, It);
+        });
+
+        // if (sum > storm::utility::zero<ValueType>()) {
+        //     std::cout << std::setprecision(std::numeric_limits<double>::max_digits10);
+        //     std::cout << "state distance: " << sum << std::endl;
+        // }
+
+        return infeasible ? std::numeric_limits<double>::infinity() : sum;
+    };
+
+    // cluster states in this block
+    std::vector<std::vector<storm::storage::sparse::state_type>> groups;
+    for (auto s : block) {
+        bool placed = false;
+        for (auto& g : groups) {
+            bool fits = true;
+            for (auto t : g) {
+                auto dist = stateDistance(s, t);
+                if (dist > epsilon) {
+                    fits = false;
+                    break;
+                }
+            }
+            if (fits) {
+                g.push_back(s);
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) groups.push_back({s});
+    }
+
+    if (groups.size() <= 1) return; // nothing to split
+
+    bool wasSplit = this->partition.splitBlockByOrder(block,
+                                                      [&](auto a, auto b) {
+                                                          int ga = -1, gb = -1;
+                                                          for (int i = 0; i < (int) groups.size(); ++i) {
+                                                              if (std::find(groups[i].begin(), groups[i].end(), a) != groups[i].end()) ga = i;
+                                                              if (std::find(groups[i].begin(), groups[i].end(), b) != groups[i].end()) gb = i;
+                                                          }
+                                                          return (ga < gb);
+                                                      });
+
+    if (wasSplit) {
+        this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks](auto const& sub) {
+            if (sub.size() > 1 && !enqueuedBlocks.contains(sub)) {
+                blocksQueue.push_back(sub);
+                enqueuedBlocks.insert(sub);
+            }
+
+            for (auto state : sub) {
+                for (auto &transition: this->backwardTransitions.getRow(state)) {
+                    auto predecessorState = transition.getColumn();
+                    auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
+
+                    // place target block on queue only if it is not already there
+                    if (predecessorBlock.size() > 1 && !enqueuedBlocks.contains(predecessorBlock)) {
+                        blocksQueue.push_back(predecessorBlock);
+                        enqueuedBlocks.insert(predecessorBlock);
+                    }
+                }
+            }
+        });
+    }
+}
+
+template<typename ModelType>
 std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>>
     DeterministicIntervalModelBisimulationDecomposition<ModelType>::create2DPolytope(storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound,
                                                                                             storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound) {

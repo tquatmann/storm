@@ -667,6 +667,144 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 }
 
 template<typename ValueType>
+void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, double deltaPerturbation) {
+    if constexpr (!storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(true, storm::exceptions::InvalidArgumentException,
+                        "Cannot compute epsilon-perturbation on non-interval model!");
+        return;
+    }
+
+    // OLD ALGORITHM DESCRIPTION:
+    // Let s \in S be an arb. state.
+    // Perturb s such that for every t \in S: d_H(\mathcal{P}(s), \mathcal{P}_t) \leq \varepsilon).
+    // As shown before, the projection to blocks of states does not increase the Hausdorff distance between two states.
+    // Thus, for some partition \Pi on S, we have: \forall s, t \in S. \; \forall C \in \Pi \; d_H(\pi(s, C), \pi(t, C)) \leq \varepsilon
+    // Moreover, we have that for some state s \in S, the sum of Hausdorff distances of all interval projections \sum_{C \in \Pi} I_f(s, C) is never larger
+    // than the real Hausdorff distance of the resulting feasible polytopes.
+    // Hence, it suffices to make sure that the perturbation for each state on the interval projections is less or equal than \varepsilon in order to keep
+    // the Hausdorff distance between any two states remains less or equal than \varepsilon.
+
+    // Algorithm:
+    // 1. Compute interval projections for each state, but this time to each successor state, not only block
+    // 2. Define budget not allowed to exceed while perturbing the outgoing transitions of a state
+    // 3. Loop through all states s \in S:
+    // 4a. Draw random number between 0 and 1, divide the result through the number of outgoing transitions and multiply \varepsilon by this number
+    // 4b. The result is the allowed perturbation for one outgoing transition: apply this perturbation in both interval width and value
+    // 4c. Subtract applied perturbation from budget
+    // 4d. If budget runs out before all transitions where perturbed, keep the rest as they are
+
+    auto& transMatrix = const_cast<storm::storage::SparseMatrix<ValueType>&>(model->getTransitionMatrix());
+
+    // this models the error rate of Kiefer and Tang (called delta)
+    double errorRate = 0.01;
+
+    auto rowCount = transMatrix.getRowCount();
+    auto columnCount = transMatrix.getColumnCount();
+    if (rowCount == 0 || deltaPerturbation <= 0.0) return;
+
+    std::mt19937_64 rng(std::random_device{}());
+    std::uniform_real_distribution<double> pickBetween01(0.0, 1.0);
+    std::bernoulli_distribution pickErrorRate(errorRate);
+
+    auto sumVector = [](std::vector<double> const& v){ double s=0; for (double x : v) s+=x; return s; };
+
+    for (std::size_t s = 0; s < rowCount; ++s) {
+        auto begin = transMatrix.begin(s), end = transMatrix.end(s);
+        const auto outdeg = static_cast<std::size_t>(end - begin);
+        if (outdeg == 0) continue;
+
+        // restructure lower and upper bounds of transitions in contagious data structures
+        std::vector<double> lowerBounds;
+        lowerBounds.reserve(outdeg);
+        std::vector<double> upperBounds;
+        upperBounds.reserve(outdeg);
+        for (auto it = begin; it != end; ++it) {
+            if constexpr (storm::IsIntervalType<ValueType>) {
+                lowerBounds.push_back(it->getValue().lower());
+                upperBounds.push_back(it->getValue().upper());
+            }
+        }
+
+        // checking for basic feasibility
+        if (!(sumVector(lowerBounds) <= 1.0 + 1e-12 && 1.0 <= sumVector(upperBounds) + 1e-12)) continue;
+
+        // choose the amount of perturbation with respect to the error rate
+        double remainingL1 = pickErrorRate(rng) ? 2.0 * deltaPerturbation : deltaPerturbation;
+
+        // cannot perturb transitions if there are less than one
+        if (outdeg < 2) {
+            continue;
+        }
+
+        // Choose how often to try before admitting row is too tight
+        int retries = 2000;
+        std::uniform_int_distribution<int> pickIndex(0, static_cast<int>(outdeg) - 1);
+
+        while (remainingL1 > 1e-15 && retries-- > 0) {
+            // randomly choose between a translation step and a width-redistribution step.
+            bool doTranslation = (pickBetween01(rng) < 0.7); // 70% translate, 30% width
+
+            // pick two different states
+            int i = pickIndex(rng), j = pickIndex(rng);
+            if (i == j) continue;
+
+            if (doTranslation) {
+                // move mass theta from state j -> i on both lowerBounds and upperBounds.
+                // add at i (both <= 1), subtract at j (both >= 0)
+                double capPlus  = std::min(1.0 - upperBounds[i], 1.0 - lowerBounds[i]);
+                double capMinus = std::min(upperBounds[j], lowerBounds[j]);
+                double thetaMax = std::min(capPlus, capMinus);
+                if (thetaMax <= 0.0) continue;
+
+                // spend at most remainingL1/2 (because this step costs 2*theta)
+                double theta = std::min(thetaMax, remainingL1 / 2.0);
+                // randomize within [0, theta]
+                theta *= pickBetween01(rng);
+
+                if (theta > 0.0) {
+                    lowerBounds[i] += theta;
+                    upperBounds[i] += theta;
+                    lowerBounds[j] -= theta;
+                    upperBounds[j] -= theta;
+                    remainingL1 -= 2.0 * theta;
+                }
+            } else {
+                // width step: widen i and narrow j by theta (keeps sum of lower bounds and sum of upper bounds invariant overall).
+                // i: upperBounds[i]+=theta, lowerBounds[i]-=theta  (needs lowerBounds[i] >= theta and upperBounds[i] <= 1 - theta)
+                // j: upperBounds[j]-=theta, lowerBounds[j]+=theta  (needs upperBounds[j] >= theta and lowerBounds[j] <= 1 - theta)
+                double capWi = std::min(lowerBounds[i], 1.0 - upperBounds[i]);
+                double capWj = std::min(upperBounds[j], 1.0 - lowerBounds[j]);
+                double thetaMax = std::min(capWi, capWj);
+                if (thetaMax <= 0.0) continue;
+
+                double theta = std::min(thetaMax, remainingL1 / 2.0);
+                theta *= pickBetween01(rng);
+
+                if (theta > 0.0) {
+                    // apply to i
+                    lowerBounds[i] -= theta;
+                    upperBounds[i] += theta;
+                    // compensate at j
+                    lowerBounds[j] += theta;
+                    upperBounds[j] -= theta;
+                    remainingL1 -= 2.0 * theta;
+                }
+            }
+        }
+
+        // clamp tiny numeric drifts and write back to model
+        auto it = begin;
+        for (std::size_t k = 0; k < outdeg; ++k, ++it) {
+            auto l = std::max(0.0, std::min(1.0, lowerBounds[k]));
+            auto u = std::max(l,   std::min(1.0, upperBounds[k]));
+            if constexpr (storm::IsIntervalType<ValueType>) {
+                it->setValue(carl::Interval(l, u));
+            }
+        }
+    }
+}
+
+template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBisimulation(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
     storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
@@ -680,8 +818,39 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         epsilon = bisimulationSettings.getEpsilonForIntervalBisimulation();
     }
 
+    auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+    storm::api::exportSparseModelAsDrn(model, "before_" + filename,
+                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
+                                       false);
+
+    double deltaPerturbation = 0.0;
+    if (bisimulationSettings.usesDeltaPerturbation()) {
+        STORM_LOG_INFO("Performing delta perturbation...");
+        deltaPerturbation = bisimulationSettings.getDeltaPerturbation();
+
+        // export model before and after perturbation for experiments
+        // auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+        // storm::api::exportSparseModelAsDrn(model, "before_perturbation" + filename,
+        //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
+        //                                    false);
+
+        applyDeltaPerturbation(model, deltaPerturbation);
+
+        auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+        storm::api::exportSparseModelAsDrn(model, "after_perturbation_" + std::to_string(deltaPerturbation) + "_" + filename,
+                                           input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
+                                           false);
+    }
+
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true, epsilon);
+    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true, bisimulationSettings.usesEpsilonBisimulation(), epsilon);
+
+    filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+    storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(deltaPerturbation) + "_" + filename,
+                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
+                                       false);
+
+    return quotient;
 }
 
 template<typename ValueType>

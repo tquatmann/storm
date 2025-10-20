@@ -142,6 +142,14 @@ void NondeterministicModelBisimulationDecomposition<ModelType>::refinePartitionB
 
 }
 
+template<typename ModelType>
+void NondeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+                                                                                                bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) {
+    // TODO: Implement
+    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
+                    "Cannot compute epsilon-bisimulation on non-interval model!");
+}
+
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<double>>;
 
 #ifdef STORM_HAVE_CARL

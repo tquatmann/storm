@@ -37,6 +37,9 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
                                                 bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) override;
 
+    virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+                                                    bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) override;
+
     virtual void initialize() override;
 
    private:

@@ -2,6 +2,7 @@
 #define STORM_STORAGE_BISIMULATIONDECOMPOSITION_H_
 
 #include <deque>
+#include <random>
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/BisimulationSettings.h"
 #include "storm/solver/OptimizationDirection.h"
@@ -111,6 +112,14 @@ class BisimulationDecomposition {
             this->epsilon = epsilon;
         }
 
+        void setUsesEpsilon(bool usesEpsilon) {
+            this->usesEpsilon = usesEpsilon;
+        }
+
+        bool getUsesEpsilon() const {
+            return this->usesEpsilon;
+        }
+
         bool getKeepRewards() const {
             return this->keepRewards;
         }
@@ -142,10 +151,6 @@ class BisimulationDecomposition {
         /// A flag that governs whether the quotient model is actually built or only the decomposition is computed.
         bool buildQuotient;
 
-        /// Represents the epsilon for epsilon-bisimulation
-        /// If this value is set, then epsilon-bisimulation will be applied for interval DMTCs
-        double epsilon;
-
        private:
         boost::optional<OptimizationDirection> optimalityType;
 
@@ -159,6 +164,11 @@ class BisimulationDecomposition {
         /// A flag that indicates whether step-bounded properties are to be preserved. This may only be set to tru
         /// when computing strong bisimulation equivalence.
         bool bounded;
+
+        /// Represents the epsilon for epsilon-bisimulation
+        /// If this value is set, then epsilon-bisimulation will be applied for interval DMTCs
+        double epsilon;
+        bool usesEpsilon;
 
         /*!
          * Sets the options under the assumption that the given formula is the only one that is to be checked.
@@ -238,6 +248,9 @@ class BisimulationDecomposition {
     void performEpsilonSignatureRefinement(double epsilon);
 
     void performEpsilonSignatureRefinementUsingCompleteLinkage(double epsilon);
+
+    virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+                                                        bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) = 0;
 
     /*!
      * Computes the signature of the given state with respect to the given partition.

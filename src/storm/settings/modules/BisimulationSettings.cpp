@@ -23,6 +23,7 @@ const std::string BisimulationSettings::initialPartitionOptionName = "init";
 const std::string BisimulationSettings::refinementModeOptionName = "refine";
 const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
 const std::string BisimulationSettings::epsilonOptionName = "epsilon";
+const std::string BisimulationSettings::deltaPerturbationOptionName = "deltaperturbation";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -98,6 +99,13 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                         .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("epsilon", "The epsilon value to match states.")
                                      .addValidatorDouble(ArgumentValidatorFactory::createDoubleGreaterValidator(0.0))
                                      .build())
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, deltaPerturbationOptionName, true, "Sets the delta for perturbing the interval DTMC.")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("deltaperturbation", "The delta value to perturb outgoing transitions.")
+                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleGreaterValidator(0.0))
+                                         .build())
                         .build());
 }
 
@@ -194,6 +202,14 @@ bool BisimulationSettings::usesEpsilonBisimulation() const {
 
 double BisimulationSettings::getEpsilonForIntervalBisimulation() const {
     return this->getOption(epsilonOptionName).getArgumentByName("epsilon").getValueAsDouble();
+}
+
+bool BisimulationSettings::usesDeltaPerturbation() const {
+    return this->getOption(deltaPerturbationOptionName).getHasOptionBeenSet();
+}
+
+double BisimulationSettings::getDeltaPerturbation() const {
+    return this->getOption(deltaPerturbationOptionName).getArgumentByName("deltaperturbation").getValueAsDouble();
 }
 
 }  // namespace modules

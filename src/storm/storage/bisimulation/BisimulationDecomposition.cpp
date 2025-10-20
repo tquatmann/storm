@@ -64,7 +64,8 @@ BisimulationDecomposition<ModelType>::Options::Options()
       buildQuotient(true),
       keepRewards(false),
       type(BisimulationType::Strong),
-      bounded(false) {
+      bounded(false),
+      usesEpsilon(false) {
     // Intentionally left empty.
 }
 
@@ -209,7 +210,6 @@ BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const&
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
     std::chrono::high_resolution_clock::time_point totalStart = std::chrono::high_resolution_clock::now();
-
     std::chrono::high_resolution_clock::time_point initialPartitionStart = std::chrono::high_resolution_clock::now();
     // initialize the initial partition.
     if (false/*options.measureDrivenInitialPartition*/) {
@@ -226,15 +226,15 @@ void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
     this->initialize();
 
     std::chrono::high_resolution_clock::time_point refinementStart = std::chrono::high_resolution_clock::now();
-    auto epsilon = this->options.getEpsilon();
-    if (epsilon > 0.0) {
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            this->performEpsilonSignatureRefinement(epsilon);
-        }
+
+    if (this->options.getUsesEpsilon()) {
+        auto epsilon = this->options.getEpsilon();
+        this->performEpsilonSignatureRefinementUsingCompleteLinkage(epsilon);
     } else {
         this->performPartitionRefinement();
+        // this->performSignatureRefinement();
     }
-    // this->performSignatureRefinement();
+
     std::chrono::high_resolution_clock::duration refinementTime = std::chrono::high_resolution_clock::now() - refinementStart;
 
     std::chrono::milliseconds refinementTimeInMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(refinementTime);
@@ -345,8 +345,6 @@ void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinement(dou
         blocksQueue.pop_back();
         enqueuedSplitterBlocks.erase(blockToRefine);
 
-        double delta = epsilon / partition.getNumberOfBlocks();
-
         auto projectionFn = [&](std::uint64_t state, std::span<const std::uint64_t> block) -> std::pair<double,double> {
             if constexpr (storm::IsIntervalType<ValueType>) {
                 double lower = 0.0;
@@ -441,69 +439,25 @@ void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinementUsin
         }
     });
 
+    const std::size_t numberOfStates = this->model.getTransitionMatrix().getRowCount();
+    std::vector<ValueType> cachedTotalInterval(numberOfStates, storm::utility::zero<ValueType>());
+    std::vector<std::unordered_map<storm::storage::sparse::state_type, ValueType>> cachedIntervalsToBlock(numberOfStates);
+
     // refinement loop
+    uint_fast64_t iterations = 0;
     while (!blocksQueue.empty()) {
+        ++iterations;
+
         auto block = blocksQueue.back();
         blocksQueue.pop_back();
         enqueuedBlocks.erase(block);
 
-        // helper: distance between two states
-        auto stateDistance = [&](auto s, auto t) {
-            double sum = 0.0;
-            this->partition.forEachBlock([&](auto const& C) {
-                if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
-                    ValueType totalS = storm::utility::zero<ValueType>();
-                    ValueType totalT = storm::utility::zero<ValueType>();
-                    for (auto const& e : model.getTransitionMatrix().getRow(s)) {
-                        if (partition.contains(C, e.getColumn())) totalS += e.getValue();
-                    }
-                    for (auto const& e : model.getTransitionMatrix().getRow(t)) {
-                        if (partition.contains(C, e.getColumn())) totalT += e.getValue();
-                    }
-                    sum += std::max(std::abs(std::min(1.0, totalS.lower()) - std::min(1.0, totalT.lower())),
-                                    std::abs(std::min(1.0, totalS.upper()) - std::min(1.0, totalT.upper())));
-                }
-            });
-            return sum;
-        };
+        refineBlockBasedOnEpsilonSignature(block, blocksQueue, enqueuedBlocks, epsilon);
 
-        // cluster states in this block
-        std::vector<std::vector<storm::storage::sparse::state_type>> groups;
-        for (auto s : block) {
-            bool placed = false;
-            for (auto& g : groups) {
-                bool fits = true;
-                for (auto t : g) {
-                    if (stateDistance(s, t) > epsilon) { fits = false; break; }
-                }
-                if (fits) { g.push_back(s); placed = true; break; }
-            }
-            if (!placed) groups.push_back({s});
-        }
-
-        if (groups.size() <= 1) continue; // nothing to split
-
-        bool wasSplit = this->partition.splitBlockByOrder(block,
-                                                          [&](auto a, auto b) {
-                                                              int ga = -1, gb = -1;
-                                                              for (int i = 0; i < (int)groups.size(); ++i) {
-                                                                  if (std::find(groups[i].begin(), groups[i].end(), a) != groups[i].end()) ga = i;
-                                                                  if (std::find(groups[i].begin(), groups[i].end(), b) != groups[i].end()) gb = i;
-                                                              }
-                                                              return (ga < gb);
-                                                          });
-
-        if (wasSplit) {
-            this->partition.forEachSubBlock(block, [&](auto const& sub) {
-                if (sub.size() > 1 && !enqueuedBlocks.contains(sub)) {
-                    blocksQueue.push_back(sub);
-                    enqueuedBlocks.insert(sub);
-                }
-            });
-        }
+        std::cout << "Iteration " << iterations << " finished!" << std::endl;
     }
 
-    std::cout << "Finished epsilon-refinement." << std::endl;
+    std::cout << "Finished epsilon-refinement after " << iterations << " iterations." << std::endl;
     std::cout << "Size of final partition " << partition.getNumberOfBlocks() << "." << std::endl;
 }
 
@@ -783,10 +737,8 @@ template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::Ratio
 
 template class storm::storage::BisimulationDecomposition<
     storm::models::sparse::Dtmc<carl::Interval<double>>>;
-
 template class storm::storage::BisimulationDecomposition<
     storm::models::sparse::Ctmc<carl::Interval<double>>>;
-
 template class storm::storage::BisimulationDecomposition<
     storm::models::sparse::Mdp<carl::Interval<double>>>;
 

@@ -51,7 +51,7 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, ParseIDTMCFromPris
     std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
         storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
 
-    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>> bisim(*dtmc);
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>> bisim(*dtmc);
     std::shared_ptr<storm::models::sparse::Model<carl::Interval<double>>> result;
     ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
     ASSERT_NO_THROW(result = bisim.getQuotient());
@@ -59,6 +59,79 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, ParseIDTMCFromPris
     EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
     EXPECT_EQ(328ul, result->getNumberOfStates());
     EXPECT_EQ(456ul, result->getNumberOfTransitions());
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, ApplyEpsilonBisimOnPrism) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/brp-32-2.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F (s = 5)]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
+        storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
+
+    typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>>::Options options;
+    options.preserveFormula(*formulas[0].get());
+    options.setUsesEpsilon(true);
+    options.setEpsilon(0.1);
+
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>> bisim(*dtmc, options);
+    std::shared_ptr<storm::models::sparse::Model<carl::Interval<double>>> result;
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    EXPECT_EQ(328ul, result->getNumberOfStates());
+    EXPECT_EQ(456ul, result->getNumberOfTransitions());
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, Build1_1Interval) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/brp-32-2-point-intervals.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F (s = 5)]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
+        storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalAddition) {
+    auto first = storm::Interval(0.98, 0.98);
+    auto second = storm::Interval(0.02, 0.02);
+
+    auto sum = first + second;
+
+    std::cout << std::setprecision(std::numeric_limits<double>::max_digits10);
+    std::cout << "sum lower: " << sum.lower() << std::endl;
+    std::cout << "sum upper: " << sum.upper() << std::endl;
+
+    EXPECT_TRUE(storm::utility::isOne(sum));
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny02IDTMC) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/tiny-02.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F \"a\"]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
+        storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
+
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>> bisim(*dtmc);
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> result;
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    EXPECT_EQ(2ul, result->getNumberOfStates());
+    EXPECT_EQ(2ul, result->getNumberOfTransitions());
+
+    result->printModelInformationToStream(std::cout);
+
+    // Property on BRP: Pmin=? [F (s = 5)]
 }
 
 // TODO: Create quotient of toy example manually on paper and compare
