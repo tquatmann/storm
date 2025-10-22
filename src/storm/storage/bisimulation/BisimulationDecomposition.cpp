@@ -453,8 +453,6 @@ void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinementUsin
         enqueuedBlocks.erase(block);
 
         refineBlockBasedOnEpsilonSignature(block, blocksQueue, enqueuedBlocks, epsilon);
-
-        std::cout << "Iteration " << iterations << " finished!" << std::endl;
     }
 
     std::cout << "Finished epsilon-refinement after " << iterations << " iterations." << std::endl;

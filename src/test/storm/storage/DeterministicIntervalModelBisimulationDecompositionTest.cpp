@@ -98,6 +98,10 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, Build1_1Interval) 
 }
 
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalAddition) {
+    // Interval.h
+    // works using: "using roundingP = boost::numeric::interval_lib::rounded_arith_exact<double>;" or
+    // works using: "using roundingP = boost::numeric::interval_lib::rounded_transc_opp<double>;"
+    // does not work using (currently standard): "using roundingP = boost::numeric::interval_lib::save_state<boost::numeric::interval_lib::rounded_transc_std<double> >;"
     auto first = storm::Interval(0.98, 0.98);
     auto second = storm::Interval(0.02, 0.02);
 
@@ -108,6 +112,25 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalAddition) 
     std::cout << "sum upper: " << sum.upper() << std::endl;
 
     EXPECT_TRUE(storm::utility::isOne(sum));
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalZeroIsEmptySetOnContainerInit) {
+    // Initializes elements with (0.0, 0.0) instead of [0.0, 0.0], meaning each interval is the empty set
+    std::vector<storm::Interval>cont(1);
+
+    storm::Interval ab(1.0, 2.0);
+
+    // I_1 + I_2 = \{ a + b | a \in I_1, b \in I_2 \}
+    auto sum = cont[0] + ab;
+
+    // Fails, as sum is the empty set because cont[0] does not include any elements
+    EXPECT_FALSE(sum.lower() == 1.0);
+
+    cont = std::vector<storm::Interval>(1, storm::utility::zero<storm::Interval>());
+
+    sum = cont[0] + ab;
+
+    EXPECT_EQ(sum.lower(), 1.0);
 }
 
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny02IDTMC) {

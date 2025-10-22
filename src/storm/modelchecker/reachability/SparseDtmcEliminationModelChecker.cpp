@@ -1082,6 +1082,7 @@ bool SparseDtmcEliminationModelChecker<SparseDtmcModelType>::checkConsistent(sto
 }
 
 template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<double>>;
+// template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<storm::Interval>>;
 
 #ifdef STORM_HAVE_CARL
 template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<storm::RationalNumber>>;
