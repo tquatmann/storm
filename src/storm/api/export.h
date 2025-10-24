@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include "storm/adapters/JsonForward.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/io/DDEncodingExporter.h"
@@ -10,6 +12,8 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/storage/Scheduler.h"
 #include "storm/utility/macros.h"
+
+#include "storm/exceptions/UnexpectedException.h"
 
 namespace storm {
 
@@ -25,32 +29,32 @@ template<typename ValueType>
 void exportSparseModelAsDrn(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
                             std::vector<std::string> const& parameterNames = {}, bool allowPlaceholders = true) {
     std::ofstream stream;
-    storm::utility::openFile(filename, stream);
-    storm::exporter::DirectEncodingOptions options;
+    storm::io::openFile(filename, stream);
+    storm::io::DirectEncodingOptions options;
     options.allowPlaceholders = allowPlaceholders;
-    storm::exporter::explicitExportSparseModel(stream, model, parameterNames, options);
-    storm::utility::closeFile(stream);
+    storm::io::explicitExportSparseModel(stream, model, parameterNames, options);
+    storm::io::closeFile(stream);
 }
 
 template<storm::dd::DdType Type, typename ValueType>
 void exportSymbolicModelAsDrdd(std::shared_ptr<storm::models::symbolic::Model<Type, ValueType>> const& model, std::string const& filename) {
-    storm::exporter::explicitExportSymbolicModel(filename, model);
+    storm::io::explicitExportSymbolicModel(filename, model);
 }
 
 template<typename ValueType>
 void exportSparseModelAsDot(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename, size_t maxWidth = 30) {
     std::ofstream stream;
-    storm::utility::openFile(filename, stream);
+    storm::io::openFile(filename, stream);
     model->writeDotToStream(stream, maxWidth);
-    storm::utility::closeFile(stream);
+    storm::io::closeFile(stream);
 }
 
 template<typename ValueType>
 void exportSparseModelAsJson(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename) {
     std::ofstream stream;
-    storm::utility::openFile(filename, stream);
+    storm::io::openFile(filename, stream);
     model->writeJsonToStream(stream);
-    storm::utility::closeFile(stream);
+    storm::io::closeFile(stream);
 }
 
 template<storm::dd::DdType Type, typename ValueType>
@@ -62,21 +66,54 @@ template<typename ValueType>
 void exportScheduler(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, storm::storage::Scheduler<ValueType> const& scheduler,
                      std::string const& filename) {
     std::ofstream stream;
-    storm::utility::openFile(filename, stream);
+    storm::io::openFile(filename, stream);
     std::string jsonFileExtension = ".json";
     if (filename.size() > 4 && std::equal(jsonFileExtension.rbegin(), jsonFileExtension.rend(), filename.rbegin())) {
         scheduler.printJsonToStream(stream, model, false, true);
     } else {
         scheduler.printToStream(stream, model, false, true);
     }
-    storm::utility::closeFile(stream);
+    storm::io::closeFile(stream);
+}
+
+template<typename ValueType, typename PointType>
+void exportParetoScheduler(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::vector<PointType> const& points,
+                           std::vector<storm::storage::Scheduler<ValueType>> const& schedulers, std::string const& baseFilenameStr) {
+    // We export each scheduler in a separate file, named baseFilename_pointi.ext, where ext is the extension of the baseFilename.
+    // Additionally, we create a CSV file that associates each scheduler file with the corresponding point.
+    // Note that we cannot directly put the point coordinates into the filename, as some characters (e.g., ',' or '/' (occurring in rational numbers)) are not
+    // handled well in filenames.
+    std::filesystem::path baseFilename(baseFilenameStr);
+    std::ofstream infoStream;
+    auto infoFilePath = baseFilename;
+    infoFilePath.replace_filename(infoFilePath.stem().string() + "_info.csv");
+    storm::io::openFile(infoFilePath, infoStream);
+    infoStream << "file;point\n";
+    STORM_LOG_THROW(points.size() == schedulers.size(), storm::exceptions::UnexpectedException, "Number of points and schedulers must match.");
+    for (uint64_t i = 0; i < points.size(); ++i) {
+        std::string schedulerFileName = baseFilename.stem().string() + "_point" + std::to_string(i) + baseFilename.extension().string();
+        infoStream << schedulerFileName << ";[";
+        bool first = true;
+        for (auto const& pointEntry : points[i]) {
+            if (!first) {
+                infoStream << ",";
+            }
+            first = false;
+            infoStream << pointEntry;
+        }
+        infoStream << "]\n";
+        std::filesystem::path schedulerPath = baseFilename;
+        schedulerPath.replace_filename(schedulerFileName);
+        storm::api::exportScheduler(model, schedulers[i], schedulerPath);
+    }
+    storm::io::closeFile(infoStream);
 }
 
 template<typename ValueType>
 inline void exportCheckResultToJson(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model,
                                     std::unique_ptr<storm::modelchecker::CheckResult> const& checkResult, std::string const& filename) {
     std::ofstream stream;
-    storm::utility::openFile(filename, stream);
+    storm::io::openFile(filename, stream);
     if (checkResult->isExplicitQualitativeCheckResult()) {
         auto j = checkResult->asExplicitQualitativeCheckResult().toJson<storm::RationalNumber>(model->getOptionalStateValuations(), model->getStateLabeling());
         stream << storm::dumpJson(j);
@@ -86,7 +123,7 @@ inline void exportCheckResultToJson(std::shared_ptr<storm::models::sparse::Model
         auto j = checkResult->template asExplicitQuantitativeCheckResult<ValueType>().toJson(model->getOptionalStateValuations(), model->getStateLabeling());
         stream << storm::dumpJson(j);
     }
-    storm::utility::closeFile(stream);
+    storm::io::closeFile(stream);
 }
 
 template<>

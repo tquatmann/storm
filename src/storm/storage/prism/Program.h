@@ -19,7 +19,6 @@
 #include "storm/storage/prism/Player.h"
 #include "storm/storage/prism/RewardModel.h"
 #include "storm/storage/prism/SystemCompositionConstruct.h"
-#include "storm/utility/OsDetection.h"
 #include "storm/utility/solver.h"
 
 namespace storm {
@@ -258,9 +257,10 @@ class Program : public LocatedInformation {
     /*!
      * Retrieves all expression variables used by this program.
      *
+     * @param includeConstants Whether to include constants in the set of expression variables.
      * @return The set of expression variables used by this program.
      */
-    std::set<storm::expressions::Variable> getAllExpressionVariables() const;
+    std::set<storm::expressions::Variable> getAllExpressionVariables(bool includeConstants = true) const;
 
     /*!
      * Retrieves a list of expressions that characterize the legal ranges of all variables.
@@ -396,6 +396,11 @@ class Program : public LocatedInformation {
      * @return an expression characterizing the initial states.
      */
     storm::expressions::Expression getInitialStatesExpression() const;
+
+    /*!
+     * Retrieves whether the program considers at least one update with an interval probability/rate
+     */
+    bool hasIntervalUpdates() const;
 
     /*!
      * Retrieves whether the program specifies a system composition in terms of process algebra operations over

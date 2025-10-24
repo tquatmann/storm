@@ -583,6 +583,14 @@ boost::any FormulaToJaniJson::visit(storm::logic::HOAPathFormula const&, boost::
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Jani currently does not support HOA path formulae");
 }
 
+boost::any FormulaToJaniJson::visit(storm::logic::DiscountedCumulativeRewardFormula const&, boost::any const&) const {
+    STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Jani currently does not support discounted cumulative reward formulae");
+}
+
+boost::any FormulaToJaniJson::visit(storm::logic::DiscountedTotalRewardFormula const&, boost::any const&) const {
+    STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Jani currently does not support discounted total reward formulae");
+}
+
 std::string operatorTypeToJaniString(storm::expressions::OperatorType optype) {
     using OpType = storm::expressions::OperatorType;
     switch (optype) {
@@ -806,9 +814,9 @@ boost::any ExpressionToJson::visit(storm::expressions::TranscendentalNumberLiter
 void JsonExporter::toFile(storm::jani::Model const& janiModel, std::vector<storm::jani::Property> const& formulas, std::string const& filepath, bool checkValid,
                           bool compact) {
     std::ofstream stream;
-    storm::utility::openFile(filepath, stream, false, true);
+    storm::io::openFile(filepath, stream, false, true);
     toStream(janiModel, formulas, stream, checkValid, compact);
-    storm::utility::closeFile(stream);
+    storm::io::closeFile(stream);
 }
 
 void JsonExporter::toStream(storm::jani::Model const& janiModel, std::vector<storm::jani::Property> const& formulas, std::ostream& os, bool checkValid,

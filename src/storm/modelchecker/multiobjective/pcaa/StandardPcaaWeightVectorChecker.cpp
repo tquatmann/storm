@@ -42,6 +42,9 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     auto rewardAnalysis = preprocessing::SparseMultiObjectiveRewardAnalysis<SparseModelType>::analyze(preprocessorResult);
     STORM_LOG_THROW(rewardAnalysis.rewardFinitenessType != preprocessing::RewardFinitenessType::Infinite, storm::exceptions::NotSupportedException,
                     "There is no Pareto optimal scheduler that yields finite reward for all objectives. This is not supported.");
+    STORM_LOG_WARN_COND(rewardAnalysis.rewardFinitenessType == preprocessing::RewardFinitenessType::AllFinite,
+                        "There might be infinite reward for some scheduler. Multi-objective model checking restricts to schedulers that yield finite reward "
+                        "for all objectives. Be aware that solutions yielding infinite reward are discarded.");
     STORM_LOG_THROW(rewardAnalysis.totalRewardLessInfinityEStates, storm::exceptions::UnexpectedException,
                     "The set of states with reward < infinity for some scheduler has not been computed during preprocessing.");
     STORM_LOG_THROW(preprocessorResult.containsOnlyTrivialObjectives(), storm::exceptions::NotSupportedException,
@@ -63,7 +66,8 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
     auto mergerResult =
         merger.mergeTargetAndSinkStates(maybeStates, rewardAnalysis.reward0AStates, storm::storage::BitVector(maybeStates.size(), false),
                                         std::vector<std::string>(relevantRewardModels.begin(), relevantRewardModels.end()), finiteTotalRewardChoices);
-
+    goalStateMergerInputToReducedStateIndexMapping = std::move(mergerResult.oldToNewStateIndexMapping);
+    goalStateMergerReducedToInputChoiceMapping = mergerResult.keptChoices.getNumberOfSetBitsBeforeIndices();
     // Initialize data specific for the considered model type
     initializeModelTypeSpecificData(*mergerResult.model);
 
@@ -224,12 +228,18 @@ StandardPcaaWeightVectorChecker<SparseModelType>::computeScheduler() const {
         STORM_LOG_THROW(obj.formula->getSubformula().isTotalRewardFormula() || obj.formula->getSubformula().isLongRunAverageRewardFormula(),
                         storm::exceptions::NotImplementedException, "Scheduler retrival is only implemented for objectives without time-bound.");
     }
-
-    storm::storage::Scheduler<ValueType> result(this->optimalChoices.size());
-    uint_fast64_t state = 0;
-    for (auto const& choice : optimalChoices) {
-        result.setChoice(choice, state);
-        ++state;
+    auto const numStatesOfInputModel = goalStateMergerInputToReducedStateIndexMapping.size();
+    storm::storage::Scheduler<ValueType> result(numStatesOfInputModel);
+    for (uint64_t inputModelState = 0; inputModelState < numStatesOfInputModel; ++inputModelState) {
+        auto const reducedModelState = goalStateMergerInputToReducedStateIndexMapping[inputModelState];
+        if (reducedModelState >= optimalChoices.size()) {
+            // This state is a "reward0AState", i.e., it has no reward for any scheduler. We can set an arbitrary choice here.
+            result.setChoice(0, inputModelState);
+        } else {
+            auto const reducedModelChoice = optimalChoices[reducedModelState];
+            auto const inputModelChoice = goalStateMergerReducedToInputChoiceMapping[reducedModelChoice];
+            result.setChoice(inputModelChoice, inputModelState);
+        }
     }
     return result;
 }
@@ -513,7 +523,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                         deterministicBackwardTransitions, storm::storage::BitVector(deterministicMatrix.getRowCount(), true), statesWithRewards);
 
                     // Compute the estimate for this objective
-                    if (!storm::utility::isZero(weightVector[objIndex])) {
+                    if (!storm::utility::isZero(weightVector[objIndex]) && !storm::utility::isZero(sumOfWeightsOfUncheckedObjectives)) {
                         objectiveResults[objIndex] = weightedSumOfUncheckedObjectives;
                         ValueType scalingFactor = storm::utility::one<ValueType>() / sumOfWeightsOfUncheckedObjectives;
                         if (storm::solver::minimize(obj.formula->getOptimalityType())) {

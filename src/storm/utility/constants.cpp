@@ -12,6 +12,7 @@
 #include "storm/utility/NumberTraits.h"
 
 #include "storm/exceptions/NotSupportedException.h"
+#include "storm/utility/logging.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -261,6 +262,18 @@ ValueType cos(ValueType const& number) {
 template<typename ValueType>
 ValueType sin(ValueType const& number) {
     return std::sin(number);
+}
+
+template<typename ValueType>
+uint64_t numDigits(ValueType const& number) {
+    auto numDigits = 0;
+    ValueType remaining = storm::utility::one<ValueType>() / number;
+    ValueType ten = storm::utility::convertNumber<ValueType>(10);
+    while (remaining >= storm::utility::one<ValueType>()) {
+        ++numDigits;
+        remaining = storm::utility::floor<ValueType>(remaining / ten);
+    }
+    return numDigits;
 }
 
 template<typename ValueType>
@@ -641,6 +654,7 @@ GmpRationalNumber log(GmpRationalNumber const& number) {
 
 template<>
 GmpRationalNumber log10(GmpRationalNumber const& number) {
+    STORM_LOG_WARN("Using log10 for GMP rational numbers is not exact, it converts to doubles internally! Avoid if possible.");
     return carl::log10(number);
 }
 
@@ -934,15 +948,35 @@ storm::Interval convertNumber(double const& number) {
 }
 
 template<>
-storm::Interval convertNumber(storm::RationalNumber const& n) {
+storm::Interval convertNumber(uint64_t const& number) {
+    return storm::Interval(convertNumber<double>(number));
+}
+
+#if defined(STORM_HAVE_GMP)
+template<>
+storm::Interval convertNumber(storm::GmpRationalNumber const& n) {
     return storm::Interval(convertNumber<double>(n));
 }
 
 template<>
-storm::RationalNumber convertNumber(storm::Interval const& number) {
+storm::GmpRationalNumber convertNumber(storm::Interval const& number) {
     STORM_LOG_ASSERT(number.isPointInterval(), "Interval must be a point interval to convert");
-    return convertNumber<storm::RationalNumber>(number.lower());
+    return convertNumber<storm::GmpRationalNumber>(number.lower());
 }
+#endif
+
+#if defined(STORM_HAVE_CLN)
+template<>
+storm::Interval convertNumber(storm::ClnRationalNumber const& n) {
+    return storm::Interval(convertNumber<double>(n));
+}
+
+template<>
+storm::ClnRationalNumber convertNumber(storm::Interval const& number) {
+    STORM_LOG_ASSERT(number.isPointInterval(), "Interval must be a point interval to convert");
+    return convertNumber<storm::ClnRationalNumber>(number.lower());
+}
+#endif
 
 template<>
 double convertNumber(storm::Interval const& number) {
@@ -1045,6 +1079,7 @@ template storm::ClnRationalNumber max(storm::ClnRationalNumber const& first, sto
 template storm::ClnRationalNumber min(storm::ClnRationalNumber const& first, storm::ClnRationalNumber const& second);
 template storm::ClnRationalNumber round(storm::ClnRationalNumber const& number);
 template std::string to_string(storm::ClnRationalNumber const& value);
+template uint64_t numDigits(const storm::ClnRationalNumber& number);
 #endif
 
 #if defined(STORM_HAVE_GMP)
@@ -1069,6 +1104,7 @@ template storm::GmpRationalNumber max(storm::GmpRationalNumber const& first, sto
 template storm::GmpRationalNumber min(storm::GmpRationalNumber const& first, storm::GmpRationalNumber const& second);
 template storm::GmpRationalNumber round(storm::GmpRationalNumber const& number);
 template std::string to_string(storm::GmpRationalNumber const& value);
+template uint64_t numDigits(const storm::GmpRationalNumber& number);
 #endif
 
 #if defined(STORM_HAVE_CARL) && defined(STORM_HAVE_GMP) && defined(STORM_HAVE_CLN)

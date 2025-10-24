@@ -21,6 +21,7 @@
 
 namespace {
 
+#ifdef STORM_HAVE_GMM
 class GBGmmxxDoubleGmresEnvironment {
    public:
     typedef double ValueType;
@@ -52,6 +53,7 @@ class GBEigenDoubleDGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class GBEigenRationalLUEnvironment {
    public:
@@ -98,6 +100,7 @@ class GBNativeWalkerChaeEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class DistrGmmxxDoubleGmresEnvironment {
    public:
     typedef double ValueType;
@@ -113,6 +116,7 @@ class DistrGmmxxDoubleGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class DistrEigenRationalLUEnvironment {
    public:
@@ -174,9 +178,12 @@ class LraDtmcPrctlModelCheckerTest : public ::testing::Test {
     storm::Environment _environment;
 };
 
-typedef ::testing::Types<GBGmmxxDoubleGmresEnvironment, GBEigenDoubleDGmresEnvironment, GBEigenRationalLUEnvironment, GBNativeSorEnvironment,
-                         GBNativeWalkerChaeEnvironment, DistrGmmxxDoubleGmresEnvironment, DistrEigenRationalLUEnvironment, DistrNativeWalkerChaeEnvironment,
-                         ValueIterationEnvironment>
+typedef ::testing::Types<
+#ifdef STORM_HAVE_GMM
+    GBGmmxxDoubleGmresEnvironment, GBEigenDoubleDGmresEnvironment, DistrGmmxxDoubleGmresEnvironment,
+#endif
+    GBEigenRationalLUEnvironment, GBNativeSorEnvironment, GBNativeWalkerChaeEnvironment, DistrEigenRationalLUEnvironment, DistrNativeWalkerChaeEnvironment,
+    ValueIterationEnvironment>
     TestingTypes;
 
 TYPED_TEST_SUITE(LraDtmcPrctlModelCheckerTest, TestingTypes, );

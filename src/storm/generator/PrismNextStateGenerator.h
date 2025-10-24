@@ -49,6 +49,7 @@ class PrismNextStateGenerator : public NextStateGenerator<ValueType, StateType> 
     virtual std::shared_ptr<storm::storage::sparse::ChoiceOrigins> generateChoiceOrigins(std::vector<boost::any>& dataForChoiceOrigins) const override;
 
    private:
+    using BaseValueType = typename NextStateGenerator<ValueType, StateType>::BaseValueType;
     void checkValid() const;
 
     /*!
@@ -108,9 +109,18 @@ class PrismNextStateGenerator : public NextStateGenerator<ValueType, StateType> 
                                CommandFilter const& commandFilter = CommandFilter::All);
 
     /*!
+     * Generates self-loops for all actions of the given state. Necessary for POMDPs.
+     *
+     * @param state The state for which to retrieve the unlabeled choices.
+     * @return The choices representing self-loops for all actions of the state.
+     */
+    std::vector<Choice<ValueType>> getSelfLoopsForAllActions(CompressedState const& state, StateToIdCallback stateToIdCallback,
+                                                             CommandFilter const& commandFilter = CommandFilter::All);
+
+    /*!
      * Extend the Json struct with additional information about the state.
      */
-    virtual void extendStateInformation(storm::json<ValueType>& stateInfo) const override;
+    virtual void extendStateInformation(storm::json<BaseValueType>& stateInfo) const override;
 
     /*!
      * Evaluate observation labels
