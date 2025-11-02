@@ -6,7 +6,7 @@ endif()
 # Set project name
 project (storm
 		LANGUAGES CXX C
-		VERSION 1.10.0.1)
+		VERSION 1.11.1.1)
 # Version x.y.z.1 should be read as: This is an updated version of x.y.z that has not been released as x.y.z+1 yet.
 
 # Add the resources/cmake folder to Module Search Path
@@ -69,7 +69,7 @@ MARK_AS_ADVANCED(STORM_QVBS_ROOT)
 
 ## Configuring dependencies
 set(STORM_CARL_GIT_REPO "https://github.com/moves-rwth/carl-storm.git" CACHE STRING "For fetching carl: which git repo to use")
-option(STORM_CARL_GIT_TAG "For fetching carl: which git tag to use" "14.30")
+option(STORM_CARL_GIT_TAG "For fetching carl: which git tag to use" "14.33")
 MARK_AS_ADVANCED(STORM_CARL_GIT_TAG)
 option(STORM_DISABLE_GLPK "Sets whether linking with GLPK should be disabled." OFF)
 set(GLPK_ROOT "" CACHE STRING "A hint to the root directory of GLPK.")
@@ -214,8 +214,8 @@ message(VERBOSE "Storm - Assuming extension for static libraries: ${STATIC_EXT}"
 #############################################################
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	# using Clang
-	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
-		message(FATAL_ERROR "Clang version must be at least 10.0")
+	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0)
+		message(FATAL_ERROR "Clang version must be at least 15.0, currently you are using version ${CMAKE_CXX_COMPILER_VERSION}.")
 	endif()
 
 	set(STORM_COMPILER_CLANG ON)
@@ -476,7 +476,7 @@ configure_file (
 	"${PROJECT_BINARY_DIR}/include/storm-config.h"
 )
 
-if(PROJECT_IS_TOP_LEVEL)
+if(PROJECT_IS_TOP_LEVEL AND STORM_BUILD_TESTS)
 	include(CTest)
 	# Compiles all tests
 	add_custom_target(tests)
