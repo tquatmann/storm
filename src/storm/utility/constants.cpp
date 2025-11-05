@@ -379,6 +379,12 @@ typename NumberTraits<ClnRationalNumber>::IntegerType convertNumber(uint_fast64_
 }
 
 template<>
+typename NumberTraits<ClnRationalNumber>::IntegerType convertNumber(int_fast64_t const& number) {
+    STORM_LOG_ASSERT(static_cast<long int>(number) == number, "Conversion failed, because the number is too large.");
+    return NumberTraits<ClnRationalNumber>::IntegerType(static_cast<long int>(number));
+}
+
+template<>
 typename NumberTraits<ClnRationalNumber>::IntegerType convertNumber(double const& number) {
     if (number < static_cast<double>(std::numeric_limits<uint64_t>::max())) {
         return NumberTraits<ClnRationalNumber>::IntegerType(static_cast<uint64_t>(number));
@@ -595,6 +601,12 @@ template<>
 typename NumberTraits<GmpRationalNumber>::IntegerType convertNumber(uint_fast64_t const& number) {
     STORM_LOG_ASSERT(static_cast<unsigned long int>(number) == number, "Conversion failed, because the number is too large.");
     return NumberTraits<GmpRationalNumber>::IntegerType(static_cast<unsigned long int>(number));
+}
+
+template<>
+typename NumberTraits<GmpRationalNumber>::IntegerType convertNumber(int_fast64_t const& number) {
+    STORM_LOG_ASSERT(static_cast<long int>(number) == number, "Conversion failed, because the number is too large.");
+    return NumberTraits<GmpRationalNumber>::IntegerType(static_cast<long int>(number));
 }
 
 template<>

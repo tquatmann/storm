@@ -99,7 +99,7 @@ class ValueEncoding {
 
     template<bool Signed, std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
-    static storm::RationalNumber decodeArbitraryPrecisionInteger(InputRange&& input) {
+    static storm::NumberTraits<storm::RationalNumber>::IntegerType decodeArbitraryPrecisionInteger(InputRange&& input) {
         using IntegerType = typename storm::NumberTraits<storm::RationalNumber>::IntegerType;
         auto const twoTo64 = storm::utility::pow<IntegerType>(2, 64);
 
@@ -108,14 +108,14 @@ class ValueEncoding {
         auto reverse_input = std::ranges::reverse_view(std::forward<InputRange>(input));
 
         // Helper function to decode from an unsigned range (with the most significant bits first).
-        auto decodeFromUnsignedRange = [](auto&& input) -> storm::RationalNumber {
+        auto decodeFromUnsignedRange = [](auto&& input) -> IntegerType {
             auto const twoTo64 = storm::utility::pow<IntegerType>(2, 64);
             auto inputIt = std::ranges::begin(input);
             auto const inputEnd = std::ranges::end(input);
-            auto result = storm::utility::convertNumber<storm::RationalNumber>(*inputIt);
+            auto result = storm::utility::convertNumber<IntegerType>(*inputIt);
             for (++inputIt; inputIt != inputEnd; ++inputIt) {
                 result *= twoTo64;
-                result += storm::utility::convertNumber<storm::RationalNumber>(*inputIt);
+                result += storm::utility::convertNumber<IntegerType>(*inputIt);
             }
             return result;
         };
@@ -142,11 +142,14 @@ class ValueEncoding {
                    auto const left = 2 * csr[i];
                    auto const right = 2 * csr[i + 1];
                    auto mid = left + (right - left) / 2;
-                   std::ranges::subrange numeratorRange{std::ranges::begin(input) + left, std::ranges::begin(input) + mid};
-                   std::ranges::subrange denominatorRange{std::ranges::begin(input) + mid, std::ranges::begin(input) + right};
 
-                   // numerator is signed
-                   return decodeArbitraryPrecisionInteger<true>(numeratorRange) / decodeArbitraryPrecisionInteger<false>(denominatorRange);
+                   std::ranges::subrange numeratorRange{std::ranges::begin(input) + left, std::ranges::begin(input) + mid};
+                   storm::RationalNumber numerator = decodeArbitraryPrecisionInteger<true>(numeratorRange);  // signed
+
+                   std::ranges::subrange denominatorRange{std::ranges::begin(input) + mid, std::ranges::begin(input) + right};
+                   storm::RationalNumber denominator = decodeArbitraryPrecisionInteger<false>(denominatorRange);  // unsigned
+
+                   return numerator / denominator;
                });
     }
 
