@@ -47,8 +47,10 @@ class UmbModel {
         TO1<bool> markovianStates;
         CSR stateToExitRate;
         SEQ<AnyType> exitRates;
-        auto static constexpr FileNames = {"state-to-choice.bin",  "state-to-player.bin",    "initial-states.bin",
-                                           "markovian-states.bin", "state-to-exit-rate.bin", "exit-rates.bin"};
+        CSR stateToValuation;
+        SEQ<char> stateValuations;
+        auto static constexpr FileNames = {"state-to-choice.bin",    "state-to-player.bin", "initial-states.bin",     "markovian-states.bin",
+                                           "state-to-exit-rate.bin", "exit-rates.bin",      "state-to-valuation.bin", "state-valuations.bin"};
     } states;
     struct Choices {
         CSR choiceToBranch;

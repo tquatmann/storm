@@ -3,6 +3,7 @@
 #include <ranges>
 #include <utility>
 
+#include "storm/storage/umb/model/StateValuations.h"
 #include "storm/storage/umb/model/UmbModel.h"
 
 #include "storm/models/ModelType.h"
@@ -182,8 +183,23 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
     if (options.buildChoiceLabeling && umbModel.choices.choiceToAction) {
         components.choiceLabeling = constructChoiceLabeling(umbModel);
     }
-    if (options.buildStateValuations) {
+    if (options.buildStateValuations && umbModel.states.stateValuations) {
+        std::vector<char> bytes(umbModel.states.stateValuations->begin(), umbModel.states.stateValuations->end());
+        std::optional<std::vector<uint64_t>> stateToValuation;
+        if (umbModel.states.stateToValuation) {
+            stateToValuation.emplace(umbModel.states.stateToValuation->begin(), umbModel.states.stateToValuation->end());
+        }
+        storm::umb::StateValuations stateValuations(std::move(bytes), std::move(stateToValuation), umbModel.index.stateValuations.value());
+        uint64_t i = 0;
+        for (auto const& val : stateValuations.getRange()) {
+            std::cout << "\n" << i++ << ": \t";
+            val.forEachAssignment([&i](auto const& value) { std::cout << value << ", "; });
+            std::cout << std::endl;
+        }
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "State valuations are not yet supported.");
+    } else {
+        STORM_LOG_WARN_COND(!options.buildStateValuations, "State valuations requested but the UMB model does not have any.");
+        STORM_LOG_INFO_COND(!umbModel.states.stateValuations, "State valuations given but not constructed as per import options.");
     }
 
     // model type-specific components

@@ -61,6 +61,29 @@ bool UmbModel<Storage>::validate(bool silent) const {
     //        isValid = false;
     //    }
 
+    // Validate state valuations
+    if (index.stateValuations.has_value() != states.stateValuations.has_value()) {
+        STORM_LOG_ERROR_COND(silent || index.stateValuations.has_value(), "State valuations present but not described in index file.");
+        STORM_LOG_ERROR_COND(silent || states.stateValuations.has_value(), "State valuations described in index file but not present.");
+        isValid = false;
+    } else if (index.stateValuations.has_value()) {
+        uint64_t const alignment = index.stateValuations->alignment;
+        uint64_t const numBytes = states.stateValuations->size();
+        if (alignment == 0) {
+            STORM_LOG_ERROR_COND(silent, "State valuation alignment is 0.");
+            isValid = false;
+        }
+        if (numBytes % alignment != 0) {
+            STORM_LOG_ERROR_COND(silent, "State valuation data size is " << states.stateValuations->size() << " which is not a multiple of the alignment '"
+                                                                         << alignment << "'.");
+            isValid = false;
+        }
+        if (!validateCsr(states.stateToValuation, tsIndex.numStates, numBytes / alignment, silent)) {
+            STORM_LOG_ERROR_COND(silent, "State to valuation mapping is invalid.");
+            isValid = false;
+        }
+    }
+
     // Validate other inputs
     if (!branches.branchToTarget.has_value() || branches.branchToTarget->size() != tsIndex.numBranches) {
         STORM_LOG_ERROR_COND(silent, "Branch to target mapping is missing or has invalid size: " << sizeOr(branches.branchToTarget, 0));

@@ -6,6 +6,7 @@
 
 #include "storm/adapters/JsonAdapter.h"
 #include "storm/adapters/JsonSerializationAdapter.h"
+#include "storm/storage/umb/model/StateValuationsDescription.h"
 
 namespace storm::umb {
 
@@ -104,8 +105,9 @@ struct ModelIndex {
         auto static constexpr JsonKeys = {"rewards", "aps"};
         using JsonSerialization = storm::JsonSerialization;
     } annotations;
+    std::optional<StateValuationsDescription> stateValuations;
 
-    auto static constexpr JsonKeys = {"format-version", "format-revision", "model-data", "file-data", "transition-system", "annotations"};
+    auto static constexpr JsonKeys = {"format-version", "format-revision", "model-data", "file-data", "transition-system", "annotations", "state-valuations"};
     using JsonSerialization = storm::JsonSerialization;
 };
 
