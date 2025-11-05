@@ -4,6 +4,7 @@
 
 #include <boost/pfr.hpp>
 #include <ostream>
+#include <variant>
 #include "storm/exceptions/WrongFormatException.h"
 #include "storm/utility/macros.h"
 
@@ -138,6 +139,49 @@ struct adl_serializer<T> {
     static void from_json(JsonType const& json, T& val) {
         STORM_LOG_THROW(json.is_string(), ::storm::exceptions::WrongFormatException, "Expected a string, got something else.");
         val = T(json.template get<std::string>());
+    }
+};
+
+template<typename... Ts>
+struct adl_serializer<std::variant<Ts...>> {
+    template<typename JsonType>
+    static void to_json(JsonType& json, std::variant<Ts...> const& val) {
+        std::visit([&json](auto const& v) { adl_serializer<std::decay_t<decltype(v)>>::to_json(json, v); }, val);
+    }
+
+    template<std::size_t I, typename JsonType>
+    static void from_json_i(JsonType const& json, std::variant<Ts...>& val) {
+        static_assert(I < std::variant_size_v<std::variant<Ts...>>, "Index out of bounds.");
+        using Ti = std::variant_alternative_t<I, std::variant<Ts...>>;
+        if constexpr (I + 1 == std::variant_size_v<std::variant<Ts...>>) {
+            // Last alternative, try to deserialize directly (potentially throwing some error if it fails)
+            val = json.template get<Ti>();
+        } else {
+            // There are more alternatives left, so check if the current type matches
+            if (json.is_object()) {
+                if constexpr (StormEnableSerializationConcept<Ti>) {
+                    if (std::all_of(json.items().begin(), json.items().end(),
+                                    [](auto const& item) { return std::find(Ti::JsonKeys.begin(), Ti::JsonKeys.end(), item.key()) != Ti::JsonKeys.end(); })) {
+                        // All keys in the json can be found in the struct
+                        val = json.template get<Ti>();
+                        return;
+                    }
+                }
+            } else if ((json.is_boolean() && std::is_same_v<Ti, bool>) || (json.is_string() && std::is_same_v<Ti, std::string>) ||
+                       (json.is_number_integer() && std::is_integral_v<Ti>) ||
+                       (json.is_number_float() && (std::is_same_v<Ti, double> || std::is_same_v<Ti, typename JsonType::number_float_t>))) {
+                // Type matches
+                val = json.template get<Ti>();
+                return;
+            }
+            // If we reach this point, we try the next alternative
+            from_json_i<I + 1>(json, val);
+        }
+    }
+
+    template<typename JsonType>
+    static void from_json(JsonType const& json, std::variant<Ts...>& val) {
+        from_json_i<0>(json, val);
     }
 };
 
