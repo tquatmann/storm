@@ -281,7 +281,7 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     if constexpr (std::is_same_v<storm::Interval, ValueType>) {
         throw exceptions::NotImplementedException() << "Conditional Probabilities are not supported with interval models";
     } else {
-        return storm::modelchecker::computeConditionalProbabilities(env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask),
+        return storm::modelchecker::computeConditionalProbabilities(env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), checkTask,
                                                                     this->getModel().getTransitionMatrix(), this->getModel().getBackwardTransitions(),
                                                                     leftResult.getTruthValuesVector(), rightResult.getTruthValuesVector());
     }
