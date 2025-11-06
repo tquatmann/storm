@@ -54,9 +54,6 @@ JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani
       hasStateActionRewards(false),
       evaluateRewardExpressionsAtEdges(false),
       evaluateRewardExpressionsAtDestinations(false) {
-    STORM_LOG_THROW(!this->options.isBuildChoiceLabelsSet(), storm::exceptions::NotSupportedException,
-                    "JANI next-state generator cannot generate choice labels.");
-
     auto features = this->model.getModelFeatures();
     features.remove(storm::jani::ModelFeature::DerivedOperators);
     features.remove(storm::jani::ModelFeature::StateExitRewards);
@@ -82,6 +79,19 @@ JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani
         for (auto const& rewardModelName : this->options.getRewardModelNames()) {
             rewardExpressions.emplace_back(rewardModelName, this->model.getRewardModelExpression(rewardModelName));
             hasNonTrivialRewardExpressions = hasNonTrivialRewardExpressions || this->model.isNonTrivialRewardModelExpression(rewardModelName);
+        }
+    }
+    // If a transient variable has a non-zero default value, we also consider that non-trivial.
+    // In those cases, lifting edge destination assignments to the edges would mean that reward is collected twice:
+    // once at the edge (assigned value), once at the edge destinations (default value).
+    if (!hasNonTrivialRewardExpressions) {
+        for (auto const& rewExpr : rewardExpressions) {
+            STORM_LOG_ASSERT(rewExpr.second.isVariable(), "Expected trivial reward expression to be a variable. Got " << rewExpr.second << " instead.");
+            auto const& var = this->model.getGlobalVariables().getVariable(rewExpr.second.getBaseExpression().asVariableExpression().getVariable());
+            if (var.isTransient() && var.hasInitExpression() && !storm::utility::isZero(var.getInitExpression().evaluateAsRational())) {
+                hasNonTrivialRewardExpressions = true;
+                break;
+            }
         }
     }
 
@@ -307,7 +317,7 @@ std::vector<StateType> JaniNextStateGenerator<ValueType, StateType>::getInitialS
         std::vector<std::vector<uint64_t>> allValues;
         for (auto const& aRef : this->parallelAutomata) {
             auto const& aInitLocs = aRef.get().getInitialLocationIndices();
-            allValues.template emplace_back(aInitLocs.begin(), aInitLocs.end());
+            allValues.emplace_back(aInitLocs.begin(), aInitLocs.end());
         }
         uint64_t locEndIndex = allValues.size();
         for (auto const& intVar : this->variableInformation.integerVariables) {
@@ -1022,6 +1032,12 @@ void JaniNextStateGenerator<ValueType, StateType>::expandSynchronizingEdgeCombin
                             "Sum of update probabilities do not sum to one for some edge (actually sum to " << probabilitySum << ").");
         }
 
+        if (this->options.isBuildChoiceLabelsSet()) {
+            if (outputActionIndex != storm::jani::Model::SILENT_ACTION_INDEX) {
+                choice.addLabel(model.getAction(outputActionIndex).getName());
+            }
+        }
+
         // Now, check whether there is one more command combination to consider.
         bool movedIterator = false;
         for (uint64_t j = 0; !movedIterator && j < iteratorList.size(); ++j) {
@@ -1070,19 +1086,26 @@ std::vector<Choice<ValueType>> JaniNextStateGenerator<ValueType, StateType>::get
                         continue;
                     }
 
-                    result.push_back(expandNonSynchronizingEdge(*indexAndEdge.second,
-                                                                outputAndEdges.first ? outputAndEdges.first.get() : indexAndEdge.second->getActionIndex(),
-                                                                automatonIndex, state, stateToIdCallback));
+                    uint64_t actionIndex = outputAndEdges.first ? outputAndEdges.first.get() : indexAndEdge.second->getActionIndex();
+                    result.push_back(expandNonSynchronizingEdge(*indexAndEdge.second, actionIndex, automatonIndex, state, stateToIdCallback));
 
                     if (this->getOptions().isBuildChoiceOriginsSet()) {
                         auto modelAutomatonIndex = model.getAutomatonIndex(parallelAutomata[automatonIndex].get().getName());
                         EdgeIndexSet edgeIndex{model.encodeAutomatonAndEdgeIndices(modelAutomatonIndex, indexAndEdge.first)};
                         result.back().addOriginData(boost::any(std::move(edgeIndex)));
                     }
+
+                    if (this->getOptions().isBuildChoiceLabelsSet()) {
+                        if (actionIndex != storm::jani::Model::SILENT_ACTION_INDEX) {
+                            result.back().addLabel(model.getAction(actionIndex).getName());
+                        }
+                    }
                 }
             }
         } else {
             // If the element has more than one set of edges, we need to perform a synchronization.
+            // We require that some output action for the synchronisation must have been set before.
+            // This might be the silent action, if the Jani model does not specify an output action.
             STORM_LOG_ASSERT(outputAndEdges.first, "Need output action index for synchronization.");
 
             uint64_t outputActionIndex = outputAndEdges.first.get();

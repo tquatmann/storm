@@ -16,6 +16,7 @@
 
 namespace {
 
+#ifdef STORM_HAVE_GMM
 class GmmxxDoubleGmresEnvironment {
    public:
     typedef double ValueType;
@@ -43,6 +44,7 @@ class EigenDoubleDGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class EigenRationalLUEnvironment {
    public:
@@ -123,8 +125,11 @@ class ConditionalDtmcPrctlModelCheckerTest : public ::testing::Test {
     storm::Environment _environment;
 };
 
-typedef ::testing::Types<GmmxxDoubleGmresEnvironment, EigenDoubleDGmresEnvironment, EigenRationalLUEnvironment, NativeSorEnvironment, NativePowerEnvironment,
-                         NativeWalkerChaeEnvironment>
+typedef ::testing::Types<
+#ifdef STORM_HAVE_GMM
+    GmmxxDoubleGmresEnvironment, EigenDoubleDGmresEnvironment,
+#endif
+    EigenRationalLUEnvironment, NativeSorEnvironment, NativePowerEnvironment, NativeWalkerChaeEnvironment>
     TestingTypes;
 
 TYPED_TEST_SUITE(ConditionalDtmcPrctlModelCheckerTest, TestingTypes, );
