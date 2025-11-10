@@ -32,7 +32,8 @@ class GenerateMonitorVerifier {
         std::string acceptingLabel = "accepting";
         std::string stepPrefix = "step";
         std::string horizonLabel = "horizon";
-        bool useRisk = false;
+        bool useRejectionSampling = true;
+        bool useRisk = true;
     };
     GenerateMonitorVerifier(storm::models::sparse::Dtmc<ValueType> const& mc, storm::models::sparse::Mdp<ValueType> const& monitor,
                             std::shared_ptr<storm::expressions::ExpressionManager>& exprManager, Options const& options);
