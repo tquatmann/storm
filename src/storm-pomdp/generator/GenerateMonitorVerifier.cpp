@@ -95,7 +95,22 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     observations.push_back(nextObservation++);
 
     std::map<product_state_type, state_type> prodToIndexMap;
-    std::vector<state_type> prodInitial;
+    std::vector<state_type> rejectToStates;
+
+    state_type rejectionIndex;
+    if (!options.useRejectionSampling) {
+        // Add sink state where all invalid transitions go
+        rejectionIndex = nextStateId++;
+        builder.newRowGroup(currentRow);
+        rowActionObservationMap[std::make_pair("end", nextObservation)].grow(currentRow + 1);
+        rowActionObservationMap[std::make_pair("end", nextObservation)].set(currentRow);
+        observationUsedActions.push_back({"end"});
+        builder.addDiagonalEntry(currentRow++, utility::one<ValueType>());
+        observations.push_back(nextObservation++);
+        rejectToStates.push_back(rejectionIndex);
+    }
+
+    std::vector<state_type> initialStates;
 
     std::deque<product_state_type> todo;
     for (state_type mc_s_0 : mc.getInitialStates()) {
@@ -103,7 +118,9 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
             product_state_type prod_s(mc_s_0, mon_s_0);
             state_type index = nextStateId++;
             prodToIndexMap[prod_s] = index;
-            prodInitial.push_back(index);
+            initialStates.push_back(index);
+            if (options.useRejectionSampling)
+                rejectToStates.push_back(index);
             todo.push_back(prod_s);
         }
     }
@@ -132,8 +149,8 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
         builder.newRowGroup(currentRow);
         if (monitor.getStateLabeling().getLabelsOfState(mon_from).contains(options.horizonLabel)) {
             const auto& action = *actions.begin();
-            for (state_type initState : prodInitial) {
-                builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / prodInitial.size());
+            for (state_type initState : rejectToStates) {
+                builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / rejectToStates.size());
             }
             rowActionObservationMap[std::make_pair(action, currentObservation)].grow(currentRow + 1);
             rowActionObservationMap[std::make_pair(action, currentObservation)].set(currentRow);
@@ -168,11 +185,11 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
 
                 // Direct probability not used towards the initial states
                 if (totalProbability < storm::utility::one<ValueType>()) {
-                    for (state_type initState : prodInitial) {
+                    for (state_type initState : rejectToStates) {
                         if (newRow.contains(initState))
-                            newRow[initState] = newRow[initState] + (1 - totalProbability) / prodInitial.size();
+                            newRow[initState] = newRow[initState] + (1 - totalProbability) / rejectToStates.size();
                         else
-                            newRow[initState] = (1 - totalProbability) / prodInitial.size();
+                            newRow[initState] = (1 - totalProbability) / rejectToStates.size();
                     }
                 }
 
@@ -211,8 +228,8 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
             }
 
             for (const auto& action : actionsNotTaken) {
-                for (state_type initState : prodInitial) {
-                    builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / prodInitial.size());
+                for (state_type initState : rejectToStates) {
+                    builder.addNextValue(currentRow, initState, storm::utility::one<ValueType>() / rejectToStates.size());
                 }
                 auto& rowBitVec = rowActionObservationMap[std::make_pair(action, currentObservation)];
                 rowBitVec.grow(currentRow + 1);
@@ -271,7 +288,7 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
         }
         currentObservation++;
     }
-    std::cout << "Kept " << rowsToKeep.getNumberOfSetBits() << " out of " << numberOfRows << " rows." << std::endl;
+    // std::cout << "Kept " << rowsToKeep.getNumberOfSetBits() << " out of " << numberOfRows << " rows." << std::endl;
     // rowsToKeep.setMultiple(0, numberOfRows);
     numberOfRows = rowsToKeep.getNumberOfSetBits();
     storm::storage::SparseMatrix<ValueType> reducedTransitionMatrix = transMatrix.restrictRows(rowsToKeep);
@@ -279,13 +296,18 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     // Create state labeling
     const state_type numberOfStates = nextStateId;
     storm::models::sparse::StateLabeling stateLabeling(numberOfStates);
-    stateLabeling.addLabel("init", storm::storage::BitVector(numberOfStates, prodInitial.begin(), prodInitial.end()));
+    stateLabeling.addLabel("init", storm::storage::BitVector(numberOfStates, initialStates.begin(), initialStates.end()));
 
     stateLabeling.addLabel("goal", storm::storage::BitVector(numberOfStates));
     stateLabeling.addLabelToState("goal", goalIndex);
 
     stateLabeling.addLabel("stop", storm::storage::BitVector(numberOfStates));
     stateLabeling.addLabelToState("stop", stopIndex);
+
+    if (!options.useRejectionSampling) {
+        stateLabeling.addLabel("sink", storm::storage::BitVector(numberOfStates));
+        stateLabeling.addLabelToState("sink", rejectionIndex);
+    }
 
     storm::storage::sparse::ModelComponents<ValueType> components(reducedTransitionMatrix, std::move(stateLabeling));
     components.observabilityClasses = std::move(observations);
