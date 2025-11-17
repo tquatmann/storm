@@ -948,11 +948,9 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
         }
         // check for convergence
         SolutionType const boundDiff = *upperBound - *lowerBound;
-        STORM_LOG_TRACE("Iteration #" << iterationCount << ":\n\t Lower bound:      " << storm::utility::convertNumber<double>(*lowerBound)
-                                      << ",\n\t Upper bound:      " << storm::utility::convertNumber<double>(*upperBound)
-                                      << ",\n\t Difference:       " << storm::utility::convertNumber<double>(boundDiff)
-                                      << ",\n\t Middle val:       " << storm::utility::convertNumber<double>(middleValue) << ",\n\t Difference bound: "
-                                      << storm::utility::convertNumber<double>((relative ? (precision * *lowerBound) : precision)) << ".");
+        STORM_LOG_TRACE("Iteration #" << iterationCount << ":\n\t Lower bound:      " << *lowerBound << ",\n\t Upper bound:      " << *upperBound
+                                      << ",\n\t Difference:       " << boundDiff << ",\n\t Middle val:       " << middleValue
+                                      << ",\n\t Difference bound: " << (relative ? (precision * *lowerBound) : precision) << ".");
         if (boundDiff <= (relative ? (precision * *lowerBound) : precision)) {
             STORM_LOG_INFO("Bisection method converged after " << iterationCount << " iterations. Difference is "
                                                                << std::setprecision(std::numeric_limits<double>::digits10)
@@ -966,6 +964,8 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
             break;
         }
         // process the middle value for the next iteration
+        // This sets the middle value to a rational number with the smallest enumerator/denominator that is still within the bounds
+        // With close bounds this can lead to the middle being set to exactly the lower or upper bound, thus allowing for an exact answer.
         if constexpr (storm::NumberTraits<SolutionType>::IsExact) {
             // find a rational number with a concise representation close to middle and within the bounds
             auto const exactMiddle = middle;
