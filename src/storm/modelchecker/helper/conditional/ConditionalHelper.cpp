@@ -416,6 +416,19 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
     exitStateBitvector.set(chosenInitialComponentExitState, true);
 
     storm::utility::graph::computeSchedulerProbGreater0E(transitionMatrix, backwardTransitions, initialComponentStates, exitStateBitvector, scheduler, choicesAllowedForInitialComponent);
+
+    // fill the choices of initial component states that do not have a choice yet
+    // these states should not reach the condition or target states under the constructed scheduler
+    for (auto state : initialComponentStates) {
+        if (!scheduler.isChoiceSelected(state)) {
+            for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
+                if (!choicesThatCanVisitCondOrTargetStates.get(choiceIndex)) {
+                    scheduler.setChoice(choiceIndex - rowGroups[state], state);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 template<typename ValueType, typename SolutionType = ValueType>
