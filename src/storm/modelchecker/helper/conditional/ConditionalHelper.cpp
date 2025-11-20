@@ -666,7 +666,6 @@ class WeightedReachabilityHelper {
                         }
                     }
                 } else {
-                    initialComponentExitToOriginalRow.push_back(rowIndex);
                     initialComponentExitRows.set(rowIndex, true);
                 }
             }
@@ -738,6 +737,7 @@ class WeightedReachabilityHelper {
             if (state == initialState) {
                 for (auto origRowIndex : initialComponentExitRows) {
                     processRow(origRowIndex);
+                    initialComponentExitToOriginalRow.push_back(origRowIndex);
                 }
             } else {
                 for (auto origRowIndex : transitionMatrix.getRowGroupIndices(state)) {
