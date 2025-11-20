@@ -11,7 +11,6 @@
 #include "storm/logic/PlayerCoalition.h"
 #include "storm/modelchecker/hints/ModelCheckerHint.h"
 #include "storm/solver/OptimizationDirection.h"
-#include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 
 #include "storm/exceptions/InvalidOperationException.h"
 
@@ -53,7 +52,7 @@ class CheckTask {
     CheckTask<NewFormulaType, ValueType> substituteFormula(NewFormulaType const& newFormula) const {
         CheckTask<NewFormulaType, ValueType> result(newFormula, this->optimizationDirection, this->playerCoalition, this->rewardModel,
                                                     this->onlyInitialStatesRelevant, this->bound, this->qualitative, this->produceSchedulers, this->hint,
-                                                    this->robustUncertainty, this->reachConditionalStatesResult, this->reachTargetStatesResult);
+                                                    this->robustUncertainty);
         result.updateOperatorInformation();
         return result;
     }
@@ -132,8 +131,7 @@ class CheckTask {
     CheckTask<FormulaType, NewValueType> convertValueType() const {
 
         return CheckTask<FormulaType, NewValueType>(this->formula, this->optimizationDirection, this->playerCoalition, this->rewardModel, this->onlyInitialStatesRelevant,
-                                                    this->bound, this->qualitative, this->produceSchedulers, this->hint, this->robustUncertainty,
-                                                    this->reachConditionalStatesResult, this->reachTargetStatesResult
+                                                    this->bound, this->qualitative, this->produceSchedulers, this->hint, this->robustUncertainty
         );
 
     }
@@ -317,30 +315,6 @@ class CheckTask {
         robustUncertainty = robust;
     }
 
-    void setReachConditionalStatesResult(std::tuple<std::vector<double>, std::vector<uint64_t>> const& result) {
-        reachConditionalStatesResult = result;
-    }
-
-    bool hasReachConditionalStatesResult() const {
-        return static_cast<bool>(reachConditionalStatesResult);
-    }
-
-    std::tuple<std::vector<double>, std::vector<uint64_t>> const& getReachConditionalStatesResult() const {
-        return reachConditionalStatesResult.get();
-    }
-
-    void setReachTargetStatesResult(std::tuple<std::vector<double>, std::vector<uint64_t>> const& result) {
-        reachTargetStatesResult = result;
-    }
-
-    bool hasReachTargetStatesResult() const {
-        return static_cast<bool>(reachTargetStatesResult);
-    }
-
-    std::tuple<std::vector<double>, std::vector<uint64_t>> const& getReachTargetStatesResult() const {
-        return reachTargetStatesResult.get();
-    }
-
    private:
     /*!
      * Creates a task object with the given options.
@@ -360,8 +334,7 @@ class CheckTask {
     CheckTask(std::reference_wrapper<FormulaType const> const& formula, boost::optional<storm::OptimizationDirection> const& optimizationDirection,
               boost::optional<storm::logic::PlayerCoalition> playerCoalition, boost::optional<std::string> const& rewardModel, bool onlyInitialStatesRelevant,
               boost::optional<storm::logic::Bound> const& bound, bool qualitative, bool produceSchedulers, std::shared_ptr<ModelCheckerHint> const& hint,
-              bool robust, boost::optional<std::tuple<std::vector<double>, std::vector<uint64_t>>> const& reachConditionalStatesResult,
-              boost::optional<std::tuple<std::vector<double>, std::vector<uint64_t>>> const& reachTargetStatesResult)
+              bool robust)
         : formula(formula),
           optimizationDirection(optimizationDirection),
           playerCoalition(playerCoalition),
@@ -371,9 +344,7 @@ class CheckTask {
           qualitative(qualitative),
           produceSchedulers(produceSchedulers),
           hint(hint),
-          robustUncertainty(robust),
-          reachConditionalStatesResult(reachConditionalStatesResult),
-          reachTargetStatesResult(reachTargetStatesResult) {
+          robustUncertainty(robust) {
         // Intentionally left empty.
     }
 
@@ -404,13 +375,6 @@ class CheckTask {
 
     // A hint that might contain information that speeds up the modelchecking process (if supported by the model checker)
     std::shared_ptr<ModelCheckerHint> hint;
-
-    // TODO I'm not sure if these should be templated or not
-    // If set, the result will be used for conditional states in model checking of conditional properties.
-    boost::optional<std::tuple<std::vector<double>, std::vector<uint64_t>>> reachConditionalStatesResult;
-
-    // If set, the result will be used for target states in model checking of conditional properties.
-    boost::optional<std::tuple<std::vector<double>, std::vector<uint64_t>>> reachTargetStatesResult;
 
     /// Whether uncertainty should be resolved robust (standard) or angelically.
     bool robustUncertainty;
