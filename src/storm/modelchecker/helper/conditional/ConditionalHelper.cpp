@@ -331,7 +331,8 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
                                      storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& maybeStates,
                                      storm::storage::BitVector const& maybeStatesWithoutChoice, storm::storage::BitVector const& maybeStatesWithChoice,
                                      std::vector<uint64_t> const& stateToFinalEc, NormalFormData<ValueType> const& normalForm, uint64_t initialComponentIndex,
-                                     storm::storage::BitVector const& initialComponentExitRows, uint64_t chosenInitialComponentExitState,
+                                     storm::storage::BitVector const& initialComponentExitStates, storm::storage::BitVector const& initialComponentExitRows,
+                                     uint64_t chosenInitialComponentExitState,
                                      uint64_t chosenInitialComponentExit) {
     // Compute the EC stay choices for the states in maybeStatesWithChoice
     storm::storage::BitVector ecStayChoices(transitionMatrix.getRowCount(), false);
@@ -418,8 +419,49 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
     // we want to disallow taking initial component exits that can lead to a condition or target state, beside the one exit that was chosen
     storm::storage::BitVector disallowedInitialComponentExits = initialComponentExitRows & choicesThatCanVisitCondOrTargetStates;
     disallowedInitialComponentExits.set(chosenInitialComponentExit, false);
-
     storm::storage::BitVector choicesAllowedForInitialComponent = allowedChoices & ~disallowedInitialComponentExits;
+
+    storm::storage::BitVector goodInitialComponentStates = initialComponentStates;
+    storm::storage::BitVector goodInitialComponentStatesFixpoint = initialComponentStates;
+    for (auto state : initialComponentExitStates) {
+        bool allChoicesAreDisallowed = true;
+        for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
+            if (!disallowedInitialComponentExits.get(choiceIndex)) {
+                allChoicesAreDisallowed = false;
+                break;
+            }
+        }
+        if (allChoicesAreDisallowed) {
+            goodInitialComponentStates.set(state, false);
+        }
+    }
+
+    while (goodInitialComponentStates.getNumberOfSetBits() != goodInitialComponentStatesFixpoint.getNumberOfSetBits()) {
+        goodInitialComponentStatesFixpoint = goodInitialComponentStates;
+        for (auto state : goodInitialComponentStates) {
+            bool allChoicesAreDisallowed = true;
+            for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
+                bool hasBadSuccessor = false;
+                for (auto const& entry : transitionMatrix.getRow(choiceIndex)) {
+                    auto targetState = entry.getColumn();
+                    if (!goodInitialComponentStates.get(targetState)) {
+                        hasBadSuccessor = true;
+                        break;
+                    }
+                }
+                if (hasBadSuccessor) {
+                    choicesAllowedForInitialComponent.set(choiceIndex, false);
+                } else {
+                    allChoicesAreDisallowed = false;
+                }
+            }
+            if (allChoicesAreDisallowed) {
+                goodInitialComponentStates.set(state, false);
+            }
+        }
+    }
+
+
     storm::storage::BitVector exitStateBitvector(transitionMatrix.getRowGroupCount(), false);
     exitStateBitvector.set(chosenInitialComponentExitState, true);
 
@@ -431,7 +473,7 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
     for (auto state : initialComponentStates) {
         if (!scheduler.isChoiceSelected(state)) {
             for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
-                if (!choicesThatCanVisitCondOrTargetStates.get(choiceIndex)) {
+                if (choicesAllowedForInitialComponent.get(choiceIndex)) {
                     scheduler.setChoice(choiceIndex - rowGroups[state], state);
                     break;
                 }
@@ -544,6 +586,7 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
     auto result = solveMinMaxEquationSystem(env, matrix, rowValues, rowsWithSum1, dir, initStateInMatrix);
 
     storm::storage::BitVector initialComponentExitRows(transitionMatrix.getRowCount(), false);
+    storm::storage::BitVector initialComponentExitStates(transitionMatrix.getRowGroupCount(), false);
     for (auto rowIndex : matrix.getRowGroupIndices(initStateInMatrix)) {
         uint64_t originalRowIndex = rowIndex;
         if (ecElimResult2.has_value()) {
@@ -572,6 +615,7 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
         originalState = index;
 
         initialComponentExitRows.set(transitionMatrix.getRowGroupIndices()[originalState] + originalChoice, true);
+        initialComponentExitStates.set(originalState, true);
     }
 
     // std::vector<uint64_t> finalSchedulerChoices(transitionMatrix.getRowGroupCount(), -1);
@@ -633,7 +677,7 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
 
     auto const maybeStatesWithoutChoice = maybeStates & ~maybeStatesWithChoice;
     finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, maybeStates, maybeStatesWithoutChoice, maybeStatesWithChoice,
-                                    stateToFinalEc, normalForm, initStateInMatrix, initialComponentExitRows, chosenInitialComponentExitState,
+                                    stateToFinalEc, normalForm, initStateInMatrix, initialComponentExitStates, initialComponentExitRows, chosenInitialComponentExitState,
                                     chosenInitialComponentExit);
 
     auto finalResult = ResultReturnType<ValueType>(result.initialStateValue, std::move(scheduler));
@@ -662,6 +706,7 @@ class WeightedReachabilityHelper {
         // action. By eliminating the initial component, we ensure that only policies that actually exit C are considered. The remaining policies have
         // probability zero of satisfying the condition.
         initialComponentExitRows = storm::storage::BitVector(transitionMatrix.getRowCount(), false);
+        initialComponentExitStates = storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false);
         subMatrixRowGroups.set(initialState, false);  // temporarily unset initial state
         std::vector<uint64_t> dfsStack = {initialState};
         while (!dfsStack.empty()) {
@@ -680,6 +725,7 @@ class WeightedReachabilityHelper {
                     }
                 } else {
                     initialComponentExitRows.set(rowIndex, true);
+                    initialComponentExitStates.set(state, true);
                 }
             }
         }
@@ -885,6 +931,7 @@ class WeightedReachabilityHelper {
     boost::optional<typename storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType> ecResult;
     std::vector<uint64_t> initialComponentExitToOriginalRow;
     storm::storage::BitVector initialComponentExitRows;
+    storm::storage::BitVector initialComponentExitStates;
 
    private:
     std::vector<ValueType> createScaledVector(ValueType const& w1, std::vector<ValueType> const& v1, ValueType const& w2,
@@ -1098,7 +1145,7 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
 
     auto const maybeStatesWithoutChoice = normalForm.maybeStates & ~maybeStatesWithChoice;
     finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, normalForm.maybeStates, maybeStatesWithoutChoice, maybeStatesWithChoice,
-                                    wrh.stateToFinalEc, normalForm, wrh.getInternalInitialState(), wrh.initialComponentExitRows,
+                                    wrh.stateToFinalEc, normalForm, wrh.getInternalInitialState(), wrh.initialComponentExitStates, wrh.initialComponentExitRows,
                                     chosenInitialComponentExitState, chosenInitialComponentExit);
 
     auto finalResult = ResultReturnType<ValueType>((*lowerBound + *upperBound) / 2, std::move(scheduler));
