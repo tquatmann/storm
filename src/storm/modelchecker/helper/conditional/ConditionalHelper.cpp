@@ -796,11 +796,12 @@ class WeightedReachabilityHelper {
             if (state == initialState) {
                 for (auto origRowIndex : initialComponentExitRows) {
                     processRow(origRowIndex);
-                    initialComponentExitToOriginalRow.push_back(origRowIndex);
+                    subMatrixRowToOriginalRow.push_back(origRowIndex);
                 }
             } else {
                 for (auto origRowIndex : transitionMatrix.getRowGroupIndices(state)) {
                     processRow(origRowIndex);
+                    subMatrixRowToOriginalRow.push_back(origRowIndex);
                 }
             }
         }
@@ -929,7 +930,7 @@ class WeightedReachabilityHelper {
     storm::storage::SparseMatrix<ValueType> fullSubmatrix;
     std::vector<uint64_t> stateToFinalEc;
     boost::optional<typename storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType> ecResult;
-    std::vector<uint64_t> initialComponentExitToOriginalRow;
+    std::vector<uint64_t> subMatrixRowToOriginalRow;
     storm::storage::BitVector initialComponentExitRows;
     storm::storage::BitVector initialComponentExitStates;
 
@@ -1096,34 +1097,16 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
             uint64_t originalChoice;
             uint64_t originalState;
 
-            if (state == wrh.getInternalInitialState()) {
-                originalChoice = wrh.initialComponentExitToOriginalRow[choice];
-
-                auto const rowGroups = transitionMatrix.getRowGroupIndices();
-                for (originalState = 0; originalState < transitionMatrix.getRowGroupCount(); ++originalState) {
-                    auto const firstRowStateIndex = rowGroups[originalState + 1];
-                    if (firstRowStateIndex > originalChoice) {
-                        originalChoice = originalChoice - rowGroups[originalState];
-                        break;
-                    }
-                }
-
-                scheduler->setChoice(originalChoice, originalState);
-                maybeStatesWithChoice.set(originalState, true);
-                chosenInitialComponentExitState = originalState;
-                chosenInitialComponentExit = transitionMatrix.getRowGroupIndices()[originalState] + originalChoice;
-                ++state;
-                continue;
-            }
-
             uint64_t firstRowIndex = wrh.submatrix.getRowGroupIndices()[state];
             originalChoice = firstRowIndex + choice;
             if (wrh.ecResult.has_value()) {
                 originalChoice = wrh.ecResult->newToOldRowMapping[originalChoice];
             }
 
-            auto const rowGroups = wrh.fullSubmatrix.getRowGroupIndices();
-            for (originalState = 0; originalState < wrh.fullSubmatrix.getRowGroupCount(); ++originalState) {
+            originalChoice = wrh.subMatrixRowToOriginalRow[originalChoice];
+
+            auto const& rowGroups = transitionMatrix.getRowGroupIndices();
+            for (originalState = 0; originalState < transitionMatrix.getRowGroupCount(); ++originalState) {
                 auto const firstRowStateIndex = rowGroups[originalState + 1];
                 if (firstRowStateIndex > originalChoice) {
                     originalChoice = originalChoice - rowGroups[originalState];
@@ -1131,14 +1114,14 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
                 }
             }
 
-            uint64_t index = normalForm.maybeStates.getNextSetIndex(0);
-            for (uint64_t s = 0; s < originalState; ++s) {
-                index = normalForm.maybeStates.getNextSetIndex(index + 1);
-            }
-
-            originalState = index;
             scheduler->setChoice(originalChoice, originalState);
             maybeStatesWithChoice.set(originalState, true);
+
+            if (state == wrh.getInternalInitialState()) {
+                chosenInitialComponentExitState = originalState;
+                chosenInitialComponentExit = transitionMatrix.getRowGroupIndices()[originalState] + originalChoice;
+            }
+
             ++state;
         }
     }
