@@ -332,8 +332,7 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
                                      storm::storage::BitVector const& maybeStatesWithoutChoice, storm::storage::BitVector const& maybeStatesWithChoice,
                                      std::vector<uint64_t> const& stateToFinalEc, NormalFormData<ValueType> const& normalForm, uint64_t initialComponentIndex,
                                      storm::storage::BitVector const& initialComponentExitStates, storm::storage::BitVector const& initialComponentExitRows,
-                                     uint64_t chosenInitialComponentExitState,
-                                     uint64_t chosenInitialComponentExit) {
+                                     uint64_t chosenInitialComponentExitState, uint64_t chosenInitialComponentExit) {
     // Compute the EC stay choices for the states in maybeStatesWithChoice
     storm::storage::BitVector ecStayChoices(transitionMatrix.getRowCount(), false);
     storm::storage::BitVector initialComponentStates(transitionMatrix.getRowGroupCount(), false);
@@ -460,7 +459,6 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
             }
         }
     }
-
 
     storm::storage::BitVector exitStateBitvector(transitionMatrix.getRowGroupCount(), false);
     exitStateBitvector.set(chosenInitialComponentExitState, true);
@@ -677,8 +675,8 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
 
     auto const maybeStatesWithoutChoice = maybeStates & ~maybeStatesWithChoice;
     finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, maybeStates, maybeStatesWithoutChoice, maybeStatesWithChoice,
-                                    stateToFinalEc, normalForm, initStateInMatrix, initialComponentExitStates, initialComponentExitRows, chosenInitialComponentExitState,
-                                    chosenInitialComponentExit);
+                                    stateToFinalEc, normalForm, initStateInMatrix, initialComponentExitStates, initialComponentExitRows,
+                                    chosenInitialComponentExitState, chosenInitialComponentExit);
 
     auto finalResult = ResultReturnType<ValueType>(result.initialStateValue, std::move(scheduler));
 
