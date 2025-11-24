@@ -188,8 +188,8 @@ void IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::extractSchedu
     }
 
     // Set the correct choices.
-    STORM_LOG_WARN_COND(!viOperatorTriv && !viOperatorNontriv,
-                        "Expected VI operator to be initialized for scheduler extraction. Initializing now, but this is inefficient.");
+    // STORM_LOG_WARN_COND(!viOperatorTriv && !viOperatorNontriv,
+    //                     "Expected VI operator to be initialized for scheduler extraction. Initializing now, but this is inefficient.");
     if (!viOperatorTriv && !viOperatorNontriv) {
         setUpViOperator();
     }

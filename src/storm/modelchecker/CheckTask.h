@@ -129,9 +129,11 @@ class CheckTask {
      */
     template<typename NewValueType>
     CheckTask<FormulaType, NewValueType> convertValueType() const {
-        return CheckTask<FormulaType, NewValueType>(this->formula, this->optimizationDirection, this->playerCoalition, this->rewardModel,
-                                                    this->onlyInitialStatesRelevant, this->bound, this->qualitative, this->produceSchedulers, this->hint,
-                                                    this->robustUncertainty);
+
+        return CheckTask<FormulaType, NewValueType>(this->formula, this->optimizationDirection, this->playerCoalition, this->rewardModel, this->onlyInitialStatesRelevant,
+                                                    this->bound, this->qualitative, this->produceSchedulers, this->hint, this->robustUncertainty
+        );
+
     }
 
     /*!
