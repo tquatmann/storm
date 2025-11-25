@@ -24,8 +24,8 @@ class LpMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationSolver<V
     LpMinMaxLinearEquationSolver(storm::storage::SparseMatrix<ValueType>&& A,
                                  std::unique_ptr<storm::utility::solver::LpSolverFactory<ValueType>>&& lpSolverFactory);
 
-    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
-                                        std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
 
     virtual void clearCache() const override;
 

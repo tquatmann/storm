@@ -37,7 +37,8 @@ class NativeLinearEquationSolver : public LinearEquationSolver<ValueType> {
     virtual void clearCache() const override;
 
    protected:
-    virtual bool internalSolveEquations(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(storm::Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
 
    private:
     struct PowerIterationResult {

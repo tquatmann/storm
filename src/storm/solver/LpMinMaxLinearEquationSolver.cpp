@@ -36,8 +36,14 @@ LpMinMaxLinearEquationSolver<ValueType>::LpMinMaxLinearEquationSolver(storm::sto
 }
 
 template<typename ValueType>
-bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
-                                                                     std::vector<ValueType> const& b) const {
+bool LpMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& xLower,
+                                                                     std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                                                                     std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&xLower == &xUpper, storm::exceptions::NotImplementedException,
+                    "LpMinMaxLinearEquationSolver does not support solving with sound lower and upper bounds.");
+    STORM_LOG_ASSERT(&bLower == &bUpper, "Invalid function call: different lower/upper b vector but same result vector.");
+    auto& x = xLower;
+    auto const& b = bLower;
     if (env.solver().minMax().getMethod() == MinMaxMethod::LinearProgramming) {
         return solveEquationsLp(env, dir, x, b);
     } else {

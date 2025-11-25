@@ -29,8 +29,9 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
                                                                    bool const& hasInitialScheduler = false) const override;
 
    protected:
-    virtual bool internalSolveEquations(storm::Environment const& env, OptimizationDirection d, std::vector<SolutionType>& x,
-                                        std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(storm::Environment const& env, OptimizationDirection d, std::vector<SolutionType>& xLower,
+                                        std::vector<SolutionType>& xUpper, std::vector<ValueType> const& bLower,
+                                        std::vector<ValueType> const& bUpper) const override;
 
    private:
     storm::Environment getEnvironmentForUnderlyingSolver(storm::Environment const& env, bool adaptPrecision = false) const;

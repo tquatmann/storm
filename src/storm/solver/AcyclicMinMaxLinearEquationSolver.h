@@ -31,8 +31,8 @@ class AcyclicMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationSol
                                                                    bool const& hasInitialScheduler = false) const override;
 
    protected:
-    virtual bool internalSolveEquations(storm::Environment const& env, OptimizationDirection d, std::vector<ValueType>& x,
-                                        std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
 
    private:
     // cached multiplier either with original matrix or ordered matrix

@@ -88,7 +88,13 @@ MinMaxMethod IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::getMe
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSolveEquations(Environment const& env, OptimizationDirection dir,
-                                                                                          std::vector<SolutionType>& x, std::vector<ValueType> const& b) const {
+                                                                                          std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                                                                          std::vector<ValueType> const& bLower,
+                                                                                          std::vector<ValueType> const& bUpper) const {
+    auto& x = xLower;
+    auto& b = bLower;
+    assert(false);
+    
     bool result = false;
     switch (getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact())) {
         case MinMaxMethod::ValueIteration:

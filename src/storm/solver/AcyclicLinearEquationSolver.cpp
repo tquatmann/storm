@@ -48,7 +48,22 @@ uint64_t AcyclicLinearEquationSolver<ValueType>::getMatrixColumnCount() const {
 }
 
 template<typename ValueType>
-bool AcyclicLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const {
+bool AcyclicLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                    std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    if (&xLower != &xUpper) {
+        bool ret = internalSolveEquations(env, xLower, xLower, bLower, bLower);
+        if (&bLower == &bUpper) {
+            xUpper = xLower;  // same b vector, no need to recompute. Just copy over values
+        } else {
+            ret = internalSolveEquations(env, xUpper, xUpper, bUpper, bUpper) && ret;
+        }
+        return ret;
+    }
+    STORM_LOG_ASSERT(&bLower == &bUpper, "Invalid function call: different lower/upper b vector but same result vector.");
+
+    auto& x = xLower;
+    auto& b = bLower;
+
     STORM_LOG_ASSERT(x.size() == this->A->getRowGroupCount(), "Provided x-vector has invalid size.");
     STORM_LOG_ASSERT(b.size() == this->A->getRowCount(), "Provided b-vector has invalid size.");
 

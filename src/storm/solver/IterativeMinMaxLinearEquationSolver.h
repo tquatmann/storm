@@ -28,8 +28,8 @@ class IterativeMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationS
     IterativeMinMaxLinearEquationSolver(storm::storage::SparseMatrix<ValueType>&& A,
                                         std::unique_ptr<LinearEquationSolverFactory<SolutionType>>&& linearEquationSolverFactory);
 
-    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x,
-                                        std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
 
     virtual void clearCache() const override;
 

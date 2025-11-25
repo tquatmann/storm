@@ -50,8 +50,13 @@ storm::Environment TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType
 
 template<typename ValueType, typename SolutionType>
 bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSolveEquations(Environment const& env, OptimizationDirection dir,
-                                                                                            std::vector<SolutionType>& x,
-                                                                                            std::vector<ValueType> const& b) const {
+                                                                                            std::vector<SolutionType>& xLower,
+                                                                                            std::vector<SolutionType>& xUpper,
+                                                                                            std::vector<ValueType> const& bLower,
+                                                                                            std::vector<ValueType> const& bUpper) const {
+    auto& x = xLower;
+    auto& b = bLower;
+    assert(false);
     STORM_LOG_ASSERT(x.size() == this->A->getRowGroupCount(), "Provided x-vector has invalid size.");
     STORM_LOG_ASSERT(b.size() == this->A->getRowCount(), "Provided b-vector has invalid size.");
 

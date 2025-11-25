@@ -15,8 +15,8 @@
 
 #include "storm/environment/solver/SolverEnvironment.h"
 
+#include "storm/exceptions/IllegalFunctionCallException.h"
 #include "storm/exceptions/NotSupportedException.h"
-#include "storm/exceptions/UnmetRequirementException.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -29,7 +29,13 @@ LinearEquationSolver<ValueType>::LinearEquationSolver() : cachingEnabled(false) 
 
 template<typename ValueType>
 bool LinearEquationSolver<ValueType>::solveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const {
-    return this->internalSolveEquations(env, x, b);
+    return this->internalSolveEquations(env, x, x, b, b);
+}
+template<typename ValueType>
+bool LinearEquationSolver<ValueType>::solveEquationsSound(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                          std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&xLower != &xUpper, storm::exceptions::IllegalFunctionCallException, "Lower and upper solution vectors must be different.");
+    return this->internalSolveEquations(env, xLower, xUpper, bLower, bUpper);
 }
 
 template<typename ValueType>

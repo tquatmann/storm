@@ -46,6 +46,23 @@ class LinearEquationSolver : public AbstractEquationSolver<ValueType> {
     bool solveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
 
     /*!
+     * If the solver expects the equation system format, it solves Ax = b. If it it expects a fixed point
+     * format, it solves Ax + b = x. In both versions, the matrix A is required to be square and the problem
+     * is required to have a unique solution. The solution will be written to the vector x. Note that the matrix
+     * A has to be given upon construction time of the solver object.
+     *
+     * @param xLower lower bound for the true solution vector x of the equation system (using b = bLower)
+     * @param xUpper upper bound for the true solution vector x of the equation system (using b = bUpper)
+     * @param bLower The vector b (for xLower)
+     * @param bUpper The vector b (for xUpper)
+     *
+     * @note: Assumes that &xLower != &xUpper. bLower and bUpper may however alias.
+     * @note: May not terminate if diff(bLower[s], bUpper[s]) >= epsilon for all states s where diff is the relative or absolute difference
+     */
+    bool solveEquationsSound(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                             std::vector<ValueType> const& bUpper) const;
+
+    /*!
      * Retrieves the format in which this solver expects to solve equations. If the solver expects the equation
      * system format, it solves Ax = b. If it it expects a fixed point format, it solves Ax + b = x.
      */
@@ -74,7 +91,13 @@ class LinearEquationSolver : public AbstractEquationSolver<ValueType> {
     virtual void clearCache() const;
 
    protected:
-    virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const = 0;
+    /*!
+     * Internal method that actually solves the equation system.
+     * If &xLower == &xUpper, then also &bLower == &bUpper must hold.
+     * If &xLower != &xUpper, then the method must ensure that the returned solution bounds the true solution (w.r.t. bLower/bUpper).
+     */
+    virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const = 0;
 
     // auxiliary storage. If set, this vector has getMatrixRowCount() entries.
     mutable std::unique_ptr<std::vector<ValueType>> cachedRowVector;

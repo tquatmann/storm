@@ -59,8 +59,11 @@ storm::Environment TopologicalLinearEquationSolver<ValueType>::getEnvironmentFor
 }
 
 template<typename ValueType>
-bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x,
-                                                                        std::vector<ValueType> const& b) const {
+bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    auto& x = xLower;
+    auto& b = bLower;
+    assert(false);
     // For sound computations we need to increase the precision in each SCC
     bool needAdaptPrecision =
         env.solver().isForceSoundness() &&

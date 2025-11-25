@@ -7,6 +7,7 @@
 #include "storm/environment/solver/EigenSolverEnvironment.h"
 
 #include "storm/exceptions/InvalidSettingsException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
 
@@ -67,58 +68,44 @@ EigenLinearEquationSolverMethod EigenLinearEquationSolver<ValueType>::getMethod(
     return method;
 }
 
-#ifdef STORM_HAVE_CARL
-// Specialization for storm::RationalNumber
-template<>
-bool EigenLinearEquationSolver<storm::RationalNumber>::internalSolveEquations(Environment const& env, std::vector<storm::RationalNumber>& x,
-                                                                              std::vector<storm::RationalNumber> const& b) const {
-    auto solutionMethod = getMethod(env, true);
-    STORM_LOG_WARN_COND(solutionMethod == EigenLinearEquationSolverMethod::SparseLU, "Switching method to SparseLU.");
-    STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with with rational numbers using LU factorization (Eigen library).");
-
-    // Map the input vectors to Eigen's format.
-    auto eigenX = Eigen::Matrix<storm::RationalNumber, Eigen::Dynamic, 1>::Map(x.data(), x.size());
-    auto eigenB = Eigen::Matrix<storm::RationalNumber, Eigen::Dynamic, 1>::Map(b.data(), b.size());
-
-    Eigen::SparseLU<Eigen::SparseMatrix<storm::RationalNumber>, Eigen::COLAMDOrdering<int>> solver;
-    solver.compute(*eigenA);
-    solver._solve_impl(eigenB, eigenX);
-
-    return solver.info() == Eigen::ComputationInfo::Success;
-}
-
-// Specialization for storm::RationalFunction
-template<>
-bool EigenLinearEquationSolver<storm::RationalFunction>::internalSolveEquations(Environment const& env, std::vector<storm::RationalFunction>& x,
-                                                                                std::vector<storm::RationalFunction> const& b) const {
-    auto solutionMethod = getMethod(env, true);
-    STORM_LOG_WARN_COND(solutionMethod == EigenLinearEquationSolverMethod::SparseLU, "Switching method to SparseLU.");
-    STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with rational functions using LU factorization (Eigen library).");
-
-    // Map the input vectors to Eigen's format.
-    auto eigenX = Eigen::Matrix<storm::RationalFunction, Eigen::Dynamic, 1>::Map(x.data(), x.size());
-    auto eigenB = Eigen::Matrix<storm::RationalFunction, Eigen::Dynamic, 1>::Map(b.data(), b.size());
-
-    Eigen::SparseLU<Eigen::SparseMatrix<storm::RationalFunction>, Eigen::COLAMDOrdering<int>> solver;
-    solver.compute(*eigenA);
-    solver._solve_impl(eigenB, eigenX);
-    return solver.info() == Eigen::ComputationInfo::Success;
-}
-#endif
-
 template<typename ValueType>
-bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const {
-    // Map the input vectors to Eigen's format.
-    auto eigenX = Eigen::Matrix<ValueType, Eigen::Dynamic, 1>::Map(x.data(), x.size());
-    auto eigenB = Eigen::Matrix<ValueType, Eigen::Dynamic, 1>::Map(b.data(), b.size());
+bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                  std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    // Determine the method and whether it is exact (based on environment and ValueType)
+    bool const isExact = storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact();
+    auto solutionMethod = getMethod(env, isExact);
 
-    auto solutionMethod = getMethod(env, env.solver().isForceExact());
+    // Map the input vectors to Eigen's format.
+    // Only consider xLower/bLower for now. If necessary, upper bounds are computed in the SparseLU case below.
+    auto eigenVec = [](auto& vec) { return Eigen::Matrix<ValueType, Eigen::Dynamic, 1>::Map(vec.data(), vec.size()); };
+    auto eigenX = eigenVec(xLower);
+    auto eigenB = eigenVec(bLower);
+
     if (solutionMethod == EigenLinearEquationSolverMethod::SparseLU) {
-        STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with sparse LU factorization (Eigen library).");
+        STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with sparse LU factorization (Eigen library).");
         Eigen::SparseLU<Eigen::SparseMatrix<ValueType>, Eigen::COLAMDOrdering<int>> solver;
         solver.compute(*this->eigenA);
         solver._solve_impl(eigenB, eigenX);
+        if (solver.info() == Eigen::ComputationInfo::Success && &xLower != &xUpper) {
+            if (&bLower == &bUpper) {
+                xUpper = xLower;  // same b vector, no need to recompute. Just copy over values
+            } else {
+                // Need to compute upper bounds as well.
+                auto eigenXUpper = eigenVec(xUpper);
+                auto eigenBUpper = eigenVec(bUpper);
+                solver._solve_impl(eigenBUpper, eigenXUpper);
+            }
+        }
+        return solver.info() == Eigen::ComputationInfo::Success;
+    }
+    if constexpr (storm::NumberTraits<ValueType>::IsExact) {
+        STORM_LOG_THROW(false, storm::exceptions::InvalidSettingsException, "Unable to perform numerical computations on exact value type.");
     } else {
+        STORM_LOG_ASSERT(!isExact, "Unexpected method selected for exact computation.");
+        STORM_LOG_THROW(&xLower == &xUpper, storm::exceptions::NotImplementedException,
+                        "EigenLinearEquationSolver in non-exact mode does not support solving with sound lower and upper bounds.");
+        STORM_LOG_ASSERT(&bLower == &bUpper, "Invalid function call: different lower/upper b vector but same result vector.");
+
         bool converged = false;
         uint64_t numberOfIterations = 0;
         Eigen::Index maxIter = std::numeric_limits<Eigen::Index>::max();
@@ -130,7 +117,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
         EigenLinearEquationSolverPreconditioner preconditioner = env.solver().eigen().getPreconditioner();
         if (solutionMethod == EigenLinearEquationSolverMethod::Bicgstab) {
             if (preconditioner == EigenLinearEquationSolverPreconditioner::Ilu) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with BiCGSTAB with Ilu preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with BiCGSTAB with Ilu preconditioner (Eigen library).");
 
                 Eigen::BiCGSTAB<Eigen::SparseMatrix<ValueType>, Eigen::IncompleteLUT<ValueType>> solver;
                 solver.compute(*this->eigenA);
@@ -140,7 +127,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else if (preconditioner == EigenLinearEquationSolverPreconditioner::Diagonal) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with BiCGSTAB with Diagonal preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with BiCGSTAB with Diagonal preconditioner (Eigen library).");
 
                 Eigen::BiCGSTAB<Eigen::SparseMatrix<ValueType>, Eigen::DiagonalPreconditioner<ValueType>> solver;
                 solver.setTolerance(precision);
@@ -150,7 +137,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with BiCGSTAB with identity preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with BiCGSTAB with identity preconditioner (Eigen library).");
 
                 Eigen::BiCGSTAB<Eigen::SparseMatrix<ValueType>, Eigen::IdentityPreconditioner> solver;
                 solver.setTolerance(precision);
@@ -162,7 +149,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
             }
         } else if (solutionMethod == EigenLinearEquationSolverMethod::DGmres) {
             if (preconditioner == EigenLinearEquationSolverPreconditioner::Ilu) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with DGMRES with Ilu preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with DGMRES with Ilu preconditioner (Eigen library).");
                 Eigen::DGMRES<Eigen::SparseMatrix<ValueType>, Eigen::IncompleteLUT<ValueType>> solver;
                 solver.setTolerance(precision);
                 solver.setMaxIterations(maxIter);
@@ -172,7 +159,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else if (preconditioner == EigenLinearEquationSolverPreconditioner::Diagonal) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with DGMRES with Diagonal preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with DGMRES with Diagonal preconditioner (Eigen library).");
 
                 Eigen::DGMRES<Eigen::SparseMatrix<ValueType>, Eigen::DiagonalPreconditioner<ValueType>> solver;
                 solver.setTolerance(precision);
@@ -183,7 +170,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with DGMRES with identity preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with DGMRES with identity preconditioner (Eigen library).");
 
                 Eigen::DGMRES<Eigen::SparseMatrix<ValueType>, Eigen::IdentityPreconditioner> solver;
                 solver.setTolerance(precision);
@@ -197,7 +184,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
 
         } else if (solutionMethod == EigenLinearEquationSolverMethod::Gmres) {
             if (preconditioner == EigenLinearEquationSolverPreconditioner::Ilu) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with GMRES with Ilu preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with GMRES with Ilu preconditioner (Eigen library).");
 
                 Eigen::GMRES<Eigen::SparseMatrix<ValueType>, Eigen::IncompleteLUT<ValueType>> solver;
                 solver.setTolerance(precision);
@@ -208,7 +195,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else if (preconditioner == EigenLinearEquationSolverPreconditioner::Diagonal) {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with GMRES with Diagonal preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with GMRES with Diagonal preconditioner (Eigen library).");
 
                 Eigen::GMRES<Eigen::SparseMatrix<ValueType>, Eigen::DiagonalPreconditioner<ValueType>> solver;
                 solver.setTolerance(precision);
@@ -219,7 +206,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
                 converged = solver.info() == Eigen::ComputationInfo::Success;
                 numberOfIterations = solver.iterations();
             } else {
-                STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with GMRES with identity preconditioner (Eigen library).");
+                STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with GMRES with identity preconditioner (Eigen library).");
 
                 Eigen::GMRES<Eigen::SparseMatrix<ValueType>, Eigen::IdentityPreconditioner> solver;
                 solver.setTolerance(precision);
@@ -233,7 +220,7 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
         }
 
         // Make sure that all results conform to the (global) bounds.
-        storm::utility::vector::clip(x, this->lowerBound, this->upperBound);
+        storm::utility::vector::clip(xLower, this->lowerBound, this->upperBound);
 
         // Check if the solver converged and issue a warning otherwise.
         if (converged) {
@@ -244,8 +231,6 @@ bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment co
             return false;
         }
     }
-
-    return true;
 }
 
 template<typename ValueType>

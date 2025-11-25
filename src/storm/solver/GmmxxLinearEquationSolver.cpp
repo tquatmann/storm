@@ -58,7 +58,14 @@ GmmxxLinearEquationSolverMethod GmmxxLinearEquationSolver<ValueType>::getMethod(
 }
 
 template<typename ValueType>
-bool GmmxxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const {
+bool GmmxxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                  std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&xLower == &xUpper, storm::exceptions::NotImplementedException,
+                    "GmmxxLinearEquationSolver does not support solving with sound lower and upper bounds.");
+    STORM_LOG_ASSERT(&bLower == &bUpper, "Invalid function call: different lower/upper b vector but same result vector.");
+    auto& x = xLower;
+    auto const& b = bLower;
+
 #ifdef STORM_HAVE_GMM
     auto method = getMethod(env);
     auto preconditioner = env.solver().gmmxx().getPreconditioner();

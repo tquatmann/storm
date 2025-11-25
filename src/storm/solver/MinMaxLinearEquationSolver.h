@@ -62,6 +62,24 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<SolutionType> {
     void solveEquations(Environment const& env, std::vector<SolutionType>& x, std::vector<ValueType> const& b) const;
 
     /*!
+     * Solves the equation system x = min/max(A*x + b) given by the parameters. Note that the matrix A has
+     * to be given upon construction time of the solver object.
+     * Uses sound numerical methods to ensure that the returned solution bounds the true solution.
+     *
+     * @param d For minimum, all the value of a group of rows is the taken as the minimum over all rows and as
+     * the maximum otherwise.
+     * @param xLower lower bound for the true solution vector x of the equation system x = min/max(A*x + bLower)
+     * @param xUpper upper bound for the true solution vector x of the equation system x = min/max(A*x + bUpper)
+     * @param bLower The vector to add after matrix-vector multiplication for the lower bound solution.
+     * @param bUpper The vector to add after matrix-vector multiplication for the upper bound solution.
+     *
+     * @note: Assumes that &xLower != &xUpper. bLower and bUpper may however alias.
+     * @note: May not terminate if diff(bLower[s], bUpper[s]) >= epsilon for all states s where diff is the relative or absolute difference
+     */
+    bool solveEquationsSound(Environment const& env, OptimizationDirection d, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                             std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
+
+    /*!
      * Sets an optimization direction to use for calls to methods that do not explicitly provide one.
      */
     void setOptimizationDirection(OptimizationDirection direction);
@@ -193,8 +211,13 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<SolutionType> {
     bool isRequirementsCheckedSet() const;
 
    protected:
-    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<SolutionType>& x,
-                                        std::vector<ValueType> const& b) const = 0;
+    /*!
+     * Internal method that actually solves the equation system.
+     * If &xLower == &xUpper, then also &bLower == &bUpper must hold.
+     * If &xLower != &xUpper, then the method must ensure that the returned solution bounds the true solution (w.r.t. bLower/bUpper).
+     */
+    virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const = 0;
 
     /// The optimization direction to use for calls to functions that do not provide it explicitly. Can also be unset.
     OptimizationDirectionSetting direction;

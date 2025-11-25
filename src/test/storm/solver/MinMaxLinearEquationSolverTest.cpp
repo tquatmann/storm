@@ -173,7 +173,6 @@ TYPED_TEST(MinMaxLinearEquationSolverTest, SolveEquations) {
     storm::storage::SparseMatrix<ValueType> A;
     ASSERT_NO_THROW(A = builder.build(2));
 
-    std::vector<ValueType> x(1);
     std::vector<ValueType> b = {this->parseNumber("0.099"), this->parseNumber("0.5")};
 
     auto factory = storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType>();
@@ -184,10 +183,28 @@ TYPED_TEST(MinMaxLinearEquationSolverTest, SolveEquations) {
     storm::solver::MinMaxLinearEquationSolverRequirements req = solver->getRequirements(this->env());
     req.clearBounds();
     ASSERT_FALSE(req.hasEnabledRequirement());
-    ASSERT_NO_THROW(solver->solveEquations(this->env(), storm::OptimizationDirection::Minimize, x, b));
-    EXPECT_NEAR(x[0], this->parseNumber("0.5"), this->precision());
 
-    ASSERT_NO_THROW(solver->solveEquations(this->env(), storm::OptimizationDirection::Maximize, x, b));
-    EXPECT_NEAR(x[0], this->parseNumber("0.99"), this->precision());
+    {
+        std::vector<ValueType> x(1);
+        ASSERT_NO_THROW(solver->solveEquations(this->env(), storm::OptimizationDirection::Minimize, x, b));
+        EXPECT_NEAR(x[0], this->parseNumber("0.5"), this->precision());
+        ASSERT_NO_THROW(solver->solveEquations(this->env(), storm::OptimizationDirection::Maximize, x, b));
+        EXPECT_NEAR(x[0], this->parseNumber("0.99"), this->precision());
+    }
+    if (this->env().solver().isForceSoundness()) {
+        std::vector<ValueType> xLower(1), xUpper(1), bUpper(b);
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Minimize, xLower, xUpper, b, b));
+        EXPECT_NEAR(xLower[0], this->parseNumber("0.5"), this->precision());
+        EXPECT_NEAR(xUpper[0], this->parseNumber("0.5"), this->precision());
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Maximize, xLower, xUpper, b, b));
+        EXPECT_NEAR(xLower[0], this->parseNumber("0.99"), this->precision());
+        EXPECT_NEAR(xUpper[0], this->parseNumber("0.99"), this->precision());
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Minimize, xLower, xUpper, b, bUpper));
+        EXPECT_NEAR(xLower[0], this->parseNumber("0.5"), this->precision());
+        EXPECT_NEAR(xUpper[0], this->parseNumber("0.5"), this->precision());
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Maximize, xLower, xUpper, b, bUpper));
+        EXPECT_NEAR(xLower[0], this->parseNumber("0.99"), this->precision());
+        EXPECT_NEAR(xUpper[0], this->parseNumber("0.99"), this->precision());
+    }
 }
 }  // namespace

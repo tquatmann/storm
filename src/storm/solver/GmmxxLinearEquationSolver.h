@@ -29,7 +29,8 @@ class GmmxxLinearEquationSolver : public LinearEquationSolver<ValueType> {
     virtual void clearCache() const override;
 
    protected:
-    virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const override;
+    virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
 
    private:
     GmmxxLinearEquationSolverMethod getMethod(Environment const& env) const;

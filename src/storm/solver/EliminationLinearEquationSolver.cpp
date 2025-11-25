@@ -49,8 +49,14 @@ void EliminationLinearEquationSolver<ValueType>::setMatrix(storm::storage::Spars
 }
 
 template<typename ValueType>
-bool EliminationLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x,
-                                                                        std::vector<ValueType> const& b) const {
+bool EliminationLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                        std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&xLower == &xUpper, storm::exceptions::NotImplementedException,
+                    "EliminationLinearEquationSolver does not support solving with sound lower and upper bounds.");
+    STORM_LOG_ASSERT(&bLower == &bUpper, "Invalid function call: different lower/upper b vector but same result vector.");
+    auto& x = xLower;
+    auto const& b = bLower;
+
     // FIXME: This solver will not work for all input systems. More concretely, the current implementation will
     // not work for systems that have a 1 on the diagonal. This is not a restriction of this technique in general
     // but arbitrary matrices require pivoting, which is not currently implemented.

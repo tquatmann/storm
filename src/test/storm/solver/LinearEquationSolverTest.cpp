@@ -373,7 +373,6 @@ TYPED_TEST(LinearEquationSolverTest, solveEquationSystem) {
     storm::storage::SparseMatrix<ValueType> A;
     ASSERT_NO_THROW(A = builder.build());
 
-    std::vector<ValueType> x(3);
     std::vector<ValueType> b = {this->parseNumber("3"), this->parseNumber("-0.01"), this->parseNumber("12")};
 
     auto factory = storm::solver::GeneralLinearEquationSolverFactory<ValueType>();
@@ -387,9 +386,26 @@ TYPED_TEST(LinearEquationSolverTest, solveEquationSystem) {
     ASSERT_FALSE(requirements.hasEnabledRequirement());
     auto solver = factory.create(this->env(), A);
     solver->setBounds(this->parseNumber("-100"), this->parseNumber("100"));
-    ASSERT_NO_THROW(solver->solveEquations(this->env(), x, b));
-    EXPECT_NEAR(x[0], this->parseNumber("481/9"), this->precision());
-    EXPECT_NEAR(x[1], this->parseNumber("457/9"), this->precision());
-    EXPECT_NEAR(x[2], this->parseNumber("875/18"), this->precision());
+    auto checkVec = [this](auto& v, std::string const& context) {
+        EXPECT_NEAR(v[0], this->parseNumber("481/9"), this->precision()) << context;
+        EXPECT_NEAR(v[1], this->parseNumber("457/9"), this->precision()) << context;
+        EXPECT_NEAR(v[2], this->parseNumber("875/18"), this->precision()) << context;
+    };
+    {
+        std::vector<ValueType> x(3);
+        ASSERT_NO_THROW(solver->solveEquations(this->env(), x, b));
+        checkVec(x, "solveEquations");
+    }
+    if (this->env().solver().isForceSoundness()) {
+        std::vector<ValueType> xLower(3), xUpper(3), bUpper(b);
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), xLower, xUpper, b, b));
+        checkVec(xLower, "solveEquationsSound (xLower, same b)");
+        checkVec(xUpper, "solveEquationsSound (xUpper, same b)");
+        xLower.assign(3, this->parseNumber("0"));
+        xUpper.assign(3, this->parseNumber("0"));
+        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), xLower, xUpper, b, bUpper));
+        checkVec(xLower, "solveEquationsSound (xLower, diff b)");
+        checkVec(xUpper, "solveEquationsSound (xUpper, diff b)");
+    }
 }
 }  // namespace

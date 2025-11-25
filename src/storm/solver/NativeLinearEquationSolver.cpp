@@ -641,7 +641,11 @@ NativeLinearEquationSolverMethod NativeLinearEquationSolver<ValueType>::getMetho
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const {
+bool NativeLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                   std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    auto& x = xLower;
+    auto& b = bLower;
+    assert(false);
     switch (getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact())) {
         case NativeLinearEquationSolverMethod::SOR:
             return this->solveEquationsSOR(env, x, b, storm::utility::convertNumber<ValueType>(env.solver().native().getSorOmega()));
