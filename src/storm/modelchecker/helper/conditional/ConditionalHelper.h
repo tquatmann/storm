@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include "storm/solver/SolveGoal.h"
 #include "storm/logic/ConditionalFormula.h"
 #include "storm/modelchecker/CheckTask.h"
+#include "storm/solver/SolveGoal.h"
 
 namespace storm {
 class Environment;

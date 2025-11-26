@@ -120,10 +120,10 @@ class Scheduler {
     boost::optional<storm::storage::MemoryStructure> const& getMemoryStructure() const;
 
     /*!
-        * Retrieves a memoryless scheduler that corresponds to the given memory state.
-        *
-        * @param memoryState the memory state to fix
-    */
+     * Retrieves a memoryless scheduler that corresponds to the given memory state.
+     *
+     * @param memoryState the memory state to fix
+     */
     Scheduler<ValueType> getMemorylessSchedulerForMemoryState(uint64_t memoryState = 0) const;
 
     /*!

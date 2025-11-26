@@ -76,7 +76,7 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
     if (hypothesis == RegionResultHypothesis::Unknown && result == RegionResult::Unknown) {
         result = getInstantiationChecker()
                          .check(env, region.getCenterPoint())
-                         ->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]
+                         ->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]
                      ? RegionResult::CenterSat
                      : RegionResult::CenterViolated;
     }
@@ -123,7 +123,7 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
             // Check for result
             if (existsSat && getInstantiationCheckerSAT()
                                  .check(env, valuationToCheckSat)
-                                 ->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]) {
+                                 ->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
                 STORM_LOG_INFO("Region " << region << " is AllSat, discovered with instantiation checker on " << valuationToCheckSat
                                          << " and help of monotonicity\n");
                 RegionModelChecker<typename SparseModelType::ValueType>::numberOfRegionsKnownThroughMonotonicity++;
@@ -132,7 +132,7 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
 
             if (existsViolated && !getInstantiationCheckerVIO()
                                        .check(env, valuationToCheckViolated)
-                                       ->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]) {
+                                       ->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
                 STORM_LOG_INFO("Region " << region << " is AllViolated, discovered with instantiation checker on " << valuationToCheckViolated
                                          << " and help of monotonicity\n");
                 RegionModelChecker<typename SparseModelType::ValueType>::numberOfRegionsKnownThroughMonotonicity++;
@@ -150,7 +150,7 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
                                                                                   ? storm::solver::OptimizationDirection::Minimize
                                                                                   : storm::solver::OptimizationDirection::Maximize;
         auto checkResult = this->check(env, region, parameterOptimizationDirection, localMonotonicityResult);
-        if (checkResult->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]) {
+        if (checkResult->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
             result = RegionResult::AllSat;
         } else if (sampleVerticesOfRegion) {
             result = sampleVertices(env, region, result);
@@ -161,7 +161,7 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
                                                                                   ? storm::solver::OptimizationDirection::Maximize
                                                                                   : storm::solver::OptimizationDirection::Minimize;
         auto checkResult = this->check(env, region, parameterOptimizationDirection, localMonotonicityResult);
-        if (!checkResult->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]) {
+        if (!checkResult->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
             result = RegionResult::AllViolated;
         } else if (sampleVerticesOfRegion) {
             result = sampleVertices(env, region, result);
@@ -188,7 +188,9 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
     auto vertices = region.getVerticesOfRegion(region.getVariables());
     auto vertexIt = vertices.begin();
     while (vertexIt != vertices.end() && !(hasSatPoint && hasViolatedPoint)) {
-        if (getInstantiationChecker().check(env, *vertexIt)->asExplicitQualitativeCheckResult()[*this->parametricModel->getInitialStates().begin()]) {
+        if (getInstantiationChecker()
+                .check(env, *vertexIt)
+                ->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
             hasSatPoint = true;
         } else {
             hasViolatedPoint = true;
