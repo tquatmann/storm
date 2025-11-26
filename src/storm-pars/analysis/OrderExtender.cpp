@@ -102,16 +102,16 @@ std::shared_ptr<Order> OrderExtender<ValueType, ConstantType>::getBottomTopOrder
         assert(formula->isProbabilityOperatorFormula());
         if (formula->asProbabilityOperatorFormula().getSubformula().isUntilFormula()) {
             phiStates = propositionalChecker.check(formula->asProbabilityOperatorFormula().getSubformula().asUntilFormula().getLeftSubformula())
-                            ->template asExplicitQualitativeCheckResult<ValueType>()
+                            ->asExplicitQualitativeCheckResult()
                             .getTruthValuesVector();
             psiStates = propositionalChecker.check(formula->asProbabilityOperatorFormula().getSubformula().asUntilFormula().getRightSubformula())
-                            ->template asExplicitQualitativeCheckResult<ValueType>()
+                            ->asExplicitQualitativeCheckResult()
                             .getTruthValuesVector();
         } else {
             assert(formula->asProbabilityOperatorFormula().getSubformula().isEventuallyFormula());
             phiStates = storage::BitVector(numberOfStates, true);
             psiStates = propositionalChecker.check(formula->asProbabilityOperatorFormula().getSubformula().asEventuallyFormula().getSubformula())
-                            ->template asExplicitQualitativeCheckResult<ValueType>()
+                            ->asExplicitQualitativeCheckResult()
                             .getTruthValuesVector();
         }
         // Get the maybeStates

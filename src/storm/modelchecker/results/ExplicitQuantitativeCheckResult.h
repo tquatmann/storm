@@ -16,7 +16,6 @@ namespace storm {
 
 namespace modelchecker {
 // Forward declaration
-template<typename ValueType>
 class ExplicitQualitativeCheckResult;
 
 template<typename ValueType>
@@ -40,7 +39,7 @@ class ExplicitQuantitativeCheckResult : public QuantitativeCheckResult<ValueType
     ExplicitQuantitativeCheckResult& operator=(ExplicitQuantitativeCheckResult const& other) = default;
     ExplicitQuantitativeCheckResult(ExplicitQuantitativeCheckResult&& other) = default;
     ExplicitQuantitativeCheckResult& operator=(ExplicitQuantitativeCheckResult&& other) = default;
-    explicit ExplicitQuantitativeCheckResult(ExplicitQualitativeCheckResult<ValueType> const& other);
+    explicit ExplicitQuantitativeCheckResult(ExplicitQualitativeCheckResult const& other);
 
     virtual ~ExplicitQuantitativeCheckResult() = default;
 

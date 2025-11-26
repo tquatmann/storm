@@ -13,7 +13,6 @@ namespace modelchecker {
 class QualitativeCheckResult;
 template<typename ValueType>
 class QuantitativeCheckResult;
-template<typename ValueType>
 class ExplicitQualitativeCheckResult;
 
 template<typename ValueType>
@@ -78,11 +77,8 @@ class CheckResult {
     template<typename ValueType>
     QuantitativeCheckResult<ValueType> const& asQuantitativeCheckResult() const;
 
-    template<typename ValueType>
-    ExplicitQualitativeCheckResult<ValueType>& asExplicitQualitativeCheckResult();
-
-    template<typename ValueType>
-    ExplicitQualitativeCheckResult<ValueType> const& asExplicitQualitativeCheckResult() const;
+    ExplicitQualitativeCheckResult& asExplicitQualitativeCheckResult();
+    ExplicitQualitativeCheckResult const& asExplicitQualitativeCheckResult() const;
 
     template<typename ValueType>
     ExplicitQuantitativeCheckResult<ValueType>& asExplicitQuantitativeCheckResult();
