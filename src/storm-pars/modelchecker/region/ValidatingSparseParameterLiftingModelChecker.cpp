@@ -47,7 +47,7 @@ RegionResult ValidatingSparseParameterLiftingModelChecker<SparseModelType, Impre
 
         bool preciseResult = getPreciseChecker()
                                  .check(env, region, parameterOptDir)
-                                 ->asExplicitQualitativeCheckResult()[*getPreciseChecker().getConsideredParametricModel().getInitialStates().begin()];
+                                 ->template asExplicitQualitativeCheckResult<PreciseType>()[*getPreciseChecker().getConsideredParametricModel().getInitialStates().begin()];
         bool preciseResultAgrees = preciseResult == (currentResult == RegionResult::AllSat);
 
         if (!preciseResultAgrees) {
@@ -60,7 +60,7 @@ RegionResult ValidatingSparseParameterLiftingModelChecker<SparseModelType, Impre
                 parameterOptDir = storm::solver::invert(parameterOptDir);
                 preciseResult = getPreciseChecker()
                                     .check(env, region, parameterOptDir)
-                                    ->asExplicitQualitativeCheckResult()[*getPreciseChecker().getConsideredParametricModel().getInitialStates().begin()];
+                                    ->template asExplicitQualitativeCheckResult<PreciseType>()[*getPreciseChecker().getConsideredParametricModel().getInitialStates().begin()];
                 if (preciseResult && parameterOptDir == getPreciseChecker().getCurrentCheckTask().getOptimizationDirection()) {
                     currentResult = RegionResult::AllSat;
                 } else if (!preciseResult && parameterOptDir == storm::solver::invert(getPreciseChecker().getCurrentCheckTask().getOptimizationDirection())) {
