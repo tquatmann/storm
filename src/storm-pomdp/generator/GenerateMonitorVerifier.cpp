@@ -304,6 +304,10 @@ std::shared_ptr<MonitorVerifier<ValueType>> GenerateMonitorVerifier<ValueType>::
     stateLabeling.addLabel("stop", storm::storage::BitVector(numberOfStates));
     stateLabeling.addLabelToState("stop", stopIndex);
 
+    stateLabeling.addLabel("condition", storm::storage::BitVector(numberOfStates));
+    stateLabeling.addLabelToState("condition", goalIndex);
+    stateLabeling.addLabelToState("condition", stopIndex);
+
     if (!options.useRejectionSampling) {
         stateLabeling.addLabel("sink", storm::storage::BitVector(numberOfStates));
         stateLabeling.addLabelToState("sink", rejectionIndex);
