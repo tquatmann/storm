@@ -188,7 +188,9 @@ RegionResult SparseParameterLiftingModelChecker<SparseModelType, ConstantType>::
     auto vertices = region.getVerticesOfRegion(region.getVariables());
     auto vertexIt = vertices.begin();
     while (vertexIt != vertices.end() && !(hasSatPoint && hasViolatedPoint)) {
-        if (getInstantiationChecker().check(env, *vertexIt)->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
+        if (getInstantiationChecker()
+                .check(env, *vertexIt)
+                ->template asExplicitQualitativeCheckResult<ConstantType>()[*this->parametricModel->getInitialStates().begin()]) {
             hasSatPoint = true;
         } else {
             hasViolatedPoint = true;
