@@ -52,6 +52,8 @@ bool MinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsSound(En
                                                                               std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
                                                                               std::vector<ValueType> const& bLower,
                                                                               std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(env.solver().isForceSoundness() || env.solver().isForceExact(), storm::exceptions::IllegalFunctionCallException,
+                    "Sound solving requires sound or exact mode to be enabled in the environment.");
     STORM_LOG_THROW(&xLower != &xUpper, storm::exceptions::IllegalFunctionCallException, "Lower and upper solution vectors must be different.");
     STORM_LOG_WARN_COND_DEBUG(this->isRequirementsCheckedSet(),
                               "The requirements of the solver have not been marked as checked. Please provide the appropriate check or mark the requirements "

@@ -6,6 +6,7 @@
 #include "storm/environment/solver/OviSolverEnvironment.h"
 
 #include "storm/exceptions/InvalidEnvironmentException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnmetRequirementException.h"
 #include "storm/solver/helper/GuessingValueIterationHelper.h"
 #include "storm/solver/helper/IntervalterationHelper.h"
@@ -420,11 +421,12 @@ ValueType computeMaxAbsDiff(std::vector<ValueType> const& allOldValues, std::vec
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::solveEquationsIntervalIteration(Environment const& env, std::vector<ValueType>& x,
-                                                                            std::vector<ValueType> const& b) const {
+bool NativeLinearEquationSolver<ValueType>::solveEquationsIntervalIteration(Environment const& env, std::vector<ValueType>& xLower,
+                                                                            std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                                                                            std::vector<ValueType> const& bUpper) const {
     STORM_LOG_THROW(this->hasLowerBound(), storm::exceptions::UnmetRequirementException, "Solver requires lower bound, but none was given.");
     STORM_LOG_THROW(this->hasUpperBound(), storm::exceptions::UnmetRequirementException, "Solver requires upper bound, but none was given.");
-    STORM_LOG_INFO("Solving linear equation system (" << x.size() << " rows) with NativeLinearEquationSolver (IntervalIteration)");
+    STORM_LOG_INFO("Solving linear equation system (" << xLower.size() << " rows) with NativeLinearEquationSolver (IntervalIteration)");
     setUpViOperator();
     helper::IntervalIterationHelper<ValueType, true> iiHelper(viOperator);
     auto prec = storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision());
@@ -443,8 +445,24 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsIntervalIteration(Envi
         optionalRelevantValues = this->getRelevantValues();
     }
     this->startMeasureProgress();
-    auto status = iiHelper.II(x, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, lowerBoundsCallback, upperBoundsCallback, {},
-                              iiCallback, optionalRelevantValues);
+    SolverStatus status = SolverStatus::InProgress;
+    if (&xLower != &xUpper) {
+        std::pair<std::vector<ValueType>, std::vector<ValueType>> xy{std::move(xLower), std::move(xUpper)};
+        lowerBoundsCallback(xy.first);
+        upperBoundsCallback(xy.second);
+        if (&bLower != &bUpper) {
+            std::pair<std::vector<ValueType> const&, std::vector<ValueType> const&> b{bLower, bUpper};
+            status = iiHelper.II(xy, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, {}, iiCallback, optionalRelevantValues);
+        } else {
+            status =
+                iiHelper.II(xy, bLower, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, {}, iiCallback, optionalRelevantValues);
+        }
+        xLower = std::move(xy.first);
+        xUpper = std::move(xy.second);
+    } else {
+        status = iiHelper.II(xLower, bLower, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, lowerBoundsCallback,
+                             upperBoundsCallback, {}, iiCallback, optionalRelevantValues);
+    }
     this->reportStatus(status, numIterations);
 
     if (!this->isCachingEnabled()) {
@@ -455,10 +473,16 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsIntervalIteration(Envi
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::solveEquationsSoundValueIteration(Environment const& env, std::vector<ValueType>& x,
-                                                                              std::vector<ValueType> const& b) const {
+bool NativeLinearEquationSolver<ValueType>::solveEquationsSoundValueIteration(Environment const& env, std::vector<ValueType>& xLower,
+                                                                              std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                                                                              std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                    "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+    auto const& b = bLower;
+
     // Prepare the solution vectors and the helper.
-    assert(x.size() == this->A->getRowGroupCount());
+    STORM_LOG_ASSERT(xLower.size() == this->A->getRowGroupCount(), "Unexpected size of xLower");
+    STORM_LOG_ASSERT(xUpper.size() == this->A->getRowGroupCount(), "Unexpected size of xUpper");
 
     std::optional<ValueType> lowerBound, upperBound;
     if (this->hasLowerBound()) {
@@ -484,8 +508,19 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsSoundValueIteration(En
     }
     this->startMeasureProgress();
     helper::SoundValueIterationHelper<ValueType, true> sviHelper(viOperator);
-    auto status = sviHelper.SVI(x, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), precision, {}, lowerBound, upperBound,
-                                sviCallback, optionalRelevantValues);
+    SolverStatus status = SolverStatus::InProgress;
+    if (&xLower != &xUpper) {
+        std::pair<std::vector<ValueType>, std::vector<ValueType>> xy{std::move(xLower), std::move(xUpper)};
+        auto sviData = sviHelper.SVI(xy, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), precision, {}, lowerBound, upperBound,
+                                     sviCallback, optionalRelevantValues);
+        sviData.trySetLowerUpper(xy.first, xy.second);
+        xLower = std::move(xy.first);
+        xUpper = std::move(xy.second);
+        status = sviData.status;
+    } else {
+        status = sviHelper.SVI(xLower, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), precision, {}, lowerBound, upperBound,
+                               sviCallback, optionalRelevantValues);
+    }
 
     this->reportStatus(status, numIterations);
 
@@ -497,18 +532,28 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsSoundValueIteration(En
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::solveEquationsOptimisticValueIteration(Environment const& env, std::vector<ValueType>& x,
-                                                                                   std::vector<ValueType> const& b) const {
+bool NativeLinearEquationSolver<ValueType>::solveEquationsOptimisticValueIteration(Environment const& env, std::vector<ValueType>& xLower,
+                                                                                   std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                                                                                   std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                    "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+    auto const& b = bLower;
+
     if (!storm::utility::vector::hasNonZeroEntry(b)) {
         // If all entries are zero, OVI might run in an endless loop. However, the result is easy in this case.
-        x.assign(x.size(), storm::utility::zero<ValueType>());
+        xLower.assign(xLower.size(), storm::utility::zero<ValueType>());
+        if (&xLower != &xUpper) {
+            xUpper = xLower;
+        }
         return true;
     }
 
     setUpViOperator();
 
     helper::OptimisticValueIterationHelper<ValueType, true> oviHelper(viOperator);
-    auto prec = storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision());
+    auto const prec = storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision());
+    auto const guessingFactor =
+        storm::utility::convertNumber<ValueType>(env.solver().ovi().getUpperBoundGuessingFactor().value_or(env.solver().native().getPrecision()));
     std::optional<ValueType> lowerBound, upperBound;
     if (this->hasLowerBound()) {
         lowerBound = this->getLowerBound(true);
@@ -521,13 +566,19 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsOptimisticValueIterati
         this->showProgressIterative(numIterations);
         return this->updateStatus(current, v, SolverGuarantee::LessOrEqual, numIterations, env.solver().native().getMaximalNumberOfIterations());
     };
-    this->createLowerBoundsVector(x);
-    std::optional<ValueType> guessingFactor;
-    if (env.solver().ovi().getUpperBoundGuessingFactor()) {
-        guessingFactor = storm::utility::convertNumber<ValueType>(*env.solver().ovi().getUpperBoundGuessingFactor());
-    }
+    this->createLowerBoundsVector(xLower);
     this->startMeasureProgress();
-    auto status = oviHelper.OVI(x, b, env.solver().native().getRelativeTerminationCriterion(), prec, {}, guessingFactor, lowerBound, upperBound, oviCallback);
+    SolverStatus status = SolverStatus::InProgress;
+    if (&xLower != &xUpper) {
+        std::pair<std::vector<ValueType>, std::vector<ValueType>> vu{std::move(xLower), std::move(xUpper)};
+        status = oviHelper.OVI(vu, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, {}, guessingFactor, lowerBound, upperBound,
+                               oviCallback);
+        xLower = std::move(vu.first);
+        xUpper = std::move(vu.second);
+    } else {
+        status = oviHelper.OVI(xLower, b, numIterations, env.solver().native().getRelativeTerminationCriterion(), prec, {}, guessingFactor, lowerBound,
+                               upperBound, oviCallback);
+    }
     this->reportStatus(status, numIterations);
 
     if (!this->isCachingEnabled()) {
@@ -538,17 +589,19 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsOptimisticValueIterati
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::solveEquationsGuessingValueIteration(const Environment& env, std::vector<ValueType>& x,
-                                                                                 const std::vector<ValueType>& b) const {
-    if (!this->cachedRowVector) {
-        this->cachedRowVector = std::make_unique<std::vector<ValueType>>(this->A->getRowCount());
-    }
+bool NativeLinearEquationSolver<ValueType>::solveEquationsGuessingValueIteration(const Environment& env, std::vector<ValueType>& xLower,
+                                                                                 std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
+                                                                                 std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                    "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+    auto const& b = bLower;
+
     setUpViOperator();
 
-    std::vector<ValueType>* lowerX = &x;
-    this->createLowerBoundsVector(*lowerX);
-    this->createUpperBoundsVector(this->cachedRowVector, this->getMatrixRowCount());
-    std::vector<ValueType>* upperX = this->cachedRowVector.get();
+    if (&xLower == &xUpper && !this->cachedRowVector) {
+        this->cachedRowVector = std::make_unique<std::vector<ValueType>>(this->A->getRowCount());
+    }
+    auto& xUpperRef = (&xLower != &xUpper) ? xUpper : *this->cachedRowVector;
 
     storm::solver::helper::GuessingValueIterationHelper<ValueType, true> helper(viOperator, *this->A);
 
@@ -560,14 +613,28 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsGuessingValueIteration
         return this->updateStatus(data.status, terminateEarly, numIterations, env.solver().native().getMaximalNumberOfIterations());
     };
 
+    this->createLowerBoundsVector(xLower);
+    this->createUpperBoundsVector(xUpperRef);
+
+    ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision());
+    auto const two = storm::utility::convertNumber<ValueType>(2.0);
+    if (&xLower == &xUpper) {
+        // It suffices to have one vector that is close enough. This means that the gap between lower/upper bound can be twice as large
+        precision *= two;
+    }
+    bool const relative = env.solver().native().getRelativeTerminationCriterion();
+    STORM_LOG_THROW(!relative, storm::exceptions::NotSupportedException,
+                    "Guessing value iteration currently does not support relative precision. Try to set an absolute precision criterion.");
+
     this->startMeasureProgress();
-    auto status = helper.solveEquations(*lowerX, *upperX, b, numIterations, storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision()),
-                                        {},  // No optimization dir
-                                        gviCallback);
-    auto two = storm::utility::convertNumber<ValueType>(2.0);
-    storm::utility::vector::applyPointwise<ValueType, ValueType, ValueType>(
-        *lowerX, *upperX, x, [&two](ValueType const& a, ValueType const& b) -> ValueType { return (a + b) / two; });
+    auto status = helper.solveEquations(xLower, xUpperRef, b, numIterations, precision, {}, gviCallback);
     this->reportStatus(status, numIterations);
+
+    if (&xLower == &xUpper) {
+        // Set the averaged values
+        storm::utility::vector::applyPointwise<ValueType, ValueType, ValueType>(
+            xLower, xUpper, xLower, [&two](ValueType const& a, ValueType const& b) -> ValueType { return (a + b) / two; });
+    }
 
     if (!this->isCachingEnabled()) {
         clearCache();
@@ -576,8 +643,8 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsGuessingValueIteration
 }
 
 template<typename ValueType>
-bool NativeLinearEquationSolver<ValueType>::solveEquationsRationalSearch(Environment const& env, std::vector<ValueType>& x,
-                                                                         std::vector<ValueType> const& b) const {
+bool NativeLinearEquationSolver<ValueType>::solveEquationsRationalSearch(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                         std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
     // Set up two value iteration operators. One for exact and one for imprecise computations
     setUpViOperator();
     std::shared_ptr<helper::ValueIterationOperator<storm::RationalNumber, true>> exactOp;
@@ -595,13 +662,23 @@ bool NativeLinearEquationSolver<ValueType>::solveEquationsRationalSearch(Environ
 
     storm::solver::helper::RationalSearchHelper<ValueType, storm::RationalNumber, double, true> rsHelper(exactOp, impreciseOp);
     uint64_t numIterations{0};
-    auto rsCallback = [&](SolverStatus const& current) {
-        this->showProgressIterative(numIterations);
-        return this->updateStatus(current, x, SolverGuarantee::None, numIterations, env.solver().native().getMaximalNumberOfIterations());
+    auto applyRationalSearch = [&](auto& x, auto const& b) {
+        auto rsCallback = [&](SolverStatus const& current) {
+            this->showProgressIterative(numIterations);
+            return this->updateStatus(current, x, SolverGuarantee::None, numIterations, env.solver().native().getMaximalNumberOfIterations());
+        };
+        return rsHelper.RS(x, b, numIterations, storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision()), {}, rsCallback);
     };
-    this->startMeasureProgress();
-    auto status = rsHelper.RS(x, b, numIterations, storm::utility::convertNumber<ValueType>(env.solver().native().getPrecision()), {}, rsCallback);
 
+    this->startMeasureProgress();
+    auto status = applyRationalSearch(xLower, bLower);
+    if ((&xLower != &xUpper) && (status == SolverStatus::Converged || status == SolverStatus::TerminatedEarly)) {
+        if (&bLower == &bUpper) {
+            xUpper = xLower;  // no need to recompute, just copy over values
+        } else {
+            status = applyRationalSearch(xUpper, bUpper);
+        }
+    }
     this->reportStatus(status, numIterations);
 
     if (!this->isCachingEnabled()) {
@@ -643,30 +720,34 @@ NativeLinearEquationSolverMethod NativeLinearEquationSolver<ValueType>::getMetho
 template<typename ValueType>
 bool NativeLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                                    std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
-    auto& x = xLower;
-    auto& b = bLower;
-    assert(false);
+    STORM_LOG_ASSERT(&xLower != &xUpper || &bLower == &bUpper, "solving with different lower and upper b-values requires different lower and upper solutions.");
+
     switch (getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact())) {
         case NativeLinearEquationSolverMethod::SOR:
-            return this->solveEquationsSOR(env, x, b, storm::utility::convertNumber<ValueType>(env.solver().native().getSorOmega()));
+            STORM_LOG_ASSERT(&xLower == &xUpper, "The selected solution method can not be used to compute sound bounds.");
+            return this->solveEquationsSOR(env, xLower, bLower, storm::utility::convertNumber<ValueType>(env.solver().native().getSorOmega()));
         case NativeLinearEquationSolverMethod::GaussSeidel:
-            return this->solveEquationsSOR(env, x, b, storm::utility::one<ValueType>());
+            STORM_LOG_ASSERT(&xLower == &xUpper, "The selected solution method can not be used to compute sound bounds.");
+            return this->solveEquationsSOR(env, xLower, bLower, storm::utility::one<ValueType>());
         case NativeLinearEquationSolverMethod::Jacobi:
-            return this->solveEquationsJacobi(env, x, b);
+            STORM_LOG_ASSERT(&xLower == &xUpper, "The selected solution method can not be used to compute sound bounds.");
+            return this->solveEquationsJacobi(env, xLower, bLower);
         case NativeLinearEquationSolverMethod::WalkerChae:
-            return this->solveEquationsWalkerChae(env, x, b);
+            STORM_LOG_ASSERT(&xLower == &xUpper, "The selected solution method can not be used to compute sound bounds.");
+            return this->solveEquationsWalkerChae(env, xLower, bLower);
         case NativeLinearEquationSolverMethod::Power:
-            return this->solveEquationsPower(env, x, b);
+            STORM_LOG_ASSERT(&xLower == &xUpper, "The selected solution method can not be used to compute sound bounds.");
+            return this->solveEquationsPower(env, xLower, bLower);
         case NativeLinearEquationSolverMethod::SoundValueIteration:
-            return this->solveEquationsSoundValueIteration(env, x, b);
+            return this->solveEquationsSoundValueIteration(env, xLower, xUpper, bLower, bUpper);
         case NativeLinearEquationSolverMethod::OptimisticValueIteration:
-            return this->solveEquationsOptimisticValueIteration(env, x, b);
+            return this->solveEquationsOptimisticValueIteration(env, xLower, xUpper, bLower, bUpper);
         case NativeLinearEquationSolverMethod::GuessingValueIteration:
-            return this->solveEquationsGuessingValueIteration(env, x, b);
+            return this->solveEquationsGuessingValueIteration(env, xLower, xUpper, bLower, bUpper);
         case NativeLinearEquationSolverMethod::IntervalIteration:
-            return this->solveEquationsIntervalIteration(env, x, b);
+            return this->solveEquationsIntervalIteration(env, xLower, xUpper, bLower, bUpper);
         case NativeLinearEquationSolverMethod::RationalSearch:
-            return this->solveEquationsRationalSearch(env, x, b);
+            return this->solveEquationsRationalSearch(env, xLower, xUpper, bLower, bUpper);
     }
     STORM_LOG_THROW(false, storm::exceptions::InvalidEnvironmentException, "Unknown solving technique.");
     return false;

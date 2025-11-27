@@ -34,6 +34,8 @@ bool LinearEquationSolver<ValueType>::solveEquations(Environment const& env, std
 template<typename ValueType>
 bool LinearEquationSolver<ValueType>::solveEquationsSound(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                           std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
+    STORM_LOG_THROW(env.solver().isForceSoundness() || env.solver().isForceExact(), storm::exceptions::IllegalFunctionCallException,
+                    "Sound solving requires sound or exact mode to be enabled in the environment.");
     STORM_LOG_THROW(&xLower != &xUpper, storm::exceptions::IllegalFunctionCallException, "Lower and upper solution vectors must be different.");
     return this->internalSolveEquations(env, xLower, xUpper, bLower, bUpper);
 }

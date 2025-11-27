@@ -85,9 +85,9 @@ bool checkConvergence(std::pair<std::vector<ValueType>, std::vector<ValueType>> 
 }
 
 template<typename ValueType, bool TrivialRowGrouping>
-template<OptimizationDirection Dir>
+template<OptimizationDirection Dir, typename OffsetsType>
 SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy,
-                                                                        std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative,
+                                                                        OffsetsType const& offsets, uint64_t& numIterations, bool relative,
                                                                         ValueType const& precision,
                                                                         std::function<SolverStatus(IIData<ValueType> const&)> const& iterationCallback,
                                                                         std::optional<storm::storage::BitVector> const& relevantValues) const {
@@ -116,6 +116,33 @@ SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::pai
 }
 
 template<typename ValueType, bool TrivialRowGrouping>
+SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy,
+                                                                        std::pair<std::vector<ValueType> const&, std::vector<ValueType> const&> const& offsets,
+                                                                        uint64_t& numIterations, bool relative, ValueType const& precision,
+                                                                        std::optional<storm::OptimizationDirection> const& dir,
+                                                                        std::function<SolverStatus(IIData<ValueType> const&)> const& iterationCallback,
+                                                                        std::optional<storm::storage::BitVector> const& relevantValues) const {
+    if (!dir.has_value() || maximize(*dir)) {
+        return II<OptimizationDirection::Maximize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
+    } else {
+        return II<OptimizationDirection::Minimize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
+    }
+}
+
+template<typename ValueType, bool TrivialRowGrouping>
+SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::pair<std::vector<ValueType>, std::vector<ValueType>>& xy,
+                                                                        std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative,
+                                                                        ValueType const& precision, std::optional<storm::OptimizationDirection> const& dir,
+                                                                        std::function<SolverStatus(IIData<ValueType> const&)> const& iterationCallback,
+                                                                        std::optional<storm::storage::BitVector> const& relevantValues) const {
+    if (!dir.has_value() || maximize(*dir)) {
+        return II<OptimizationDirection::Maximize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
+    } else {
+        return II<OptimizationDirection::Minimize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
+    }
+}
+
+template<typename ValueType, bool TrivialRowGrouping>
 SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets,
                                                                         uint64_t& numIterations, bool relative, ValueType const& precision,
                                                                         std::function<void(std::vector<ValueType>&)> const& prepareLowerBounds,
@@ -134,12 +161,7 @@ SolverStatus IntervalIterationHelper<ValueType, TrivialRowGrouping>::II(std::vec
     if constexpr (std::is_same_v<ValueType, double>) {
         doublePrec -= precision * 1e-6;  // be slightly more precise to avoid a good chunk of floating point issues
     }
-    SolverStatus status;
-    if (!dir.has_value() || maximize(*dir)) {
-        status = II<OptimizationDirection::Maximize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
-    } else {
-        status = II<OptimizationDirection::Minimize>(xy, offsets, numIterations, relative, precision, iterationCallback, relevantValues);
-    }
+    SolverStatus status = II(xy, offsets, numIterations, relative, doublePrec, dir, iterationCallback, relevantValues);
     auto two = storm::utility::convertNumber<ValueType>(2.0);
     // get the average of lower- and upper result
     storm::utility::vector::applyPointwise<ValueType, ValueType, ValueType>(

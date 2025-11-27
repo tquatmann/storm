@@ -11,6 +11,7 @@
 #include "storm/environment/solver/OviSolverEnvironment.h"
 
 #include "storm/exceptions/InvalidEnvironmentException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnmetRequirementException.h"
 #include "storm/solver/SolverGuarantee.h"
 #include "storm/solver/helper/GuessingValueIterationHelper.h"
@@ -91,35 +92,33 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSolve
                                                                                           std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
                                                                                           std::vector<ValueType> const& bLower,
                                                                                           std::vector<ValueType> const& bUpper) const {
-    auto& x = xLower;
-    auto& b = bLower;
-    assert(false);
-    
+    STORM_LOG_ASSERT(&xLower != &xUpper || &bLower == &bUpper, "solving with different lower and upper b-values requires different lower and upper solutions.");
     bool result = false;
     switch (getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact())) {
         case MinMaxMethod::ValueIteration:
-            result = solveEquationsValueIteration(env, dir, x, b);
+            STORM_LOG_ASSERT(&xLower == &xUpper, "(unsound) value iteration can not be used to compute sound bounds.");
+            result = solveEquationsValueIteration(env, dir, xLower, bLower);
             break;
         case MinMaxMethod::OptimisticValueIteration:
-            result = solveEquationsOptimisticValueIteration(env, dir, x, b);
+            result = solveEquationsOptimisticValueIteration(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::GuessingValueIteration:
-            result = solveEquationsGuessingValueIteration(env, dir, x, b);
+            result = solveEquationsGuessingValueIteration(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::PolicyIteration:
-            result = solveEquationsPolicyIteration(env, dir, x, b);
+            result = solveEquationsPolicyIteration(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::RationalSearch:
-            result = solveEquationsRationalSearch(env, dir, x, b);
+            result = solveEquationsRationalSearch(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::IntervalIteration:
-            result = solveEquationsIntervalIteration(env, dir, x, b);
+            result = solveEquationsIntervalIteration(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::SoundValueIteration:
-            result = solveEquationsSoundValueIteration(env, dir, x, b);
+            result = solveEquationsSoundValueIteration(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         case MinMaxMethod::ViToPi:
-            result = solveEquationsViToPi(env, dir, x, b);
+            result = solveEquationsViToPi(env, dir, xLower, xUpper, bLower, bUpper);
             break;
         default:
             STORM_LOG_THROW(false, storm::exceptions::InvalidEnvironmentException, "This solver does not implement the selected solution method");
@@ -322,22 +321,37 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveInducedE
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsPolicyIteration(Environment const& env, OptimizationDirection dir,
-                                                                                                 std::vector<SolutionType>& x,
-                                                                                                 std::vector<ValueType> const& b) const {
+                                                                                                 std::vector<SolutionType>& xLower,
+                                                                                                 std::vector<SolutionType>& xUpper,
+                                                                                                 std::vector<ValueType> const& bLower,
+                                                                                                 std::vector<ValueType> const& bUpper) const {
     std::vector<storm::storage::sparse::state_type> scheduler =
         this->hasInitialScheduler() ? this->getInitialScheduler() : std::vector<storm::storage::sparse::state_type>(this->A->getRowGroupCount());
-    return performPolicyIteration(env, dir, x, b, std::move(scheduler));
+    bool const returnValue = performPolicyIteration(env, dir, xLower, xUpper, bLower, bUpper, scheduler);
+    if (this->isTrackSchedulerSet()) {
+        STORM_LOG_THROW(
+            &bLower == &bUpper, storm::exceptions::NotSupportedException,
+            "Policy export for policy iteration with different lower/upper bounds is not supported. It is not clear how to treat distinct policies");
+        this->schedulerChoices = std::move(scheduler);
+    }
+    return returnValue;
 }
 
 template<typename ValueType, typename SolutionType>
-bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::performPolicyIteration(
-    Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b,
-    std::vector<storm::storage::sparse::state_type>&& initialPolicy) const {
+bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::performPolicyIteration(Environment const& env, OptimizationDirection dir,
+                                                                                          std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                                                                          std::vector<ValueType> const& bLower,
+                                                                                          std::vector<ValueType> const& bUpper,
+                                                                                          std::vector<storm::storage::sparse::state_type>& scheduler) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We did not implement policy iteration for interval-based models.");
         return false;
     } else {
-        std::vector<storm::storage::sparse::state_type> scheduler = std::move(initialPolicy);
+        // We start with the computation for the upper bound. If another computation for the lower bounds is necessary, we do it below.
+        // For consistency, the final scheduler should be w.r.t. the lower bounds, which is why we compute upper first, and lower second.
+        auto& x = xUpper;
+        auto const& b = bUpper;
+
         // Get a vector for storing the right-hand side of the inner equation system.
         if (!auxiliaryRowGroupVector) {
             auxiliaryRowGroupVector = std::make_unique<std::vector<ValueType>>(this->A->getRowGroupCount());
@@ -423,17 +437,25 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::performPolicy
 
         STORM_LOG_INFO("Number of iterations: " << iterations);
         this->reportStatus(status, iterations);
-
-        // If requested, we store the scheduler for retrieval.
-        if (this->isTrackSchedulerSet()) {
-            this->schedulerChoices = std::move(scheduler);
+        bool returnValue = status == SolverStatus::Converged || status == SolverStatus::TerminatedEarly;
+        if (&xLower != &xUpper || &bLower != &bUpper) {
+            STORM_LOG_ASSERT(&xLower != &xUpper, "different b vectors require different x vectors.");
+            STORM_LOG_THROW(env.solver().isForceExact(), storm::exceptions::NotSupportedException,
+                            "Policy iteration with sound lower/upper bounds is only supported in exact mode.");
+            if (&bLower == &bUpper) {
+                // If the b-vectors are the same, we do not have to solve again. It suffices to copy over the values
+                xLower = xUpper;
+            } else {
+                // Otherwise, we need to perform policy iteration again for the lower bounds
+                returnValue = performPolicyIteration(env, dir, xLower, xLower, bLower, bLower, scheduler) && returnValue;
+            }
         }
 
         if (!this->isCachingEnabled()) {
             clearCache();
         }
 
-        return status == SolverStatus::Converged || status == SolverStatus::TerminatedEarly;
+        return returnValue;
     }
 }
 
@@ -558,17 +580,25 @@ ValueType computeMaxAbsDiff(std::vector<ValueType> const& allOldValues, std::vec
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsOptimisticValueIteration(Environment const& env, OptimizationDirection dir,
-                                                                                                          std::vector<SolutionType>& x,
-                                                                                                          std::vector<ValueType> const& b) const {
+                                                                                                          std::vector<SolutionType>& xLower,
+                                                                                                          std::vector<SolutionType>& xUpper,
+                                                                                                          std::vector<ValueType> const& bLower,
+                                                                                                          std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We did not implement optimistic value iteration for interval-based models.");
         return false;
     } else {
+        STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                        "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+        auto const& b = bLower;
         if (!storm::utility::vector::hasNonZeroEntry(b)) {
             // If all entries are zero, OVI might run in an endless loop. However, the result is easy in this case.
-            x.assign(x.size(), storm::utility::zero<SolutionType>());
+            xLower.assign(xLower.size(), storm::utility::zero<SolutionType>());
             if (this->isTrackSchedulerSet()) {
-                this->schedulerChoices = std::vector<uint_fast64_t>(x.size(), 0);
+                this->schedulerChoices = std::vector<uint64_t>(xLower.size(), 0);
+            }
+            if (&xLower != &xUpper) {
+                xUpper = xLower;
             }
             return true;
         }
@@ -576,7 +606,9 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
         setUpViOperator();
 
         helper::OptimisticValueIterationHelper<ValueType, false> oviHelper(viOperatorNontriv);
-        auto prec = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+        auto const prec = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+        auto const guessingFactor =
+            storm::utility::convertNumber<ValueType>(env.solver().ovi().getUpperBoundGuessingFactor().value_or(env.solver().minMax().getPrecision()));
         std::optional<ValueType> lowerBound, upperBound;
         if (this->hasLowerBound()) {
             lowerBound = this->getLowerBound(true);
@@ -589,19 +621,24 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
             this->showProgressIterative(numIterations);
             return this->updateStatus(current, v, SolverGuarantee::LessOrEqual, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
         };
-        this->createLowerBoundsVector(x);
-        std::optional<ValueType> guessingFactor;
-        if (env.solver().ovi().getUpperBoundGuessingFactor()) {
-            guessingFactor = storm::utility::convertNumber<ValueType>(*env.solver().ovi().getUpperBoundGuessingFactor());
-        }
+        this->createLowerBoundsVector(xLower);
         this->startMeasureProgress();
-        auto status = oviHelper.OVI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, dir, guessingFactor, lowerBound,
-                                    upperBound, oviCallback);
+        SolverStatus status = SolverStatus::InProgress;
+        if (&xLower != &xUpper) {
+            std::pair<std::vector<ValueType>, std::vector<ValueType>> vu{std::move(xLower), std::move(xUpper)};
+            status = oviHelper.OVI(vu, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, dir, guessingFactor, lowerBound,
+                                   upperBound, oviCallback);
+            xLower = std::move(vu.first);
+            xUpper = std::move(vu.second);
+        } else {
+            status = oviHelper.OVI(xLower, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, dir, guessingFactor, lowerBound,
+                                   upperBound, oviCallback);
+        }
         this->reportStatus(status, numIterations);
 
         // If requested, we store the scheduler for retrieval.
         if (this->isTrackSchedulerSet()) {
-            this->extractScheduler(x, b, dir, this->isUncertaintyRobust());
+            this->extractScheduler(xLower, b, dir, this->isUncertaintyRobust());
         }
 
         if (!this->isCachingEnabled()) {
@@ -614,16 +651,24 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsGuessingValueIteration(Environment const& env, OptimizationDirection dir,
-                                                                                                        std::vector<SolutionType>& x,
-                                                                                                        std::vector<ValueType> const& b) const {
+                                                                                                        std::vector<SolutionType>& xLower,
+                                                                                                        std::vector<SolutionType>& xUpper,
+                                                                                                        std::vector<ValueType> const& bLower,
+                                                                                                        std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We did not implement guessing value iteration for interval-based models.");
         return false;
     } else {
+        STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                        "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+        auto const& b = bLower;
+
         setUpViOperator();
 
-        auto& lowerX = x;
-        auto upperX = std::make_unique<std::vector<SolutionType>>(x.size());
+        if (&xLower == &xUpper && !auxiliaryRowGroupVector) {
+            auxiliaryRowGroupVector = std::make_unique<std::vector<ValueType>>(this->A->getRowGroupCount());
+        }
+        auto& xUpperRef = (&xLower != &xUpper) ? xUpper : *auxiliaryRowGroupVector;
 
         storm::solver::helper::GuessingValueIterationHelper<ValueType, false> helper(viOperatorNontriv, *this->A);
 
@@ -636,28 +681,38 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
             return this->updateStatus(data.status, terminateEarly, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
         };
 
-        this->createLowerBoundsVector(lowerX);
-        this->createUpperBoundsVector(*upperX);
+        this->createLowerBoundsVector(xLower);
+        this->createUpperBoundsVector(xUpperRef);
 
+        ValueType precision = storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision());
+        auto const two = storm::utility::convertNumber<ValueType>(2.0);
+        if (&xLower == &xUpper) {
+            // It suffices to have one vector that is close enough. This means that the gap between lower/upper bound can be twice as large
+            precision *= two;
+        }
+        bool const relative = env.solver().minMax().getRelativeTerminationCriterion();
+        STORM_LOG_THROW(!relative, storm::exceptions::NotSupportedException,
+                        "Guessing value iteration currently does not support relative precision. Try to set an absolute precision criterion.");
         this->startMeasureProgress();
-        auto statusIters = helper.solveEquations(lowerX, *upperX, b, numIterations,
-                                                 storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision()), dir, gviCallback);
-        auto two = storm::utility::convertNumber<ValueType>(2.0);
-        storm::utility::vector::applyPointwise<ValueType, ValueType, ValueType>(
-            lowerX, *upperX, x, [&two](ValueType const& a, ValueType const& b) -> ValueType { return (a + b) / two; });
+        auto status = helper.solveEquations(xLower, xUpperRef, b, numIterations, precision, dir, gviCallback);
+        this->reportStatus(status, numIterations);
 
-        this->reportStatus(statusIters, numIterations);
+        if (&xLower == &xUpper) {
+            // Set the averaged values
+            storm::utility::vector::applyPointwise<ValueType, ValueType, ValueType>(
+                xLower, xUpperRef, xLower, [&two](ValueType const& a, ValueType const& b) -> ValueType { return (a + b) / two; });
+        }
 
         // If requested, we store the scheduler for retrieval.
         if (this->isTrackSchedulerSet()) {
-            this->extractScheduler(x, b, dir, this->isUncertaintyRobust());
+            this->extractScheduler(xLower, b, dir, this->isUncertaintyRobust());
         }
 
         if (!this->isCachingEnabled()) {
             clearCache();
         }
 
-        return statusIters == SolverStatus::Converged || statusIters == SolverStatus::TerminatedEarly;
+        return status == SolverStatus::Converged || status == SolverStatus::TerminatedEarly;
     }
 }
 
@@ -781,8 +836,10 @@ void preserveOldRelevantValues(std::vector<ValueType> const& allValues, storm::s
  */
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsIntervalIteration(Environment const& env, OptimizationDirection dir,
-                                                                                                   std::vector<SolutionType>& x,
-                                                                                                   std::vector<ValueType> const& b) const {
+                                                                                                   std::vector<SolutionType>& xLower,
+                                                                                                   std::vector<SolutionType>& xUpper,
+                                                                                                   std::vector<ValueType> const& bLower,
+                                                                                                   std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We did not implement intervaliteration for interval-based models");
         return false;
@@ -805,13 +862,30 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
             optionalRelevantValues = this->getRelevantValues();
         }
         this->startMeasureProgress();
-        auto status = iiHelper.II(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, lowerBoundsCallback, upperBoundsCallback,
-                                  dir, iiCallback, optionalRelevantValues);
+        SolverStatus status = SolverStatus::InProgress;
+        if (&xLower != &xUpper) {
+            std::pair<std::vector<ValueType>, std::vector<ValueType>> xy{std::move(xLower), std::move(xUpper)};
+            lowerBoundsCallback(xy.first);
+            upperBoundsCallback(xy.second);
+            if (&bLower != &bUpper) {
+                std::pair<std::vector<ValueType> const&, std::vector<ValueType> const&> b{bLower, bUpper};
+                status =
+                    iiHelper.II(xy, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, dir, iiCallback, optionalRelevantValues);
+            } else {
+                status = iiHelper.II(xy, bLower, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, dir, iiCallback,
+                                     optionalRelevantValues);
+            }
+            xLower = std::move(xy.first);
+            xUpper = std::move(xy.second);
+        } else {
+            status = iiHelper.II(xLower, bLower, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), prec, lowerBoundsCallback,
+                                 upperBoundsCallback, dir, iiCallback, optionalRelevantValues);
+        }
         this->reportStatus(status, numIterations);
 
         // If requested, we store the scheduler for retrieval.
         if (this->isTrackSchedulerSet()) {
-            this->extractScheduler(x, b, dir, this->isUncertaintyRobust());
+            this->extractScheduler(xLower, bLower, dir, this->isUncertaintyRobust());
         }
 
         if (!this->isCachingEnabled()) {
@@ -824,14 +898,21 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsSoundValueIteration(Environment const& env, OptimizationDirection dir,
-                                                                                                     std::vector<SolutionType>& x,
-                                                                                                     std::vector<ValueType> const& b) const {
+                                                                                                     std::vector<SolutionType>& xLower,
+                                                                                                     std::vector<SolutionType>& xUpper,
+                                                                                                     std::vector<ValueType> const& bLower,
+                                                                                                     std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "SoundVI does not handle interval-based models");
         return false;
     } else {
+        STORM_LOG_THROW(&bLower == &bUpper, storm::exceptions::NotSupportedException,
+                        "Optimistic value iteration with different lower/upper b-vectors is not supported.");
+        auto const& b = bLower;
+
         // Prepare the solution vectors and the helper.
-        assert(x.size() == this->A->getRowGroupCount());
+        STORM_LOG_ASSERT(xLower.size() == this->A->getRowGroupCount(), "Unexpected size of xLower");
+        STORM_LOG_ASSERT(xUpper.size() == this->A->getRowGroupCount(), "Unexpected size of xUpper");
 
         std::optional<ValueType> lowerBound, upperBound;
         if (this->hasLowerBound()) {
@@ -857,12 +938,23 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
         if (this->hasRelevantValues()) {
             optionalRelevantValues = this->getRelevantValues();
         }
-        auto status = sviHelper.SVI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), precision, dir, lowerBound, upperBound,
-                                    sviCallback, optionalRelevantValues);
+        SolverStatus status = SolverStatus::InProgress;
+        if (&xLower != &xUpper) {
+            std::pair<std::vector<ValueType>, std::vector<ValueType>> xy{std::move(xLower), std::move(xUpper)};
+            auto sviData = sviHelper.SVI(xy, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), precision, dir, lowerBound, upperBound,
+                                         sviCallback, optionalRelevantValues);
+            sviData.trySetLowerUpper(xy.first, xy.second);
+            xLower = std::move(xy.first);
+            xUpper = std::move(xy.second);
+            status = sviData.status;
+        } else {
+            status = sviHelper.SVI(xLower, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(), precision, dir, lowerBound, upperBound,
+                                   sviCallback, optionalRelevantValues);
+        }
 
         // If requested, we store the scheduler for retrieval.
         if (this->isTrackSchedulerSet()) {
-            this->extractScheduler(x, b, dir, this->isUncertaintyRobust());
+            this->extractScheduler(xLower, b, dir, this->isUncertaintyRobust());
         }
 
         this->reportStatus(status, numIterations);
@@ -877,13 +969,15 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsViToPi(Environment const& env, OptimizationDirection dir,
-                                                                                        std::vector<SolutionType>& x, std::vector<ValueType> const& b) const {
+                                                                                        std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                                                                        std::vector<ValueType> const& bLower,
+                                                                                        std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "ViToPi does not handle interval-based models");
         return false;
     }
     // First create an (inprecise) vi solver to get a good initial strategy for the (potentially precise) policy iteration solver.
-    std::vector<storm::storage::sparse::state_type> initialSched;
+    std::vector<storm::storage::sparse::state_type> scheduler;
     {
         Environment viEnv = env;
         viEnv.solver().minMax().setMethod(MinMaxMethod::ValueIteration);
@@ -900,19 +994,29 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
         STORM_LOG_THROW(!impreciseSolverReq.hasEnabledCriticalRequirement(), storm::exceptions::UnmetRequirementException,
                         "The value-iteration based solver has an unmet requirement: " << impreciseSolverReq.getEnabledRequirementsAsString());
         impreciseSolver->setRequirementsChecked(true);
-        auto xVi = storm::utility::vector::convertNumericVector<double>(x);
-        auto bVi = storm::utility::vector::convertNumericVector<double>(b);
+        auto xVi = storm::utility::vector::convertNumericVector<double>(xLower);
+        auto bVi = storm::utility::vector::convertNumericVector<double>(bLower);
         impreciseSolver->solveEquations(viEnv, dir, xVi, bVi);
-        initialSched = impreciseSolver->getSchedulerChoices();
+        scheduler = impreciseSolver->getSchedulerChoices();
     }
     STORM_LOG_INFO("Found initial policy using Value Iteration. Starting Policy iteration now.");
-    return performPolicyIteration(env, dir, x, b, std::move(initialSched));
+
+    bool const returnValue = performPolicyIteration(env, dir, xLower, xUpper, bLower, bUpper, scheduler);
+    if (this->isTrackSchedulerSet()) {
+        STORM_LOG_THROW(
+            &bLower == &bUpper, storm::exceptions::NotSupportedException,
+            "Policy export for policy iteration with different lower/upper bounds is not supported. It is not clear how to treat distinct policies");
+        this->schedulerChoices = std::move(scheduler);
+    }
+    return returnValue;
 }
 
 template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsRationalSearch(Environment const& env, OptimizationDirection dir,
-                                                                                                std::vector<SolutionType>& x,
-                                                                                                std::vector<ValueType> const& b) const {
+                                                                                                std::vector<SolutionType>& xLower,
+                                                                                                std::vector<SolutionType>& xUpper,
+                                                                                                std::vector<ValueType> const& bLower,
+                                                                                                std::vector<ValueType> const& bUpper) const {
     if constexpr (std::is_same_v<ValueType, storm::Interval>) {
         STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Rational search does not handle interval-based models");
         return false;
@@ -948,18 +1052,28 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
 
         storm::solver::helper::RationalSearchHelper<ValueType, storm::RationalNumber, double, false> rsHelper(exactOp, impreciseOp);
         uint64_t numIterations{0};
-        auto rsCallback = [&](SolverStatus const& current) {
-            this->showProgressIterative(numIterations);
-            return this->updateStatus(current, x, SolverGuarantee::None, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
+        auto applyRationalSearch = [&](auto& x, auto const& b) {
+            auto rsCallback = [&](SolverStatus const& current) {
+                this->showProgressIterative(numIterations);
+                return this->updateStatus(current, x, SolverGuarantee::None, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
+            };
+            return rsHelper.RS(x, b, numIterations, storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision()), dir, rsCallback);
         };
-        this->startMeasureProgress();
-        auto status = rsHelper.RS(x, b, numIterations, storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision()), dir, rsCallback);
 
+        this->startMeasureProgress();
+        auto status = applyRationalSearch(xLower, bLower);
+        if ((&xLower != &xUpper) && (status == SolverStatus::Converged || status == SolverStatus::TerminatedEarly)) {
+            if (&bLower == &bUpper) {
+                xUpper = xLower;  // no need to recompute, just copy over values
+            } else {
+                status = applyRationalSearch(xUpper, bUpper);
+            }
+        }
         this->reportStatus(status, numIterations);
 
         // If requested, we store the scheduler for retrieval.
         if (this->isTrackSchedulerSet()) {
-            this->extractScheduler(x, b, dir, this->isUncertaintyRobust());
+            this->extractScheduler(xLower, bLower, dir, this->isUncertaintyRobust());
         }
 
         if (!this->isCachingEnabled()) {

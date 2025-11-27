@@ -43,23 +43,32 @@ class IterativeMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationS
     bool solveInducedEquationSystem(Environment const& env, std::unique_ptr<LinearEquationSolver<SolutionType>>& linearEquationSolver,
                                     std::vector<uint64_t> const& scheduler, std::vector<SolutionType>& x, std::vector<ValueType>& subB,
                                     std::vector<ValueType> const& originalB, OptimizationDirection dir) const;
-    bool solveEquationsPolicyIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b) const;
-    bool performPolicyIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b,
-                                std::vector<storm::storage::sparse::state_type>&& initialPolicy) const;
+    bool solveEquationsPolicyIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                       std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
+    /*!
+     * @param scheduler used as the initial policy; will be updated to the final policy
+     */
+    bool performPolicyIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper,
+                                std::vector<storm::storage::sparse::state_type>& scheduler) const;
     bool valueImproved(OptimizationDirection dir, ValueType const& value1, ValueType const& value2) const;
 
     bool solveEquationsValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b) const;
-    bool solveEquationsOptimisticValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x,
-                                                std::vector<ValueType> const& b) const;
-    bool solveEquationsGuessingValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x,
-                                              std::vector<ValueType> const& b) const;
-    bool solveEquationsIntervalIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x,
-                                         std::vector<ValueType> const& b) const;
-    bool solveEquationsSoundValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x,
-                                           std::vector<ValueType> const& b) const;
-    bool solveEquationsViToPi(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b) const;
+    bool solveEquationsOptimisticValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower,
+                                                std::vector<SolutionType>& xUpper, std::vector<ValueType> const& bLower,
+                                                std::vector<ValueType> const& bUpper) const;
+    bool solveEquationsGuessingValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower,
+                                              std::vector<SolutionType>& xUpper, std::vector<ValueType> const& bLower,
+                                              std::vector<ValueType> const& bUpper) const;
+    bool solveEquationsIntervalIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower,
+                                         std::vector<SolutionType>& xUpper, std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
+    bool solveEquationsSoundValueIteration(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower,
+                                           std::vector<SolutionType>& xUpper, std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
+    bool solveEquationsViToPi(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                              std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
 
-    bool solveEquationsRationalSearch(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& x, std::vector<ValueType> const& b) const;
+    bool solveEquationsRationalSearch(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
+                                      std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
 
     void setUpViOperator() const;
     void extractScheduler(std::vector<SolutionType>& x, std::vector<ValueType> const& b, OptimizationDirection const& dir, bool robust,

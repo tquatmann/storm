@@ -66,6 +66,7 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<SolutionType> {
      * to be given upon construction time of the solver object.
      * Uses sound numerical methods to ensure that the returned solution bounds the true solution.
      *
+     * @param env must be in sound or exact mode
      * @param d For minimum, all the value of a group of rows is the taken as the minimum over all rows and as
      * the maximum otherwise.
      * @param xLower lower bound for the true solution vector x of the equation system x = min/max(A*x + bLower)

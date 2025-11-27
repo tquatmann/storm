@@ -181,7 +181,7 @@ std::pair<gviinternal::VerifyResult, SolverStatus> GuessingValueIterationHelper<
         }
         sumLengthBefore = sumLength;
 
-        if (iterationHelper.getMaxLength(lowerX, upperX) < 2 * precision) {
+        if (iterationHelper.getMaxLength(lowerX, upperX) < precision) {
             return {gviinternal::VerifyResult::Converged, status};
         }
 
@@ -229,7 +229,7 @@ SolverStatus GuessingValueIterationHelper<ValueType, TrivialRowGrouping>::solveE
             }
         }
         if (didVerify) {
-            if (iterationHelper.getMaxLength(lowerX, upperX) < 2 * precision)
+            if (iterationHelper.getMaxLength(lowerX, upperX) < precision)
                 return SolverStatus::Converged;
         } else {
             break;
@@ -268,7 +268,7 @@ SolverStatus GuessingValueIterationHelper<ValueType, TrivialRowGrouping>::doIter
         }
         sumLengthBefore = sumLength;
 
-        if (iterationHelper.getMaxLength(lowerX, upperX) < 2 * precision) {
+        if (iterationHelper.getMaxLength(lowerX, upperX) < precision) {
             return SolverStatus::Converged;
         }
         if (iterationCallback) {
@@ -276,7 +276,7 @@ SolverStatus GuessingValueIterationHelper<ValueType, TrivialRowGrouping>::doIter
         }
     }
 
-    if (iterationHelper.getMaxLength(lowerX, upperX) < 2 * precision)
+    if (iterationHelper.getMaxLength(lowerX, upperX) < precision)
         return SolverStatus::Converged;
     return status;
 }

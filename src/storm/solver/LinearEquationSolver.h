@@ -51,6 +51,7 @@ class LinearEquationSolver : public AbstractEquationSolver<ValueType> {
      * is required to have a unique solution. The solution will be written to the vector x. Note that the matrix
      * A has to be given upon construction time of the solver object.
      *
+     * @param env must be in sound or exact mode
      * @param xLower lower bound for the true solution vector x of the equation system (using b = bLower)
      * @param xUpper upper bound for the true solution vector x of the equation system (using b = bUpper)
      * @param bLower The vector b (for xLower)
