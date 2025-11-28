@@ -3,6 +3,9 @@
 #include <map>
 #include <set>
 
+#include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
+#include "storm/environment/solver/MinMaxSolverEnvironment.h"
+#include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
@@ -141,6 +144,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::initialize(
 
 template<class SparseModelType>
 void StandardPcaaWeightVectorChecker<SparseModelType>::check(Environment const& env, std::vector<ValueType> const& weightVector) {
+    // See https://doi.org/10.18154/RWTH-2023-09669 Algorithm 4.2
     checkHasBeenCalled = true;
     STORM_LOG_INFO("Invoked WeightVectorChecker with weights \n"
                    << "\t" << storm::utility::vector::toString(storm::utility::vector::convertNumericVector<double>(weightVector)));
@@ -160,7 +164,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::check(Environment const& 
                 storm::utility::vector::addScaledVector(weightedStateRewardVector.get(), stateRewards[objIndex], weight);
             }
         }
-        infiniteHorizonWeightedPhase(env, weightedRewardVector, weightedStateRewardVector);
+        infiniteHorizonWeightedPhase(env, weightedRewardVector, weightedStateRewardVector, weightVector);
         // Clear all values of the weighted reward vector
         weightedRewardVector.assign(weightedRewardVector.size(), storm::utility::zero<ValueType>());
     }
@@ -191,8 +195,12 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::check(Environment const& 
         storm::utility::abs<ValueType>(storm::utility::vector::dotProduct(getOverApproximationOfInitialStateResults(), weightVector) -
                                        storm::utility::vector::dotProduct(getUnderApproximationOfInitialStateResults(), weightVector));
     resultingWeightedPrecision /= storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector));
-    STORM_LOG_THROW(resultingWeightedPrecision <= this->getWeightedPrecision(), storm::exceptions::UnexpectedException,
-                    "The desired precision was not reached");
+    STORM_LOG_WARN_COND(resultingWeightedPrecision <= this->getWeightedPrecision() + storm::utility::convertNumber<ValueType>(1e-10),
+                        "The desired precision was not reached: resulting precision "
+                            << resultingWeightedPrecision << " exceeds specified value " << this->getWeightedPrecision() << " by approx. "
+                            << (storm::utility::convertNumber<double, ValueType>(this->getWeightedPrecision() - resultingWeightedPrecision))
+                            << ". Weight vector is" << storm::utility::vector::toString(storm::utility::vector::convertNumericVector<double>(weightVector))
+                            << ".");
 }
 
 template<class SparseModelType>
@@ -355,9 +363,23 @@ void computeSchedulerFinitelyOften(storm::storage::SparseMatrix<ValueType> const
 }
 
 template<class SparseModelType>
-void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPhase(Environment const& env,
+void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPhase(Environment const& inputEnv,
                                                                                     std::vector<ValueType> const& weightedActionRewardVector,
-                                                                                    boost::optional<std::vector<ValueType>> const& weightedStateRewardVector) {
+                                                                                    boost::optional<std::vector<ValueType>> const& weightedStateRewardVector,
+                                                                                    std::vector<ValueType> const& weightVector) {
+    bool const soundApproximation = inputEnv.solver().isForceSoundness() && !inputEnv.solver().isForceExact();
+    auto solverEnv = inputEnv;
+    ValueType offset = storm::utility::zero<ValueType>();
+    if (soundApproximation) {
+        // see epsilon in https://doi.org/10.18154/RWTH-2023-09669 Algorithm 5.2
+        ValueType epsilon = this->getWeightedPrecisionUnboundedPhase() * storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector)) /
+                            storm::utility::convertNumber<ValueType>(2.0);
+        // We want to compute a value v_C for each MEC C that upper bounds the true MEC value and is also epsilon/2 close to it.
+        // We therefore compute a value that is epsilon/4 close to it and then add epsilon/4 as offset below.
+        offset = epsilon / storm::utility::convertNumber<ValueType>(4.0);
+        solverEnv.solver().lra().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(offset));
+        solverEnv.solver().lra().setRelativeTerminationCriterion(false);
+    }
     // Compute the optimal (weighted) lra value for each mec, keeping track of the optimal choices
     STORM_LOG_ASSERT(lraMecDecomposition, "Mec decomposition for lra computations not initialized.");
     storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> helper = createNondetInfiniteHorizonHelper(this->transitionMatrix);
@@ -373,15 +395,28 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::infiniteHorizonWeightedPh
         } else {
             stateValueGetter = [](uint64_t const&) { return storm::utility::zero<ValueType>(); };
         }
-        lraMecDecomposition->auxMecValues[mecIndex] = helper.computeLraForComponent(env, stateValueGetter, actionValueGetter, mec);
+        lraMecDecomposition->auxMecValues[mecIndex] = helper.computeLraForComponent(solverEnv, stateValueGetter, actionValueGetter, mec) + offset;
     }
     // Extract the produced optimal choices for the MECs
     this->optimalChoices = std::move(helper.getProducedOptimalChoices());
 }
 
 template<class SparseModelType>
-void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(Environment const& env, std::vector<ValueType> const& weightedRewardVector,
+void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(Environment const& inputEnv, std::vector<ValueType> const& weightedRewardVector,
                                                                               std::vector<ValueType> const& weightVector) {
+    bool const soundApproximation = inputEnv.solver().isForceSoundness() && !inputEnv.solver().isForceExact();
+    auto solverEnv = inputEnv;
+    if (soundApproximation) {
+        // see epsilon in https://doi.org/10.18154/RWTH-2023-09669 Algorithm 4.2
+        ValueType adjustedPrecision = this->getWeightedPrecisionUnboundedPhase() *
+                                      storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector)) /
+                                      storm::utility::convertNumber<ValueType>(lraObjectives.empty() ? 2.0 : 4.0);
+        solverEnv.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(adjustedPrecision));
+        solverEnv.solver().minMax().setRelativeTerminationCriterion(false);
+        solverEnv.solver().lra().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(adjustedPrecision));
+        solverEnv.solver().lra().setRelativeTerminationCriterion(false);
+    }
+
     // Catch the case where all values on the RHS of the MinMax equation system are zero.
     if (this->objectivesWithNoUpperTimeBound.empty() ||
         ((this->lraObjectives.empty() || !storm::utility::vector::hasNonZeroEntry(lraMecDecomposition->auxMecValues)) &&
@@ -440,11 +475,11 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(En
     }
 
     storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType> solverFactory;
-    std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> solver = solverFactory.create(env, ecQuotient->matrix);
+    std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType>> solver = solverFactory.create(solverEnv, ecQuotient->matrix);
     solver->setTrackScheduler(true);
     solver->setHasUniqueSolution(true);
     solver->setOptimizationDirection(storm::solver::OptimizationDirection::Maximize);
-    auto req = solver->getRequirements(env, storm::solver::OptimizationDirection::Maximize);
+    auto req = solver->getRequirements(solverEnv, storm::solver::OptimizationDirection::Maximize);
     setBoundsToSolver(*solver, req.lowerBounds(), req.upperBounds(), weightVector, objectivesWithNoUpperTimeBound, ecQuotient->matrix,
                       ecQuotient->rowsWithSumLessOne, ecQuotient->auxChoiceValues);
     if (solver->hasLowerBound()) {
@@ -464,7 +499,17 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(En
     // Use the (0...0) vector as initial guess for the solution.
     std::fill(ecQuotient->auxStateValues.begin(), ecQuotient->auxStateValues.end(), storm::utility::zero<ValueType>());
 
-    solver->solveEquations(env, ecQuotient->auxStateValues, ecQuotient->auxChoiceValues);
+    // In sound mode, we adapt the precision accordingly
+    if (soundApproximation) {
+        ecQuotient->auxStateValues2.assign(ecQuotient->auxStateValues.size(), storm::utility::zero<ValueType>());
+        // Ensure that ecQuotient->auxStateValues contains the over-approximation result, which is the upper bound of the weighted maximization problem
+        solver->solveEquationsSound(solverEnv, storm::solver::OptimizationDirection::Maximize, ecQuotient->auxStateValues2, ecQuotient->auxStateValues,
+                                    ecQuotient->auxChoiceValues, ecQuotient->auxChoiceValues);
+    } else {
+        // in unsound or exact mode, we don't care about approximation errors
+        solver->solveEquations(solverEnv, ecQuotient->auxStateValues, ecQuotient->auxChoiceValues);
+    }
+
     this->weightedResult = std::vector<ValueType>(transitionMatrix.getRowGroupCount());
 
     transformEcqSolutionToOriginalModel(ecQuotient->auxStateValues, solver->getSchedulerChoices(), ecqStateToOptimalMecMap, this->weightedResult,
@@ -472,8 +517,10 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(En
 }
 
 template<class SparseModelType>
-void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(Environment const& env, std::vector<ValueType> const& weightVector) {
-    if (objectivesWithNoUpperTimeBound.getNumberOfSetBits() == 1 && storm::utility::isOne(weightVector[*objectivesWithNoUpperTimeBound.begin()])) {
+void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(Environment const& inputEnv, std::vector<ValueType> const& weightVector) {
+    bool const soundApproximation = inputEnv.solver().isForceSoundness() && !inputEnv.solver().isForceExact();
+    if (!soundApproximation && objectivesWithNoUpperTimeBound.getNumberOfSetBits() == 1 &&
+        storm::utility::isOne(weightVector[*objectivesWithNoUpperTimeBound.begin()])) {
         uint_fast64_t objIndex = *objectivesWithNoUpperTimeBound.begin();
         objectiveResults[objIndex] = weightedResult;
         if (storm::solver::minimize(this->objectives[objIndex].formula->getOptimalityType())) {
@@ -485,6 +532,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
             }
         }
     } else {
+        auto solverEnv = inputEnv;
         storm::storage::SparseMatrix<ValueType> deterministicMatrix = transitionMatrix.selectRowsFromRowGroups(this->optimalChoices, false);
         storm::storage::SparseMatrix<ValueType> deterministicBackwardTransitions = deterministicMatrix.transpose();
         std::vector<ValueType> deterministicStateRewards(deterministicMatrix.getRowCount());  // allocate here
@@ -501,8 +549,20 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
         for (uint_fast64_t const& objIndex : storm::utility::vector::getSortedIndices(weightVector)) {
             auto const& obj = this->objectives[objIndex];
             if (objectivesWithNoUpperTimeBound.get(objIndex)) {
-                offsetsToUnderApproximation[objIndex] = storm::utility::zero<ValueType>();
-                offsetsToOverApproximation[objIndex] = storm::utility::zero<ValueType>();
+                if (soundApproximation) {
+                    // see epsilon and epsilon_j in https://doi.org/10.18154/RWTH-2023-09669 Algorithm 4.2
+                    ValueType epsilon = this->getWeightedPrecisionUnboundedPhase() *
+                                        storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector)) /
+                                        storm::utility::convertNumber<ValueType>(2.0);
+                    ValueType epsilon_j = epsilon / storm::utility::convertNumber<ValueType, uint64_t>(objectivesWithNoUpperTimeBound.getNumberOfSetBits());
+                    if (!storm::utility::isZero(weightVector[objIndex])) {
+                        STORM_LOG_ASSERT(weightVector[objIndex] > storm::utility::zero<ValueType>(), "Negative weight is not expected.");
+                        epsilon_j /= weightVector[objIndex];
+                    }
+                    solverEnv.solver().setLinearEquationSolverPrecision(storm::utility::convertNumber<RationalNumber>(epsilon_j), false);
+                    solverEnv.solver().lra().setPrecision(storm::utility::convertNumber<RationalNumber>(epsilon_j));
+                    solverEnv.solver().lra().setRelativeTerminationCriterion(false);
+                }
                 if (lraObjectives.get(objIndex)) {
                     auto actionValueGetter = [&](uint64_t const& a) {
                         return actionRewards[objIndex][transitionMatrix.getRowGroupIndices()[a] + this->optimalChoices[a]];
@@ -513,7 +573,20 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                     } else {
                         stateValueGetter = [&](uint64_t const& s) { return stateRewards[objIndex][s]; };
                     }
-                    objectiveResults[objIndex] = infiniteHorizonHelper.computeLongRunAverageValues(env, stateValueGetter, actionValueGetter);
+                    if (soundApproximation) {
+                        // Increase the precision so that we can add an offset to obtain a sound and precise under-approximation
+                        solverEnv.solver().lra().setPrecision(solverEnv.solver().lra().getPrecision() /
+                                                              storm::utility::convertNumber<storm::RationalNumber, uint64_t>(2));
+                        objectiveResults[objIndex] = infiniteHorizonHelper.computeLongRunAverageValues(solverEnv, stateValueGetter, actionValueGetter);
+                        ValueType offset = storm::utility::convertNumber<ValueType>(solverEnv.solver().lra().getPrecision());
+                        if (storm::solver::maximize(obj.formula->getOptimalityType())) {
+                            offset = -offset;
+                        }
+                        std::for_each(objectiveResults[objIndex].begin(), objectiveResults[objIndex].end(), [offset](ValueType& v) { v += offset; });
+                    } else {
+                        objectiveResults[objIndex] = infiniteHorizonHelper.computeLongRunAverageValues(solverEnv, stateValueGetter, actionValueGetter);
+                    }
+
                 } else {  // i.e. a total reward objective
                     storm::utility::vector::selectVectorValues(deterministicStateRewards, this->optimalChoices, transitionMatrix.getRowGroupIndices(),
                                                                actionRewards[objIndex]);
@@ -537,7 +610,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
 
                     if (!maybeStates.empty()) {
                         bool needEquationSystem =
-                            linearEquationSolverFactory.getEquationProblemFormat(env) == storm::solver::LinearEquationSolverProblemFormat::EquationSystem;
+                            linearEquationSolverFactory.getEquationProblemFormat(solverEnv) == storm::solver::LinearEquationSolverProblemFormat::EquationSystem;
                         storm::storage::SparseMatrix<ValueType> submatrix =
                             deterministicMatrix.getSubmatrix(true, maybeStates, maybeStates, needEquationSystem);
                         if (needEquationSystem) {
@@ -551,8 +624,8 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                         std::vector<ValueType> b = storm::utility::vector::filterVector(deterministicStateRewards, maybeStates);
 
                         // Now solve the resulting equation system.
-                        std::unique_ptr<storm::solver::LinearEquationSolver<ValueType>> solver = linearEquationSolverFactory.create(env, submatrix);
-                        auto req = solver->getRequirements(env);
+                        std::unique_ptr<storm::solver::LinearEquationSolver<ValueType>> solver = linearEquationSolverFactory.create(solverEnv, submatrix);
+                        auto req = solver->getRequirements(solverEnv);
                         solver->clearBounds();
                         storm::storage::BitVector submatrixRowsWithSumLessOne = deterministicMatrix.getRowFilter(maybeStates, maybeStates) % maybeStates;
                         submatrixRowsWithSumLessOne.complement();
@@ -565,11 +638,31 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                         }
                         STORM_LOG_THROW(!req.hasEnabledCriticalRequirement(), storm::exceptions::UncheckedRequirementException,
                                         "Solver requirements " + req.getEnabledRequirementsAsString() + " not checked.");
-                        solver->solveEquations(env, x, b);
+                        if (soundApproximation) {
+                            auto xOther = x;
+                            // We want that the under-approximation value (lower bound for max, upper bound for min) is stored in x.
+                            bool const isMax = storm::solver::maximize(obj.formula->getOptimalityType());
+                            auto& xLower = isMax ? x : xOther;
+                            auto& xUpper = isMax ? xOther : x;
+                            solver->solveEquationsSound(solverEnv, xLower, xUpper, b, b);
+                        } else {
+                            solver->solveEquations(solverEnv, x, b);
+                        }
                         // Set the result for this objective accordingly
                         storm::utility::vector::setVectorValues<ValueType>(objectiveResults[objIndex], maybeStates, x);
                     }
                     storm::utility::vector::setVectorValues<ValueType>(objectiveResults[objIndex], ~maybeStates, storm::utility::zero<ValueType>());
+                }
+                offsetsToUnderApproximation[objIndex] = storm::utility::zero<ValueType>();
+                offsetsToOverApproximation[objIndex] = storm::utility::zero<ValueType>();
+                if (soundApproximation && !storm::utility::isZero(weightVector[objIndex])) {
+                    // set over-approximation offsets o so that for under-approx point p we have w*(p+o) = weightedResult
+                    // Thus, o_i = weightedResult / (w_i * numObj) - p_i
+                    ValueType const offset =
+                        weightedResult[initialState] /
+                            (weightVector[objIndex] * storm::utility::convertNumber<ValueType, uint64_t>(objectivesWithNoUpperTimeBound.getNumberOfSetBits())) -
+                        objectiveResults[objIndex][initialState];
+                    offsetsToOverApproximation[objIndex] = storm::solver::maximize(obj.formula->getOptimalityType()) ? offset : -offset;
                 }
                 // Update the estimate for the next objectives.
                 if (!storm::utility::isZero(weightVector[objIndex])) {
@@ -577,6 +670,7 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedIndividualPhase(
                     sumOfWeightsOfUncheckedObjectives -= weightVector[objIndex];
                 }
             } else {
+                // Other objectives will be computed in bounded phase.
                 objectiveResults[objIndex] = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
             }
         }

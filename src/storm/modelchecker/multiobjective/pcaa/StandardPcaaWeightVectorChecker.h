@@ -75,7 +75,7 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
     virtual DeterministicInfiniteHorizonHelperType createDetInfiniteHorizonHelper(storm::storage::SparseMatrix<ValueType> const& transitions) const = 0;
 
     void infiniteHorizonWeightedPhase(Environment const& env, std::vector<ValueType> const& weightedActionRewardVector,
-                                      boost::optional<std::vector<ValueType>> const& weightedStateRewardVector);
+                                      boost::optional<std::vector<ValueType>> const& weightedStateRewardVector, std::vector<ValueType> const& weightVector);
 
     /*!
      * Determines the scheduler that optimizes the weighted reward vector of the unbounded objectives
@@ -89,6 +89,16 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
      *
      */
     void unboundedIndividualPhase(Environment const& env, std::vector<ValueType> const& weightVector);
+
+    /*!
+     * @return how the weighted precision (i.e. allowed approximation error) is distributed over the unbounded and bounded phase
+     */
+    virtual ValueType getWeightedPrecisionUnboundedPhase() const = 0;
+
+    /*!
+     * @return how the weighted precision (i.e. allowed approximation error) is distributed over the unbounded and bounded phase
+     */
+    virtual ValueType getWeightedPrecisionBoundedPhase() const = 0;
 
     /*!
      * For each time epoch (starting with the maximal stepBound occurring in the objectives), this method
@@ -168,7 +178,7 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
         storm::storage::BitVector origTotalReward0Choices;  // considers just total rewards
         storm::storage::BitVector rowsWithSumLessOne;
 
-        std::vector<ValueType> auxStateValues;
+        std::vector<ValueType> auxStateValues, auxStateValues2;
         std::vector<ValueType> auxChoiceValues;
     };
     boost::optional<EcQuotient> ecQuotient;

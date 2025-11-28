@@ -98,6 +98,21 @@ StandardMaPcaaWeightVectorChecker<SparseMdpModelType>::createDetInfiniteHorizonH
 }
 
 template<class SparseMaModelType>
+typename SparseMaModelType::ValueType StandardMaPcaaWeightVectorChecker<SparseMaModelType>::getWeightedPrecisionUnboundedPhase() const {
+    return this->getWeightedPrecision() - getWeightedPrecisionBoundedPhase();
+}
+
+template<class SparseMaModelType>
+typename SparseMaModelType::ValueType StandardMaPcaaWeightVectorChecker<SparseMaModelType>::getWeightedPrecisionBoundedPhase() const {
+    if (!this->objectivesWithNoUpperTimeBound.full()) {
+        // If there are time-bounded objectives, we allow most of the approximation error in the bounded phase.
+        // This is because computing time-bounded objectives accurately is likely the largest bottle neck of the computation.
+        return storm::utility::convertNumber<ValueType>(0.99) * this->getWeightedPrecision();
+    }
+    return storm::utility::zero<ValueType>();
+}
+
+template<class SparseMaModelType>
 void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::boundedPhase(Environment const& env, std::vector<ValueType> const& weightVector,
                                                                         std::vector<ValueType>& weightedRewardVector) {
     // Split the preprocessed model into transitions from/to probabilistic/Markovian states.
@@ -238,7 +253,7 @@ VT StandardMaPcaaWeightVectorChecker<SparseMaModelType>::getDigitizationConstant
         // There are no time bounds. In this case, one is a valid digitization constant.
         return storm::utility::one<VT>();
     }
-    VT goalPrecisionTimesNorm = this->weightedPrecision * storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector));
+    VT weightedGoalPrecision = this->getWeightedPrecisionBoundedPhase() * storm::utility::sqrt(storm::utility::vector::dotProduct(weightVector, weightVector));
 
     // We brute-force a delta, since a direct computation is apparently not easy.
     // Also note that the number of times this loop runs is a lower bound for the number of minMaxSolver invocations.
@@ -266,7 +281,7 @@ VT StandardMaPcaaWeightVectorChecker<SparseMaModelType>::getDigitizationConstant
                 }
                 weightedPrecisionForCurrentDelta += weightVector[objIndex] * precisionOfObj;
             }
-            deltaValid &= weightedPrecisionForCurrentDelta <= goalPrecisionTimesNorm;
+            deltaValid &= weightedPrecisionForCurrentDelta <= weightedGoalPrecision;
         }
         if (deltaValid) {
             break;
@@ -318,7 +333,7 @@ template<class SparseMaModelType>
 template<typename VT, typename std::enable_if<storm::NumberTraits<VT>::SupportsExponential, int>::type>
 void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::digitizeTimeBounds(TimeBoundMap& upperTimeBounds, VT const& digitizationConstant) {
     VT const maxRate = storm::utility::vector::max_if(exitRates, markovianStates);
-    for (uint_fast64_t objIndex = 0; objIndex < this->objectives.size(); ++objIndex) {
+    for (auto objIndex : ~this->objectivesWithNoUpperTimeBound) {
         auto const& obj = this->objectives[objIndex];
         VT errorTowardsZero = storm::utility::zero<VT>();
         VT errorAwayFromZero = storm::utility::zero<VT>();

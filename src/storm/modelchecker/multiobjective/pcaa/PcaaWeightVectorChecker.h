@@ -54,7 +54,7 @@ class PcaaWeightVectorChecker {
      * * the normal vector is the provided weight-vector where the entry for minimizing objectives is negated
      * * getUnderApproximationOfInitialStateResults() lies on h_lower and
      * * getOverApproximationOfInitialStateResults() lies on h_upper.
-     * Then the distance between the two hyperplanes is at most weightedPrecision
+     * Then the Euclidean distance between the two hyperplanes is at most weightedPrecision
      */
     void setWeightedPrecision(ValueType const& value);
 

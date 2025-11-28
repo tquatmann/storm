@@ -35,6 +35,9 @@ class StandardMaPcaaWeightVectorChecker : public StandardPcaaWeightVectorChecker
     virtual storm::modelchecker::helper::SparseNondeterministicInfiniteHorizonHelper<ValueType> createDetInfiniteHorizonHelper(
         storm::storage::SparseMatrix<ValueType> const& transitions) const override;
 
+    virtual ValueType getWeightedPrecisionUnboundedPhase() const override;
+    virtual ValueType getWeightedPrecisionBoundedPhase() const override;
+
    private:
     /*
      * Stores (digitized) time bounds in descending order

@@ -130,6 +130,16 @@ void StandardMdpPcaaWeightVectorChecker<SparseMdpModelType>::boundedPhase(Enviro
     }
 }
 
+template<class SparseMdpModelType>
+typename SparseMdpModelType::ValueType StandardMdpPcaaWeightVectorChecker<SparseMdpModelType>::getWeightedPrecisionUnboundedPhase() const {
+    return this->getWeightedPrecision();  // No approx. error in bounded phase.
+}
+
+template<class SparseMdpModelType>
+typename SparseMdpModelType::ValueType StandardMdpPcaaWeightVectorChecker<SparseMdpModelType>::getWeightedPrecisionBoundedPhase() const {
+    return storm::utility::zero<ValueType>();  // No approx. error in bounded phase.
+}
+
 template class StandardMdpPcaaWeightVectorChecker<storm::models::sparse::Mdp<double>>;
 #ifdef STORM_HAVE_CARL
 template class StandardMdpPcaaWeightVectorChecker<storm::models::sparse::Mdp<storm::RationalNumber>>;
