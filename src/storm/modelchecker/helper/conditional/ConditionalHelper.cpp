@@ -135,23 +135,27 @@ typename internal::SolverResult<ValueType> solveMinMaxEquationSystem(storm::Envi
  * @note This code is optimized for cases where not all states are reachable from the initial states.
  */
 template<typename ValueType>
-void computeReachabilityProbabilities(Environment const& env, std::map<uint64_t, ValueType>& nonZeroResults, storm::solver::OptimizationDirection const dir,
-                                      storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::storage::BitVector const& initialStates,
-                                      storm::storage::BitVector const& allowedStates, storm::storage::BitVector const& targetStates) {
+std::unique_ptr<storm::storage::Scheduler<ValueType>> computeReachabilityProbabilities(Environment const& env, std::map<uint64_t, ValueType>& nonZeroResults,
+                                                                                       storm::solver::OptimizationDirection const dir,
+                                                                                       storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                                       storm::storage::BitVector const& initialStates,
+                                                                                       storm::storage::BitVector const& allowedStates,
+                                                                                       storm::storage::BitVector const& targetStates) {
     if (initialStates.empty()) {  // nothing to do
-        return;
+        return nullptr;
     }
     auto const reachableStates = storm::utility::graph::getReachableStates(transitionMatrix, initialStates, allowedStates, targetStates);
     auto const subTargets = targetStates % reachableStates;
     // Catch the case where no target is reachable from an initial state. In this case, there is nothing to do since all probabilities are zero.
     if (subTargets.empty()) {
-        return;
+        return nullptr;
     }
     auto const subInits = initialStates % reachableStates;
     auto const submatrix = transitionMatrix.getSubmatrix(true, reachableStates, reachableStates);
     auto const subResult = helper::SparseMdpPrctlHelper<ValueType, ValueType>::computeUntilProbabilities(
         env, storm::solver::SolveGoal<ValueType>(dir, subInits), submatrix, submatrix.transpose(true), storm::storage::BitVector(subTargets.size(), true),
         subTargets, false, true);
+
     auto origInitIt = initialStates.begin();
     for (auto subInit : subInits) {
         auto const& val = subResult.values[subInit];
@@ -160,6 +164,15 @@ void computeReachabilityProbabilities(Environment const& env, std::map<uint64_t,
         }
         ++origInitIt;
     }
+
+    storm::storage::Scheduler<ValueType> scheduler(transitionMatrix.getRowGroupCount());
+    auto submatrixIdx = 0;
+    for (auto state : reachableStates) {
+        scheduler.setChoice(subResult.scheduler->getChoice(submatrixIdx), state);
+        ++submatrixIdx;
+    }
+
+    return std::make_unique<storm::storage::Scheduler<ValueType>>(std::move(scheduler));
 }
 
 /*!
@@ -267,11 +280,12 @@ NormalFormData<ValueType> obtainNormalForm(Environment const& env, storm::solver
         storm::utility::graph::performProb1A(transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions, allStates, targetStates);
     auto const targetAndNotCondFailStates = extendedTargetStates & ~(extendedConditionStates | universalObservationFailureStates);
 
+    // compute schedulers for reaching target and condition states from target and condition states
     std::vector<uint64_t> schedulerChoicesForReachingTargetStates;
     std::vector<uint64_t> schedulerChoicesForReachingConditionStates;
 
-    auto schedulerForTargetStates = computeReachabilityProbabilitiesAndScheduler(env, nonZeroTargetStateValues, dir, transitionMatrix, extendedConditionStates,
-                                                                                 allStates, extendedTargetStates);
+    auto schedulerForTargetStates =
+        computeReachabilityProbabilities(env, nonZeroTargetStateValues, dir, transitionMatrix, extendedConditionStates, allStates, extendedTargetStates);
     schedulerChoicesForReachingTargetStates = std::vector<uint64_t>(transitionMatrix.getRowGroupCount(), 0);
     if (schedulerForTargetStates) {
         for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
@@ -279,8 +293,8 @@ NormalFormData<ValueType> obtainNormalForm(Environment const& env, storm::solver
         }
     }
 
-    auto schedulerForConditionStates = computeReachabilityProbabilitiesAndScheduler(env, nonZeroTargetStateValues, dir, transitionMatrix,
-                                                                                    targetAndNotCondFailStates, allStates, extendedConditionStates);
+    auto schedulerForConditionStates =
+        computeReachabilityProbabilities(env, nonZeroTargetStateValues, dir, transitionMatrix, targetAndNotCondFailStates, allStates, extendedConditionStates);
     schedulerChoicesForReachingConditionStates = std::vector<uint64_t>(transitionMatrix.getRowGroupCount(), 0);
     if (schedulerForConditionStates) {
         for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
