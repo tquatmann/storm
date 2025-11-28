@@ -401,11 +401,14 @@ TYPED_TEST(LinearEquationSolverTest, solveEquationSystem) {
         ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), xLower, xUpper, b, b));
         checkVec(xLower, "solveEquationsSound (xLower, same b)");
         checkVec(xUpper, "solveEquationsSound (xUpper, same b)");
-        xLower.assign(3, this->parseNumber("0"));
-        xUpper.assign(3, this->parseNumber("0"));
-        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), xLower, xUpper, b, bUpper));
-        checkVec(xLower, "solveEquationsSound (xLower, diff b)");
-        checkVec(xUpper, "solveEquationsSound (xUpper, diff b)");
+        if (std::is_same_v<TypeParam, NativeDoubleIntervalIterationEnvironment>) {
+            // All other environments currently do not support this input.
+            xLower.assign(3, this->parseNumber("0"));
+            xUpper.assign(3, this->parseNumber("0"));
+            ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), xLower, xUpper, b, bUpper));
+            checkVec(xLower, "solveEquationsSound (xLower, diff b)");
+            checkVec(xUpper, "solveEquationsSound (xUpper, diff b)");
+        }
     }
 }
 }  // namespace

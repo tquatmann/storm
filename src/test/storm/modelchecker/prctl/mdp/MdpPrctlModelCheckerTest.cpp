@@ -176,7 +176,7 @@ class SparseDoubleGuessingValueIterationEnvironment {
         env.solver().setForceSoundness(true);
         env.solver().minMax().setMethod(storm::solver::MinMaxMethod::GuessingValueIteration);
         env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-6));
-        env.solver().minMax().setRelativeTerminationCriterion(false);
+        env.solver().minMax().setRelativeTerminationCriterion(false);  // GVI currently only handles absolute precision
         return env;
     }
 };

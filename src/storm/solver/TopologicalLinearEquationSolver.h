@@ -34,20 +34,20 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
    private:
     virtual uint64_t getMatrixRowCount() const override;
     virtual uint64_t getMatrixColumnCount() const override;
-
-    storm::Environment getEnvironmentForUnderlyingSolver(storm::Environment const& env, bool adaptPrecision = false) const;
-
+    
     // Creates an SCC decomposition and sorts the SCCs according to a topological sort.
-    void createSortedSccDecomposition(bool needLongestChainSize) const;
+    void createSortedSccDecomposition(bool needSccDepths) const;
 
     // Solves the SCC with the given index
     // ... for the case that the SCC is trivial
     bool solveTrivialScc(uint64_t const& sccState, std::vector<ValueType>& globalX, std::vector<ValueType> const& globalB) const;
     // ... for the case that there is just one large SCC
-    bool solveFullyConnectedEquationSystem(storm::Environment const& sccSolverEnvironment, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
+    bool solveFullyConnectedEquationSystem(storm::Environment const& sccSolverEnvironment, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                           std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
     // ... for the remaining cases (1 < scc.size() < x.size())
-    bool solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::BitVector const& scc, std::vector<ValueType>& globalX,
-                  std::vector<ValueType> const& globalB, std::optional<storm::storage::BitVector> const& globalRelevantValues) const;
+    bool solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::BitVector const& scc, std::vector<ValueType>& xLowerGlobal,
+                  std::vector<ValueType>& xUpperGlobal, std::vector<ValueType> const& bLowerGlobal, std::vector<ValueType> const& bUpperGlobal,
+                  std::optional<storm::storage::BitVector> const& globalRelevantValues) const;
 
     // If the solver takes posession of the matrix, we store the moved matrix in this member, so it gets deleted
     // when the solver is destructed.
@@ -59,7 +59,7 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
 
     // cached auxiliary data
     mutable std::unique_ptr<storm::storage::StronglyConnectedComponentDecomposition<ValueType>> sortedSccDecomposition;
-    mutable boost::optional<uint64_t> longestSccChainSize;
+    mutable std::optional<uint64_t> longestSccChainSize;
     mutable std::unique_ptr<storm::solver::LinearEquationSolver<ValueType>> sccSolver;
 };
 

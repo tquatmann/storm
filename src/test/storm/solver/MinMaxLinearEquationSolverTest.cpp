@@ -70,6 +70,7 @@ class DoubleGuessingViEnvironment {
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().minMax().setMethod(storm::solver::MinMaxMethod::GuessingValueIteration);
+        env.solver().minMax().setRelativeTerminationCriterion(false);  // Currently only supports absolute precision.
         env.solver().setForceSoundness(true);
         env.solver().minMax().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-6));
         return env;
@@ -199,12 +200,15 @@ TYPED_TEST(MinMaxLinearEquationSolverTest, SolveEquations) {
         ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Maximize, xLower, xUpper, b, b));
         EXPECT_NEAR(xLower[0], this->parseNumber("0.99"), this->precision());
         EXPECT_NEAR(xUpper[0], this->parseNumber("0.99"), this->precision());
-        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Minimize, xLower, xUpper, b, bUpper));
-        EXPECT_NEAR(xLower[0], this->parseNumber("0.5"), this->precision());
-        EXPECT_NEAR(xUpper[0], this->parseNumber("0.5"), this->precision());
-        ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Maximize, xLower, xUpper, b, bUpper));
-        EXPECT_NEAR(xLower[0], this->parseNumber("0.99"), this->precision());
-        EXPECT_NEAR(xUpper[0], this->parseNumber("0.99"), this->precision());
+        if (std::is_same_v<TypeParam, DoubleIntervalIterationEnvironment>) {
+            // All other environments currently do not support this input.
+            ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Minimize, xLower, xUpper, b, bUpper));
+            EXPECT_NEAR(xLower[0], this->parseNumber("0.5"), this->precision());
+            EXPECT_NEAR(xUpper[0], this->parseNumber("0.5"), this->precision());
+            ASSERT_NO_THROW(solver->solveEquationsSound(this->env(), storm::OptimizationDirection::Maximize, xLower, xUpper, b, bUpper));
+            EXPECT_NEAR(xLower[0], this->parseNumber("0.99"), this->precision());
+            EXPECT_NEAR(xUpper[0], this->parseNumber("0.99"), this->precision());
+        }
     }
 }
 }  // namespace

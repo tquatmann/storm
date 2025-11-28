@@ -44,30 +44,26 @@ void TopologicalLinearEquationSolver<ValueType>::setMatrix(storm::storage::Spars
     clearCache();
 }
 
-template<typename ValueType>
-storm::Environment TopologicalLinearEquationSolver<ValueType>::getEnvironmentForUnderlyingSolver(storm::Environment const& env, bool adaptPrecision) const {
+inline storm::Environment getEnvironmentForUnderlyingSolver(storm::Environment const& env) {
     storm::Environment subEnv(env);
     subEnv.solver().setLinearEquationSolverType(env.solver().topological().getUnderlyingEquationSolverType(),
                                                 env.solver().topological().isUnderlyingEquationSolverTypeSetFromDefault());
-    if (adaptPrecision) {
-        STORM_LOG_ASSERT(this->longestSccChainSize, "Did not compute the longest SCC chain size although it is needed.");
-        auto subEnvPrec = subEnv.solver().getPrecisionOfLinearEquationSolver(subEnv.solver().getLinearEquationSolverType());
-        subEnv.solver().setLinearEquationSolverPrecision(
-            static_cast<storm::RationalNumber>(subEnvPrec.first.get() / storm::utility::convertNumber<storm::RationalNumber>(this->longestSccChainSize.get())));
-    }
     return subEnv;
 }
 
 template<typename ValueType>
 bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                                         std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
-    auto& x = xLower;
-    auto& b = bLower;
-    assert(false);
+    STORM_LOG_ASSERT(&xLower != &xUpper || &bLower == &bUpper, "Solving with different lower and upper b-values requires different lower and upper solutions.");
+    STORM_LOG_ASSERT(xLower.size() == this->A->getRowGroupCount(), "Provided x-vector (lower) has invalid size.");
+    STORM_LOG_ASSERT(xUpper.size() == this->A->getRowGroupCount(), "Provided x-vector (upper) has invalid size.");
+    STORM_LOG_ASSERT(bLower.size() == this->A->getRowCount(), "Provided b-vector (lower) has invalid size.");
+    STORM_LOG_ASSERT(bUpper.size() == this->A->getRowCount(), "Provided b-vector (upper) has invalid size.");
+
     // For sound computations we need to increase the precision in each SCC
-    bool needAdaptPrecision =
-        env.solver().isForceSoundness() &&
-        env.solver().getPrecisionOfLinearEquationSolver(env.solver().topological().getUnderlyingEquationSolverType()).first.is_initialized();
+    storm::Environment sccSolverEnvironment = getEnvironmentForUnderlyingSolver(env);
+    auto const [precision, relative] = env.solver().getPrecisionOfLinearEquationSolver(env.solver().topological().getUnderlyingEquationSolverType());
+    bool needAdaptPrecision = env.solver().isForceSoundness() && precision.is_initialized();
 
     if (!this->sortedSccDecomposition || (needAdaptPrecision && !this->longestSccChainSize)) {
         STORM_LOG_TRACE("Creating SCC decomposition.");
@@ -75,18 +71,23 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
         createSortedSccDecomposition(needAdaptPrecision);
         sccSw.stop();
         STORM_LOG_INFO("SCC decomposition computed in "
-                       << sccSw << ". Found " << this->sortedSccDecomposition->size() << " SCC(s) containing a total of " << x.size()
+                       << sccSw << ". Found " << this->sortedSccDecomposition->size() << " SCC(s) containing a total of " << xLower.size()
                        << " states. Average SCC size is "
                        << static_cast<double>(this->getMatrixRowCount()) / static_cast<double>(this->sortedSccDecomposition->size()) << ".");
     }
 
     // We do not need to adapt the precision if all SCCs are trivial (i.e., the system is acyclic)
     needAdaptPrecision = needAdaptPrecision && (this->sortedSccDecomposition->size() != this->getMatrixRowCount());
-
-    storm::Environment sccSolverEnvironment = getEnvironmentForUnderlyingSolver(env, needAdaptPrecision);
-
+    auto setPrecisionDivisor = [&sccSolverEnvironment, &precision](uint64_t divisor) {
+        sccSolverEnvironment.solver().setLinearEquationSolverPrecision(
+            static_cast<storm::RationalNumber>((*precision) / storm::utility::convertNumber<storm::RationalNumber>(divisor)));
+    };
     if (this->longestSccChainSize) {
-        STORM_LOG_INFO("Longest SCC chain size is " << this->longestSccChainSize.get() << ".");
+        STORM_LOG_INFO("Longest SCC chain size is " << this->longestSccChainSize.value() << ".");
+        if (needAdaptPrecision && &xLower == &xUpper) {
+            // Each SCC requires (the same) increased precision eps' so that the overall accumulated error is longestChainSize * eps'
+            setPrecisionDivisor(this->longestSccChainSize.value());
+        }
     }
 
     // Handle the case where there is just one large SCC
@@ -94,9 +95,12 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
     if (this->sortedSccDecomposition->size() == 1) {
         if (auto const& scc = *this->sortedSccDecomposition->begin(); scc.size() == 1) {
             // Catch the trivial case where the whole system is just a single state.
-            returnValue = solveTrivialScc(*scc.begin(), x, b);
+            returnValue = solveTrivialScc(*scc.begin(), xUpper, bUpper);
+            if (&xLower != &xUpper) {
+                returnValue = solveTrivialScc(*scc.begin(), xLower, bLower) && returnValue;
+            }
         } else {
-            returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, x, b);
+            returnValue = solveFullyConnectedEquationSystem(sccSolverEnvironment, xLower, xUpper, bLower, bUpper);
         }
     } else {
         // Solve each SCC individually
@@ -115,20 +119,27 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
                 }
             }
         }
-        storm::storage::BitVector sccAsBitVector(x.size(), false);
+        storm::storage::BitVector sccAsBitVector(xLower.size(), false);
         uint64_t sccIndex = 0;
         storm::utility::ProgressMeasurement progress("states");
-        progress.setMaxCount(x.size());
+        progress.setMaxCount(xLower.size());
         progress.startNewMeasurement(0);
         for (auto const& scc : *this->sortedSccDecomposition) {
             if (scc.size() == 1) {
-                returnValue = solveTrivialScc(*scc.begin(), x, b) && returnValue;
+                returnValue = solveTrivialScc(*scc.begin(), xUpper, bUpper);
+                if (&xLower != &xUpper) {
+                    returnValue = solveTrivialScc(*scc.begin(), xLower, bLower) && returnValue;
+                }
             } else {
                 sccAsBitVector.clear();
                 for (auto const& state : scc) {
                     sccAsBitVector.set(state, true);
                 }
-                returnValue = solveScc(sccSolverEnvironment, sccAsBitVector, x, b, newRelevantValues) && returnValue;
+                if (needAdaptPrecision && &xLower != &xUpper) {
+                    // SCC require increased precision eps' based on their depth
+                    setPrecisionDivisor(this->sortedSccDecomposition->getSccDepth(sccIndex) + 1);
+                }
+                returnValue = solveScc(sccSolverEnvironment, sccAsBitVector, xLower, xUpper, bLower, bUpper, newRelevantValues) && returnValue;
             }
             ++sccIndex;
             progress.updateProgress(sccIndex);
@@ -147,11 +158,11 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
 }
 
 template<typename ValueType>
-void TopologicalLinearEquationSolver<ValueType>::createSortedSccDecomposition(bool needLongestChainSize) const {
+void TopologicalLinearEquationSolver<ValueType>::createSortedSccDecomposition(bool needSccDepths) const {
     // Obtain the scc decomposition
     this->sortedSccDecomposition = std::make_unique<storm::storage::StronglyConnectedComponentDecomposition<ValueType>>(
-        *this->A, storm::storage::StronglyConnectedComponentDecompositionOptions().forceTopologicalSort().computeSccDepths(needLongestChainSize));
-    if (needLongestChainSize) {
+        *this->A, storm::storage::StronglyConnectedComponentDecompositionOptions().forceTopologicalSort().computeSccDepths(needSccDepths));
+    if (needSccDepths) {
         this->longestSccChainSize = this->sortedSccDecomposition->getMaxSccDepth() + 1;
     }
 }
@@ -187,8 +198,10 @@ bool TopologicalLinearEquationSolver<ValueType>::solveTrivialScc(uint64_t const&
 }
 
 template<typename ValueType>
-bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSystem(storm::Environment const& sccSolverEnvironment, std::vector<ValueType>& x,
-                                                                                   std::vector<ValueType> const& b) const {
+bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSystem(storm::Environment const& sccSolverEnvironment,
+                                                                                   std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
+                                                                                   std::vector<ValueType> const& bLower,
+                                                                                   std::vector<ValueType> const& bUpper) const {
     if (!this->sccSolver) {
         this->sccSolver = GeneralLinearEquationSolverFactory<ValueType>().create(sccSolverEnvironment);
         this->sccSolver->setCachingEnabled(true);
@@ -206,12 +219,18 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
         this->sccSolver->setMatrix(*this->A);
     }
 
-    return this->sccSolver->solveEquations(sccSolverEnvironment, x, b);
+    if (&xLower == &xUpper) {
+        STORM_LOG_ASSERT(&bLower == &bUpper, "Provided different b-vectors but same x-vector.");
+        return this->sccSolver->solveEquations(sccSolverEnvironment, xLower, bLower);
+    } else {
+        return this->sccSolver->solveEquationsSound(sccSolverEnvironment, xLower, xUpper, bLower, bUpper);
+    }
 }
 
 template<typename ValueType>
 bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::BitVector const& scc,
-                                                          std::vector<ValueType>& globalX, std::vector<ValueType> const& globalB,
+                                                          std::vector<ValueType>& xLowerGlobal, std::vector<ValueType>& xUpperGlobal,
+                                                          std::vector<ValueType> const& bLowerGlobal, std::vector<ValueType> const& bUpperGlobal,
                                                           std::optional<storm::storage::BitVector> const& globalRelevantValues) const {
     // Set up the SCC solver
     if (!this->sccSolver) {
@@ -230,21 +249,22 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
     }
     this->sccSolver->setMatrix(std::move(sccA));
 
-    // x Vector
-    auto sccX = storm::utility::vector::filterVector(globalX, scc);
-
-    // b Vector
-    std::vector<ValueType> sccB;
-    sccB.reserve(scc.getNumberOfSetBits());
-    for (auto row : scc) {
-        ValueType bi = globalB[row];
-        for (auto const& entry : this->A->getRow(row)) {
-            if (!scc.get(entry.getColumn())) {
-                bi += entry.getValue() * globalX[entry.getColumn()];
+    // x and b vectors
+    auto prepareX = [&scc](std::vector<ValueType> const& globalX) { return storm::utility::vector::filterVector(globalX, scc); };
+    auto prepareB = [&scc, this](std::vector<ValueType> const& globalX, std::vector<ValueType> const& globalB) {
+        std::vector<ValueType> b;
+        b.reserve(scc.getNumberOfSetBits());
+        for (auto row : scc) {
+            ValueType bi = globalB[row];
+            for (auto const& entry : this->A->getRow(row)) {
+                if (!scc.get(entry.getColumn())) {
+                    bi += entry.getValue() * globalX[entry.getColumn()];
+                }
             }
+            b.push_back(std::move(bi));
         }
-        sccB.push_back(std::move(bi));
-    }
+        return b;
+    };
 
     // lower/upper bounds
     if (this->hasLowerBound(storm::solver::AbstractEquationSolver<ValueType>::BoundType::Global)) {
@@ -261,8 +281,23 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
     // std::cout << "rhs is " << storm::utility::vector::toString(sccB) << '\n';
     // std::cout << "x is " << storm::utility::vector::toString(sccX) << '\n';
 
-    bool returnvalue = this->sccSolver->solveEquations(sccSolverEnvironment, sccX, sccB);
-    storm::utility::vector::setVectorValues(globalX, scc, sccX);
+    // Invoke scc solver
+
+    bool returnvalue = false;
+    if (&xLowerGlobal == &xUpperGlobal) {
+        auto sccX = prepareX(xLowerGlobal);
+        auto sccB = prepareB(xLowerGlobal, bLowerGlobal);
+        returnvalue = this->sccSolver->solveEquations(sccSolverEnvironment, sccX, sccB);
+        storm::utility::vector::setVectorValues(xLowerGlobal, scc, sccX);
+    } else {
+        auto sccXLower = prepareX(xLowerGlobal);
+        auto sccXUpper = prepareX(xUpperGlobal);
+        auto sccBLower = prepareB(xLowerGlobal, bLowerGlobal);
+        auto sccBUpper = prepareB(xUpperGlobal, bUpperGlobal);
+        returnvalue = this->sccSolver->solveEquationsSound(sccSolverEnvironment, sccXLower, sccXUpper, sccBLower, sccBUpper);
+        storm::utility::vector::setVectorValues(xLowerGlobal, scc, sccXLower);
+        storm::utility::vector::setVectorValues(xUpperGlobal, scc, sccXUpper);
+    }
     return returnvalue;
 }
 
@@ -280,7 +315,7 @@ LinearEquationSolverRequirements TopologicalLinearEquationSolver<ValueType>::get
 template<typename ValueType>
 void TopologicalLinearEquationSolver<ValueType>::clearCache() const {
     sortedSccDecomposition.reset();
-    longestSccChainSize = boost::none;
+    longestSccChainSize = std::nullopt;
     sccSolver.reset();
     LinearEquationSolver<ValueType>::clearCache();
 }

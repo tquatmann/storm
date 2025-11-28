@@ -275,7 +275,8 @@ class SparseNativeGuessingValueIterationEnvironment {
         env.solver().setForceSoundness(true);
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
         env.solver().native().setMethod(storm::solver::NativeLinearEquationSolverMethod::GuessingValueIteration);
-        env.solver().native().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-6));
+        env.solver().native().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-7));
+        env.solver().native().setRelativeTerminationCriterion(false);  // GVI currently only handles absolute precision
         return env;
     }
 };
