@@ -76,14 +76,12 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSol
 
     // We do not need to adapt the precision if all SCCs are trivial (i.e., the system is acyclic)
     needAdaptPrecision = needAdaptPrecision && (this->sortedSccDecomposition->size() != this->A->getRowGroupCount());
-    auto setPrecisionDivisor = [&sccSolverEnvironment, &precision](uint64_t divisor) {
-        sccSolverEnvironment.solver().minMax().setPrecision(precision / storm::utility::convertNumber<storm::RationalNumber>(divisor));
-    };
     if (this->longestSccChainSize) {
         STORM_LOG_INFO("Longest SCC chain size is " << this->longestSccChainSize.value());
         if (needAdaptPrecision && &xLower == &xUpper) {
             // Each SCC requires (the same) increased precision eps' so that the overall accumulated error is longestChainSize * eps'
-            setPrecisionDivisor(this->longestSccChainSize.value());
+            sccSolverEnvironment.solver().minMax().setPrecision(
+                precision / storm::utility::convertNumber<storm::RationalNumber, uint64_t>(this->longestSccChainSize.value()));
         }
     }
 
@@ -157,7 +155,10 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSol
                 }
                 if (needAdaptPrecision && &xLower != &xUpper) {
                     // SCC require increased precision eps' based on their depth
-                    setPrecisionDivisor(this->sortedSccDecomposition->getSccDepth(sccIndex) + 1);
+                    auto precisionFactor =
+                        storm::utility::convertNumber<storm::RationalNumber, uint64_t>(this->sortedSccDecomposition->getSccDepth(sccIndex) + 1);
+                    precisionFactor /= storm::utility::convertNumber<storm::RationalNumber, uint64_t>(this->longestSccChainSize.value());
+                    sccSolverEnvironment.solver().minMax().setPrecision(precision * precisionFactor);
                 }
                 returnValue =
                     solveScc(sccSolverEnvironment, dir, sccRowGroupsAsBitVector, sccRowsAsBitVector, xLower, xUpper, bLower, bUpper, newRelevantValues) &&

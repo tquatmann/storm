@@ -84,15 +84,12 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
 
     // We do not need to adapt the precision if all SCCs are trivial (i.e., the system is acyclic)
     needAdaptPrecision = needAdaptPrecision && (this->sortedSccDecomposition->size() != this->getMatrixRowCount());
-    auto setPrecisionDivisor = [&sccSolverEnvironment, &precision](uint64_t divisor) {
-        sccSolverEnvironment.solver().setLinearEquationSolverPrecision(
-            static_cast<storm::RationalNumber>((*precision) / storm::utility::convertNumber<storm::RationalNumber>(divisor)));
-    };
     if (this->longestSccChainSize) {
         STORM_LOG_INFO("Longest SCC chain size is " << this->longestSccChainSize.value() << ".");
         if (needAdaptPrecision && &xLower == &xUpper) {
             // Each SCC requires (the same) increased precision eps' so that the overall accumulated error is longestChainSize * eps'
-            setPrecisionDivisor(this->longestSccChainSize.value());
+            sccSolverEnvironment.solver().setLinearEquationSolverPrecision(
+                static_cast<storm::RationalNumber>((*precision) / storm::utility::convertNumber<storm::RationalNumber>(this->longestSccChainSize.value())));
         }
     }
 
@@ -143,7 +140,11 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
                 }
                 if (needAdaptPrecision && &xLower != &xUpper) {
                     // SCC require increased precision eps' based on their depth
-                    setPrecisionDivisor(this->sortedSccDecomposition->getSccDepth(sccIndex) + 1);
+                    // SCC require increased precision eps' based on their depth
+                    auto precisionFactor =
+                        storm::utility::convertNumber<storm::RationalNumber, uint64_t>(this->sortedSccDecomposition->getSccDepth(sccIndex) + 1);
+                    precisionFactor /= storm::utility::convertNumber<storm::RationalNumber, uint64_t>(this->longestSccChainSize.value());
+                    sccSolverEnvironment.solver().setLinearEquationSolverPrecision(static_cast<storm::RationalNumber>(*precision * precisionFactor));
                 }
                 returnValue = solveScc(sccSolverEnvironment, sccAsBitVector, xLower, xUpper, bLower, bUpper, newRelevantValues) && returnValue;
             }
