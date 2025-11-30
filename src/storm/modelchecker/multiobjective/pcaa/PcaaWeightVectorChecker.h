@@ -40,13 +40,25 @@ class PcaaWeightVectorChecker {
     virtual void check(Environment const& env, std::vector<ValueType> const& weightVector) = 0;
 
     /*!
-     * Retrieves the results of the individual objectives at the initial state of the given model.
-     * Note that check(..) has to be called before retrieving results. Otherwise, an exception is thrown.
-     * Also note that there is no guarantee that the under/over approximation is in fact correct
-     * as long as the underlying solution methods are unsound (e.g., standard value iteration).
+     * Retrieves the result of the individual objectives at the initial state of the given model.
+     * @note check(..) has to be called before retrieving results. Otherwise, an exception is thrown.
+     * @note there is no guarantee that the point is achievable if the underlying solution method (e.g. standard value iteration) is unsound.
+     * @note minimizing objectives are *not* negated, i.e. (using v_i for the value of objective i induced by the found scheduler):
+     *       (*) for maximizing objective i, getAchievablePoint[i] <= v_i
+     *       (*) for minimizing objective i, getAchievablePoint[i] >= v_i
      */
-    virtual std::vector<ValueType> getUnderApproximationOfInitialStateResults() const = 0;
-    virtual std::vector<ValueType> getOverApproximationOfInitialStateResults() const = 0;
+    virtual std::vector<ValueType> getAchievablePoint() const = 0;
+
+    /*!
+     * Retrieves the optimal weighted sum of the objective values (or an upper bound thereof).
+     * @note check(..) has to be called before retrieving results. Otherwise, an exception is thrown.
+     * @note there is no guarantee that the upper bound is sound if the underlying solution method (e.g. standard value iteration) is unsound.
+     * @note minimizing objectives are handled by implicitly negating them, i.e. we optimize weightvector*p, where p ranges over all points such that
+     *       there is a strategy that induces value v_i for objective i and
+     *       (*) for maximizing objective i, p[i] = v_i
+     *       (*) for minimizing objective i, p[i] = -v_i
+     */
+    virtual ValueType getOptimalWeightedSum() const = 0;
 
     /*!
      * Sets the precision of this weight vector checker. After calling check() the following will hold:

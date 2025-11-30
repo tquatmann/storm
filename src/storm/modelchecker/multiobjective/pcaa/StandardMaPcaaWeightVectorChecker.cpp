@@ -125,7 +125,7 @@ void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::boundedPhase(Environm
 
     // Get for each occurring (digitized) timeBound the indices of the objectives with that bound.
     TimeBoundMap upperTimeBounds;
-    digitizeTimeBounds(upperTimeBounds, digitizationConstant);
+    digitizeTimeBounds(upperTimeBounds, digitizationConstant, weightVector);
 
     // Check whether there is a cycle in of probabilistic states
     bool acyclic = !storm::utility::graph::hasCycle(PS.toPS);
@@ -330,37 +330,35 @@ void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::digitize(SubModel& /*
 }
 
 template<class SparseMaModelType>
-template<typename VT, typename std::enable_if<storm::NumberTraits<VT>::SupportsExponential, int>::type>
-void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::digitizeTimeBounds(TimeBoundMap& upperTimeBounds, VT const& digitizationConstant) {
-    VT const maxRate = storm::utility::vector::max_if(exitRates, markovianStates);
-    for (auto objIndex : ~this->objectivesWithNoUpperTimeBound) {
-        auto const& obj = this->objectives[objIndex];
-        VT errorTowardsZero = storm::utility::zero<VT>();
-        VT errorAwayFromZero = storm::utility::zero<VT>();
-        if (obj.formula->getSubformula().isCumulativeRewardFormula()) {
-            VT timeBound = obj.formula->getSubformula().asCumulativeRewardFormula().template getBound<VT>();
-            uint_fast64_t digitizedBound = storm::utility::convertNumber<uint_fast64_t>(timeBound / digitizationConstant);
-            auto timeBoundIt = upperTimeBounds.insert(std::make_pair(digitizedBound, storm::storage::BitVector(this->objectives.size(), false))).first;
-            timeBoundIt->second.set(objIndex);
-            VT digitizationError = storm::utility::one<VT>();
-            digitizationError -=
-                std::exp(-maxRate * timeBound) * storm::utility::pow(storm::utility::one<VT>() + maxRate * digitizationConstant, digitizedBound);
-            errorAwayFromZero += digitizationError;
+void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::digitizeTimeBounds(TimeBoundMap& upperTimeBounds, ValueType const& digitizationConstant,
+                                                                              std::vector<ValueType> const& weightVector) {
+    if constexpr (storm::NumberTraits<ValueType>::SupportsExponential) {
+        ValueType const maxRate = storm::utility::vector::max_if(exitRates, markovianStates);
+        for (auto objIndex : ~this->objectivesWithNoUpperTimeBound) {
+            auto const& obj = this->objectives[objIndex];
+            ValueType errorTowardsZero = storm::utility::zero<ValueType>();
+            ValueType errorAwayFromZero = storm::utility::zero<ValueType>();
+            if (obj.formula->getSubformula().isCumulativeRewardFormula()) {
+                ValueType timeBound = obj.formula->getSubformula().asCumulativeRewardFormula().template getBound<ValueType>();
+                uint_fast64_t digitizedBound = storm::utility::convertNumber<uint_fast64_t>(timeBound / digitizationConstant);
+                auto timeBoundIt = upperTimeBounds.insert(std::make_pair(digitizedBound, storm::storage::BitVector(this->objectives.size(), false))).first;
+                timeBoundIt->second.set(objIndex);
+                ValueType digitizationError = storm::utility::one<ValueType>();
+                digitizationError -=
+                    std::exp(-maxRate * timeBound) * storm::utility::pow(storm::utility::one<ValueType>() + maxRate * digitizationConstant, digitizedBound);
+                errorAwayFromZero += digitizationError;
+            }
+            if (storm::solver::maximize(obj.formula->getOptimalityType())) {
+                this->offsetsToAchievablePoint[objIndex] = -errorTowardsZero;
+                this->offsetToWeightedSum += weightVector[objIndex] * errorAwayFromZero;
+            } else {
+                this->offsetsToAchievablePoint[objIndex] = errorAwayFromZero;
+                this->offsetToWeightedSum += weightVector[objIndex] * errorTowardsZero;
+            }
         }
-        if (storm::solver::maximize(obj.formula->getOptimalityType())) {
-            this->offsetsToUnderApproximation[objIndex] = -errorTowardsZero;
-            this->offsetsToOverApproximation[objIndex] = errorAwayFromZero;
-        } else {
-            this->offsetsToUnderApproximation[objIndex] = errorAwayFromZero;
-            this->offsetsToOverApproximation[objIndex] = -errorTowardsZero;
-        }
+    } else {
+        STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Computing bounded probabilities of MAs is unsupported for this value type.");
     }
-}
-
-template<class SparseMaModelType>
-template<typename VT, typename std::enable_if<!storm::NumberTraits<VT>::SupportsExponential, int>::type>
-void StandardMaPcaaWeightVectorChecker<SparseMaModelType>::digitizeTimeBounds(TimeBoundMap& /*upperTimeBounds*/, VT const& /*digitizationConstant*/) {
-    STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Computing bounded probabilities of MAs is unsupported for this value type.");
 }
 
 template<class SparseMaModelType>
@@ -535,8 +533,6 @@ template double StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovA
     std::vector<double> const& direction) const;
 template void StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::digitize<double>(
     StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::SubModel& subModel, double const& digitizationConstant) const;
-template void StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::digitizeTimeBounds<double>(
-    StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::TimeBoundMap& upperTimeBounds, double const& digitizationConstant);
 template std::unique_ptr<typename StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::LinEqSolverData>
 StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::initLinEqSolver<double>(
     Environment const& env, StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>::SubModel const& PS, bool acyclic) const;
@@ -547,9 +543,6 @@ template storm::RationalNumber StandardMaPcaaWeightVectorChecker<storm::models::
 template void StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::digitize<storm::RationalNumber>(
     StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::SubModel& subModel,
     storm::RationalNumber const& digitizationConstant) const;
-template void StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::digitizeTimeBounds<storm::RationalNumber>(
-    StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::TimeBoundMap& upperTimeBounds,
-    storm::RationalNumber const& digitizationConstant);
 template std::unique_ptr<typename StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::LinEqSolverData>
 StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::initLinEqSolver<storm::RationalNumber>(
     Environment const& env, StandardMaPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>::SubModel const& PS,

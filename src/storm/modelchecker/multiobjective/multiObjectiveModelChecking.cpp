@@ -1,13 +1,15 @@
 #include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
 
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/environment/solver/MinMaxSolverEnvironment.h"
+#include "storm/environment/solver/NativeSolverEnvironment.h"
+#include "storm/environment/solver/SolverEnvironment.h"
+#include "storm/environment/solver/TopologicalSolverEnvironment.h"
 #include "storm/modelchecker/multiobjective/MultiObjectivePostprocessing.h"
 #include "storm/modelchecker/multiobjective/constraintbased/SparseCbAchievabilityQuery.h"
 #include "storm/modelchecker/multiobjective/deterministicScheds/DeterministicSchedsAchievabilityChecker.h"
 #include "storm/modelchecker/multiobjective/deterministicScheds/DeterministicSchedsParetoExplorer.h"
-#include "storm/modelchecker/multiobjective/pcaa/SparsePcaaAchievabilityQuery.h"
-#include "storm/modelchecker/multiobjective/pcaa/SparsePcaaParetoQuery.h"
-#include "storm/modelchecker/multiobjective/pcaa/SparsePcaaQuantitativeQuery.h"
+#include "storm/modelchecker/multiobjective/pcaa/SparsePcaaQuery.h"
 #include "storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectivePreprocessor.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
@@ -74,27 +76,31 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
                     }
                 }
             } else {
-                std::unique_ptr<SparsePcaaQuery<SparseModelType, storm::RationalNumber>> query;
-                switch (preprocessorResult.queryType) {
-                    case preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType>::QueryType::Achievability:
-                        query = std::unique_ptr<SparsePcaaQuery<SparseModelType, storm::RationalNumber>>(
-                            new SparsePcaaAchievabilityQuery<SparseModelType, storm::RationalNumber>(preprocessorResult));
-                        break;
-                    case preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType>::QueryType::Quantitative:
-                        query = std::unique_ptr<SparsePcaaQuery<SparseModelType, storm::RationalNumber>>(
-                            new SparsePcaaQuantitativeQuery<SparseModelType, storm::RationalNumber>(preprocessorResult));
-                        break;
-                    case preprocessing::SparseMultiObjectivePreprocessorResult<SparseModelType>::QueryType::Pareto:
-                        query = std::unique_ptr<SparsePcaaQuery<SparseModelType, storm::RationalNumber>>(
-                            new SparsePcaaParetoQuery<SparseModelType, storm::RationalNumber>(preprocessorResult));
-                        break;
-                    default:
-                        STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException,
-                                        "The multi-objective query type is not supported for the selected solution method '" << toString(method) << "'.");
-                        break;
+                SparsePcaaQuery<SparseModelType, storm::RationalNumber> query(preprocessorResult);
+                // Adapt default solution method if not explicitly set
+                auto subEnv = env;
+                if (storm::NumberTraits<typename SparseModelType::ValueType>::IsExact) {
+                    subEnv.solver().setForceExact(true);
+                } else if (subEnv.solver().isForceSoundness()) {
+                    // Topological solving with sound lower/upper bounds works best with interval iteration as II supports the bLower != bUpper case
+                    auto& topoEnv = subEnv.solver().topological();
+                    if (subEnv.solver().minMax().getMethod() == storm::solver::MinMaxMethod::Topological && topoEnv.isUnderlyingMinMaxMethodSetFromDefault()) {
+                        STORM_LOG_INFO("Using interval iteration as the underlying min/max method for multi-objective model checking");
+                        topoEnv.setUnderlyingMinMaxMethod(storm::solver::MinMaxMethod::IntervalIteration);
+                    }
+                    if (subEnv.solver().getLinearEquationSolverType() == storm::solver::EquationSolverType::Topological) {
+                        if (topoEnv.isUnderlyingEquationSolverTypeSetFromDefault()) {
+                            topoEnv.setUnderlyingEquationSolverType(storm::solver::EquationSolverType::Native);
+                        }
+                        if (subEnv.solver().native().isMethodSetFromDefault()) {
+                            STORM_LOG_INFO("Using interval iteration as the underlying linear equation method for multi-objective model checking");
+                            subEnv.solver().native().setMethod(storm::solver::NativeLinearEquationSolverMethod::IntervalIteration);
+                        }
+                        topoEnv.setUnderlyingMinMaxMethod(storm::solver::MinMaxMethod::IntervalIteration);
+                    }
                 }
-
-                result = query->check(env, produceScheduler);
+                // Solve the query
+                result = query.check(subEnv, produceScheduler);
                 if (produceScheduler) {
                     STORM_LOG_THROW(result->isExplicitParetoCurveCheckResult(), storm::exceptions::UnexpectedException,
                                     "Scheduler computation is not implement for the produced result type.");
@@ -104,10 +110,6 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
                         // we have information to post-process schedulers
                         transformObjectiveSchedulersToOriginal(preprocessorResult.memoryIncorporationReverseData.value(), paretoRes.getSchedulers());
                     }
-                }
-
-                if (env.modelchecker().multi().isExportPlotSet()) {
-                    query->exportPlotOfCurrentApproximation(env);
                 }
             }
             break;

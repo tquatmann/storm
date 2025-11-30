@@ -27,6 +27,17 @@ struct Objective {
     // Can be used to guide the underlying solver
     boost::optional<ValueType> lowerResultBound, upperResultBound;
 
+    ValueType clipResult(ValueType const& value) const {
+        ValueType clippedValue = value;
+        if (lowerResultBound) {
+            clippedValue = std::max(clippedValue, *lowerResultBound);
+        }
+        if (upperResultBound) {
+            clippedValue = std::min(clippedValue, *upperResultBound);
+        }
+        return clippedValue;
+    }
+
     void printToStream(std::ostream& out) const {
         out << "Original: " << *originalFormula;
         out << " \t";

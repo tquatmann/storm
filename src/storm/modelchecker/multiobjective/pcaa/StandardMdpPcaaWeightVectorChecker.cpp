@@ -81,8 +81,7 @@ void StandardMdpPcaaWeightVectorChecker<SparseMdpModelType>::boundedPhase(Enviro
             stepBoundIt->second.set(objIndex);
 
             // There is no error for the values of these objectives.
-            this->offsetsToUnderApproximation[objIndex] = storm::utility::zero<ValueType>();
-            this->offsetsToOverApproximation[objIndex] = storm::utility::zero<ValueType>();
+            this->offsetsToAchievablePoint[objIndex] = storm::utility::zero<ValueType>();
         }
     }
 

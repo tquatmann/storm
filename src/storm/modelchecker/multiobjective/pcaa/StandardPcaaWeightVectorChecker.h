@@ -51,14 +51,8 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
      */
     virtual void check(Environment const& env, std::vector<ValueType> const& weightVector) override;
 
-    /*!
-     * Retrieves the results of the individual objectives at the initial state of the given model.
-     * Note that check(..) has to be called before retrieving results. Otherwise, an exception is thrown.
-     * Also note that there is no guarantee that the under/over approximation is in fact correct
-     * as long as the underlying solution methods are unsound (e.g., standard value iteration).
-     */
-    virtual std::vector<ValueType> getUnderApproximationOfInitialStateResults() const override;
-    virtual std::vector<ValueType> getOverApproximationOfInitialStateResults() const override;
+    virtual std::vector<ValueType> getAchievablePoint() const override;
+    ValueType getOptimalWeightedSum() const override;
 
     /*!
      * Retrieves a scheduler that induces the current values
@@ -161,10 +155,10 @@ class StandardPcaaWeightVectorChecker : public PcaaWeightVectorChecker<SparseMod
     std::vector<ValueType> weightedResult;
     // The results for the individual objectives (w.r.t. all states of the model)
     std::vector<std::vector<ValueType>> objectiveResults;
-    // Stores for each objective the distance between the computed result (w.r.t. the initial state) and an over/under approximation for the actual result.
-    // The distances are stored as a (possibly negative) offset that has to be added (+) to to the objectiveResults.
-    std::vector<ValueType> offsetsToUnderApproximation;
-    std::vector<ValueType> offsetsToOverApproximation;
+    // Stores for each objective the offset between the computed result (w.r.t. the initial state) and a known achievable value (handling approximation errors)
+    std::vector<ValueType> offsetsToAchievablePoint;
+    // Stores an offset that is added to the weighted sum in order to obtain a sound upper bound (handling approximation errors)
+    ValueType offsetToWeightedSum;
     // The scheduler choices that optimize the weighted rewards of undounded objectives.
     std::vector<uint64_t> optimalChoices;
 
