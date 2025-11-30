@@ -24,6 +24,7 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
 
     virtual LinearEquationSolverProblemFormat getEquationProblemFormat(storm::Environment const& env) const override;
     virtual LinearEquationSolverRequirements getRequirements(Environment const& env) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
     virtual void clearCache() const override;
 
@@ -34,7 +35,7 @@ class TopologicalLinearEquationSolver : public LinearEquationSolver<ValueType> {
    private:
     virtual uint64_t getMatrixRowCount() const override;
     virtual uint64_t getMatrixColumnCount() const override;
-    
+
     // Creates an SCC decomposition and sorts the SCCs according to a topological sort.
     void createSortedSccDecomposition(bool needSccDepths) const;
 

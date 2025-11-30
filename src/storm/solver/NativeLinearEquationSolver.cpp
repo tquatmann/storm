@@ -718,6 +718,19 @@ NativeLinearEquationSolverMethod NativeLinearEquationSolver<ValueType>::getMetho
 }
 
 template<typename ValueType>
+bool NativeLinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const {
+    auto const method = getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact());
+    using enum NativeLinearEquationSolverMethod;
+    if (method == IntervalIteration) {
+        return true;
+    }
+    if (!withDifferentBVectors) {
+        return method == OptimisticValueIteration || method == GuessingValueIteration || method == RationalSearch || method == SoundValueIteration;
+    }
+    return false;
+}
+
+template<typename ValueType>
 bool NativeLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                                    std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
     STORM_LOG_ASSERT(&xLower != &xUpper || &bLower == &bUpper, "solving with different lower and upper b-values requires different lower and upper solutions.");

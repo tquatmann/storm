@@ -30,6 +30,7 @@ class AcyclicLinearEquationSolver : public LinearEquationSolver<ValueType> {
 
     virtual LinearEquationSolverProblemFormat getEquationProblemFormat(storm::Environment const& env) const override;
     virtual LinearEquationSolverRequirements getRequirements(Environment const& env) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
    protected:
     virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,

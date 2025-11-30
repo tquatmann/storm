@@ -27,6 +27,7 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
     virtual MinMaxLinearEquationSolverRequirements getRequirements(Environment const& env,
                                                                    boost::optional<storm::solver::OptimizationDirection> const& direction = boost::none,
                                                                    bool const& hasInitialScheduler = false) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
    protected:
     virtual bool internalSolveEquations(storm::Environment const& env, OptimizationDirection d, std::vector<SolutionType>& xLower,

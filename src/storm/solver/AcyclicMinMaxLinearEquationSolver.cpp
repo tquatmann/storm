@@ -25,6 +25,11 @@ AcyclicMinMaxLinearEquationSolver<ValueType>::AcyclicMinMaxLinearEquationSolver(
 }
 
 template<typename ValueType>
+bool AcyclicMinMaxLinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const&, bool) const {
+    return true;
+}
+
+template<typename ValueType>
 bool AcyclicMinMaxLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& xLower,
                                                                           std::vector<ValueType>& xUpper, std::vector<ValueType> const& bLower,
                                                                           std::vector<ValueType> const& bUpper) const {

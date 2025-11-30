@@ -52,6 +52,12 @@ inline storm::Environment getEnvironmentForUnderlyingSolver(storm::Environment c
 }
 
 template<typename ValueType>
+bool TopologicalLinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const& env, bool) const {
+    auto solverEnv = getEnvironmentForUnderlyingSolver(env);
+    return GeneralLinearEquationSolverFactory<ValueType>().create(solverEnv)->supportsSolveEquationsSoundBounds(solverEnv, true);
+}
+
+template<typename ValueType>
 bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                                         std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
     STORM_LOG_ASSERT(&xLower != &xUpper || &bLower == &bUpper, "Solving with different lower and upper b-values requires different lower and upper solutions.");

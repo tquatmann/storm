@@ -29,6 +29,7 @@ class AcyclicMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationSol
     virtual MinMaxLinearEquationSolverRequirements getRequirements(Environment const& env,
                                                                    boost::optional<storm::solver::OptimizationDirection> const& direction = boost::none,
                                                                    bool const& hasInitialScheduler = false) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
    protected:
     virtual bool internalSolveEquations(Environment const& env, OptimizationDirection d, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,

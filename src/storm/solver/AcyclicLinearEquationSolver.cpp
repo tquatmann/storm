@@ -123,6 +123,11 @@ LinearEquationSolverRequirements AcyclicLinearEquationSolver<ValueType>::getRequ
 }
 
 template<typename ValueType>
+bool AcyclicLinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const&, bool) const {
+    return true;
+}
+
+template<typename ValueType>
 void AcyclicLinearEquationSolver<ValueType>::clearCache() const {
     multiplier.reset();
     orderedMatrix = boost::none;

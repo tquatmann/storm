@@ -41,6 +41,11 @@ bool LinearEquationSolver<ValueType>::solveEquationsSound(Environment const& env
 }
 
 template<typename ValueType>
+bool LinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const&, bool) const {
+    return false;
+}
+
+template<typename ValueType>
 LinearEquationSolverRequirements LinearEquationSolver<ValueType>::getRequirements(Environment const&) const {
     return LinearEquationSolverRequirements();
 }

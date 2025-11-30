@@ -30,6 +30,7 @@ class IterativeMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationS
 
     virtual bool internalSolveEquations(Environment const& env, OptimizationDirection dir, std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
                                         std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
     virtual void clearCache() const override;
 

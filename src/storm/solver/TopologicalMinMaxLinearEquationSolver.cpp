@@ -41,6 +41,12 @@ storm::Environment getEnvironmentForUnderlyingMinMaxSolver(storm::Environment co
 }
 
 template<typename ValueType, typename SolutionType>
+bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::supportsSolveEquationsSoundBounds(Environment const& env, bool) const {
+    auto solverEnv = getEnvironmentForUnderlyingMinMaxSolver(env);
+    return GeneralMinMaxLinearEquationSolverFactory<ValueType>().create(solverEnv)->supportsSolveEquationsSoundBounds(solverEnv, true);
+}
+
+template<typename ValueType, typename SolutionType>
 bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSolveEquations(Environment const& env, OptimizationDirection dir,
                                                                                             std::vector<SolutionType>& xLower,
                                                                                             std::vector<SolutionType>& xUpper,

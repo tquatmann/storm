@@ -69,6 +69,11 @@ EigenLinearEquationSolverMethod EigenLinearEquationSolver<ValueType>::getMethod(
 }
 
 template<typename ValueType>
+bool EigenLinearEquationSolver<ValueType>::supportsSolveEquationsSoundBounds(Environment const& env, bool) const {
+    return getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact()) == EigenLinearEquationSolverMethod::SparseLU;
+}
+
+template<typename ValueType>
 bool EigenLinearEquationSolver<ValueType>::internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,
                                                                   std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const {
     // Determine the method and whether it is exact (based on environment and ValueType)

@@ -88,6 +88,20 @@ MinMaxMethod IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::getMe
 }
 
 template<typename ValueType, typename SolutionType>
+bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const {
+    auto const method = getMethod(env, storm::NumberTraits<ValueType>::IsExact || env.solver().isForceExact());
+    using enum MinMaxMethod;
+    if (method == IntervalIteration) {
+        return true;
+    }
+    if (!withDifferentBVectors) {
+        return method == OptimisticValueIteration || method == GuessingValueIteration || method == PolicyIteration || method == RationalSearch ||
+               method == SoundValueIteration || method == ViToPi;
+    }
+    return false;
+}
+
+template<typename ValueType, typename SolutionType>
 bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSolveEquations(Environment const& env, OptimizationDirection dir,
                                                                                           std::vector<SolutionType>& xLower, std::vector<SolutionType>& xUpper,
                                                                                           std::vector<ValueType> const& bLower,

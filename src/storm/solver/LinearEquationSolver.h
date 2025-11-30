@@ -64,6 +64,13 @@ class LinearEquationSolver : public AbstractEquationSolver<ValueType> {
                              std::vector<ValueType> const& bUpper) const;
 
     /*!
+     * Retrieves whether this solver (using the provided environment supports solving equations with sound (lower and upper) bounds, i.e.,
+     * whether calling `solveEquationsSound` is valid.
+     * @param withDifferentRhs if true, we expect a call with different b-vectors. If false, we expect a call where bLower == bUpper.
+     */
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const;
+
+    /*!
      * Retrieves the format in which this solver expects to solve equations. If the solver expects the equation
      * system format, it solves Ax = b. If it it expects a fixed point format, it solves Ax + b = x.
      */

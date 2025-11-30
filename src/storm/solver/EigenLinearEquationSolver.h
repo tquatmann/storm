@@ -21,6 +21,7 @@ class EigenLinearEquationSolver : public LinearEquationSolver<ValueType> {
     virtual void setMatrix(storm::storage::SparseMatrix<ValueType>&& A) override;
 
     virtual LinearEquationSolverProblemFormat getEquationProblemFormat(Environment const& env) const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
    protected:
     virtual bool internalSolveEquations(Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,

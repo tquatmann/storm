@@ -35,6 +35,7 @@ class NativeLinearEquationSolver : public LinearEquationSolver<ValueType> {
     virtual LinearEquationSolverRequirements getRequirements(Environment const& env) const override;
 
     virtual void clearCache() const override;
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const override;
 
    protected:
     virtual bool internalSolveEquations(storm::Environment const& env, std::vector<ValueType>& xLower, std::vector<ValueType>& xUpper,

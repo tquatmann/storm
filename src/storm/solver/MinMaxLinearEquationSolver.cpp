@@ -62,6 +62,11 @@ bool MinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquationsSound(En
 }
 
 template<typename ValueType, typename SolutionType>
+bool MinMaxLinearEquationSolver<ValueType, SolutionType>::supportsSolveEquationsSoundBounds(Environment const&, bool) const {
+    return false;
+}
+
+template<typename ValueType, typename SolutionType>
 void MinMaxLinearEquationSolver<ValueType, SolutionType>::setOptimizationDirection(OptimizationDirection d) {
     direction = convert(d);
 }

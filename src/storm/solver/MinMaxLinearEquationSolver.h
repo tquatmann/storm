@@ -81,6 +81,13 @@ class MinMaxLinearEquationSolver : public AbstractEquationSolver<SolutionType> {
                              std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
 
     /*!
+     * Retrieves whether this solver (using the provided environment supports solving equations with sound (lower and upper) bounds, i.e.,
+     * whether calling `solveEquationsSound` is valid.
+     * @param withDifferentRhs if true, we expect a call with different b-vectors. If false, we expect a call where bLower == bUpper.
+     */
+    virtual bool supportsSolveEquationsSoundBounds(Environment const& env, bool withDifferentBVectors) const;
+
+    /*!
      * Sets an optimization direction to use for calls to methods that do not explicitly provide one.
      */
     void setOptimizationDirection(OptimizationDirection direction);
