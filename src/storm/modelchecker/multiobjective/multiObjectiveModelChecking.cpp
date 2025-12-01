@@ -45,13 +45,8 @@ std::unique_ptr<CheckResult> performMultiObjectiveModelChecking(Environment cons
     // Preprocess the model
     auto preprocessorResult = preprocessing::SparseMultiObjectivePreprocessor<SparseModelType>::preprocess(env, model, formula, produceScheduler);
     swPreprocessing.stop();
-    if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
-        STORM_PRINT_AND_LOG("Preprocessing done in " << swPreprocessing << " seconds.\n"
-                                                     << " Result: " << preprocessorResult << '\n');
-    } else {
-        STORM_LOG_INFO("Preprocessing done in " << swPreprocessing << " seconds.\n"
-                                                << " Result: " << preprocessorResult << '\n');
-    }
+    STORM_LOG_INFO("Preprocessing done in " << swPreprocessing << " seconds.\n"
+                                            << " Result: " << preprocessorResult << '\n');
 
     // Invoke the analysis
     storm::utility::Stopwatch swAnalysis(true);

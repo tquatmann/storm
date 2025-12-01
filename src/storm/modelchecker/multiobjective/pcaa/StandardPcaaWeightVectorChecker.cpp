@@ -515,9 +515,8 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::unboundedWeightedPhase(En
     offsetToWeightedSum = storm::utility::zero<ValueType>();
     if (!useSoundLowerUpperBoundSolving && !solverEnv.solver().isForceExact()) {
         // Add offset to ensure that we have an upper bound on the true optimal value
-        for (auto objIndex : this->objectivesWithNoUpperTimeBound) {
-            offsetToWeightedSum += adjustedPrecision;
-        }
+        offsetToWeightedSum +=
+            adjustedPrecision * storm::utility::convertNumber<ValueType, uint64_t>(this->objectivesWithNoUpperTimeBound.getNumberOfSetBits());
     }
 }
 

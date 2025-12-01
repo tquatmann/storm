@@ -51,7 +51,7 @@ std::unique_ptr<CheckResult> SparsePcaaQuery<SparseModelType, GeometryValueType>
                                                                                                               << ") has been reached.");
             return true;
         } else if (storm::utility::resources::isTerminate()) {
-            STORM_LOG_WARN("Aborting multi-objective computation as termination has been requested.");
+            STORM_LOG_WARN("Aborting multi-objective computation after " << numRefinementSteps << " refinement steps as termination has been requested.");
             return true;
         }
         return false;
@@ -70,6 +70,10 @@ std::unique_ptr<CheckResult> SparsePcaaQuery<SparseModelType, GeometryValueType>
         if (answerOrWeights.index() == 0) {
             if (env.modelchecker().multi().isExportPlotSet()) {
                 exportPlotOfCurrentApproximation(env, refinementSteps, overApproximation);
+            }
+            if (storm::settings::getModule<storm::settings::modules::CoreSettings>().isShowStatisticsSet()) {
+                STORM_PRINT_AND_LOG("Multi-objective Pareto Curve Approximation algorithm terminated after " << refinementSteps.size()
+                                                                                                             << " refinement steps.\n");
             }
             return std::move(std::get<0>(answerOrWeights));
         };
@@ -101,7 +105,8 @@ std::unique_ptr<CheckResult> SparsePcaaQuery<SparseModelType, GeometryValueType>
         refinementSteps.push_back(
             RefinementStep{.weightVector{std::move(weightVector)},
                            .achievablePoint{storm::utility::vector::convertNumericVector<GeometryValueType>(weightVectorChecker->getAchievablePoint())},
-                           .optimalWeightedSum{optimalWeightedSum}});
+                           .optimalWeightedSum{optimalWeightedSum},
+                           .scheduler{}});
         auto& currentStep = refinementSteps.back();
         STORM_LOG_INFO(
             "WSO found point " << storm::utility::vector::toString(storm::utility::vector::convertNumericVector<double>(currentStep.achievablePoint)));
@@ -155,7 +160,7 @@ typename SparsePcaaQuery<SparseModelType, GeometryValueType>::AnswerOrWeights Sp
     }
     storm::storage::BitVector objectivesWithThreshold(objectives.size(), false);
     std::vector<GeometryValueType> thresholds(objectives.size(), storm::utility::zero<GeometryValueType>());
-    for (auto objIndex = 0; objIndex < objectives.size(); ++objIndex) {
+    for (uint64_t objIndex = 0; objIndex < objectives.size(); ++objIndex) {
         auto const& formula = *objectives[objIndex].formula;
         if (formula.hasBound()) {
             objectivesWithThreshold.set(objIndex);
