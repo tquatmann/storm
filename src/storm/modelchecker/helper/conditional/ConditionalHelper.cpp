@@ -141,14 +141,16 @@ std::unique_ptr<storm::storage::Scheduler<ValueType>> computeReachabilityProbabi
                                                                                        storm::storage::BitVector const& initialStates,
                                                                                        storm::storage::BitVector const& allowedStates,
                                                                                        storm::storage::BitVector const& targetStates) {
+    storm::storage::Scheduler<ValueType> scheduler(transitionMatrix.getRowGroupCount());
+
     if (initialStates.empty()) {  // nothing to do
-        return nullptr;
+        return std::make_unique<storm::storage::Scheduler<ValueType>>(std::move(scheduler));
     }
     auto const reachableStates = storm::utility::graph::getReachableStates(transitionMatrix, initialStates, allowedStates, targetStates);
     auto const subTargets = targetStates % reachableStates;
     // Catch the case where no target is reachable from an initial state. In this case, there is nothing to do since all probabilities are zero.
     if (subTargets.empty()) {
-        return nullptr;
+        return std::make_unique<storm::storage::Scheduler<ValueType>>(std::move(scheduler));
     }
     auto const subInits = initialStates % reachableStates;
     auto const submatrix = transitionMatrix.getSubmatrix(true, reachableStates, reachableStates);
@@ -165,7 +167,6 @@ std::unique_ptr<storm::storage::Scheduler<ValueType>> computeReachabilityProbabi
         ++origInitIt;
     }
 
-    storm::storage::Scheduler<ValueType> scheduler(transitionMatrix.getRowGroupCount());
     auto submatrixIdx = 0;
     for (auto state : reachableStates) {
         scheduler.setChoice(subResult.scheduler->getChoice(submatrixIdx), state);
@@ -247,9 +248,9 @@ struct NormalFormData {
     // TerminalStates is a superset of conditionStates and dom(nonZeroTargetStateValues).
     // For a terminalState that is not a conditionState, it is impossible to (reach the condition and not reach the target).
 
-    std::vector<uint64_t> const
+    std::unique_ptr<storm::storage::Scheduler<ValueType>>
         schedulerChoicesForReachingTargetStates;  // Scheduler choices for reaching target states, used for constructing the resulting scheduler
-    std::vector<uint64_t> const
+    std::unique_ptr<storm::storage::Scheduler<ValueType>>
         schedulerChoicesForReachingConditionStates;  // Scheduler choices for reaching condition states, used for constructing the resulting scheduler
 
     ValueType getTargetValue(uint64_t state) const {
@@ -281,26 +282,10 @@ NormalFormData<ValueType> obtainNormalForm(Environment const& env, storm::solver
     auto const targetAndNotCondFailStates = extendedTargetStates & ~(extendedConditionStates | universalObservationFailureStates);
 
     // compute schedulers for reaching target and condition states from target and condition states
-    std::vector<uint64_t> schedulerChoicesForReachingTargetStates;
-    std::vector<uint64_t> schedulerChoicesForReachingConditionStates;
-
-    auto schedulerForTargetStates =
+    std::unique_ptr<storm::storage::Scheduler<ValueType>> schedulerChoicesForReachingTargetStates =
         computeReachabilityProbabilities(env, nonZeroTargetStateValues, dir, transitionMatrix, extendedConditionStates, allStates, extendedTargetStates);
-    schedulerChoicesForReachingTargetStates = std::vector<uint64_t>(transitionMatrix.getRowGroupCount(), 0);
-    if (schedulerForTargetStates) {
-        for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
-            schedulerChoicesForReachingTargetStates[state] = schedulerForTargetStates->getChoice(state).getDeterministicChoice();
-        }
-    }
-
-    auto schedulerForConditionStates =
+    std::unique_ptr<storm::storage::Scheduler<ValueType>> schedulerChoicesForReachingConditionStates =
         computeReachabilityProbabilities(env, nonZeroTargetStateValues, dir, transitionMatrix, targetAndNotCondFailStates, allStates, extendedConditionStates);
-    schedulerChoicesForReachingConditionStates = std::vector<uint64_t>(transitionMatrix.getRowGroupCount(), 0);
-    if (schedulerForConditionStates) {
-        for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
-            schedulerChoicesForReachingConditionStates[state] = schedulerForConditionStates->getChoice(state).getDeterministicChoice();
-        }
-    }
 
     // get states where the optimal policy reaches the condition with positive probability
     auto terminalStatesThatReachCondition = extendedConditionStates;
@@ -976,8 +961,8 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
                         "Bisection method does not adequately handle propagation of errors. Result is not necessarily sound.");
     SolutionType const precision = [&env, boundOption]() {
         if (storm::NumberTraits<SolutionType>::IsExact || env.solver().isForceExact()) {
-            STORM_LOG_WARN_COND(storm::NumberTraits<SolutionType>::IsExact && boundOption == BisectionMethodBounds::Advanced,
-                                "Selected bisection method with exact precision in a setting that might not terminate.");
+            // STORM_LOG_WARN_COND(storm::NumberTraits<SolutionType>::IsExact && boundOption == BisectionMethodBounds::Advanced,
+            //                     "Selected bisection method with exact precision in a setting that might not terminate.");
             return storm::utility::zero<SolutionType>();
         } else {
             return storm::utility::convertNumber<SolutionType>(env.solver().minMax().getPrecision());
@@ -1350,17 +1335,25 @@ std::unique_ptr<CheckResult> computeConditionalProbabilities(Environment const& 
         for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
             // set choices for memory 0
             if (conditionStates.get(state)) {
-                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingTargetStates[state], state, 0);
+                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingTargetStates->getChoice(state), state, 0);
             } else if (targetStates.get(state)) {
-                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingConditionStates[state], state, 0);
+                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingConditionStates->getChoice(state), state, 0);
             } else {
                 finalScheduler->setChoice(scheduler->getChoice(state), state, 0);
             }
 
             // set choices for memory 1, these are the choices after condition was reached
-            finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingTargetStates[state], state, 1);
+            if (normalFormData.schedulerChoicesForReachingTargetStates->isChoiceSelected(state)) {
+                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingTargetStates->getChoice(state), state, 1);
+            } else {
+                finalScheduler->setChoice(0, state, 1);  // arbitrary choice if no choice was recorded, TODO: this could be problematic for paynt?
+            }
             // set choices for memory 2, these are the choices after target was reached
-            finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingConditionStates[state], state, 2);
+            if (normalFormData.schedulerChoicesForReachingConditionStates->isChoiceSelected(state)) {
+                finalScheduler->setChoice(normalFormData.schedulerChoicesForReachingConditionStates->getChoice(state), state, 2);
+            } else {
+                finalScheduler->setChoice(0, state, 2);  // arbitrary choice if no choice was recorded, TODO: this could be problematic for paynt?
+            }
         }
 
         result->asExplicitQuantitativeCheckResult<SolutionType>().setScheduler(std::move(finalScheduler));
