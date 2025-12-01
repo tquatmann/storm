@@ -42,8 +42,13 @@ RewardBoundedMdpPcaaWeightVectorChecker<SparseMdpModelType>::RewardBoundedMdpPca
 
     // Update the objective bounds with what the reward unfolding can compute
     for (uint64_t objIndex = 0; objIndex < this->objectives.size(); ++objIndex) {
-        this->objectives[objIndex].lowerResultBound = rewardUnfolding.getLowerObjectiveBound(objIndex);
-        this->objectives[objIndex].upperResultBound = rewardUnfolding.getUpperObjectiveBound(objIndex);
+        auto& obj = this->objectives[objIndex];
+        obj.lowerResultBound = rewardUnfolding.getLowerObjectiveBound(objIndex);
+        obj.upperResultBound = rewardUnfolding.getUpperObjectiveBound(objIndex);
+        if (!obj.upperResultBound) {
+            preprocessing::SparseMultiObjectiveRewardAnalysis<SparseMdpModelType>::computeUpperResultBound(
+                *preprocessorResult.preprocessedModel, obj, preprocessorResult.preprocessedModel->getBackwardTransitions());
+        }
     }
 
     numCheckedEpochs = 0;
