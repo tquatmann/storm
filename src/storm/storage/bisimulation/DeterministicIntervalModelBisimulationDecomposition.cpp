@@ -181,8 +181,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::postProcess
 
 template<typename ModelType>
 void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
-    storm::storage::Partition::Block splitterBlock,
-    std::deque<typename bisimulation::Partition::Block>& splitterQueue,
+    storm::storage::Partition::Block splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
     bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
     // std::cout << "Performing interval bisimulation!" << std::endl;
@@ -202,7 +201,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
                 probabilitiesToCurrentSplitter[predecessorState] += intervalTransitionProbability;
             } else {
                 probabilitiesToCurrentSplitter[predecessorState] = intervalTransitionProbability;
-                probabilitiesToOtherBlocks[predecessorState] = storm::utility::zero<ValueType>(); // init I(s, \Pi \setminus C)
+                probabilitiesToOtherBlocks[predecessorState] = storm::utility::zero<ValueType>();  // init I(s, \Pi \setminus C)
                 touchedProbabilitiesToSplitter.set(predecessorState, true);
             }
 
@@ -217,7 +216,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
             auto targetState = entry.getColumn();
 
             if (!this->partition.contains(splitterBlock, targetState)) {
-                probabilitiesToOtherBlocks[predecessorState] += entry.getValue(); // interval addition
+                probabilitiesToOtherBlocks[predecessorState] += entry.getValue();  // interval addition
             }
         }
     }
@@ -225,8 +224,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not
         auto [noPredecessors, predecessors] =
-            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this]
-                                                  (auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
+            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this](auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
 
         if (noPredecessors.size() > 0) {
             if (!enqueuedSplitterBlocks.contains(noPredecessors)) {
@@ -236,23 +234,22 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
         }
 
         if (predecessors.size() > 0) {
-            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this]
-                                                              (auto const& a, auto const& b) {
-                                                                  if (!touchedProbabilitiesToSplitter.get(a) || !touchedProbabilitiesToSplitter.get(b)) {
-                                                                      std::cout << "Comparing states that were not touched: " << a << ", " << b << std::endl;
-                                                                      return false;
-                                                                  }
+            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this](auto const& a, auto const& b) {
+                if (!touchedProbabilitiesToSplitter.get(a) || !touchedProbabilitiesToSplitter.get(b)) {
+                    std::cout << "Comparing states that were not touched: " << a << ", " << b << std::endl;
+                    return false;
+                }
 
-                                                                  auto projectedIntervalOfStateA = computeIntervalProjection(probabilitiesToCurrentSplitter[a], probabilitiesToOtherBlocks[a]);
-                                                                  auto projectedIntervalOfStateB = computeIntervalProjection(probabilitiesToCurrentSplitter[b], probabilitiesToOtherBlocks[b]);
+                auto projectedIntervalOfStateA = computeIntervalProjection(probabilitiesToCurrentSplitter[a], probabilitiesToOtherBlocks[a]);
+                auto projectedIntervalOfStateB = computeIntervalProjection(probabilitiesToCurrentSplitter[b], probabilitiesToOtherBlocks[b]);
 
-                                                                  // TODO: [0.1, 0.2] < [0.1, 0.3] returns false!
-                                                                  // auto result = projectedIntervalOfStateA < projectedIntervalOfStateB;
+                // TODO: [0.1, 0.2] < [0.1, 0.3] returns false!
+                // auto result = projectedIntervalOfStateA < projectedIntervalOfStateB;
 
-                                                                  return projectedIntervalOfStateA.lower() < projectedIntervalOfStateB.lower() ||
-                                                                         (projectedIntervalOfStateA.lower() == projectedIntervalOfStateB.lower() &&
-                                                                          projectedIntervalOfStateA.upper() < projectedIntervalOfStateB.upper());
-                                                              });
+                return projectedIntervalOfStateA.lower() < projectedIntervalOfStateB.lower() ||
+                       (projectedIntervalOfStateA.lower() == projectedIntervalOfStateB.lower() &&
+                        projectedIntervalOfStateA.upper() < projectedIntervalOfStateB.upper());
+            });
 
             // Add all blocks that were split to splitter queue
             if (wasSplit) {
@@ -270,9 +267,9 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
     touchedProbabilitiesToSplitter.clear();
 }
 
-
 template<typename ModelType>
-ModelType::ValueType DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks) {
+ModelType::ValueType DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeIntervalProjection(ValueType intervalToSplitter,
+                                                                                                               ValueType intervalToOtherBlocks) {
     // Normalize intervals
     carl::Interval normalizedIntervalToSplitter(std::min(1.0, intervalToSplitter.lower()), std::min(1.0, intervalToSplitter.upper()));
     carl::Interval normalizedIntervalToOtherBlocks(std::min(1.0, intervalToOtherBlocks.lower()), std::min(1.0, intervalToOtherBlocks.upper()));
@@ -288,15 +285,14 @@ bool DeterministicIntervalModelBisimulationDecomposition<ModelType>::possiblyNee
 }
 
 template<typename ModelType>
-void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block,
-                                                                                                        std::deque<typename bisimulation::Partition::Block>& blocksQueue,
-                                                                                                        bisimulation::Partition::BlockSet& enqueuedBlocks,
-                                                                                                        double epsilon) {
+void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
+    std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
+    double epsilon) {
     const std::size_t numberOfStates = this->model.getTransitionMatrix().getRowCount();
     const std::size_t numberOfBlocks = this->partition.getNumberOfBlocks();
 
-    auto min1 = [](double x){ return x <= 1.0 ? x : 1.0; };
-    auto clamp01 = [](double x){ return x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x); };
+    auto min1 = [](double x) { return x <= 1.0 ? x : 1.0; };
+    auto clamp01 = [](double x) { return x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x); };
 
     // compute intervals from states to blocks and cache them for comparison later on
     std::vector<double> totalInf(numberOfStates, 0.0);
@@ -313,9 +309,9 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
             auto l = static_cast<double>(e.getValue().lower());
             auto u = static_cast<double>(e.getValue().upper());
 
-            auto& p = acc[blockRepresentative];          // default initializes to {0,0} on first access
-            p.first  += l;               // sumInfC
-            p.second += u;               // sumSupC
+            auto& p = acc[blockRepresentative];  // default initializes to {0,0} on first access
+            p.first += l;                        // sumInfC
+            p.second += u;                       // sumSupC
 
             totalInf[s] += l;
             totalSup[s] += u;
@@ -323,7 +319,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
     }
 
     // TODO: only recompute feasible interval to block C, if C was split? Is this sufficient?
-    auto feasibleIntervalToBlock = [&](std::size_t s, storm::storage::sparse::state_type blockRepresentative) -> std::pair<double,double> {
+    auto feasibleIntervalToBlock = [&](std::size_t s, storm::storage::sparse::state_type blockRepresentative) -> std::pair<double, double> {
         auto it = intervalsToBlock[s].find(blockRepresentative);
         double sumInfC = (it == intervalsToBlock[s].end()) ? 0.0 : it->second.first;
         double sumSupC = (it == intervalsToBlock[s].end()) ? 0.0 : it->second.second;
@@ -331,19 +327,30 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
         double compInf = totalInf[s] - sumInfC;
         double compSup = totalSup[s] - sumSupC;
 
-        double low  = std::max(sumInfC,  1.0 - compSup);
-        double high = std::min(sumSupC,  1.0 - compInf);
+        double low = std::max(sumInfC, 1.0 - compSup);
+        double high = std::min(sumSupC, 1.0 - compInf);
 
         // final clamp
-        if (low < 0.0)  low  = 0.0;
-        if (high > 1.0) high = 1.0;
-        if (high < low) high = low; // numeric guard
+        if (low < 0.0)
+            low = 0.0;
+        if (high > 1.0)
+            high = 1.0;
+        if (high < low)
+            high = low;  // numeric guard
 
         return {low, high};
     };
 
-    auto ivHausdorff = [](std::pair<double,double> const& A, std::pair<double,double> const& B){
+    auto ivHausdorff = [](std::pair<double, double> const& A, std::pair<double, double> const& B) {
         return std::max(std::abs(A.first - B.first), std::abs(A.second - B.second));
+    };
+
+    auto ivMax = [](std::pair<double, double> const& A, std::pair<double, double> const& B) {
+        return std::max(std::abs(A.first - B.second), std::abs(A.second - B.first));
+    };
+
+    auto ivBounds = [](std::pair<double, double> const& A, std::pair<double, double> const& B) {
+        return std::abs(A.first - B.first) + std::abs(A.second - B.second);
     };
 
     // TODO: state distance is symmetric, cache values and reuse them
@@ -353,9 +360,12 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
         this->partition.forEachBlock([&](auto const& C) {
             auto Is = feasibleIntervalToBlock(s, C.front());
             auto It = feasibleIntervalToBlock(t, C.front());
-            if (Is.first > Is.second || It.first > It.second) { infeasible = true;
-                std::cout << "Infeasible" << std::endl; return; }
-            sum += ivHausdorff(Is, It);
+            if (Is.first > Is.second || It.first > It.second) {
+                infeasible = true;
+                std::cout << "Infeasible" << std::endl;
+                return;
+            }
+            sum += ivBounds(Is, It);
         });
 
         // if (sum > storm::utility::zero<ValueType>()) {
@@ -385,30 +395,33 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
                 break;
             }
         }
-        if (!placed) groups.push_back({s});
+        if (!placed)
+            groups.push_back({s});
     }
 
-    if (groups.size() <= 1) return; // nothing to split
+    if (groups.size() <= 1)
+        return;  // nothing to split
 
-    bool wasSplit = this->partition.splitBlockByOrder(block,
-                                                      [&](auto a, auto b) {
-                                                          int ga = -1, gb = -1;
-                                                          for (int i = 0; i < (int) groups.size(); ++i) {
-                                                              if (std::find(groups[i].begin(), groups[i].end(), a) != groups[i].end()) ga = i;
-                                                              if (std::find(groups[i].begin(), groups[i].end(), b) != groups[i].end()) gb = i;
-                                                          }
-                                                          return (ga < gb);
-                                                      });
+    bool wasSplit = this->partition.splitBlockByOrder(block, [&](auto a, auto b) {
+        int ga = -1, gb = -1;
+        for (int i = 0; i < (int)groups.size(); ++i) {
+            if (std::find(groups[i].begin(), groups[i].end(), a) != groups[i].end())
+                ga = i;
+            if (std::find(groups[i].begin(), groups[i].end(), b) != groups[i].end())
+                gb = i;
+        }
+        return (ga < gb);
+    });
 
     if (wasSplit) {
         this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks](auto const& sub) {
-            if (sub.size() > 1 && !enqueuedBlocks.contains(sub)) {
-                blocksQueue.push_back(sub);
-                enqueuedBlocks.insert(sub);
-            }
+            // if (sub.size() > 1 && !enqueuedBlocks.contains(sub)) {
+            //     blocksQueue.push_back(sub);
+            //     enqueuedBlocks.insert(sub);
+            // }
 
             for (auto state : sub) {
-                for (auto &transition: this->backwardTransitions.getRow(state)) {
+                for (auto& transition : this->backwardTransitions.getRow(state)) {
                     auto predecessorState = transition.getColumn();
                     auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
 
@@ -424,37 +437,35 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
 }
 
 template<typename ModelType>
-std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>>
-    DeterministicIntervalModelBisimulationDecomposition<ModelType>::create2DPolytope(storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound,
-                                                                                            storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound) {
+std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> DeterministicIntervalModelBisimulationDecomposition<ModelType>::create2DPolytope(
+    storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound, storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound) {
     using Point = typename storm::storage::geometry::Polytope<storm::RationalNumber>::Point;
 
     // Halfspace in R² is given by: a1 * p1 + a2 * p2 <= b, where (a1, a2) is the normal vector and b is the offset
     std::vector<storm::storage::geometry::Halfspace<storm::RationalNumber>> halfspaces;
 
     // Interval bounds
-    halfspaces.emplace_back(Point{-1.0, 0.0}, // a1, a2
-                            -c1LowerBound);  // => (-p1 <= -l1) <=> (p1 >= l1)
-    halfspaces.emplace_back(Point{ 1.0, 0.0}, // a1, a2
-                            c1UpperBound);  // => (p1 <= u1)
-    halfspaces.emplace_back(Point{ 0.0,-1.0}, // a1, a2
-                            -c2LowerBound);  // => (-p2 <= -l2) <=> (p2 >= l2)
-    halfspaces.emplace_back(Point{ 0.0, 1.0}, // a1, a2
-                            c2UpperBound);  // => (p2 <= u2)
+    halfspaces.emplace_back(Point{-1.0, 0.0},  // a1, a2
+                            -c1LowerBound);    // => (-p1 <= -l1) <=> (p1 >= l1)
+    halfspaces.emplace_back(Point{1.0, 0.0},   // a1, a2
+                            c1UpperBound);     // => (p1 <= u1)
+    halfspaces.emplace_back(Point{0.0, -1.0},  // a1, a2
+                            -c2LowerBound);    // => (-p2 <= -l2) <=> (p2 >= l2)
+    halfspaces.emplace_back(Point{0.0, 1.0},   // a1, a2
+                            c2UpperBound);     // => (p2 <= u2)
 
     // Normalization constraint: p1 + p2 = 1
-    halfspaces.emplace_back(Point{ 1.0, 1.0}, // a1, a2
-                            1.0);  // p1 + p2 <= 1
-    halfspaces.emplace_back(Point{-1.0,-1.0}, // a1, a2
-                            -1.0);  // -(p1 + p2) <= -1  => p1 + p2 >= 1
+    halfspaces.emplace_back(Point{1.0, 1.0},    // a1, a2
+                            1.0);               // p1 + p2 <= 1
+    halfspaces.emplace_back(Point{-1.0, -1.0},  // a1, a2
+                            -1.0);              // -(p1 + p2) <= -1  => p1 + p2 >= 1
 
     // Polytope is "intersection" of all halfspaces
     return storm::storage::geometry::Polytope<storm::RationalNumber>::create(halfspaces);
 }
 
 template<typename ModelType>
-std::pair<storm::storage::BitVector, storm::storage::BitVector>
-DeterministicIntervalModelBisimulationDecomposition<ModelType>::getStatesWithProbability01() {
+std::pair<storm::storage::BitVector, storm::storage::BitVector> DeterministicIntervalModelBisimulationDecomposition<ModelType>::getStatesWithProbability01() {
     // TODO: return actual state sets for probability 0 and 1
     return {storm::storage::BitVector(), storm::storage::BitVector()};
 }
