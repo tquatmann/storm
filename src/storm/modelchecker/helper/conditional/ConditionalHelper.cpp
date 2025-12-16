@@ -942,13 +942,13 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
     STORM_LOG_WARN_COND(!env.solver().isForceSoundness(),
                         "Bisection method does not adequately handle propagation of errors. Result is not necessarily sound.");
     SolutionType const precision = [&env, boundOption]() {
-        if (storm::NumberTraits<SolutionType>::IsExact || env.solver().isForceExact()) {
-            // STORM_LOG_WARN_COND(storm::NumberTraits<SolutionType>::IsExact && boundOption == BisectionMethodBounds::Advanced,
-            //                     "Selected bisection method with exact precision in a setting that might not terminate.");
-            return storm::utility::zero<SolutionType>();
-        } else {
-            return storm::utility::convertNumber<SolutionType>(env.solver().minMax().getPrecision());
-        }
+        STORM_LOG_WARN_COND(storm::NumberTraits<SolutionType>::IsExact && boundOption == BisectionMethodBounds::Advanced,
+                            "Selected bisection method with exact precision in a setting that might not terminate.");
+        // if (storm::NumberTraits<SolutionType>::IsExact && env.solver().isForceExact()) {
+        //     return storm::utility::zero<SolutionType>();
+        // } else {
+        return storm::utility::convertNumber<SolutionType>(env.solver().minMax().getPrecision());
+        // }
     }();
     bool const relative = env.solver().minMax().getRelativeTerminationCriterion();
 

@@ -78,4 +78,5 @@ storm::Interval AddUncertainty<ValueType>::addUncertainty(ValueType const& vt, d
 }
 
 template class AddUncertainty<double>;
+template class AddUncertainty<storm::RationalNumber>;
 }  // namespace storm::transformer
