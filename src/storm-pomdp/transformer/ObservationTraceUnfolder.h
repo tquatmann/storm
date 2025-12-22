@@ -48,7 +48,7 @@ class ObservationTraceUnfolder {
     storm::models::sparse::Pomdp<ValueType> const& model;
     std::vector<ValueType> risk;  // TODO reconsider holding this as a reference, but there were some strange bugs
     std::shared_ptr<storm::expressions::ExpressionManager>& exprManager;
-    std::vector<storm::storage::BitVector> statesPerObservation;
+    // std::vector<storm::storage::BitVector> statesPerObservation;
     std::vector<uint32_t> traceSoFar;
     storm::expressions::Variable svvar;  // Maps to the old state (explicit encoding)
     storm::expressions::Variable tsvar;  // Maps to the time step
