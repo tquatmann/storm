@@ -1,10 +1,11 @@
 #ifndef STORM_DETERMINISTICINTERVALMODELBISIMULATIONDECOMPOSITION_H
 #define STORM_DETERMINISTICINTERVALMODELBISIMULATIONDECOMPOSITION_H
 
+#include <storm/storage/Distribution.h>
 #include <storm/storage/bisimulation/Partition.h>
-#include "storm/storage/bisimulation/BisimulationDecomposition.h"
-#include "storm/models/sparse/DeterministicModel.h"
 #include <storm/storage/geometry/Polytope.h>
+#include "storm/models/sparse/DeterministicModel.h"
+#include "storm/storage/bisimulation/BisimulationDecomposition.h"
 
 namespace storm {
 namespace storage {
@@ -23,7 +24,8 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
      * @param options The options that customize the computed bisimulation.
      */
     DeterministicIntervalModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options =
-                                                                            typename BisimulationDecomposition<ModelType>::Options());
+                                                                                    typename BisimulationDecomposition<ModelType>::Options());
+
    protected:
     virtual std::pair<storm::storage::BitVector, storm::storage::BitVector> getStatesWithProbability01() override;
 
@@ -42,15 +44,31 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
    private:
     void postProcessInitialPartition();
 
-    std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound,
-                     storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound);
+    std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound,
+                                                                                                storm::RationalNumber c1UpperBound,
+                                                                                                storm::RationalNumber c2LowerBound,
+                                                                                                storm::RationalNumber c2UpperBound);
 
     // Retrieves whether the given predecessor of the splitters possibly needs refinement.
     bool possiblyNeedsRefinement(std::span<uint64_t const> block) const;
 
     ValueType computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks);
 
-        // A vector that holds the probabilities of states going into the splitter. This is used by the method that
+    /*!
+     * Computes the delta between the distribution of a state and its candidate group distribution
+     * @param state state of interest
+     * @param stateDistribution distribution over the partition of the state
+     * @param enhancedDistribution enhanced distribution over the partition based on its (candidate) group
+     * @return delta
+     */
+    double computeDeltaForState(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution,
+                                storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> enhancedDistribution);
+
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> computeCandidateDistribution(
+        const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> groupDistribution,
+        const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution);
+
+    // A vector that holds the probabilities of states going into the splitter. This is used by the method that
     // refines a block based on probabilities.
     std::vector<ValueType> probabilitiesToCurrentSplitter;
 
@@ -62,12 +80,12 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
     // This is an alternative solution to the marker1-logic that was part of the old implementation.
     // Note that this bitvector also indicates whether a state is a direct predecessor of the splitter block or not.
     storm::storage::BitVector touchedProbabilitiesToSplitter;
+
+    std::vector<storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>> originalStateDistributions;
 };
 
-}
+}  // namespace storage
 
-}
-
-
+}  // namespace storm
 
 #endif  // STORM_DETERMINISTICINTERVALMODELBISIMULATIONDECOMPOSITION_H

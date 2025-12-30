@@ -101,7 +101,8 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalAddition) 
     // Interval.h
     // works using: "using roundingP = boost::numeric::interval_lib::rounded_arith_exact<double>;" or
     // works using: "using roundingP = boost::numeric::interval_lib::rounded_transc_opp<double>;"
-    // does not work using (currently standard): "using roundingP = boost::numeric::interval_lib::save_state<boost::numeric::interval_lib::rounded_transc_std<double> >;"
+    // does not work using (currently standard): "using roundingP =
+    // boost::numeric::interval_lib::save_state<boost::numeric::interval_lib::rounded_transc_std<double> >;"
     auto first = storm::Interval(0.98, 0.98);
     auto second = storm::Interval(0.02, 0.02);
 
@@ -116,7 +117,7 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalAddition) 
 
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalZeroIsEmptySetOnContainerInit) {
     // Initializes elements with (0.0, 0.0) instead of [0.0, 0.0], meaning each interval is the empty set
-    std::vector<storm::Interval>cont(1);
+    std::vector<storm::Interval> cont(1);
 
     storm::Interval ab(1.0, 2.0);
 
@@ -185,4 +186,31 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, TinyIDTMC) {
     // Property on BRP: Pmin=? [F (s = 5)]
 }
 
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny03IDTMC) {
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.pm";
+    storm::prism::Program program = storm::api::parseProgram(programFile);
+    program = storm::utility::prism::preprocess(program, "");
+    std::string formulasAsString = "Pmin=? [F (s = 1) | (s = 3)]";
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
+    std::shared_ptr<storm::models::sparse::Dtmc<carl::Interval<double>>> dtmc =
+        storm::api::buildSparseModel<carl::Interval<double>>(program, formulas)->as<storm::models::sparse::Dtmc<carl::Interval<double>>>();
+
+    typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>>::Options options;
+    options.preserveFormula(*formulas[0].get());
+    options.setUsesEpsilon(true);
+    options.setEpsilon(0.4);
+
+    dtmc->printModelInformationToStream(std::cout);
+
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>> bisim(*dtmc, options);
+    std::shared_ptr<storm::models::sparse::Model<carl::Interval<double>>> result;
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    EXPECT_EQ(3ul, result->getNumberOfStates());
+    EXPECT_EQ(3ul, result->getNumberOfTransitions());
 }
+
+}  // namespace
