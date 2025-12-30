@@ -1,8 +1,6 @@
-#include "carl/core/RationalFunction.h"
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#include "storm-pars/analysis/OrderExtender.h"
 #include "storm-pars/api/storm-pars.h"
 #include "storm-pars/derivative/SparseDerivativeInstantiationModelChecker.h"
 #include "storm-pars/transformer/SparseParametricDtmcSimplifier.h"
@@ -12,15 +10,7 @@
 #include "storm/api/storm.h"
 #include "storm/environment/solver/GmmxxSolverEnvironment.h"
 #include "storm/environment/solver/SolverEnvironment.h"
-#include "storm/environment/solver/TopologicalSolverEnvironment.h"
 #include "storm/logic/Formulas.h"
-#include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
-#include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-#include "storm/solver/EliminationLinearEquationSolver.h"
-#include "storm/storage/SparseMatrix.h"
-#include "storm/storage/expressions/BinaryRelationExpression.h"
-#include "storm/storage/expressions/ExpressionManager.h"
 
 namespace {
 class RationalGmmxxEnvironment {

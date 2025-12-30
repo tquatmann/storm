@@ -75,17 +75,15 @@ BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPTyp
     // intentionally left empty;
 }
 
-/* Constructor */
-
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::BeliefExplorationPomdpModelChecker(std::shared_ptr<PomdpModelType> pomdp,
                                                                                                                        Options options)
-    : options(options), inputPomdp(pomdp) {
+    : options(options),
+      inputPomdp(pomdp),
+      beliefTypeCC(storm::utility::convertNumber<BeliefValueType>(this->options.numericPrecision), false),
+      valueTypeCC(this->options.numericPrecision, false) {
     STORM_LOG_ASSERT(inputPomdp, "The given POMDP is not initialized.");
     STORM_LOG_ERROR_COND(inputPomdp->isCanonic(), "Input Pomdp is not known to be canonic. This might lead to unexpected verification results.");
-
-    beliefTypeCC = storm::utility::ConstantsComparator<BeliefValueType>(storm::utility::convertNumber<BeliefValueType>(this->options.numericPrecision), false);
-    valueTypeCC = storm::utility::ConstantsComparator<ValueType>(this->options.numericPrecision, false);
 }
 
 /* Public Functions */
@@ -726,7 +724,9 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         // While we tell the procedure to be paused, idle
         while (unfoldingControl ==
                    storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::UnfoldingControl::Pause &&
-               !storm::utility::resources::isTerminate());
+               !storm::utility::resources::isTerminate()) {
+            // Intentionally left empty
+        }
     }
     STORM_LOG_INFO("\tInteractive Unfolding terminated.\n");
 }

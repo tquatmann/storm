@@ -1,11 +1,11 @@
-#include "DFTJsonParser.h"
+#include "storm-dft/parser/DFTJsonParser.h"
 
 #include <boost/algorithm/string.hpp>
-#include <iostream>
 
 #include "storm-dft/builder/DFTBuilder.h"
 #include "storm-dft/utility/RelevantEvents.h"
 #include "storm/adapters/JsonAdapter.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/FileIoException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/WrongFormatException.h"

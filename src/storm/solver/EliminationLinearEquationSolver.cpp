@@ -2,12 +2,11 @@
 
 #include <numeric>
 
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/EliminationSettings.h"
-
 #include "storm/solver/stateelimination/PrioritizedStateEliminator.h"
 #include "storm/solver/stateelimination/StatePriorityQueue.h"
-
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/stateelimination.h"
@@ -125,13 +124,10 @@ std::unique_ptr<LinearEquationSolverFactory<ValueType>> EliminationLinearEquatio
 template class EliminationLinearEquationSolver<double>;
 template class EliminationLinearEquationSolverFactory<double>;
 
-#ifdef STORM_HAVE_CARL
-
 template class EliminationLinearEquationSolver<storm::RationalNumber>;
 template class EliminationLinearEquationSolver<storm::RationalFunction>;
 
 template class EliminationLinearEquationSolverFactory<storm::RationalNumber>;
 template class EliminationLinearEquationSolverFactory<storm::RationalFunction>;
-#endif
 }  // namespace solver
 }  // namespace storm
