@@ -134,6 +134,21 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalZeroIsEmpt
     EXPECT_EQ(sum.lower(), 1.0);
 }
 
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, IntervalArithmeticSanityCheck) {
+    storm::Interval a(0.1, 0.2);
+    storm::Interval b(0.0, 0.1);
+    storm::Interval c(0.1, 0.2);
+
+    // a + b = [0.1, 0.3]
+    EXPECT_DOUBLE_EQ((a + b).lower(), 0.1);
+    EXPECT_DOUBLE_EQ((a + b).upper(), 0.3);
+
+    // enhancement: c -> c' = [0.05, 0.2]
+    auto enhancedC = (c - storm::Interval(0.05, 0.05)) + storm::Interval(0.0, 0.05);
+    EXPECT_DOUBLE_EQ(enhancedC.lower(), 0.05);
+    EXPECT_DOUBLE_EQ(enhancedC.upper(), 0.2);
+}
+
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny02IDTMC) {
     std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/tiny-02.pm";
     storm::prism::Program program = storm::api::parseProgram(programFile);

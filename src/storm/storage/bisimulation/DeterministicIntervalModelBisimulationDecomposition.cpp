@@ -258,6 +258,12 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
                 // TODO: [0.1, 0.2] < [0.1, 0.3] returns false!
                 // auto result = projectedIntervalOfStateA < projectedIntervalOfStateB;
 
+                // compare the interval bounds directly
+                // return probabilitiesToCurrentSplitter[a].lower() < probabilitiesToCurrentSplitter[b].lower() ||
+                //        (probabilitiesToCurrentSplitter[a].lower() == probabilitiesToCurrentSplitter[b].lower() &&
+                //         probabilitiesToCurrentSplitter[a].upper() < probabilitiesToCurrentSplitter[b].upper());
+
+                // compare the feasible intervals
                 return projectedIntervalOfStateA.lower() < projectedIntervalOfStateB.lower() ||
                        (projectedIntervalOfStateA.lower() == projectedIntervalOfStateB.lower() &&
                         projectedIntervalOfStateA.upper() < projectedIntervalOfStateB.upper());
@@ -283,12 +289,12 @@ template<typename ModelType>
 ModelType::ValueType DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeIntervalProjection(ValueType intervalToSplitter,
                                                                                                                ValueType intervalToOtherBlocks) {
     // Normalize intervals
-    carl::Interval normalizedIntervalToSplitter(std::min(1.0, intervalToSplitter.lower()), std::min(1.0, intervalToSplitter.upper()));
-    carl::Interval normalizedIntervalToOtherBlocks(std::min(1.0, intervalToOtherBlocks.lower()), std::min(1.0, intervalToOtherBlocks.upper()));
+    storm::Interval normalizedIntervalToSplitter(std::min(1.0, intervalToSplitter.lower()), std::min(1.0, intervalToSplitter.upper()));
+    storm::Interval normalizedIntervalToOtherBlocks(std::min(1.0, intervalToOtherBlocks.lower()), std::min(1.0, intervalToOtherBlocks.upper()));
 
     // Compute interval projection
-    return carl::Interval(std::max(normalizedIntervalToSplitter.lower(), 1.0 - normalizedIntervalToOtherBlocks.upper()),
-                          std::min(normalizedIntervalToSplitter.upper(), 1.0 - normalizedIntervalToOtherBlocks.lower()));
+    return storm::Interval(std::max(normalizedIntervalToSplitter.lower(), 1.0 - normalizedIntervalToOtherBlocks.upper()),
+                           std::min(normalizedIntervalToSplitter.upper(), 1.0 - normalizedIntervalToOtherBlocks.lower()));
 }
 
 template<typename ModelType>
@@ -398,13 +404,33 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidate
         }
 
         if (stateInterval.lower() < groupInterval.lower()) {
-            candidateDistribution.removeProbability(it->first, storm::Interval(storm::utility::abs(stateInterval.lower() - groupInterval.lower()), 0.0));
+            auto absoluteDifference = storm::utility::abs(stateInterval.lower() - groupInterval.lower());
+            candidateDistribution.removeProbability(it->first, storm::Interval(absoluteDifference, absoluteDifference));
+            candidateDistribution.addProbability(it->first, storm::Interval(0.0, absoluteDifference));
         }
 
         if (stateInterval.upper() > groupInterval.upper()) {
             candidateDistribution.addProbability(it->first, storm::Interval(0.0, storm::utility::abs(stateInterval.upper() - groupInterval.upper())));
         }
     }
+
+    // respect \cap [0, 1] when extending intervals
+    auto clamped = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+    clamped.reserve(candidateDistribution.size());
+
+    for (auto it = candidateDistribution.begin(); it != candidateDistribution.end(); ++it) {
+        auto state = it->first;
+        auto candidateInterval = it->second;
+
+        double lowerBound = std::max(0.0, candidateInterval.lower());
+        double upperBound = std::min(1.0, candidateInterval.upper());
+
+        clamped.addProbability(state, storm::Interval(lowerBound, upperBound));
+    }
+
+    candidateDistribution = std::move(clamped);
+
+    // std::cout << "Enhanced distribution: " << candidateDistribution << std::endl;
 
     return candidateDistribution;
 }

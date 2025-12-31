@@ -669,8 +669,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 template<typename ValueType>
 void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, double deltaPerturbation) {
     if constexpr (!storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(true, storm::exceptions::InvalidArgumentException,
-                        "Cannot compute epsilon-perturbation on non-interval model!");
+        STORM_LOG_THROW(true, storm::exceptions::InvalidArgumentException, "Cannot compute epsilon-perturbation on non-interval model!");
         return;
     }
 
@@ -700,18 +699,24 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
 
     auto rowCount = transMatrix.getRowCount();
     auto columnCount = transMatrix.getColumnCount();
-    if (rowCount == 0 || deltaPerturbation <= 0.0) return;
+    if (rowCount == 0 || deltaPerturbation <= 0.0)
+        return;
 
     std::mt19937_64 rng(std::random_device{}());
     std::uniform_real_distribution<double> pickBetween01(0.0, 1.0);
     std::bernoulli_distribution pickErrorRate(errorRate);
 
-    auto sumVector = [](std::vector<double> const& v){ double s=0; for (double x : v) s+=x; return s; };
+    auto sumVector = [](std::vector<double> const& v) {
+        double s = 0;
+        for (double x : v) s += x;
+        return s;
+    };
 
     for (std::size_t s = 0; s < rowCount; ++s) {
         auto begin = transMatrix.begin(s), end = transMatrix.end(s);
         const auto outdeg = static_cast<std::size_t>(end - begin);
-        if (outdeg == 0) continue;
+        if (outdeg == 0)
+            continue;
 
         // restructure lower and upper bounds of transitions in contagious data structures
         std::vector<double> lowerBounds;
@@ -726,7 +731,8 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
         }
 
         // checking for basic feasibility
-        if (!(sumVector(lowerBounds) <= 1.0 + 1e-12 && 1.0 <= sumVector(upperBounds) + 1e-12)) continue;
+        if (!(sumVector(lowerBounds) <= 1.0 + 1e-12 && 1.0 <= sumVector(upperBounds) + 1e-12))
+            continue;
 
         // choose the amount of perturbation with respect to the error rate
         double remainingL1 = pickErrorRate(rng) ? 2.0 * deltaPerturbation : deltaPerturbation;
@@ -742,19 +748,21 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
 
         while (remainingL1 > 1e-15 && retries-- > 0) {
             // randomly choose between a translation step and a width-redistribution step.
-            bool doTranslation = (pickBetween01(rng) < 0.7); // 70% translate, 30% width
+            bool doTranslation = (pickBetween01(rng) < 0.7);  // 70% translate, 30% width
 
             // pick two different states
             int i = pickIndex(rng), j = pickIndex(rng);
-            if (i == j) continue;
+            if (i == j)
+                continue;
 
             if (doTranslation) {
                 // move mass theta from state j -> i on both lowerBounds and upperBounds.
                 // add at i (both <= 1), subtract at j (both >= 0)
-                double capPlus  = std::min(1.0 - upperBounds[i], 1.0 - lowerBounds[i]);
+                double capPlus = std::min(1.0 - upperBounds[i], 1.0 - lowerBounds[i]);
                 double capMinus = std::min(upperBounds[j], lowerBounds[j]);
                 double thetaMax = std::min(capPlus, capMinus);
-                if (thetaMax <= 0.0) continue;
+                if (thetaMax <= 0.0)
+                    continue;
 
                 // spend at most remainingL1/2 (because this step costs 2*theta)
                 double theta = std::min(thetaMax, remainingL1 / 2.0);
@@ -775,7 +783,8 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
                 double capWi = std::min(lowerBounds[i], 1.0 - upperBounds[i]);
                 double capWj = std::min(upperBounds[j], 1.0 - lowerBounds[j]);
                 double thetaMax = std::min(capWi, capWj);
-                if (thetaMax <= 0.0) continue;
+                if (thetaMax <= 0.0)
+                    continue;
 
                 double theta = std::min(thetaMax, remainingL1 / 2.0);
                 theta *= pickBetween01(rng);
@@ -796,9 +805,9 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
         auto it = begin;
         for (std::size_t k = 0; k < outdeg; ++k, ++it) {
             auto l = std::max(0.0, std::min(1.0, lowerBounds[k]));
-            auto u = std::max(l,   std::min(1.0, upperBounds[k]));
+            auto u = std::max(l, std::min(1.0, upperBounds[k]));
             if constexpr (storm::IsIntervalType<ValueType>) {
-                it->setValue(carl::Interval(l, u));
+                it->setValue(storm::Interval(l, u));
             }
         }
     }
@@ -818,10 +827,16 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         epsilon = bisimulationSettings.getEpsilonForIntervalBisimulation();
     }
 
-    auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
-    storm::api::exportSparseModelAsDrn(model, "before_" + filename,
-                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-                                       false);
+    auto filename = [] {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm;
+        localtime_r(&t, &tm);
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+        return oss.str();
+    }();
+    storm::api::exportSparseModelAsDrn(model, "before_" + filename, input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     double deltaPerturbation = 0.0;
     if (bisimulationSettings.usesDeltaPerturbation()) {
@@ -829,26 +844,42 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         deltaPerturbation = bisimulationSettings.getDeltaPerturbation();
 
         // export model before and after perturbation for experiments
-        // auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+        // auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm;
+        // localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
         // storm::api::exportSparseModelAsDrn(model, "before_perturbation" + filename,
         //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
         //                                    false);
 
         applyDeltaPerturbation(model, deltaPerturbation);
 
-        auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+        auto filename = [] {
+            auto now = std::chrono::system_clock::now();
+            std::time_t t = std::chrono::system_clock::to_time_t(now);
+            std::tm tm;
+            localtime_r(&t, &tm);
+            std::ostringstream oss;
+            oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+            return oss.str();
+        }();
         storm::api::exportSparseModelAsDrn(model, "after_perturbation_" + std::to_string(deltaPerturbation) + "_" + filename,
-                                           input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-                                           false);
+                                           input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
     }
 
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true, bisimulationSettings.usesEpsilonBisimulation(), epsilon);
+    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true,
+                                                                           bisimulationSettings.usesEpsilonBisimulation(), epsilon);
 
-    filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm; localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
+    filename = [] {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm;
+        localtime_r(&t, &tm);
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+        return oss.str();
+    }();
     storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(deltaPerturbation) + "_" + filename,
-                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-                                       false);
+                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     return quotient;
 }
