@@ -1,5 +1,6 @@
 #include "storm-pomdp/transformer/ObservationTraceUnfolder.h"
 
+#include "storm/adapters/IntervalForward.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/storage/expressions/ExpressionManager.h"

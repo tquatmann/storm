@@ -2,6 +2,7 @@
 
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 
+#include "storm/adapters/IntervalForward.h"
 #include "storm/adapters/JsonAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidOperationException.h"
@@ -337,7 +338,6 @@ template class ExplicitQualitativeCheckResult<double>;
 template storm::json<double> ExplicitQualitativeCheckResult<double>::toJson<double>(std::optional<storm::storage::sparse::StateValuations> const&,
                                                                                     std::optional<storm::models::sparse::StateLabeling> const&) const;
 
-#ifdef STORM_HAVE_CARL
 template storm::json<storm::RationalNumber> ExplicitQualitativeCheckResult<double>::toJson<storm::RationalNumber>(
     std::optional<storm::storage::sparse::StateValuations> const&, std::optional<storm::models::sparse::StateLabeling> const&) const;
 
@@ -358,7 +358,6 @@ template storm::json<double> ExplicitQualitativeCheckResult<storm::Interval>::to
                                                                                              std::optional<storm::models::sparse::StateLabeling> const&) const;
 template storm::json<storm::RationalNumber> ExplicitQualitativeCheckResult<storm::Interval>::toJson<storm::RationalNumber>(
     std::optional<storm::storage::sparse::StateValuations> const&, std::optional<storm::models::sparse::StateLabeling> const&) const;
-#endif
 
 }  // namespace modelchecker
 }  // namespace storm

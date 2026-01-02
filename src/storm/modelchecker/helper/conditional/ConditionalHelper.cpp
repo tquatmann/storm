@@ -1,6 +1,7 @@
 #include "storm/modelchecker/helper/conditional/ConditionalHelper.h"
 
 #include <algorithm>
+#include <stack>
 
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/environment/modelchecker/ModelCheckerEnvironment.h"
@@ -813,7 +814,7 @@ class WeightedReachabilityHelper {
     }
 
     internal::SolverResult<ValueType> computeWeightedDiff(storm::Environment const& env, storm::OptimizationDirection const dir, ValueType const& targetWeight,
-                                                          ValueType const& conditionWeight, bool computeScheduler) const {
+                                                          ValueType const& conditionWeight, bool computeScheduler) {
         // Set up the solver.
         if (!cachedSolver) {
             auto solverEnv = env;
