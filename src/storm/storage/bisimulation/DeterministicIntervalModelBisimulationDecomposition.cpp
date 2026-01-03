@@ -255,7 +255,6 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineParti
                 auto projectedIntervalOfStateA = computeIntervalProjection(probabilitiesToCurrentSplitter[a], probabilitiesToOtherBlocks[a]);
                 auto projectedIntervalOfStateB = computeIntervalProjection(probabilitiesToCurrentSplitter[b], probabilitiesToOtherBlocks[b]);
 
-                // TODO: [0.1, 0.2] < [0.1, 0.3] returns false!
                 // auto result = projectedIntervalOfStateA < projectedIntervalOfStateB;
 
                 // compare the interval bounds directly
@@ -317,6 +316,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
             bool fits = true;
             auto candidateDistribution = computeCandidateDistribution(g.second, originalStateDistributions[s]);
 
+            // check if enhancement satisfies upper bound w.r.t. s itself
             if (2 * computeDeltaForState(originalStateDistributions[s], candidateDistribution) > epsilon) {
                 continue;
             }

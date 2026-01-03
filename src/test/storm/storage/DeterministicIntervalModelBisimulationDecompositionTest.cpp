@@ -87,7 +87,7 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, ApplyEpsilonBisimO
 }
 
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, Build1_1Interval) {
-    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/brp-32-2-point-intervals.pm";
+    std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/brp-point-intervals.pm";
     storm::prism::Program program = storm::api::parseProgram(programFile);
     program = storm::utility::prism::preprocess(program, "");
     std::string formulasAsString = "Pmin=? [F (s = 5)]";
