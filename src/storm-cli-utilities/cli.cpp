@@ -1,9 +1,12 @@
 #include "cli.h"
 
+#include "storm-cli-utilities/model-handling.h"
 #include "storm-cli-utilities/print.h"
 #include "storm-cli-utilities/resources.h"
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/OptionParserException.h"
-#include "storm/io/file.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/DebugSettings.h"
 #include "storm/settings/modules/GeneralSettings.h"
@@ -11,9 +14,6 @@
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/Stopwatch.h"
 #include "storm/utility/initialize.h"
-#include "storm/utility/macros.h"
-
-#include "storm-cli-utilities/model-handling.h"
 
 namespace storm {
 namespace cli {
@@ -28,19 +28,22 @@ bool parseOptions(const int argc, const char* argv[]) {
     }
 
     storm::settings::modules::GeneralSettings const& general = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
-
-    bool result = true;
+    bool terminate = false;
     if (general.isHelpSet()) {
-        storm::settings::manager().printHelp(storm::settings::getModule<storm::settings::modules::GeneralSettings>().getHelpFilterExpression());
-        result = false;
+        storm::settings::manager().printHelp(general.getHelpFilterExpression());
+        terminate = true;
     }
 
     if (general.isVersionSet()) {
-        printVersion();
-        result = false;
+        storm::cli::printVersion();
+        terminate = true;
+    }
+    if (terminate) {
+        exit(0);  // Terminate after help and version output with success.
+        // TODO: Issue 674 discusses that this may not be ideal.
     }
 
-    return result;
+    return true;
 }
 
 void setResourceLimits() {

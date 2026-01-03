@@ -1,8 +1,8 @@
-#include "DftNextStateGenerator.h"
+#include "storm-dft/generator/DftNextStateGenerator.h"
 
 #include "storm-dft/settings/modules/FaultTreeSettings.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidModelException.h"
-#include "storm/exceptions/NotImplementedException.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"

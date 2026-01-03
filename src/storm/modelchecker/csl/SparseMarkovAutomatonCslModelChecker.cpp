@@ -7,7 +7,7 @@
 #include "storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h"
 #include "storm/modelchecker/helper/ltl/SparseLTLHelper.h"
 #include "storm/modelchecker/helper/utility/SetInformationFromCheckTask.h"
-#include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
+#include "storm/modelchecker/multiobjective/MultiObjectiveModelChecking.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
@@ -306,7 +306,7 @@ std::unique_ptr<CheckResult> SparseMarkovAutomatonCslModelChecker<SparseMarkovAu
 template<typename SparseMarkovAutomatonModelType>
 std::unique_ptr<CheckResult> SparseMarkovAutomatonCslModelChecker<SparseMarkovAutomatonModelType>::checkMultiObjectiveFormula(
     Environment const& env, CheckTask<storm::logic::MultiObjectiveFormula, ValueType> const& checkTask) {
-    return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula());
+    return multiobjective::performMultiObjectiveModelChecking(env, this->getModel(), checkTask.getFormula(), checkTask.isProduceSchedulersSet());
 }
 
 template class SparseMarkovAutomatonCslModelChecker<storm::models::sparse::MarkovAutomaton<double>>;

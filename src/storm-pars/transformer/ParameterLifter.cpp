@@ -1,9 +1,8 @@
 #include "storm-pars/transformer/ParameterLifter.h"
 
-#include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/exceptions/NotSupportedException.h"
+#include "storm-pars/storage/ParameterRegion.h"
 #include "storm/exceptions/UnexpectedException.h"
-#include "storm/utility/vector.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace transformer {
@@ -239,7 +238,7 @@ ParameterLifter<ParametricType, ConstantType>::getOccurringVariablesAtState() co
 }
 
 template<typename ParametricType, typename ConstantType>
-std::map<typename ParameterLifter<ParametricType, ConstantType>::VariableType, std::set<uint_fast64_t>>
+std::map<typename ParameterLifter<ParametricType, ConstantType>::VariableType, std::set<uint_fast64_t>> const&
 ParameterLifter<ParametricType, ConstantType>::getOccuringStatesAtVariable() const {
     return occuringStatesAtVariable;
 }
@@ -355,9 +354,9 @@ void ParameterLifter<ParametricType, ConstantType>::FunctionValuationCollector::
         ConstantType& placeholder = collectedFunctionValuationPlaceholder.second;
         auto concreteValuations = abstrValuation.getConcreteValuations(region);
         auto concreteValuationIt = concreteValuations.begin();
-        placeholder = storm::utility::convertNumber<ConstantType>(storm::utility::parametric::evaluate(function, *concreteValuationIt));
+        placeholder = storm::utility::parametric::evaluate<ConstantType>(function, *concreteValuationIt);
         for (++concreteValuationIt; concreteValuationIt != concreteValuations.end(); ++concreteValuationIt) {
-            ConstantType currentResult = storm::utility::convertNumber<ConstantType>(storm::utility::parametric::evaluate(function, *concreteValuationIt));
+            ConstantType currentResult = storm::utility::parametric::evaluate<ConstantType>(function, *concreteValuationIt);
             if (storm::solver::minimize(dirForUnspecifiedParameters)) {
                 placeholder = std::min(placeholder, currentResult);
             } else {

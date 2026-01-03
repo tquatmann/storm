@@ -1,24 +1,18 @@
-#ifndef STORM_GENERATOR_NEXTSTATEGENERATOR_H_
-#define STORM_GENERATOR_NEXTSTATEGENERATOR_H_
+#pragma once
 
-#include <cstdint>
 #include <vector>
 
-#include <boost/variant.hpp>
-
+#include "storm/adapters/IntervalForward.h"
+#include "storm/builder/BuilderOptions.h"
+#include "storm/builder/RewardModelInformation.h"
+#include "storm/generator/CompressedState.h"
+#include "storm/generator/StateBehavior.h"
+#include "storm/generator/VariableInformation.h"
 #include "storm/storage/PlayerIndex.h"
 #include "storm/storage/expressions/Expression.h"
 #include "storm/storage/sparse/ChoiceOrigins.h"
 #include "storm/storage/sparse/StateStorage.h"
 #include "storm/storage/sparse/StateValuations.h"
-
-#include "storm/builder/BuilderOptions.h"
-#include "storm/builder/RewardModelInformation.h"
-
-#include "storm/generator/CompressedState.h"
-#include "storm/generator/StateBehavior.h"
-#include "storm/generator/VariableInformation.h"
-
 #include "storm/utility/ConstantsComparator.h"
 
 namespace storm {
@@ -140,6 +134,8 @@ class NextStateGenerator {
     void remapStateIds(std::function<StateType(StateType const&)> const& remapping);
 
    protected:
+    using BaseValueType = storm::IntervalBaseType<ValueType>;
+
     /*!
      * Checks if the input label has a special purpose (e.g. "init", "deadlock", "unexplored", "overlap_guards", "out_of_bounds").
      */
@@ -161,11 +157,12 @@ class NextStateGenerator {
      * @post The values of all transient variables are set in the given evaluator (including the transient variables without an explicit assignment in the
      * current locations).
      */
-    virtual void unpackTransientVariableValuesIntoEvaluator(CompressedState const& state, storm::expressions::ExpressionEvaluator<ValueType>& evaluator) const;
+    virtual void unpackTransientVariableValuesIntoEvaluator(CompressedState const& state,
+                                                            storm::expressions::ExpressionEvaluator<BaseValueType>& evaluator) const;
 
     virtual storm::storage::BitVector evaluateObservationLabels(CompressedState const& state) const = 0;
 
-    virtual void extendStateInformation(storm::json<ValueType>& stateInfo) const;
+    virtual void extendStateInformation(storm::json<BaseValueType>& stateInfo) const;
 
     virtual storm::storage::sparse::StateValuationsBuilder initializeObservationValuationsBuilder() const;
 
@@ -184,12 +181,12 @@ class NextStateGenerator {
     VariableInformation variableInformation;
 
     /// An evaluator used to evaluate expressions.
-    std::unique_ptr<storm::expressions::ExpressionEvaluator<ValueType>> evaluator;
+    std::unique_ptr<storm::expressions::ExpressionEvaluator<BaseValueType>> evaluator;
 
     /// The currently loaded state.
     CompressedState const* state;
 
-    /// A comparator used to compare constants.
+    /// A comparator used to approximately compare constants, e.g., whether they sum to one..
     storm::utility::ConstantsComparator<ValueType> comparator;
 
     /// The mask to compute the observability class (Constructed upon first use)
@@ -208,5 +205,3 @@ class NextStateGenerator {
 };
 }  // namespace generator
 }  // namespace storm
-
-#endif /* STORM_GENERATOR_NEXTSTATEGENERATOR_H_ */

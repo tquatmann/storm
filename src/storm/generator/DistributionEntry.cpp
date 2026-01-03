@@ -1,7 +1,8 @@
 #include "storm/generator/DistributionEntry.h"
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/storage/BitVector.h"
 
 namespace storm::generator {
@@ -39,9 +40,11 @@ void DistributionEntry<StateType, ValueType>::divide(ValueType const& value) {
 template class DistributionEntry<uint32_t, double>;
 template class DistributionEntry<uint32_t, storm::RationalNumber>;
 template class DistributionEntry<uint32_t, storm::RationalFunction>;
+template class DistributionEntry<uint32_t, storm::Interval>;
 
 template class DistributionEntry<storm::storage::BitVector, double>;
 template class DistributionEntry<storm::storage::BitVector, storm::RationalNumber>;
 template class DistributionEntry<storm::storage::BitVector, storm::RationalFunction>;
+template class DistributionEntry<storm::storage::BitVector, storm::Interval>;
 
 }  // namespace storm::generator

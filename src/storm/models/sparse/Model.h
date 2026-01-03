@@ -13,7 +13,6 @@
 #include "storm/storage/sparse/ModelComponents.h"
 #include "storm/storage/sparse/StateType.h"
 #include "storm/storage/sparse/StateValuations.h"
-#include "storm/utility/OsDetection.h"
 
 namespace storm {
 namespace storage {
@@ -57,14 +56,6 @@ class Model : public storm::models::Model<CValueType> {
      * @return A sparse matrix that represents the backward transitions of this model.
      */
     storm::storage::SparseMatrix<ValueType> getBackwardTransitions() const;
-
-    /*!
-     * Returns an object representing the matrix rows associated with the given state.
-     *
-     * @param state The state for which to retrieve the rows.
-     * @return An object representing the matrix rows associated with the given state.
-     */
-    virtual typename storm::storage::SparseMatrix<ValueType>::const_rows getRows(storm::storage::sparse::state_type state) const;
 
     /*!
      * Returns the number of states of the model.
@@ -389,7 +380,7 @@ class Model : public storm::models::Model<CValueType> {
      *
      * @return
      */
-    virtual bool supportsUncertainty() const;
+    virtual bool supportsUncertainty() const override;
 
     /*!
      * Checks whether the model actually is uncertain, i.e., whether there is a non-singleton transition relation.
@@ -404,19 +395,6 @@ class Model : public storm::models::Model<CValueType> {
 
    protected:
     RewardModelType& rewardModel(std::string const& rewardModelName);
-    /*!
-     * Sets the transition matrix of the model.
-     *
-     * @param transitionMatrix The new transition matrix of the model.
-     */
-    void setTransitionMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix);
-
-    /*!
-     * Sets the transition matrix of the model.
-     *
-     * @param transitionMatrix The new transition matrix of the model.
-     */
-    void setTransitionMatrix(storm::storage::SparseMatrix<ValueType>&& transitionMatrix);
 
     /*!
      * Prints the information header (number of states and transitions) of the model to the specified stream.

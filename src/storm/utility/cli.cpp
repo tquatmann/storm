@@ -1,6 +1,8 @@
 #include "storm/utility/cli.h"
 
+#include <unistd.h>
 #include <boost/algorithm/string.hpp>
+
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/WrongFormatException.h"
 #include "storm/utility/constants.h"
@@ -12,7 +14,7 @@ namespace cli {
 
 std::string getCurrentWorkingDirectory() {
     char temp[512];
-    return (GetCurrentDir(temp, 512 - 1) ? std::string(temp) : std::string(""));
+    return (getcwd(temp, 512 - 1) ? std::string(temp) : std::string(""));
 }
 
 std::map<storm::expressions::Variable, storm::expressions::Expression> parseConstantDefinitionString(storm::expressions::ExpressionManager const& manager,

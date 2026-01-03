@@ -1,27 +1,20 @@
-#ifndef WINDOWS
-#include <errno.h>
+#include "storm/solver/SmtlibSmtSolver.h"
+
 #include <signal.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#endif
-
-#include "storm/solver/SmtlibSmtSolver.h"
+#include <boost/algorithm/string.hpp>
 
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/IllegalFunctionCallException.h"
-#include "storm/exceptions/InvalidStateException.h"
 #include "storm/exceptions/NotImplementedException.h"
-#include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
 #include "storm/io/file.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/Smt2SmtSolverSettings.h"
 #include "storm/utility/macros.h"
-
-#include <boost/algorithm/string.hpp>
 
 namespace storm {
 namespace solver {
@@ -48,12 +41,7 @@ std::string SmtlibSmtSolver::SmtlibModelReference::toString() const {
 
 SmtlibSmtSolver::SmtlibSmtSolver(storm::expressions::ExpressionManager& manager, bool useCarlExpressions)
     : SmtSolver(manager), isCommandFileOpen(false), expressionAdapter(nullptr), useCarlExpressions(useCarlExpressions) {
-#ifndef STORM_HAVE_CARL
-    STORM_LOG_THROW(!useCarlExpressions, storm::exceptions::IllegalArgumentException, "Tried to use carl expressions but storm is not linked with CARL");
-#endif
-#ifndef WINDOWS
     processIdOfSolver = 0;
-#endif
     this->expressionAdapter =
         std::unique_ptr<storm::adapters::Smt2ExpressionAdapter>(new storm::adapters::Smt2ExpressionAdapter(this->getManager(), this->useReadableVarNames));
     init();
@@ -62,7 +50,7 @@ SmtlibSmtSolver::SmtlibSmtSolver(storm::expressions::ExpressionManager& manager,
 SmtlibSmtSolver::~SmtlibSmtSolver() {
     writeCommand("( exit )",
                  false);  // do not wait for success because it does not matter at this point and may cause problems if the solver is not running properly
-#ifndef WINDOWS
+
     if (processIdOfSolver != 0) {
         // Since the process has been opened successfully, it means that we have to close our fds
         close(fromSolver);
@@ -70,7 +58,6 @@ SmtlibSmtSolver::~SmtlibSmtSolver() {
         kill(processIdOfSolver, SIGTERM);
         waitpid(processIdOfSolver, nullptr, 0);  // make sure the process has exited
     }
-#endif
 }
 
 void SmtlibSmtSolver::push() {
@@ -97,7 +84,6 @@ void SmtlibSmtSolver::add(storm::expressions::Expression const&) {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "functionality not (yet) implemented");
 }
 
-#ifdef STORM_HAVE_CARL
 void SmtlibSmtSolver::add(storm::RationalFunction const& leftHandSide, storm::CompareRelation const& relation, storm::RationalFunction const& rightHandSide) {
     STORM_LOG_THROW(useCarlExpressions, storm::exceptions::IllegalFunctionCallException, "This solver was initialized without allowing carl expressions");
     // if some of the occurring variables are not declared yet, we will have to.
@@ -128,14 +114,8 @@ void SmtlibSmtSolver::add(const storm::RationalFunctionVariable& variable, bool 
     }
 }
 
-#endif
-
 SmtSolver::CheckResult SmtlibSmtSolver::check() {
     writeCommand("( check-sat )", false);
-#ifdef WINDOWS
-    STORM_LOG_WARN("SMT-LIBv2 Solver can not be started on Windows as this is not yet implemented. Assume that the check-result is \"unknown\"");
-    return SmtSolver::CheckResult::Unknown;
-#else
 
     if (processIdOfSolver != 0) {
         auto solverOutput = readSolverOutput();
@@ -156,25 +136,18 @@ SmtSolver::CheckResult SmtlibSmtSolver::check() {
         STORM_LOG_WARN("No SMT-LIBv2 Solver Command specified, which means that no actual SMT solving is done... Assume that the result is \"unknown\"");
         return SmtSolver::CheckResult::Unknown;
     }
-#endif
 }
 
 SmtSolver::CheckResult SmtlibSmtSolver::checkWithAssumptions(std::set<storm::expressions::Expression> const&) {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "functionality not (yet) implemented");
 }
 
-#ifndef WINDOWS
-
 SmtSolver::CheckResult SmtlibSmtSolver::checkWithAssumptions(std::initializer_list<storm::expressions::Expression> const&) {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "functionality not (yet) implemented");
 }
-#endif
 
 void SmtlibSmtSolver::init() {
     if (storm::settings::getModule<storm::settings::modules::Smt2SmtSolverSettings>().isSolverCommandSet()) {
-#ifdef WINDOWS
-        STORM_LOG_WARN("opening a thread for the smt solver is not implemented on Windows. Hence, no actual solving will be done")
-#else
         signal(SIGPIPE, SIG_IGN);
         this->needsRestart = false;
 
@@ -184,7 +157,8 @@ void SmtlibSmtSolver::init() {
         std::vector<std::string> solverCommandVec;
         boost::split(solverCommandVec, cmdString, boost::is_any_of("\t "));
         char** solverArgs = new char*[solverCommandVec.size() + 1];
-        solverArgs[0] = const_cast<char*>(solverCommandVec[0].substr(0, cmdString.rfind('/') + 1).c_str());
+        std::string solverPath = solverCommandVec[0].substr(0, cmdString.rfind('/') + 1);
+        solverArgs[0] = const_cast<char*>(solverPath.c_str());
         for (uint_fast64_t argumentIndex = 1; argumentIndex < solverCommandVec.size(); ++argumentIndex) {
             solverArgs[argumentIndex] = const_cast<char*>(solverCommandVec[argumentIndex].c_str());
         }
@@ -223,7 +197,6 @@ void SmtlibSmtSolver::init() {
         close(pipeIn[READ]);
         processIdOfSolver = pid;
 
-#endif
     } else {
         STORM_LOG_WARN("No SMT-LIBv2 Solver Command specified, which means that no actual SMT solving can be done");
     }
@@ -250,7 +223,6 @@ void SmtlibSmtSolver::writeCommand(std::string smt2Command, bool expectSuccess) 
         commandFile << smt2Command << '\n';
     }
 
-#ifndef WINDOWS
     if (processIdOfSolver != 0) {
         if (write(toSolver, (smt2Command + "\n").c_str(), smt2Command.length() + 1) < 0) {
             STORM_LOG_DEBUG("Was not able to write " << smt2Command << "to the solver.");
@@ -265,11 +237,9 @@ void SmtlibSmtSolver::writeCommand(std::string smt2Command, bool expectSuccess) 
                             "expected <<success>> response after smt2 command " + smt2Command + ". Got <<" + output[0] + ">> instead");
         }
     }
-#endif
 }
 
 std::vector<std::string> SmtlibSmtSolver::readSolverOutput(bool waitForOutput) {
-#ifndef WINDOWS
     if (processIdOfSolver == 0) {
         STORM_LOG_DEBUG("failed to read solver output as the solver is not running");
         return std::vector<std::string>();
@@ -319,7 +289,6 @@ std::vector<std::string> SmtlibSmtSolver::readSolverOutput(bool waitForOutput) {
         // note: this is a little bit unsafe as \n can be contained within a solver response
     }
     return solverOutputAsVector;
-#endif
 }
 
 void SmtlibSmtSolver::checkForErrorMessage(const std::string message) {

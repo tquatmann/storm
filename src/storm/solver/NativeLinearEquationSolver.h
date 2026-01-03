@@ -57,8 +57,6 @@ class NativeLinearEquationSolver : public LinearEquationSolver<ValueType> {
                                                uint64_t currentIterations, uint64_t maxIterations,
                                                storm::solver::MultiplicationStyle const& multiplicationStyle) const;
 
-    void logIterations(bool converged, bool terminate, uint64_t iterations) const;
-
     virtual uint64_t getMatrixRowCount() const override;
     virtual uint64_t getMatrixColumnCount() const override;
 
@@ -70,6 +68,7 @@ class NativeLinearEquationSolver : public LinearEquationSolver<ValueType> {
     virtual bool solveEquationsPower(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
     virtual bool solveEquationsSoundValueIteration(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
     virtual bool solveEquationsOptimisticValueIteration(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
+    virtual bool solveEquationsGuessingValueIteration(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
     virtual bool solveEquationsIntervalIteration(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
     virtual bool solveEquationsRationalSearch(storm::Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const& b) const;
 

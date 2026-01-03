@@ -19,16 +19,13 @@
 
 #include "storm/adapters/AddExpressionAdapter.h"
 
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/settings/modules/BuildSettings.h"
 #include "storm/storage/dd/Add.h"
 #include "storm/storage/dd/Bdd.h"
 #include "storm/storage/dd/DdManager.h"
-#include "storm/storage/dd/cudd/CuddAddIterator.h"
 #include "storm/storage/prism/Compositions.h"
 #include "storm/storage/prism/Program.h"
-
-#include "storm/settings/modules/BuildSettings.h"
-
-#include "storm/adapters/RationalFunctionAdapter.h"
 
 namespace storm {
 namespace builder {
@@ -953,7 +950,7 @@ typename DdPrismModelBuilder<Type, ValueType>::ActionDecisionDiagram DdPrismMode
         return ActionDecisionDiagram(allGuards, allCommands, assignedGlobalVariables);
     } else {
         // Calculate number of required variables to encode the nondeterminism.
-        uint_fast64_t numberOfBinaryVariables = static_cast<uint_fast64_t>(std::ceil(storm::utility::math::log2(maxChoices)));
+        uint_fast64_t numberOfBinaryVariables = static_cast<uint_fast64_t>(std::ceil(std::log2(maxChoices)));
 
         storm::dd::Bdd<Type> equalsNumberOfChoicesDd;
         std::vector<storm::dd::Add<Type, ValueType>> choiceDds(maxChoices, generationInfo.manager->template getAddZero<ValueType>());
@@ -1592,6 +1589,8 @@ std::shared_ptr<storm::models::symbolic::Model<Type, ValueType>> DdPrismModelBui
     }
     STORM_LOG_THROW(!program.hasUnboundedVariables(), storm::exceptions::InvalidArgumentException,
                     "Program contains unbounded variables which is not supported by the DD engine.");
+    STORM_LOG_THROW(!program.hasIntervalUpdates(), storm::exceptions::InvalidArgumentException,
+                    "Program contains interval updates which are not supported by the DD engnie.");
 
     STORM_LOG_TRACE("Building representation of program:\n" << program << '\n');
 

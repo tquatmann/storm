@@ -1,7 +1,13 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
+#include "storm-parsers/parser/AutoParser.h"
 #include "storm-parsers/parser/FormulaParser.h"
+#include "storm/builder/ExplicitModelBuilder.h"
+#include "storm/environment/solver/EigenSolverEnvironment.h"
+#include "storm/environment/solver/GmmxxSolverEnvironment.h"
+#include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
+#include "storm/environment/solver/NativeSolverEnvironment.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
@@ -11,16 +17,9 @@
 #include "storm/settings/modules/GeneralSettings.h"
 #include "storm/solver/NativeLinearEquationSolver.h"
 
-#include "storm/environment/solver/EigenSolverEnvironment.h"
-#include "storm/environment/solver/GmmxxSolverEnvironment.h"
-#include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
-#include "storm/environment/solver/NativeSolverEnvironment.h"
-
-#include "storm-parsers/parser/AutoParser.h"
-#include "storm/builder/ExplicitModelBuilder.h"
-
 namespace {
 
+#ifdef STORM_HAVE_GMM
 class GBGmmxxDoubleGmresEnvironment {
    public:
     typedef double ValueType;
@@ -52,6 +51,7 @@ class GBEigenDoubleDGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class GBEigenRationalLUEnvironment {
    public:
@@ -98,6 +98,7 @@ class GBNativeWalkerChaeEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class DistrGmmxxDoubleGmresEnvironment {
    public:
     typedef double ValueType;
@@ -113,6 +114,7 @@ class DistrGmmxxDoubleGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class DistrEigenRationalLUEnvironment {
    public:
@@ -174,9 +176,12 @@ class LraDtmcPrctlModelCheckerTest : public ::testing::Test {
     storm::Environment _environment;
 };
 
-typedef ::testing::Types<GBGmmxxDoubleGmresEnvironment, GBEigenDoubleDGmresEnvironment, GBEigenRationalLUEnvironment, GBNativeSorEnvironment,
-                         GBNativeWalkerChaeEnvironment, DistrGmmxxDoubleGmresEnvironment, DistrEigenRationalLUEnvironment, DistrNativeWalkerChaeEnvironment,
-                         ValueIterationEnvironment>
+typedef ::testing::Types<
+#ifdef STORM_HAVE_GMM
+    GBGmmxxDoubleGmresEnvironment, GBEigenDoubleDGmresEnvironment, DistrGmmxxDoubleGmresEnvironment,
+#endif
+    GBEigenRationalLUEnvironment, GBNativeSorEnvironment, GBNativeWalkerChaeEnvironment, DistrEigenRationalLUEnvironment, DistrNativeWalkerChaeEnvironment,
+    ValueIterationEnvironment>
     TestingTypes;
 
 TYPED_TEST_SUITE(LraDtmcPrctlModelCheckerTest, TestingTypes, );

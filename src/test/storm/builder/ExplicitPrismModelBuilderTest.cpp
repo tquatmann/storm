@@ -1,12 +1,13 @@
-#include <storm/generator/PrismNextStateGenerator.h>
 #include "storm-config.h"
+#include "test/storm_gtest.h"
+
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/builder/ExplicitModelBuilder.h"
 #include "storm/exceptions/WrongFormatException.h"
+#include "storm/generator/PrismNextStateGenerator.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/expressions/ExpressionManager.h"
-#include "test/storm_gtest.h"
 
 class ExplicitPrismModelBuilderTest : public ::testing::Test {
    protected:
@@ -162,6 +163,16 @@ TEST_F(ExplicitPrismModelBuilderTest, POMdp) {
     program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/pomdp/refuel.prism");
     program = storm::utility::prism::preprocess(program, "N=5");
     model = storm::builder::ExplicitModelBuilder<double>(program).build();
+}
+
+TEST_F(ExplicitPrismModelBuilderTest, Imdp) {
+    storm::prism::Program program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/imdp/robot.prism");
+    program = storm::utility::prism::preprocess(program, "delta=0.2");
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> model = storm::builder::ExplicitModelBuilder<storm::Interval>(program).build();
+
+    program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/imdp/coin2.prism");
+    program = storm::utility::prism::preprocess(program, "K=2,bias1=0.1");
+    model = storm::builder::ExplicitModelBuilder<storm::Interval>(program).build();
 }
 
 TEST_F(ExplicitPrismModelBuilderTest, SMG) {

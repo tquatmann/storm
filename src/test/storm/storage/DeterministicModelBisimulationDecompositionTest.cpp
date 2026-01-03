@@ -1,10 +1,11 @@
 #include "storm-config.h"
+#include "test/storm_gtest.h"
+
 #include "storm-parsers/parser/AutoParser.h"
 #include "storm-parsers/parser/FormulaParser.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/bisimulation/DeterministicModelBisimulationDecomposition.h"
-#include "test/storm_gtest.h"
 
 TEST(DeterministicModelBisimulationDecomposition, Die) {
     std::shared_ptr<storm::models::sparse::Model<double>> abstractModel =
@@ -22,11 +23,7 @@ TEST(DeterministicModelBisimulationDecomposition, Die) {
     EXPECT_EQ(13ul, result->getNumberOfStates());
     EXPECT_EQ(20ul, result->getNumberOfTransitions());
 
-#ifdef WINDOWS
-    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#else
     typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#endif
     options.respectedAtomicPropositions = std::set<std::string>({"one"});
 
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>> bisim2(*dtmc, options);
@@ -76,11 +73,7 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
     EXPECT_EQ(334ul, result->getNumberOfStates());
     EXPECT_EQ(546ul, result->getNumberOfTransitions());
 
-#ifdef WINDOWS
-    storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#else
     typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>::Options options;
-#endif
     options.respectedAtomicPropositions = std::set<std::string>({"observe0Greater1"});
 
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>> bisim2(*dtmc, options);

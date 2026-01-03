@@ -4,22 +4,32 @@
 #include "storm-gamebased-ar/abstraction/MenuGameRefiner.h"
 #include "storm-gamebased-ar/abstraction/prism/PrismMenuGameAbstractor.h"
 #include "storm-parsers/parser/PrismParser.h"
-#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/models/symbolic/StandardRewardModel.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/AbstractionSettings.h"
-#include "storm/storage/dd/Add.h"
 #include "storm/storage/dd/Bdd.h"
 #include "storm/storage/expressions/Expression.h"
 #include "storm/utility/solver.h"
 
 class Cudd {
    public:
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static const storm::dd::DdType DdType = storm::dd::DdType::CUDD;
 };
 
 class Sylvan {
    public:
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static const storm::dd::DdType DdType = storm::dd::DdType::Sylvan;
 };
 
@@ -30,9 +40,10 @@ class PrismMenuGame : public ::testing::Test {
 
    protected:
     void SetUp() override {
-#ifndef STORM_HAVE_MSAT
+#ifndef STORM_HAVE_MATHSAT
         GTEST_SKIP() << "MathSAT not available.";
 #endif
+        TestType::checkLibraryAvailable();
     }
 };
 

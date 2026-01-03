@@ -1,13 +1,14 @@
-name: apply-code-format
+name: Apply code format
 
-on: [ workflow_dispatch ]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # apply the formatting twice as a workaround for a clang-format bug
       - uses: DoozyX/clang-format-lint-action@v0.20
         with:
@@ -35,7 +36,7 @@ jobs:
           fi
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: ci/apply-code-format
           delete-branch: true

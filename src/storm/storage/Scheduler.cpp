@@ -1,10 +1,11 @@
+#include "storm/storage/Scheduler.h"
 
 #include <boost/algorithm/string/join.hpp>
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/JsonAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/exceptions/NotImplementedException.h"
-#include "storm/storage/Scheduler.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
 
@@ -159,6 +160,11 @@ bool Scheduler<ValueType>::isMemorylessScheduler() const {
 template<typename ValueType>
 uint_fast64_t Scheduler<ValueType>::getNumberOfMemoryStates() const {
     return memoryStructure ? memoryStructure->getNumberOfStates() : 1;
+}
+
+template<typename ValueType>
+uint_fast64_t Scheduler<ValueType>::getNumberOfModelStates() const {
+    return schedulerChoices.empty() ? 0 : schedulerChoices.front().size();
 }
 
 template<typename ValueType>

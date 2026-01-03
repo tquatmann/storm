@@ -33,6 +33,7 @@ namespace {
 
 enum class DtmcEngine { PrismSparse, JaniSparse, Hybrid, PrismDd, JaniDd };
 
+#ifdef STORM_HAVE_GMM
 class SparseGmmxxGmresIluEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
@@ -100,6 +101,7 @@ class SparseGmmxxBicgstabIluEnvironment {
         return env;
     }
 };
+#endif
 
 class SparseEigenDGmresEnvironment {
    public:
@@ -261,6 +263,23 @@ class SparseNativeOptimisticValueIterationEnvironment {
     }
 };
 
+class SparseNativeGuessingValueIterationEnvironment {
+   public:
+    static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
+    static const DtmcEngine engine = DtmcEngine::PrismSparse;
+    static const bool isExact = false;
+    typedef double ValueType;
+    typedef storm::models::sparse::Dtmc<ValueType> ModelType;
+    static storm::Environment createEnvironment() {
+        storm::Environment env;
+        env.solver().setForceSoundness(true);
+        env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
+        env.solver().native().setMethod(storm::solver::NativeLinearEquationSolverMethod::GuessingValueIteration);
+        env.solver().native().setPrecision(storm::utility::convertNumber<storm::RationalNumber>(1e-6));
+        return env;
+    }
+};
+
 class SparseNativeIntervalIterationEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
@@ -310,6 +329,7 @@ class SparseTopologicalEigenLUEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class HybridSylvanGmmxxGmresEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;
@@ -317,6 +337,13 @@ class HybridSylvanGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -325,6 +352,7 @@ class HybridSylvanGmmxxGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class HybridCuddNativeJacobiEnvironment {
    public:
@@ -333,6 +361,13 @@ class HybridCuddNativeJacobiEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -349,6 +384,13 @@ class HybridCuddNativeSoundValueIterationEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setForceSoundness(true);
@@ -366,6 +408,13 @@ class HybridSylvanNativeRationalSearchEnvironment {
     static const bool isExact = true;
     typedef storm::RationalNumber ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -381,6 +430,13 @@ class DdSylvanNativePowerEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -397,6 +453,13 @@ class JaniDdSylvanNativePowerEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -413,6 +476,13 @@ class DdCuddNativeJacobiEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -429,6 +499,13 @@ class DdSylvanRationalSearchEnvironment {
     static const bool isExact = true;
     typedef storm::RationalNumber ValueType;
     typedef storm::models::symbolic::Dtmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Native);
@@ -450,6 +527,9 @@ class DtmcPrctlModelCheckerTest : public ::testing::Test {
 #ifndef STORM_HAVE_Z3
         GTEST_SKIP() << "Z3 not available.";
 #endif
+        if constexpr (TestType::engine == DtmcEngine::Hybrid || TestType::engine == DtmcEngine::PrismDd || TestType::engine == DtmcEngine::JaniDd) {
+            TestType::checkLibraryAvailable();
+        }
     }
 
     storm::Environment const& env() const {
@@ -572,13 +652,17 @@ class DtmcPrctlModelCheckerTest : public ::testing::Test {
     }
 };
 
-typedef ::testing::Types<SparseGmmxxGmresIluEnvironment, JaniSparseGmmxxGmresIluEnvironment, SparseGmmxxGmresDiagEnvironment, SparseGmmxxBicgstabIluEnvironment,
-                         SparseEigenDGmresEnvironment, SparseEigenDoubleLUEnvironment, SparseEigenRationalLUEnvironment, SparseRationalEliminationEnvironment,
-                         SparseNativeJacobiEnvironment, SparseNativeWalkerChaeEnvironment, SparseNativeSorEnvironment, SparseNativePowerEnvironment,
-                         SparseNativeSoundValueIterationEnvironment, SparseNativeOptimisticValueIterationEnvironment, SparseNativeIntervalIterationEnvironment,
-                         SparseNativeRationalSearchEnvironment, SparseTopologicalEigenLUEnvironment, HybridSylvanGmmxxGmresEnvironment,
-                         HybridCuddNativeJacobiEnvironment, HybridCuddNativeSoundValueIterationEnvironment, HybridSylvanNativeRationalSearchEnvironment,
-                         DdSylvanNativePowerEnvironment, JaniDdSylvanNativePowerEnvironment, DdCuddNativeJacobiEnvironment, DdSylvanRationalSearchEnvironment>
+typedef ::testing::Types<
+#ifdef STORM_HAVE_GMM
+    SparseGmmxxGmresIluEnvironment, JaniSparseGmmxxGmresIluEnvironment, SparseGmmxxGmresDiagEnvironment, SparseGmmxxBicgstabIluEnvironment,
+    HybridSylvanGmmxxGmresEnvironment,
+#endif
+    SparseEigenDGmresEnvironment, SparseEigenDoubleLUEnvironment, SparseEigenRationalLUEnvironment, SparseRationalEliminationEnvironment,
+    SparseNativeJacobiEnvironment, SparseNativeWalkerChaeEnvironment, SparseNativeSorEnvironment, SparseNativePowerEnvironment,
+    SparseNativeSoundValueIterationEnvironment, SparseNativeOptimisticValueIterationEnvironment, SparseNativeGuessingValueIterationEnvironment,
+    SparseNativeIntervalIterationEnvironment, SparseNativeRationalSearchEnvironment, SparseTopologicalEigenLUEnvironment, HybridCuddNativeJacobiEnvironment,
+    HybridCuddNativeSoundValueIterationEnvironment, HybridSylvanNativeRationalSearchEnvironment, DdSylvanNativePowerEnvironment,
+    JaniDdSylvanNativePowerEnvironment, DdCuddNativeJacobiEnvironment, DdSylvanRationalSearchEnvironment>
     TestingTypes;
 
 TYPED_TEST_SUITE(DtmcPrctlModelCheckerTest, TestingTypes, );
@@ -870,6 +954,44 @@ TYPED_TEST(DtmcPrctlModelCheckerTest, HOAProbabilitiesDie) {
             EXPECT_FALSE(checker->canHandle(tasks[0]));
         }
     });
+}
+
+TYPED_TEST(DtmcPrctlModelCheckerTest, SmallDiscount) {
+    if (TypeParam::isExact) {
+        GTEST_SKIP() << "Exact computations for discounted properties are not supported.";
+    }
+    std::string formulasString = "R=? [ C ]";
+    formulasString += "; R=? [ Cdiscount=9/10 ]";
+    formulasString += "; R=? [ Cdiscount=15/16 ]";
+    formulasString += "; R=? [ C<5discount=9/10 ]";
+    formulasString += "; R=? [ C<5discount=15/16 ]";
+    auto modelFormulas = this->buildModelFormulas(STORM_TEST_RESOURCES_DIR "/dtmc/small_discount.nm", formulasString);
+    auto model = std::move(modelFormulas.first);
+    auto tasks = this->getTasks(modelFormulas.second);
+    EXPECT_EQ(3ul, model->getNumberOfStates());
+    EXPECT_EQ(4ul, model->getNumberOfTransitions());
+    ASSERT_EQ(model->getType(), storm::models::ModelType::Dtmc);
+    auto checker = this->createModelChecker(model);
+
+    if (TypeParam::engine == DtmcEngine::PrismSparse || TypeParam::engine == DtmcEngine::JaniSparse) {
+        std::unique_ptr<storm::modelchecker::CheckResult> result = checker->check(this->env(), tasks[0]);
+        EXPECT_NEAR(this->parseNumber("5"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+
+        result = checker->check(this->env(), tasks[1]);
+        EXPECT_NEAR(this->parseNumber("45/14"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+        result = checker->check(this->env(), tasks[2]);
+        EXPECT_NEAR(this->parseNumber("15/4"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+        result = checker->check(this->env(), tasks[3]);
+        EXPECT_NEAR(this->parseNumber("12591/6250"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+        result = checker->check(this->env(), tasks[4]);
+        EXPECT_NEAR(this->parseNumber("555/256"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+    } else {
+        EXPECT_FALSE(checker->canHandle(tasks[0]));
+        EXPECT_FALSE(checker->canHandle(tasks[1]));
+        EXPECT_FALSE(checker->canHandle(tasks[2]));
+        EXPECT_FALSE(checker->canHandle(tasks[3]));
+        EXPECT_FALSE(checker->canHandle(tasks[4]));
+    }
 }
 
 }  // namespace

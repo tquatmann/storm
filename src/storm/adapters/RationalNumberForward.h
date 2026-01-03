@@ -16,21 +16,15 @@ class cl_I;
 }  // namespace cln
 #endif
 
-namespace carl {
-template<typename Number>
-class Interval;
-}
-
 namespace storm {
 #if defined(STORM_HAVE_CLN)
 typedef cln::cl_RA ClnRationalNumber;
 typedef cln::cl_I ClnIntegerNumber;
 #endif
 #if defined(STORM_HAVE_GMP)
-typedef __gmp_expr<mpq_t, mpq_t> GmpRationalNumber;
-typedef __gmp_expr<mpz_t, mpz_t> GmpIntegerNumber;
+typedef __gmp_expr<mpq_t, mpq_t> GmpRationalNumber;  // corresponds to mpq_class
+typedef __gmp_expr<mpz_t, mpz_t> GmpIntegerNumber;   // corresponds to mpz_class
 #endif
-typedef carl::Interval<double> Interval;
 
 #if defined(STORM_HAVE_CLN) && defined(STORM_USE_CLN_EA)
 typedef ClnRationalNumber RationalNumber;

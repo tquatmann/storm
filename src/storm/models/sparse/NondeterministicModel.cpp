@@ -1,7 +1,8 @@
 #include "storm/models/sparse/NondeterministicModel.h"
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/exceptions/InvalidOperationException.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/io/export.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -62,7 +63,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> Nondet
         if (!dropUnreachableStates) {
             memoryProduct.setBuildFullProduct();
         }
-        return memoryProduct.build();
+        return memoryProduct.build(preserveModelType);
     }
 }
 
@@ -188,13 +189,10 @@ uint_least64_t NondeterministicModel<ValueType, RewardModelType>::getChoiceIndex
 }
 
 template class NondeterministicModel<double>;
-
-#ifdef STORM_HAVE_CARL
-template class NondeterministicModel<storm::RationalNumber>;
 template class NondeterministicModel<double, storm::models::sparse::StandardRewardModel<storm::Interval>>;
-template class NondeterministicModel<storm::RationalFunction>;
 template class NondeterministicModel<storm::Interval>;
-#endif
+template class NondeterministicModel<storm::RationalNumber>;
+template class NondeterministicModel<storm::RationalFunction>;
 }  // namespace sparse
 }  // namespace models
 }  // namespace storm

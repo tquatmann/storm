@@ -1,11 +1,12 @@
+#include "storm/storage/MaximalEndComponentDecomposition.h"
+
 #include <algorithm>
 #include <span>
 #include <sstream>
 
-#include "storm/models/sparse/StandardRewardModel.h"
-
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/storage/MaximalEndComponentDecomposition.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
 #include "storm/utility/graph.h"
 
@@ -79,7 +80,6 @@ std::string MaximalEndComponentDecomposition<ValueType>::statistics(uint64_t tot
         return "Empty MEC decomposition.";
     }
     uint64_t statesInMec = 0;
-    uint64_t choicesInMec = 0;
     uint64_t trivialMecs = 0;
     uint64_t smallestSize = std::numeric_limits<uint64_t>::max();
     uint64_t largestSize = 0;

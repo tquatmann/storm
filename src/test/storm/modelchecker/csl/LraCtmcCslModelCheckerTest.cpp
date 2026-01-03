@@ -31,6 +31,7 @@ namespace {
 
 enum class CtmcEngine { PrismSparse, JaniSparse, JaniHybrid };
 
+#ifdef STORM_HAVE_GMM
 class GBSparseGmmxxGmresIluEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
@@ -80,6 +81,13 @@ class GBJaniHybridCuddGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Ctmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -101,6 +109,13 @@ class GBJaniHybridSylvanGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Ctmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -114,6 +129,7 @@ class GBJaniHybridSylvanGmmxxGmresEnvironment {
         return env;
     }
 };
+#endif
 
 class GBSparseEigenDGmresEnvironment {
    public:
@@ -166,6 +182,7 @@ class GBSparseNativeSorEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class DistrSparseGmmxxGmresIluEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
@@ -186,6 +203,7 @@ class DistrSparseGmmxxGmresIluEnvironment {
         return env;
     }
 };
+#endif
 
 class DistrSparseEigenDoubleLUEnvironment {
    public:
@@ -246,6 +264,9 @@ class LraCtmcCslModelCheckerTest : public ::testing::Test {
 #ifndef STORM_HAVE_Z3
         GTEST_SKIP() << "Z3 not available.";
 #endif
+        if constexpr (TestType::engine == CtmcEngine::JaniHybrid) {
+            TestType::checkLibraryAvailable();
+        }
     }
 
     storm::Environment const& env() const {
@@ -368,10 +389,13 @@ class LraCtmcCslModelCheckerTest : public ::testing::Test {
     }
 };
 
-typedef ::testing::Types<GBSparseGmmxxGmresIluEnvironment, GBJaniSparseGmmxxGmresIluEnvironment, GBJaniHybridCuddGmmxxGmresEnvironment,
-                         GBJaniHybridSylvanGmmxxGmresEnvironment, GBSparseEigenDGmresEnvironment, GBSparseEigenDoubleLUEnvironment,
-                         GBSparseNativeSorEnvironment, DistrSparseGmmxxGmresIluEnvironment, DistrSparseEigenDoubleLUEnvironment,
-                         ValueIterationSparseEnvironment, SoundEnvironment>
+typedef ::testing::Types<
+#ifdef STORM_HAVE_GMM
+    GBSparseGmmxxGmresIluEnvironment, GBJaniSparseGmmxxGmresIluEnvironment, GBJaniHybridCuddGmmxxGmresEnvironment, GBJaniHybridSylvanGmmxxGmresEnvironment,
+    DistrSparseGmmxxGmresIluEnvironment,
+#endif
+    GBSparseEigenDGmresEnvironment, GBSparseEigenDoubleLUEnvironment, GBSparseNativeSorEnvironment, DistrSparseEigenDoubleLUEnvironment,
+    ValueIterationSparseEnvironment, SoundEnvironment>
     TestingTypes;
 
 TYPED_TEST_SUITE(LraCtmcCslModelCheckerTest, TestingTypes, );

@@ -1,6 +1,8 @@
 #include "storm/models/sparse/Pomdp.h"
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 
 namespace storm {
 namespace models {
@@ -152,10 +154,10 @@ std::size_t Pomdp<ValueType, RewardModelType>::hash() const {
 }
 
 template class Pomdp<double>;
-template class Pomdp<storm::RationalNumber>;
 template class Pomdp<double, storm::models::sparse::StandardRewardModel<storm::Interval>>;
-template class Pomdp<storm::RationalFunction>;
+template class Pomdp<storm::RationalNumber>;
 template class Pomdp<storm::Interval>;
+template class Pomdp<storm::RationalFunction>;
 }  // namespace sparse
 }  // namespace models
 }  // namespace storm

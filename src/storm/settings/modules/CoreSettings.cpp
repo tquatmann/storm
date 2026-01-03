@@ -8,7 +8,6 @@
 #include "storm/settings/SettingsManager.h"
 #include "storm/solver/SolverSelectionOptions.h"
 
-#include "storm/adapters/IntelTbbAdapter.h"
 #include "storm/storage/dd/DdType.h"
 
 #include "storm/exceptions/IllegalArgumentValueException.h"
@@ -28,8 +27,6 @@ const std::string CoreSettings::statisticsOptionShortName = "stats";
 const std::string CoreSettings::engineOptionName = "engine";
 const std::string CoreSettings::engineOptionShortName = "e";
 const std::string CoreSettings::ddLibraryOptionName = "ddlib";
-const std::string CoreSettings::intelTbbOptionName = "enable-tbb";
-const std::string CoreSettings::intelTbbOptionShortName = "tbb";
 
 std::string getDefaultLpSolverAsString() {
     // TODO: We currently never set Gurobi as a default LP solver as
@@ -38,7 +35,7 @@ std::string getDefaultLpSolverAsString() {
 #if defined STORM_HAVE_GLPK
     return "glpk";
 #elif defined STORM_HAVE_SOPLEX
-    return "soplex"
+    return "soplex";
 #else
     return "z3";
 #endif
@@ -68,13 +65,26 @@ CoreSettings::CoreSettings() : ModuleSettings(moduleName), engine(storm::utility
                              .build())
             .build());
 
-    std::vector<std::string> ddLibraries = {"cudd", "sylvan"};
-    this->addOption(storm::settings::OptionBuilder(moduleName, ddLibraryOptionName, false, "Sets which library is preferred for decision-diagram operations.")
-                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("name", "The name of the library to prefer.")
-                                         .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(ddLibraries))
-                                         .setDefaultValueString("sylvan")
-                                         .build())
-                        .build());
+    // Initialize options for DD libraries
+    std::vector<std::string> ddLibraries;
+    std::string ddDefault = "";
+#ifdef STORM_HAVE_CUDD
+    ddLibraries.push_back("cudd");
+    ddDefault = "cudd";
+#endif
+#ifdef STORM_HAVE_SYLVAN
+    ddLibraries.push_back("sylvan");
+    ddDefault = "sylvan";  // Overwrite previous default and give Sylvan priority
+#endif
+    if (!ddLibraries.empty()) {
+        this->addOption(
+            storm::settings::OptionBuilder(moduleName, ddLibraryOptionName, false, "Sets which library is preferred for decision-diagram operations.")
+                .addArgument(storm::settings::ArgumentBuilder::createStringArgument("name", "The name of the library to prefer.")
+                                 .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(ddLibraries))
+                                 .setDefaultValueString(ddDefault)
+                                 .build())
+                .build());
+    }
 
     std::vector<std::string> lpSolvers = {"gurobi", "glpk", "z3", "soplex"};
     this->addOption(storm::settings::OptionBuilder(moduleName, lpSolverOptionName, false, "Sets which LP solver is preferred.")
@@ -94,11 +104,6 @@ CoreSettings::CoreSettings() : ModuleSettings(moduleName), engine(storm::utility
     this->addOption(storm::settings::OptionBuilder(moduleName, statisticsOptionName, false, "Sets whether to display statistics if available.")
                         .setShortName(statisticsOptionShortName)
                         .build());
-
-    this->addOption(
-        storm::settings::OptionBuilder(moduleName, intelTbbOptionName, false, "Sets whether to use Intel TBB (if Storm was built with support for TBB).")
-            .setShortName(intelTbbOptionShortName)
-            .build());
 }
 
 storm::solver::EquationSolverType CoreSettings::getEquationSolver() const {
@@ -173,10 +178,6 @@ bool CoreSettings::isShowStatisticsSet() const {
     return this->getOption(statisticsOptionName).getHasOptionBeenSet();
 }
 
-bool CoreSettings::isUseIntelTbbSet() const {
-    return this->getOption(intelTbbOptionName).getHasOptionBeenSet();
-}
-
 storm::utility::Engine CoreSettings::getEngine() const {
     return engine;
 }
@@ -193,12 +194,7 @@ void CoreSettings::finalize() {
 }
 
 bool CoreSettings::check() const {
-#ifdef STORM_HAVE_INTELTBB
     return true;
-#else
-    STORM_LOG_WARN_COND(!isUseIntelTbbSet(), "Enabling TBB is not supported in this version of Storm as it was not built with support for it.");
-    return true;
-#endif
 }
 
 }  // namespace modules

@@ -1,11 +1,6 @@
 # Base path for test files
 set(STORM_TESTS_BASE_PATH "${PROJECT_SOURCE_DIR}/src/test/storm")
 
-# Test Sources
-file(GLOB_RECURSE ALL_FILES ${STORM_TESTS_BASE_PATH}/*.h ${STORM_TESTS_BASE_PATH}/*.cpp)
-
-register_source_groups_from_filestructure("${ALL_FILES}" test)
-
 # Note that the tests also need the source files, except for the main file
 include_directories(${GTEST_INCLUDE_DIR})
 
@@ -29,7 +24,7 @@ set(REUSE_PCH_FROM "")
 foreach(testsuite ${NON_SPLIT_TESTS})
 	file(GLOB_RECURSE TEST_${testsuite}_FILES ${STORM_TESTS_BASE_PATH}/${testsuite}/*.h ${STORM_TESTS_BASE_PATH}/${testsuite}/*.cpp ${STORM_TESTS_BASE_PATH}/../storm_gtest.cpp)
 	add_executable(test-${testsuite} ${TEST_${testsuite}_FILES} ${STORM_TESTS_BASE_PATH}/storm-test.cpp)
-	if (REUSE_PCH_FROM STREQUAL  "")
+	if (REUSE_PCH_FROM STREQUAL "")
 		# note that reusing from storm main leads to errors on arch linux (late 2023).
 		target_precompile_headers(test-${testsuite} PRIVATE ${STORM_PRECOMPILED_HEADERS})
 		set(REUSE_PCH_FROM "test-${testsuite}")

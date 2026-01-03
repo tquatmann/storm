@@ -14,8 +14,6 @@
 #include "storm/storage/BitVector.h"
 #include "storm/storage/sparse/StateType.h"
 
-#include "storm/adapters/IntelTbbAdapter.h"
-#include "storm/utility/OsDetection.h"
 #include "storm/utility/constants.h"
 
 // Forward declaration for adapter classes.
@@ -61,10 +59,8 @@ class MatrixEntry {
     MatrixEntry() = default;
     MatrixEntry(MatrixEntry const& other) = default;
     MatrixEntry& operator=(MatrixEntry const& other) = default;
-#ifndef WINDOWS
     MatrixEntry(MatrixEntry&& other) = default;
     MatrixEntry& operator=(MatrixEntry&& other) = default;
-#endif
 
     /*!
      * Retrieves the column of the matrix entry.
@@ -914,10 +910,6 @@ class SparseMatrix {
                                    std::vector<value_type> const* summand = nullptr) const;
     void multiplyWithVectorBackward(std::vector<value_type> const& vector, std::vector<value_type>& result,
                                     std::vector<value_type> const* summand = nullptr) const;
-#ifdef STORM_HAVE_INTELTBB
-    void multiplyWithVectorParallel(std::vector<value_type> const& vector, std::vector<value_type>& result,
-                                    std::vector<value_type> const* summand = nullptr) const;
-#endif
 
     /*!
      * Multiplies the matrix with the given vector, reduces it according to the given direction and and writes
@@ -949,14 +941,6 @@ class SparseMatrix {
     template<typename Compare>
     void multiplyAndReduceBackward(std::vector<uint64_t> const& rowGroupIndices, std::vector<ValueType> const& vector, std::vector<ValueType> const* b,
                                    std::vector<ValueType>& result, std::vector<uint64_t>* choices) const;
-#ifdef STORM_HAVE_INTELTBB
-    void multiplyAndReduceParallel(storm::solver::OptimizationDirection const& dir, std::vector<uint64_t> const& rowGroupIndices,
-                                   std::vector<ValueType> const& vector, std::vector<ValueType> const* b, std::vector<ValueType>& result,
-                                   std::vector<uint64_t>* choices) const;
-    template<typename Compare>
-    void multiplyAndReduceParallel(std::vector<uint64_t> const& rowGroupIndices, std::vector<ValueType> const& vector, std::vector<ValueType> const* b,
-                                   std::vector<ValueType>& result, std::vector<uint64_t>* choices) const;
-#endif
 
     /*!
      * Multiplies a single row of the matrix with the given vector and returns the result
@@ -1034,7 +1018,7 @@ class SparseMatrix {
     /*!
      * Checks for each row whether it sums to one.
      */
-    bool isProbabilistic() const;
+    bool isProbabilistic(ValueType const& tolerance) const;
 
     /*!
      * Checks whether each present entry is strictly positive (omitted entries are not considered).

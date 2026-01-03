@@ -6,23 +6,16 @@
 #include "storm/exceptions/AbortException.h"
 #include "storm/exceptions/IllegalFunctionCallException.h"
 #include "storm/exceptions/InvalidOptionException.h"
-
 #include "storm/logic/FormulaInformation.h"
 #include "storm/logic/FragmentSpecification.h"
-
+#include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
+#include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-
-#include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
-#include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
-
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/CoreSettings.h"
-
 #include "storm/storage/bisimulation/DeterministicBlockData.h"
-
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/macros.h"
 
@@ -62,7 +55,8 @@ BisimulationDecomposition<ModelType, BlockDataType>::Options::Options()
       buildQuotient(true),
       keepRewards(false),
       type(BisimulationType::Strong),
-      bounded(false) {
+      bounded(false),
+      discounted(false) {
     // Intentionally left empty.
 }
 
@@ -82,6 +76,9 @@ void BisimulationDecomposition<ModelType, BlockDataType>::Options::preserveFormu
     // Preserve bounded properties if necessary.
     bounded = bounded || (info.containsBoundedUntilFormula() || info.containsNextFormula() || info.containsCumulativeRewardFormula());
 
+    // Preserve discounted properties if necessary.
+    discounted = discounted || info.containsDiscountFormula();
+
     // Compute the relevant labels and expressions.
     this->addToRespectedAtomicPropositions(formula.getAtomicExpressionFormulas(), formula.getAtomicLabelFormulas());
 }
@@ -95,6 +92,9 @@ void BisimulationDecomposition<ModelType, BlockDataType>::Options::preserveSingl
 
     // We need to preserve bounded properties iff the formula contains a bounded until or a next subformula.
     bounded = info.containsBoundedUntilFormula() || info.containsNextFormula() || info.containsCumulativeRewardFormula();
+
+    // We need to preserve discounting iff the formula contains a discounted subformula
+    discounted = info.containsDiscountFormula();
 
     // Compute the relevant labels and expressions.
     this->addToRespectedAtomicPropositions(formula.getAtomicExpressionFormulas(), formula.getAtomicLabelFormulas());
@@ -188,7 +188,7 @@ template<typename ModelType, typename BlockDataType>
 BisimulationDecomposition<ModelType, BlockDataType>::BisimulationDecomposition(ModelType const& model,
                                                                                storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                Options const& options)
-    : model(model), backwardTransitions(backwardTransitions), options(options), partition(), comparator(), quotient(nullptr) {
+    : model(model), backwardTransitions(backwardTransitions), options(options), partition(), comparator(options.getTolerance()), quotient(nullptr) {
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || model.hasUniqueRewardModel(), storm::exceptions::IllegalFunctionCallException,
                     "Bisimulation currently only supports models with at most one reward model.");
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || !model.getUniqueRewardModel().hasTransitionRewards(),
@@ -197,6 +197,8 @@ BisimulationDecomposition<ModelType, BlockDataType>::BisimulationDecomposition(M
                     "rewards (via suitable function calls).");
     STORM_LOG_THROW(options.getType() != BisimulationType::Weak || !options.getBounded(), storm::exceptions::IllegalFunctionCallException,
                     "Weak bisimulation cannot preserve bounded properties.");
+    STORM_LOG_THROW(options.getType() != BisimulationType::Weak || !options.getDiscounted(), storm::exceptions::IllegalFunctionCallException,
+                    "Weak bisimulation cannot preserve discounted properties.");
 
     // Fix the respected atomic propositions if they were not explicitly given.
     if (!this->options.respectedAtomicPropositions) {
@@ -395,7 +397,6 @@ template class BisimulationDecomposition<storm::models::sparse::Dtmc<double>, bi
 template class BisimulationDecomposition<storm::models::sparse::Ctmc<double>, bisimulation::DeterministicBlockData>;
 template class BisimulationDecomposition<storm::models::sparse::Mdp<double>, bisimulation::DeterministicBlockData>;
 
-#ifdef STORM_HAVE_CARL
 template class BisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalNumber>, bisimulation::DeterministicBlockData>;
 template class BisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalNumber>, bisimulation::DeterministicBlockData>;
 template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalNumber>, bisimulation::DeterministicBlockData>;
@@ -403,6 +404,5 @@ template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::Ratio
 template class BisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalFunction>, bisimulation::DeterministicBlockData>;
 template class BisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalFunction>, bisimulation::DeterministicBlockData>;
 template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalFunction>, bisimulation::DeterministicBlockData>;
-#endif
 }  // namespace storage
 }  // namespace storm

@@ -29,8 +29,8 @@ class BitVectorHashMap {
         BitVectorHashMapIterator(BitVectorHashMap const& map, BitVector::const_iterator indexIt);
 
         // Methods to compare two iterators.
-        bool operator==(BitVectorHashMapIterator const& other);
-        bool operator!=(BitVectorHashMapIterator const& other);
+        bool operator==(BitVectorHashMapIterator const& other) const;
+        bool operator!=(BitVectorHashMapIterator const& other) const;
 
         // Methods to move iterator forward.
         BitVectorHashMapIterator& operator++(int);
@@ -169,16 +169,6 @@ class BitVectorHashMap {
      * second component indicates in which bucket the key is stored.
      */
     std::pair<bool, uint64_t> findBucket(storm::storage::BitVector const& key) const;
-
-    /*!
-     * Inserts the given key-value pair without resizing the underlying storage. If that fails, this is
-     * indicated by the return value.
-     *
-     * @param key The key to insert.
-     * @param value The value to insert.
-     * @return True iff the key-value pair could be inserted without resizing the storage.
-     */
-    bool insertWithoutIncreasingSize(storm::storage::BitVector const& key, ValueType const& value);
 
     /*!
      * Increases the size of the hash map and performs the necessary rehashing of all entries.

@@ -1,6 +1,7 @@
 #include "storm/modelchecker/multiobjective/pcaa/SparsePcaaAchievabilityQuery.h"
 
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
@@ -8,8 +9,6 @@
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/vector.h"
-
-#include "storm/exceptions/InvalidOperationException.h"
 
 namespace storm {
 namespace modelchecker {
@@ -46,7 +45,9 @@ void SparsePcaaAchievabilityQuery<SparseModelType, GeometryValueType>::initializ
 }
 
 template<class SparseModelType, typename GeometryValueType>
-std::unique_ptr<CheckResult> SparsePcaaAchievabilityQuery<SparseModelType, GeometryValueType>::check(Environment const& env) {
+std::unique_ptr<CheckResult> SparsePcaaAchievabilityQuery<SparseModelType, GeometryValueType>::check(Environment const& env, bool produceScheduler) {
+    STORM_LOG_THROW(!produceScheduler, storm::exceptions::NotImplementedException, "Scheduler computation is not implement for achievability queries.");
+
     bool result = this->checkAchievability(env);
 
     return std::unique_ptr<CheckResult>(new ExplicitQualitativeCheckResult(this->originalModel.getInitialStates().getNextSetIndex(0), result));
@@ -58,7 +59,7 @@ bool SparsePcaaAchievabilityQuery<SparseModelType, GeometryValueType>::checkAchi
     while (!this->maxStepsPerformed(env) && !storm::utility::resources::isTerminate()) {
         WeightVector separatingVector = this->findSeparatingVector(thresholds);
         this->updateWeightedPrecision(separatingVector);
-        this->performRefinementStep(env, std::move(separatingVector));
+        this->performRefinementStep(env, std::move(separatingVector), false);  // scheduler computation currently not supported
         if (!checkIfThresholdsAreSatisfied(this->overApproximation)) {
             return false;
         }
@@ -110,13 +111,11 @@ bool SparsePcaaAchievabilityQuery<SparseModelType, GeometryValueType>::checkIfTh
     return true;
 }
 
-#ifdef STORM_HAVE_CARL
 template class SparsePcaaAchievabilityQuery<storm::models::sparse::Mdp<double>, storm::RationalNumber>;
 template class SparsePcaaAchievabilityQuery<storm::models::sparse::MarkovAutomaton<double>, storm::RationalNumber>;
 
 template class SparsePcaaAchievabilityQuery<storm::models::sparse::Mdp<storm::RationalNumber>, storm::RationalNumber>;
 template class SparsePcaaAchievabilityQuery<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>, storm::RationalNumber>;
-#endif
 }  // namespace multiobjective
 }  // namespace modelchecker
 }  // namespace storm

@@ -1,14 +1,16 @@
 #include "storm/generator/JaniNextStateGenerator.h"
 
 #include "storm/adapters/JsonAdapter.h"
-
 #include "storm/adapters/RationalFunctionAdapter.h"
-
+#include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/exceptions/NotSupportedException.h"
+#include "storm/exceptions/UnexpectedException.h"
+#include "storm/exceptions/WrongFormatException.h"
+#include "storm/generator/Distribution.h"
 #include "storm/models/sparse/StateLabeling.h"
-
 #include "storm/solver/SmtSolver.h"
+#include "storm/storage/expressions/ExpressionEvaluator.h"
 #include "storm/storage/expressions/SimpleValuation.h"
-
 #include "storm/storage/jani/Automaton.h"
 #include "storm/storage/jani/AutomatonComposition.h"
 #include "storm/storage/jani/Edge.h"
@@ -16,21 +18,10 @@
 #include "storm/storage/jani/Location.h"
 #include "storm/storage/jani/Model.h"
 #include "storm/storage/jani/ParallelComposition.h"
-#include "storm/storage/jani/traverser/ArrayExpressionFinder.h"
 #include "storm/storage/jani/traverser/AssignmentLevelFinder.h"
 #include "storm/storage/jani/traverser/RewardModelInformation.h"
 #include "storm/storage/jani/visitor/CompositionInformationVisitor.h"
-
-#include "storm/storage/expressions/ExpressionEvaluator.h"
-
 #include "storm/storage/sparse/JaniChoiceOrigins.h"
-
-#include "storm/generator/Distribution.h"
-
-#include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/exceptions/NotSupportedException.h"
-#include "storm/exceptions/UnexpectedException.h"
-#include "storm/exceptions/WrongFormatException.h"
 #include "storm/utility/combinatorics.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
@@ -54,9 +45,6 @@ JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani
       hasStateActionRewards(false),
       evaluateRewardExpressionsAtEdges(false),
       evaluateRewardExpressionsAtDestinations(false) {
-    STORM_LOG_THROW(!this->options.isBuildChoiceLabelsSet(), storm::exceptions::NotSupportedException,
-                    "JANI next-state generator cannot generate choice labels.");
-
     auto features = this->model.getModelFeatures();
     features.remove(storm::jani::ModelFeature::DerivedOperators);
     features.remove(storm::jani::ModelFeature::StateExitRewards);
@@ -1030,9 +1018,15 @@ void JaniNextStateGenerator<ValueType, StateType>::expandSynchronizingEdgeCombin
 
         if (this->options.isExplorationChecksSet()) {
             // Check that the resulting distribution is in fact a distribution.
-            STORM_LOG_THROW(!this->isDiscreteTimeModel() || !this->comparator.isConstant(probabilitySum) || this->comparator.isOne(probabilitySum),
+            STORM_LOG_THROW(!this->isDiscreteTimeModel() || !storm::utility::isConstant(probabilitySum) || this->comparator.isOne(probabilitySum),
                             storm::exceptions::WrongFormatException,
                             "Sum of update probabilities do not sum to one for some edge (actually sum to " << probabilitySum << ").");
+        }
+
+        if (this->options.isBuildChoiceLabelsSet()) {
+            if (outputActionIndex != storm::jani::Model::SILENT_ACTION_INDEX) {
+                choice.addLabel(model.getAction(outputActionIndex).getName());
+            }
         }
 
         // Now, check whether there is one more command combination to consider.
@@ -1083,19 +1077,26 @@ std::vector<Choice<ValueType>> JaniNextStateGenerator<ValueType, StateType>::get
                         continue;
                     }
 
-                    result.push_back(expandNonSynchronizingEdge(*indexAndEdge.second,
-                                                                outputAndEdges.first ? outputAndEdges.first.get() : indexAndEdge.second->getActionIndex(),
-                                                                automatonIndex, state, stateToIdCallback));
+                    uint64_t actionIndex = outputAndEdges.first ? outputAndEdges.first.get() : indexAndEdge.second->getActionIndex();
+                    result.push_back(expandNonSynchronizingEdge(*indexAndEdge.second, actionIndex, automatonIndex, state, stateToIdCallback));
 
                     if (this->getOptions().isBuildChoiceOriginsSet()) {
                         auto modelAutomatonIndex = model.getAutomatonIndex(parallelAutomata[automatonIndex].get().getName());
                         EdgeIndexSet edgeIndex{model.encodeAutomatonAndEdgeIndices(modelAutomatonIndex, indexAndEdge.first)};
                         result.back().addOriginData(boost::any(std::move(edgeIndex)));
                     }
+
+                    if (this->getOptions().isBuildChoiceLabelsSet()) {
+                        if (actionIndex != storm::jani::Model::SILENT_ACTION_INDEX) {
+                            result.back().addLabel(model.getAction(actionIndex).getName());
+                        }
+                    }
                 }
             }
         } else {
             // If the element has more than one set of edges, we need to perform a synchronization.
+            // We require that some output action for the synchronisation must have been set before.
+            // This might be the silent action, if the Jani model does not specify an output action.
             STORM_LOG_ASSERT(outputAndEdges.first, "Need output action index for synchronization.");
 
             uint64_t outputActionIndex = outputAndEdges.first.get();
@@ -1415,11 +1416,7 @@ storm::storage::BitVector JaniNextStateGenerator<ValueType, StateType>::evaluate
 template<typename ValueType, typename StateType>
 void JaniNextStateGenerator<ValueType, StateType>::checkValid() const {
     // If the program still contains undefined constants and we are not in a parametric setting, assemble an appropriate error message.
-#ifdef STORM_HAVE_CARL
     if (!std::is_same<ValueType, storm::RationalFunction>::value && model.hasUndefinedConstants()) {
-#else
-    if (model.hasUndefinedConstants()) {
-#endif
         std::vector<std::reference_wrapper<storm::jani::Constant const>> undefinedConstants = model.getUndefinedConstants();
         std::stringstream stream;
         bool printComma = false;
@@ -1433,20 +1430,14 @@ void JaniNextStateGenerator<ValueType, StateType>::checkValid() const {
         }
         stream << ".";
         STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException, "Program still contains these undefined constants: " + stream.str());
-    }
-#ifdef STORM_HAVE_CARL
-    else if (std::is_same<ValueType, storm::RationalFunction>::value && !model.undefinedConstantsAreGraphPreserving()) {
+    } else if (std::is_same<ValueType, storm::RationalFunction>::value && !model.undefinedConstantsAreGraphPreserving()) {
         STORM_LOG_THROW(false, storm::exceptions::InvalidArgumentException,
                         "The input model contains undefined constants that influence the graph structure of the underlying model, which is not allowed.");
     }
-#endif
 }
 
 template class JaniNextStateGenerator<double>;
-
-#ifdef STORM_HAVE_CARL
 template class JaniNextStateGenerator<storm::RationalNumber>;
 template class JaniNextStateGenerator<storm::RationalFunction>;
-#endif
 }  // namespace generator
 }  // namespace storm

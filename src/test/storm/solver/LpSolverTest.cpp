@@ -10,6 +10,7 @@
 #include "storm/storage/expressions/Variable.h"
 #include "storm/utility/solver.h"
 #include "storm/utility/vector.h"
+
 namespace {
 
 class DefaultEnvironment {
@@ -22,7 +23,11 @@ class DefaultEnvironment {
     static const bool strictRelationSupport = true;
 
     static bool skip() {
+#ifdef STORM_HAVE_LP_SOLVER
         return false;
+#else
+        return true;
+#endif
     }
 };
 

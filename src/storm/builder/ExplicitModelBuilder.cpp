@@ -2,39 +2,24 @@
 
 #include <map>
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/builder/RewardModelBuilder.h"
 #include "storm/builder/StateAndChoiceInformationBuilder.h"
-
 #include "storm/exceptions/AbortException.h"
-#include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/WrongFormatException.h"
-
 #include "storm/generator/JaniNextStateGenerator.h"
 #include "storm/generator/PrismNextStateGenerator.h"
-
-#include "storm/models/sparse/Ctmc.h"
-#include "storm/models/sparse/Dtmc.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
-#include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"
-
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/BuildSettings.h"
-
 #include "storm/storage/expressions/ExpressionManager.h"
-#include "storm/storage/jani/Automaton.h"
-#include "storm/storage/jani/AutomatonComposition.h"
 #include "storm/storage/jani/Model.h"
-#include "storm/storage/jani/ParallelComposition.h"
-
-#include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/builder.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
-#include "storm/utility/prism.h"
 
 namespace storm {
 namespace builder {
@@ -83,6 +68,7 @@ template<typename ValueType, typename RewardModelType, typename StateType>
 ExplicitModelBuilder<ValueType, RewardModelType, StateType>::ExplicitModelBuilder(storm::jani::Model const& model,
                                                                                   storm::generator::NextStateGeneratorOptions const& generatorOptions,
                                                                                   Options const& builderOptions)
+    requires(!storm::IsIntervalType<ValueType>)
     : ExplicitModelBuilder(std::make_shared<storm::generator::JaniNextStateGenerator<ValueType, StateType>>(model, generatorOptions), builderOptions) {
     // Intentionally left empty.
 }
@@ -441,10 +427,10 @@ storm::models::sparse::StateLabeling ExplicitModelBuilder<ValueType, RewardModel
 template class ExplicitModelBuilder<double, storm::models::sparse::StandardRewardModel<double>, uint32_t>;
 template class ExplicitStateLookup<uint32_t>;
 
-#ifdef STORM_HAVE_CARL
 template class ExplicitModelBuilder<RationalNumber, storm::models::sparse::StandardRewardModel<RationalNumber>, uint32_t>;
 template class ExplicitModelBuilder<RationalFunction, storm::models::sparse::StandardRewardModel<RationalFunction>, uint32_t>;
-template class ExplicitModelBuilder<double, storm::models::sparse::StandardRewardModel<storm::Interval>, uint32_t>;
-#endif
+template class ExplicitModelBuilder<double, storm::models::sparse::StandardRewardModel<storm::Interval>, uint32_t>;  // TODO: where is this used?
+template class ExplicitModelBuilder<storm::Interval, storm::models::sparse::StandardRewardModel<storm::Interval>, uint32_t>;
+
 }  // namespace builder
 }  // namespace storm

@@ -1,18 +1,14 @@
-#ifndef STORM_MODELCHECKER_SPARSE_MDP_PRCTL_MODELCHECKER_HELPER_H_
-#define STORM_MODELCHECKER_SPARSE_MDP_PRCTL_MODELCHECKER_HELPER_H_
+#pragma once
 
 #include <vector>
 
-#include "MDPModelCheckingHelperReturnType.h"
+#include "storm/adapters/IntervalForward.h"
 #include "storm/modelchecker/hints/ModelCheckerHint.h"
+#include "storm/modelchecker/prctl/helper/MDPModelCheckingHelperReturnType.h"
 #include "storm/modelchecker/prctl/helper/rewardbounded/MultiDimensionalRewardUnfolding.h"
+#include "storm/solver/SolveGoal.h"
 #include "storm/storage/MaximalEndComponent.h"
 #include "storm/storage/SparseMatrix.h"
-
-#include "storm/solver/SolveGoal.h"
-#include "storm/utility/solver.h"
-
-#include "storm/adapters/RationalFunctionAdapter.h"
 
 namespace storm {
 
@@ -74,6 +70,16 @@ class SparseMdpPrctlHelper {
                                                                                     storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                     RewardModelType const& rewardModel, bool qualitative, bool produceScheduler,
                                                                                     ModelCheckerHint const& hint = ModelCheckerHint());
+    template<typename RewardModelType>
+    static std::vector<SolutionType> computeDiscountedCumulativeRewards(Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal,
+                                                                        storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                        RewardModelType const& rewardModel, uint_fast64_t stepBound, ValueType discountFactor);
+
+    template<typename RewardModelType>
+    static MDPSparseModelCheckingHelperReturnType<SolutionType> computeDiscountedTotalRewards(
+        Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+        storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel, bool qualitative, bool produceScheduler,
+        ValueType discountFactor, ModelCheckerHint const& hint = ModelCheckerHint());
 
     template<typename RewardModelType>
     static MDPSparseModelCheckingHelperReturnType<SolutionType> computeReachabilityRewards(
@@ -92,12 +98,6 @@ class SparseMdpPrctlHelper {
                                                                 storm::models::sparse::StandardRewardModel<storm::Interval> const& intervalRewardModel,
                                                                 bool lowerBoundOfIntervals, storm::storage::BitVector const& targetStates, bool qualitative);
 
-    static std::unique_ptr<CheckResult> computeConditionalProbabilities(Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal,
-                                                                        storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
-                                                                        storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
-                                                                        storm::storage::BitVector const& targetStates,
-                                                                        storm::storage::BitVector const& conditionStates);
-
    private:
     static MDPSparseModelCheckingHelperReturnType<SolutionType> computeReachabilityRewardsHelper(
         Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
@@ -112,5 +112,3 @@ class SparseMdpPrctlHelper {
 }  // namespace helper
 }  // namespace modelchecker
 }  // namespace storm
-
-#endif /* STORM_MODELCHECKER_SPARSE_MDP_PRCTL_MODELCHECKER_HELPER_H_ */

@@ -1,19 +1,14 @@
 #include "storm-parsers/parser/AutoParser.h"
 
-#include "storm/models/sparse/StandardRewardModel.h"
-
-#include "storm-parsers/parser/MappedFile.h"
-
 #include "storm-parsers/parser/DeterministicModelParser.h"
+#include "storm-parsers/parser/MappedFile.h"
 #include "storm-parsers/parser/MarkovAutomatonParser.h"
 #include "storm-parsers/parser/NondeterministicModelParser.h"
-#include "storm/exceptions/WrongFormatException.h"
-#include "storm/utility/macros.h"
-
-#include "storm/adapters/RationalFunctionAdapter.h"
-
 #include "storm-parsers/util/cstring.h"
-#include "storm/utility/OsDetection.h"
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/exceptions/WrongFormatException.h"
+#include "storm/models/sparse/StandardRewardModel.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace parser {
@@ -83,12 +78,12 @@ storm::models::ModelType AutoParser<ValueType, RewardValueType>::analyzeHint(std
     // Find and read in the hint.
     std::string formatString = "%" + std::to_string(STORM_PARSER_AUTOPARSER_HINT_LENGTH) + "s";
     char hint[STORM_PARSER_AUTOPARSER_HINT_LENGTH + 1];
-#ifdef WINDOWS
-    sscanf_s(filehintBuffer, formatString.c_str(), hint, STORM_PARSER_AUTOPARSER_HINT_LENGTH + 1);
-#else
+
     sscanf(filehintBuffer, formatString.c_str(), hint);
-#endif
-    for (char* c = hint; *c != '\0'; c++) *c = toupper(*c);
+
+    for (char* c = hint; *c != '\0'; c++) {
+        *c = toupper(*c);
+    }
 
     // Check if the hint value is known and store the appropriate enum value.
     if (strcmp(hint, "DTMC") == 0)
@@ -108,9 +103,7 @@ storm::models::ModelType AutoParser<ValueType, RewardValueType>::analyzeHint(std
 // Explicitly instantiate the parser.
 template class AutoParser<double, double>;
 
-#ifdef STORM_HAVE_CARL
 template class AutoParser<double, storm::Interval>;
-#endif
 
 }  // namespace parser
 }  // namespace storm

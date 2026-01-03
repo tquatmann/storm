@@ -6,22 +6,14 @@
 #include <regex>
 #include <string>
 
-#include "storm/adapters/RationalFunctionAdapter.h"
-
 #include "storm-parsers/parser/ValueParser.h"
-
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/AbortException.h"
-#include "storm/exceptions/FileIoException.h"
-#include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/WrongFormatException.h"
-
-#include "storm/models/sparse/Ctmc.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
-
 #include "storm/io/file.h"
-#include "storm/models/sparse/Ctmc.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/builder.h"
 #include "storm/utility/constants.h"
@@ -229,6 +221,24 @@ std::shared_ptr<storm::storage::sparse::ModelComponents<ValueType, RewardModelTy
                 modelComponents->exitRates.get()[state] = exitRate;
             }
 
+            if (type == storm::models::ModelType::Pomdp) {
+                if (boost::starts_with(line, "{")) {
+                    size_t posEndObservation = line.find("}");
+                    std::string observation = line.substr(1, posEndObservation - 1);
+                    STORM_LOG_TRACE("State observation " << observation);
+                    modelComponents->observabilityClasses.value()[state] = std::stoi(observation);
+                    line = line.substr(posEndObservation + 1);
+                    if (!line.empty()) {
+                        STORM_LOG_THROW(line.starts_with(" "), storm::exceptions::WrongFormatException,
+                                        "Expected whitespace after observation in line " << lineNumber);
+
+                        line = line.substr(1);
+                    }
+                } else {
+                    STORM_LOG_THROW(false, storm::exceptions::WrongFormatException, "Expected an observation for state " << state << " in line " << lineNumber);
+                }
+            }
+
             if (boost::starts_with(line, "[")) {
                 // Parse rewards
                 size_t posEndReward = line.find(']');
@@ -252,18 +262,6 @@ std::shared_ptr<storm::storage::sparse::ModelComponents<ValueType, RewardModelTy
                     ++stateRewardsIt;
                 }
                 line = line.substr(posEndReward + 1);
-            }
-
-            if (type == storm::models::ModelType::Pomdp) {
-                if (boost::starts_with(line, "{")) {
-                    size_t posEndObservation = line.find("}");
-                    std::string observation = line.substr(1, posEndObservation - 1);
-                    STORM_LOG_TRACE("State observation " << observation);
-                    modelComponents->observabilityClasses.value()[state] = std::stoi(observation);
-                    line = line.substr(posEndObservation + 1);
-                } else {
-                    STORM_LOG_THROW(false, storm::exceptions::WrongFormatException, "Expected an observation for state " << state << " in line " << lineNumber);
-                }
             }
 
             // Parse labels

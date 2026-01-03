@@ -75,6 +75,8 @@ class FormulaToJaniJson : public storm::logic::FormulaVisitor {
     virtual boost::any visit(storm::logic::UnaryBooleanPathFormula const& f, boost::any const& data) const;
     virtual boost::any visit(storm::logic::UntilFormula const& f, boost::any const& data) const;
     virtual boost::any visit(storm::logic::HOAPathFormula const& f, boost::any const& data) const;
+    virtual boost::any visit(storm::logic::DiscountedCumulativeRewardFormula const& f, boost::any const& data) const;
+    virtual boost::any visit(storm::logic::DiscountedTotalRewardFormula const& f, boost::any const& data) const;
 
    private:
     FormulaToJaniJson(storm::jani::Model const& model) : model(model), stateExitRewards(false) {}
@@ -103,7 +105,6 @@ class JsonExporter {
    private:
     void convertModel(storm::jani::Model const& model, bool commentExpressions = true);
     void convertProperties(std::vector<storm::jani::Property> const& formulas, storm::jani::Model const& model);
-    void appendVariableDeclaration(storm::jani::Variable const& variable);
 
     ExportJsonType finalize();
 
