@@ -836,7 +836,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
         return oss.str();
     }();
-    storm::api::exportSparseModelAsDrn(model, "before_" + filename, input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
+    // storm::api::exportSparseModelAsDrn(model, "before_" + filename, input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     double deltaPerturbation = 0.0;
     if (bisimulationSettings.usesDeltaPerturbation()) {
@@ -861,8 +861,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
             oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
             return oss.str();
         }();
-        storm::api::exportSparseModelAsDrn(model, "after_perturbation_" + std::to_string(deltaPerturbation) + "_" + filename,
-                                           input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
+        // storm::api::exportSparseModelAsDrn(model, "after_perturbation_" + std::to_string(deltaPerturbation) + "_" + filename,
+        //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
     }
 
     STORM_LOG_INFO("Performing bisimulation minimization...");
@@ -878,8 +878,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
         return oss.str();
     }();
-    storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(deltaPerturbation) + "_" + filename,
-                                       input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
+    // storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(deltaPerturbation) + "_" + filename,
+    //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     return quotient;
 }
