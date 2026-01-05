@@ -305,9 +305,6 @@ template<typename ModelType>
 void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
     std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
     double epsilon) {
-    const std::size_t numberOfStates = this->model.getTransitionMatrix().getRowCount();
-    const std::size_t numberOfBlocks = this->partition.getNumberOfBlocks();
-
     // cluster states in this block
     std::vector<std::pair<std::vector<storm::storage::sparse::state_type>, storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>>> groups;
     for (auto s : block) {
@@ -364,34 +361,29 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
                     auto predecessorState = transition.getColumn();
                     auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
 
-                    // place target block on queue only if it is not already there
+                    // place predecessor block on queue only if it is not already there
                     if (predecessorBlock.size() > 1 && !enqueuedBlocks.contains(predecessorBlock)) {
                         blocksQueue.push_back(predecessorBlock);
                         enqueuedBlocks.insert(predecessorBlock);
                     }
+
+                    // recompute distribution of predecessor state
+                    auto distribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+                    for (auto const& e : this->model.getTransitionMatrix().getRow(predecessorState)) {
+                        distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
+                    }
+                    originalStateDistributions[predecessorState] = distribution;
                 }
             }
         });
-
-        int i = 0;
-        while (i < this->model.getNumberOfStates()) {
-            auto distribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-
-            for (auto const& e : this->model.getTransitionMatrix().getRow(i)) {
-                distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
-            }
-
-            originalStateDistributions[i] = distribution;
-            i++;
-        }
     }
 }
 
 template<typename ModelType>
 storm::storage::Distribution<typename ModelType::ValueType, storm::storage::sparse::state_type>
 DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidateDistribution(
-    const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> groupDistribution,
-    const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution) {
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& groupDistribution,
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution) {
     auto candidateDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>(groupDistribution);
 
     auto stateDistributionEntry = stateDistribution.begin();
@@ -437,8 +429,8 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidate
 
 template<typename ModelType>
 double DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeDeltaForState(
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution,
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> enhancedDistribution) {
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
     double delta = 0.0;
 
     auto enhancedDistributionIterator = enhancedDistribution.begin();

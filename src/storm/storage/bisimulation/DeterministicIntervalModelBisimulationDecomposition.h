@@ -61,12 +61,12 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
      * @param enhancedDistribution enhanced distribution over the partition based on its (candidate) group
      * @return delta
      */
-    double computeDeltaForState(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution,
-                                storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> enhancedDistribution);
+    double computeDeltaForState(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
+                                storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution);
 
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> computeCandidateDistribution(
-        const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> groupDistribution,
-        const storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> stateDistribution);
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& groupDistribution,
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution);
 
     // A vector that holds the probabilities of states going into the splitter. This is used by the method that
     // refines a block based on probabilities.
