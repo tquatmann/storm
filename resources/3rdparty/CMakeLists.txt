@@ -14,7 +14,7 @@ message(STATUS "Storm - Building external resources with ${STORM_RESOURCES_BUILD
 #############################################################
 
 # Do not take a branch, needs internet connection.
-message (STATUS "Storm - Including l3pp logging.")
+message(STATUS "Storm - Including l3pp logging.")
 ExternalProject_Add(
         l3pp_ext
         GIT_REPOSITORY https://github.com/hbruintjes/l3pp.git
@@ -80,11 +80,14 @@ endif()
 
 if(NOT STORM_DISABLE_GMM)
     set(GMM_VERSION "5.4.4")
-    message (STATUS "Storm - Including gmm ${GMM_VERSION}.")
+    message(STATUS "Storm - Including gmm ${GMM_VERSION}.")
     ExternalProject_Add(
             gmm_src
             URL https://download-mirror.savannah.gnu.org/releases/getfem/stable/gmm-${GMM_VERSION}.tar.gz
             SOURCE_DIR ${STORM_3RDPARTY_BINARY_DIR}/gmm
+            # Try to apply patch and otherwise check that patch was already applied
+            # Needed because while -N ignores already applied patches it still returns with exit code 1
+            PATCH_COMMAND patch -N -p1 -s -i ${STORM_3RDPARTY_SOURCE_DIR}/patches/gmm544.patch || patch --dry-run -N -p1 -s -i ${STORM_3RDPARTY_SOURCE_DIR}/patches/gmm544.patch | grep "Reversed (or previously applied) patch detected!"
             UPDATE_COMMAND ""
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ""
@@ -105,7 +108,7 @@ if(NOT STORM_DISABLE_GMM)
     list(APPEND STORM_DEP_TARGETS gmm)
     set(STORM_HAVE_GMM ON)
 else()
-    message (WARNING "Storm - Skipping gmm.")
+    message(STATUS "Storm - Not linking with gmm.")
     set(STORM_HAVE_GMM OFF)
 endif()
 
@@ -119,7 +122,7 @@ endif()
 # We're checking out Eigen using the (currently not officially released) version 3.4.1
 # See here https://gitlab.com/libeigen/eigen/-/commit/bae907b8f6078b1df290729eef946360315bd312
 # The current official release is 3.4.0 which results in issues, see https://github.com/moves-rwth/storm/issues/162
-message (STATUS "Storm - Including Eigen commit bae907b8f6078b1df290729eef946360315bd312 (unofficial 3.4.1 release).")
+message(STATUS "Storm - Including Eigen commit bae907b8f6078b1df290729eef946360315bd312 (unofficial 3.4.1 release).")
 ExternalProject_Add(
         eigen_src
         GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
@@ -136,6 +139,10 @@ ExternalProject_Add(
 )
 add_library(eigen3storm INTERFACE) # Not imported, we are in control of the sources.
 add_dependencies(eigen3storm eigen_src)
+if(STORM_WARNING_AS_ERROR AND STORM_COMPILER_GCC)
+        # Ignore warning in Eigen
+        target_compile_options(eigen3storm INTERFACE -Wno-class-memaccess)
+endif()
 # note that we include without StormEigen
 target_include_directories(eigen3storm INTERFACE
         $<BUILD_INTERFACE:${STORM_3RDPARTY_BINARY_DIR}>
@@ -156,13 +163,14 @@ list(APPEND STORM_DEP_TARGETS eigen3storm)
 
 # Boost Option variables
 set(Boost_NO_WARN_NEW_VERSIONS ON)
-find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE COMPONENTS iostreams) # TODO: iostreams currently required for memory mapping binary files. Check if this can be avoided. Also check stormConfig.cmake.[install.]in
-if (${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
+find_package(Boost 1.70.0 QUIET REQUIRED NO_MODULE)
+if(${Boost_VERSION} VERSION_GREATER_EQUAL "1.81.0")
     message(STATUS "Storm - Using workaround for Boost >= 1.81")
     add_compile_options(-DBOOST_PHOENIX_STL_TUPLE_H_) # or add compile_definitions?
     # TODO Only do this for a specific target?
 endif()
-if (${Boost_VERSION} VERSION_LESS "1.75.0") # Debian 12 ships with Boost 1.74.0
+
+if(${Boost_VERSION} VERSION_LESS "1.75.0") # Debian 12 ships with Boost 1.74.0
     message(STATUS "Storm - Loading Boost.PFR as it is not part of Boost < 1.75.0")
     ExternalProject_Add(
             boost_pfr_src
@@ -191,9 +199,8 @@ if (${Boost_VERSION} VERSION_LESS "1.75.0") # Debian 12 ships with Boost 1.74.0
     list(APPEND STORM_DEP_TARGETS boost_pfr)
 endif()
 
-
 message(STATUS "Storm - Using boost ${Boost_VERSION} (library version ${Boost_LIB_VERSION}).")
-list(APPEND STORM_DEP_IMP_TARGETS Boost::boost Boost::iostreams) # todo: iostreams still required?
+list(APPEND STORM_DEP_IMP_TARGETS Boost::boost)
 
 #############################################################
 ##
@@ -202,7 +209,7 @@ list(APPEND STORM_DEP_IMP_TARGETS Boost::boost Boost::iostreams) # todo: iostrea
 #############################################################
 
 # Use the shipped version of ExprTK
-message (STATUS "Storm - Including ExprTk.")
+message(STATUS "Storm - Including ExprTk.")
 set(exprTk_SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/exprtk)
 set(exprTk_INSTALL_DIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/exprtk)
 add_library(exprTk INTERFACE) # Not imported, we are in control of the sources.
@@ -223,9 +230,9 @@ list(APPEND STORM_DEP_TARGETS exprTk)
 #############################################################
 
 # Use the shipped version of Parallel Hashmap
-message (STATUS "Storm - Including Parallel Hashmap.")
-set(phmap_SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/parallel_hashmap)
-set(phmap_INSTALL_DIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/parallel_hashmap)
+message(STATUS "Storm - Including Parallel Hashmap.")
+set(phmap_SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/parallel-hashmap)
+set(phmap_INSTALL_DIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/parallel-hashmap)
 add_library(phmap INTERFACE) # Not imported, we are in control of the sources.
 target_include_directories(phmap INTERFACE
         $<BUILD_INTERFACE:${phmap_SOURCE_DIR}>
@@ -243,7 +250,7 @@ list(APPEND STORM_DEP_TARGETS phmap)
 #############################################################
 
 # Use the shipped version of cpphoafparser
-message (STATUS "Storm - Including cpphoafparser 0.99.2")
+message(STATUS "Storm - Including cpphoafparser 0.99.2")
 set(cppHOAparser_SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/cpphoafparser-0.99.2/include)
 set(cppHOAparser_INSTALL_DIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/cpphoafparser-0.99.2/)
 add_library(cppHOAparser INTERFACE) # Not imported, we are in control of the sources.
@@ -263,7 +270,7 @@ list(APPEND STORM_DEP_TARGETS cppHOAparser)
 #############################################################
 
 #use the shipped version of modernjson
-message (STATUS "Storm - Including ModernJSON.")
+message(STATUS "Storm - Including ModernJSON.")
 set(ModernJSON_SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/modernjson/include/)
 set(ModernJSON_INSTALL_DIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/modernjson/)
 add_library(ModernJSON INTERFACE) # Not imported, we are in control of the sources.
@@ -291,13 +298,13 @@ if(NOT STORM_DISABLE_Z3)
 
         set(Z3_VERSION "${Z3_VERSION_MAJOR}.${Z3_VERSION_MINOR}.${Z3_VERSION_PATCH}")
 
-        if ("${Z3_VERSION}" VERSION_EQUAL "4.10.1")
-            message (WARNING "Storm cannot be linked against Z3 version 4.10.1, see issue 252.")
+        if("${Z3_VERSION}" VERSION_EQUAL "4.10.1")
+            message(WARNING "Storm cannot be linked against Z3 version 4.10.1, see issue 252.")
             message(WARNING "Storm - Could not link with z3. Building of Prism/JANI models will not be supported.")
             set(Z3_FOUND FALSE)
         else()
             # Check whether the version of z3 supports optimization
-            message (STATUS "Storm - Linking with Z3 (version ${Z3_VERSION}). (Z3 version supports optimization)")
+            message(STATUS "Storm - Linking with Z3 (version ${Z3_VERSION}). (Z3 version supports optimization)")
             list(APPEND STORM_DEP_IMP_TARGETS z3::libz3)
         endif()
     else()
@@ -305,18 +312,18 @@ if(NOT STORM_DISABLE_Z3)
         # such that no Cmake config files are provided. For the time being, we use a FindZ3.cmake script.
         find_package(Z3 QUIET 4.8.7)
 
-        if (Z3_FOUND)
+        if(Z3_FOUND)
 
             set(STORM_HAVE_Z3 ON)
             set(STORM_Z3_CONFIG OFF) # For the config file, did we include z3 via a config (no)
 
-            if ("${Z3_VERSION}" VERSION_EQUAL "4.10.1")
-                message (WARNING "Storm cannot be linked against Z3 version 4.10.1, see issue 252.")
+            if("${Z3_VERSION}" VERSION_EQUAL "4.10.1")
+                message(WARNING "Storm cannot be linked against Z3 version 4.10.1, see issue 252.")
                 message(WARNING "Storm - Could not link with z3. Building of Prism/JANI models will not be supported.")
                 set(Z3_FOUND FALSE)
             else()
                 # Check whether the version of z3 supports optimization
-                message (STATUS "Storm - Linking with Z3 (version ${Z3_VERSION}). (Z3 version supports optimization)")
+                message(STATUS "Storm - Linking with Z3 (version ${Z3_VERSION}). (Z3 version supports optimization)")
 
                 add_library(z3 SHARED IMPORTED)
                 set_target_properties(
@@ -328,14 +335,14 @@ if(NOT STORM_DISABLE_Z3)
                 list(APPEND STORM_DEP_IMP_TARGETS z3)
             endif()
         else()
-            message (WARNING "Storm - Z3 not found. Building of Prism/JANI models will not be supported.")
+            message(WARNING "Storm - Z3 not found. Building of Prism/JANI models will not be supported.")
         endif()
     endif()
 else()
-    message (WARNING "Storm - Not linking with Z3. Building of Prism/JANI models will not be supported.")
+    message(WARNING "Storm - Not linking with Z3. Building of Prism/JANI models will not be supported.")
 endif()
 
-if (Z3_FOUND)
+if(Z3_FOUND)
     # TODO We may remove STORM_HAVE_Z3_OPTIMIZE checks
     # TODO We may remove STORM_Z3_API_USES_STANDARD_INTEGERS checks
     set(STORM_Z3_API_USES_STANDARD_INTEGERS ON)
@@ -354,7 +361,7 @@ if(NOT STORM_DISABLE_GLPK)
 
     if(GLPK_FOUND)
         set(STORM_HAVE_GLPK ON)
-        message (STATUS "Storm - Linking with GLPK ${GLPK_VERSION_STRING}")
+        message(STATUS "Storm - Linking with GLPK ${GLPK_VERSION_STRING}")
 
         add_library(glpk SHARED IMPORTED)
         set_target_properties(
@@ -365,10 +372,10 @@ if(NOT STORM_DISABLE_GLPK)
         )
         list(APPEND STORM_DEP_IMP_TARGETS glpk)
     else()
-        message (WARNING "Storm - Not linking with GLPK.")
+        message(WARNING "Storm - Not linking with GLPK.")
     endif()
 else()
-    message (STATUS "Storm - Not linking with GLPK.")
+    message(STATUS "Storm - Not linking with GLPK.")
     set(STORM_HAVE_GLPK OFF)
 endif()
 
@@ -383,8 +390,8 @@ if(NOT STORM_DISABLE_GUROBI)
     find_package(GUROBI QUIET)
     if(GUROBI_FOUND)
         set(STORM_HAVE_GUROBI ${GUROBI_FOUND})
-        if (EXISTS ${GUROBI_LIBRARY})
-            message (STATUS "Storm - Linking with Gurobi (${GUROBI_CXX_LIBRARY}).")
+        if(EXISTS ${GUROBI_LIBRARY})
+            message(STATUS "Storm - Linking with Gurobi (${GUROBI_CXX_LIBRARY}).")
             add_library(GUROBI UNKNOWN IMPORTED)
             set_target_properties(
                     GUROBI
@@ -395,25 +402,30 @@ if(NOT STORM_DISABLE_GUROBI)
             list(APPEND STORM_DEP_IMP_TARGETS GUROBI)
         else()
             # The FindGurobi.cmake script needs to be updated every now and then as the library file contains the version number...
-            message(FATAL_ERROR "Gurobi Library ${GUROBI_LIBRARY} not found. If your Gurobi Version is higher then 11.0.0, please contact the Storm developers.")
+            message(FATAL_ERROR "Gurobi Library ${GUROBI_LIBRARY} not found. If your Gurobi Version is higher then 13.0.0, please contact the Storm developers.")
         endif()
     else()
-        message (STATUS "Storm - Not linking with Gurobi. ")
+        message(STATUS "Storm - Not linking with Gurobi.")
         set(STORM_HAVE_GUROBI OFF)
     endif()
 else()
-    message (STATUS "Storm - Not linking with Gurobi. ")
+    message(STATUS "Storm - Not linking with Gurobi.")
     set(STORM_HAVE_GUROBI OFF)
 endif()
 
 #############################################################
 ##
-##	CUDD
+##	CUDD (optional)
 ##
 #############################################################
 
-include(${STORM_3RDPARTY_SOURCE_DIR}/include_cudd.cmake)
-
+if(NOT STORM_DISABLE_CUDD)
+    include(${STORM_3RDPARTY_SOURCE_DIR}/include_cudd.cmake)
+    set(STORM_HAVE_CUDD ON)
+else()
+    message(STATUS "Storm - Not linking with CUDD.")
+    set(STORM_HAVE_CUDD OFF)
+endif()
 
 #############################################################
 ##
@@ -428,8 +440,6 @@ else()
     set(SHIPPED_CARL_USE_CLN_NUMBERS OFF)
     set(SHIPPED_CARL_USE_GINAC OFF)
 endif()
-
-set(STORM_HAVE_CARL OFF)
 
 include(FetchContent)
 FETCHCONTENT_DECLARE(
@@ -455,12 +465,7 @@ include(${carl_BINARY_DIR}/carlConfig.cmake)
 set(STORM_HAVE_CLN ${CARL_HAVE_CLN})
 set(STORM_HAVE_GINAC ${CARL_HAVE_GINAC})
 message(STATUS "Storm - Using carl version ${carl_VERSION} from ${carl_SOURCE_DIR} (CLN: ${STORM_HAVE_CLN}, GiNaC: ${STORM_HAVE_GINAC})")
-#
-# TODO this old flag is no longer really relevant as CARL must always be present.
-set(STORM_HAVE_CARL ON)
-# This flag is currently required to pick the right carl adapter.
-# TODO It can be removed as the old versions that did not support forward declarations are no longer supported either way.
-set(STORM_CARL_SUPPORTS_FWD_DECL ON)
+
 add_dependencies(storm_resources lib_carl)
 list(APPEND STORM_FETCHED_TARGETS lib_carl)
 
@@ -514,7 +519,7 @@ endif()
 #############################################################
 
 set(STORM_HAVE_QVBS OFF)
-if (STORM_LOAD_QVBS)
+if(STORM_LOAD_QVBS)
     ExternalProject_Add(
             download_qvbs
             GIT_REPOSITORY https://github.com/ahartmanns/qcomp.git
@@ -530,15 +535,15 @@ if (STORM_LOAD_QVBS)
     set(STORM_HAVE_QVBS ON)
     ExternalProject_Get_Property(download_qvbs source_dir)
     set(STORM_QVBS_ROOT "${source_dir}/benchmarks")
-elseif (NOT "${STORM_QVBS_ROOT}" STREQUAL "")
+elseif(NOT "${STORM_QVBS_ROOT}" STREQUAL "")
     if( EXISTS "${STORM_QVBS_ROOT}/index.json")
         set(STORM_HAVE_QVBS ON)
     else()
         message(FATAL_ERROR "No file 'index.json' in provided QVBS root directory ${STORM_QVBS_ROOT}")
     endif()
 endif()
-if (STORM_HAVE_QVBS)
-    message (STATUS "Storm - Enabled inputs from QVBS located at ${STORM_QVBS_ROOT}")
+if(STORM_HAVE_QVBS)
+    message(STATUS "Storm - Enabled inputs from QVBS located at ${STORM_QVBS_ROOT}")
 endif()
 
 
@@ -552,15 +557,15 @@ if(NOT STORM_DISABLE_XERCES)
     find_package(XercesC QUIET)
     if(TARGET XercesC::XercesC)
         set(STORM_HAVE_XERCES ON)
-        message (STATUS "Storm (GSPN) - Linking with Xerces-c ${XercesC_VERSION}")
+        message(STATUS "Storm (GSPN) - Linking with Xerces-c ${XercesC_VERSION}")
         list(APPEND STORM_GSPN_LINK_LIBRARIES XercesC::XercesC)
     else()
         set(STORM_HAVE_XERCES OFF)
-        message (STATUS "Storm - Could not find Xerces, will disable parsing XML formats (for GSPNs)")
+        message(STATUS "Storm - Could not find Xerces, will disable parsing XML formats (for GSPNs)")
     endif()
 else()
     set(STORM_HAVE_XERCES OFF)
-    message (STATUS "Storm - Building without Xerces disables parsing XML formats (for GSPNs)")
+    message(STATUS "Storm - Building without Xerces disables parsing XML formats (for GSPNs)")
 endif()
 
 #############################################################
@@ -598,27 +603,38 @@ include(${STORM_3RDPARTY_SOURCE_DIR}/include_spot.cmake)
 
 #############################################################
 ##
-##	Sylvan
+##	Sylvan (optional)
 ##
 #############################################################
 
-FETCHCONTENT_DECLARE(
-        sylvanfetch
-        SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/sylvan
-)
-SET(SYLVAN_GMP ON)
-SET(USE_CARL ON)
-set(SYLVAN_PORTABLE ${STORM_PORTABLE})
-SET(SYLVAN_INSTALL_BINDIR ${STORM_RESOURCE_BIN_INSTALL_DIR}/sylvan)
-SET(SYLVAN_INSTALL_LIBDIR ${STORM_RESOURCE_LIBRARY_INSTALL_DIR}/sylvan)
-SET(SYLVAN_INSTALL_INCLUDEDIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/sylvan)
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON) # Likely only necessary on linux
-SET(STORM_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/") # TODO this is ugly.
-SET(STORM_BINARY_INCLUDE_DIR "${PROJECT_BINARY_DIR}/include/") #TODO this is ugly.
-FETCHCONTENT_MAKEAVAILABLE(sylvanfetch)
-
-add_dependencies(storm_resources sylvan)
-list(APPEND STORM_FETCHED_TARGETS sylvan)
+if(NOT STORM_DISABLE_SYLVAN)
+    FETCHCONTENT_DECLARE(
+            sylvanfetch
+            SOURCE_DIR ${STORM_3RDPARTY_SOURCE_DIR}/sylvan
+    )
+    SET(SYLVAN_GMP ON)
+    SET(USE_CARL ON)
+    set(SYLVAN_PORTABLE ${STORM_PORTABLE})
+    SET(SYLVAN_INSTALL_BINDIR ${STORM_RESOURCE_BIN_INSTALL_DIR}/sylvan)
+    SET(SYLVAN_INSTALL_LIBDIR ${STORM_RESOURCE_LIBRARY_INSTALL_DIR}/sylvan)
+    SET(SYLVAN_INSTALL_INCLUDEDIR ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/sylvan)
+    SET(CMAKE_POSITION_INDEPENDENT_CODE ON) # Likely only necessary on linux
+    SET(STORM_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/") # TODO this is ugly.
+    SET(STORM_BINARY_INCLUDE_DIR "${PROJECT_BINARY_DIR}/include/") #TODO this is ugly.
+    FETCHCONTENT_MAKEAVAILABLE(sylvanfetch)
+    if(STORM_WARNING_AS_ERROR)
+        # Ignore explicit warning in storm_wrapper.cpp
+        target_compile_options(sylvan PRIVATE -Wno-cpp)
+    endif()
+    add_dependencies(sylvan lib_carl)
+    add_dependencies(storm_resources sylvan)
+    MESSAGE(STATUS "Storm - Linking with Sylvan")
+    list(APPEND STORM_FETCHED_TARGETS sylvan)
+    set(STORM_HAVE_SYLVAN ON)
+else()
+    message(STATUS "Storm - Not linking with Sylvan.")
+    set(STORM_HAVE_SYLVAN OFF)
+endif()
 
 #############################################################
 ##
@@ -627,10 +643,14 @@ list(APPEND STORM_FETCHED_TARGETS sylvan)
 #############################################################
 
 if(STORM_BUILD_TESTS)
-    set(GTEST_VERSION "1.17.0")
+    # Use commit with workaround for char conversion warning, being recognized by Clang 21+.
+    # See https://github.com/google/googletest/issues/4762
+    set(GTEST_VERSION "fa8438ae6b70c57010177de47a9f13d7041a6328")
+    #set(GTEST_VERSION "1.17.0")
     FETCHCONTENT_DECLARE(
             googletest
-            URL https://github.com/google/googletest/archive/refs/tags/v${GTEST_VERSION}.zip
+            URL https://github.com/google/googletest/archive/${GTEST_VERSION}.zip
+            #URL https://github.com/google/googletest/archive/refs/tags/v${GTEST_VERSION}.zip
     )
     FETCHCONTENT_MAKEAVAILABLE(googletest)
 

@@ -1,44 +1,26 @@
 #pragma once
 
+#include <filesystem>
+#include <type_traits>
+
 #include "storm/api/storm.h"
 
+#include "AutomaticSettings.h"
 #include "storm-counterexamples/api/counterexamples.h"
 #include "storm-gamebased-ar/api/verification.h"
 #include "storm-parsers/api/storm-parsers.h"
 #include "storm-parsers/parser/ExpressionParser.h"
-
-#include "AutomaticSettings.h"
-#include "storm/io/file.h"
-#include "storm/utility/Engine.h"
-#include "storm/utility/NumberTraits.h"
-#include "storm/utility/SignalHandler.h"
-#include "storm/utility/macros.h"
-
-#include "storm/utility/Stopwatch.h"
-#include "storm/utility/initialize.h"
-
-#include <filesystem>
-#include <type_traits>
-
-#include "storm/storage/SymbolicModelDescription.h"
-#include "storm/storage/jani/Property.h"
-
 #include "storm/builder/BuilderType.h"
-
-#include "storm/models/ModelBase.h"
-
 #include "storm/environment/Environment.h"
-
 #include "storm/exceptions/OptionParserException.h"
-
+#include "storm/io/file.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/SymbolicQualitativeCheckResult.h"
-
+#include "storm/models/ModelBase.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/models/symbolic/MarkovAutomaton.h"
 #include "storm/models/symbolic/StandardRewardModel.h"
-
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/AbstractionSettings.h"
 #include "storm/settings/modules/BuildSettings.h"
@@ -47,14 +29,21 @@
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/settings/modules/IOSettings.h"
 #include "storm/settings/modules/ModelCheckerSettings.h"
+#include "storm/settings/modules/MultiObjectiveSettings.h"
 #include "storm/settings/modules/ResourceSettings.h"
 #include "storm/settings/modules/SylvanSettings.h"
 #include "storm/settings/modules/TransformationSettings.h"
 #include "storm/storage/Qvbs.h"
+#include "storm/storage/SymbolicModelDescription.h"
+#include "storm/storage/jani/Property.h"
 #include "storm/storage/jani/localeliminator/AutomaticAction.h"
 #include "storm/storage/jani/localeliminator/JaniLocalEliminator.h"
-
+#include "storm/utility/Engine.h"
+#include "storm/utility/NumberTraits.h"
+#include "storm/utility/SignalHandler.h"
 #include "storm/utility/Stopwatch.h"
+#include "storm/utility/initialize.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace cli {
@@ -434,6 +423,7 @@ inline void ensureNoUndefinedPropertyConstants(std::vector<storm::jani::Property
 
 inline std::pair<SymbolicInput, ModelProcessingInformation> preprocessSymbolicInput(SymbolicInput const& input) {
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
+    auto multiObjSettings = storm::settings::getModule<storm::settings::modules::MultiObjectiveSettings>();
 
     SymbolicInput output = input;
 
@@ -441,7 +431,7 @@ inline std::pair<SymbolicInput, ModelProcessingInformation> preprocessSymbolicIn
     if (ioSettings.isPropertiesAsMultiSet()) {
         STORM_LOG_THROW(!input.properties.empty(), storm::exceptions::InvalidArgumentException,
                         "Can not translate properties to multi-objective formula because no properties were specified.");
-        output.properties = {storm::api::createMultiObjectiveProperty(output.properties)};
+        output.properties = {storm::api::createMultiObjectiveProperty(output.properties, multiObjSettings.isLexicographicModelCheckingSet())};
     }
 
     // Substitute constant definitions in symbolic input.
@@ -678,14 +668,14 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBisimulation(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
-    storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
+    storm::settings::modules::BisimulationSettings const& bisimulationSettings, bool graphPreserving = true) {
     storm::storage::BisimulationType bisimType = storm::storage::BisimulationType::Strong;
     if (bisimulationSettings.isWeakBisimulationSet()) {
         bisimType = storm::storage::BisimulationType::Weak;
     }
 
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType);
+    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, graphPreserving);
 }
 
 template<typename ValueType>

@@ -1,12 +1,11 @@
 #include "storm/models/sparse/Smg.h"
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/utility/constants.h"
-#include "storm/utility/vector.h"
-
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/models/sparse/StandardRewardModel.h"
+#include "storm/utility/vector.h"
 
 namespace storm {
 namespace models {
@@ -84,11 +83,10 @@ storm::storage::BitVector Smg<ValueType, RewardModelType>::computeStatesOfCoalit
 }
 
 template class Smg<double>;
-template class Smg<storm::RationalNumber>;
-
 template class Smg<double, storm::models::sparse::StandardRewardModel<storm::Interval>>;
-template class Smg<storm::RationalFunction>;
+template class Smg<storm::RationalNumber>;
 template class Smg<storm::Interval>;
+template class Smg<storm::RationalFunction>;
 
 }  // namespace sparse
 }  // namespace models

@@ -1,17 +1,18 @@
+#include "storm/solver/IterativeMinMaxLinearEquationSolver.h"
+
 #include <functional>
-#include <limits>
 #include <type_traits>
 
-#include "storm/adapters/RationalNumberForward.h"
-#include "storm/solver/IterativeMinMaxLinearEquationSolver.h"
-#include "storm/solver/LinearEquationSolver.h"
-#include "storm/solver/OptimizationDirection.h"
-
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/environment/solver/OviSolverEnvironment.h"
-
 #include "storm/exceptions/InvalidEnvironmentException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/exceptions/UnmetRequirementException.h"
+#include "storm/solver/LinearEquationSolver.h"
+#include "storm/solver/OptimizationDirection.h"
+#include "storm/solver/SolverGuarantee.h"
 #include "storm/solver/helper/GuessingValueIterationHelper.h"
 #include "storm/solver/helper/IntervalterationHelper.h"
 #include "storm/solver/helper/OptimisticValueIterationHelper.h"
@@ -19,7 +20,6 @@
 #include "storm/solver/helper/SchedulerTrackingHelper.h"
 #include "storm/solver/helper/SoundValueIterationHelper.h"
 #include "storm/solver/helper/ValueIterationHelper.h"
-#include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/NumberTraits.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/constants.h"
@@ -188,9 +188,8 @@ void IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::extractSchedu
     }
 
     // Set the correct choices.
-    STORM_LOG_WARN_COND(!viOperatorTriv && !viOperatorNontriv,
-                        "Expected VI operator to be initialized for scheduler extraction. Initializing now, but this is inefficient.");
     if (!viOperatorTriv && !viOperatorNontriv) {
+        STORM_LOG_WARN("Expected VI operator to be initialized for scheduler extraction. Initializing now, but this is inefficient.");
         setUpViOperator();
     }
     if (viOperatorTriv) {
@@ -690,10 +689,14 @@ bool IterativeMinMaxLinearEquationSolver<ValueType, SolutionType>::solveEquation
         }
         storm::Environment const& environmentOfSolver = environmentOfSolverStorage ? *environmentOfSolverStorage : env;
 
-        solveInducedEquationSystem(environmentOfSolver, linEqSolver, this->getInitialScheduler(), x, *auxiliaryRowGroupVector, b, dir);
-        // If we were given an initial scheduler and are maximizing (minimizing), our current solution becomes
-        // always less-or-equal (greater-or-equal) than the actual solution.
-        guarantee = maximize(dir) ? SolverGuarantee::LessOrEqual : SolverGuarantee::GreaterOrEqual;
+        bool success = solveInducedEquationSystem(environmentOfSolver, linEqSolver, this->getInitialScheduler(), x, *auxiliaryRowGroupVector, b, dir);
+        if (success) {
+            // If we were given an initial scheduler and are maximizing (minimizing), our current solution becomes
+            // always less-or-equal (greater-or-equal) than the actual solution.
+            guarantee = maximize(dir) ? SolverGuarantee::LessOrEqual : SolverGuarantee::GreaterOrEqual;
+        } else {
+            guarantee = SolverGuarantee::None;
+        }
     } else if (!this->hasUniqueSolution()) {
         if (maximize(dir)) {
             this->createLowerBoundsVector(x);

@@ -1,10 +1,11 @@
-#include "ExplicitDFTModelBuilder.h"
+#include "storm-dft/builder/ExplicitDFTModelBuilder.h"
 
 #include <map>
 
-#include <storm/exceptions/IllegalArgumentException.h>
+#include "storm-dft/settings/modules/FaultTreeSettings.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/exceptions/UnexpectedException.h"
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/settings/SettingsManager.h"
@@ -14,8 +15,6 @@
 #include "storm/utility/bitoperations.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/vector.h"
-
-#include "storm-dft/settings/modules/FaultTreeSettings.h"
 
 namespace storm::dft {
 namespace builder {

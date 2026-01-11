@@ -1,7 +1,8 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#include "carl/util/stringparser.h"
+#include <carl/util/stringparser.h>
+
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/settings/SettingsManager.h"
@@ -9,18 +10,25 @@
 #include "storm/storage/dd/Add.h"
 #include "storm/storage/dd/DdManager.h"
 #include "storm/storage/dd/DdMetaVariable.h"
-#include "storm/storage/dd/Odd.h"
-#include "storm/storage/expressions/Expression.h"
-#include "storm/storage/expressions/ExpressionManager.h"
 
 class Sylvan {
    public:
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static const storm::dd::DdType DdType = storm::dd::DdType::Sylvan;
 };
 
 template<typename TestType>
 class SylvanDd : public ::testing::Test {
    public:
+    void SetUp() override {
+        TestType::checkLibraryAvailable();
+    }
+
     static const storm::dd::DdType DdType = TestType::DdType;
 };
 
