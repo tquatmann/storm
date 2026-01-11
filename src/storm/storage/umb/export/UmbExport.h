@@ -8,7 +8,6 @@
 
 namespace storm::umb {
 
-void toDisk(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& options = {});
-void toArchive(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& options = {});
+void toArchive(storm::umb::UmbModel const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& options = {});
 
 }  // namespace storm::umb

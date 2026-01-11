@@ -11,6 +11,6 @@ namespace storm::umb {
 storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index);
 
 template<typename ValueType>
-std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(storm::umb::UmbModelBase const& umbModel, ImportOptions const& options = {});
+std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(storm::umb::UmbModel const& umbModel, ImportOptions const& options = {});
 
 }  // namespace storm::umb

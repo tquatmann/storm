@@ -22,7 +22,7 @@ namespace storm::umb {
 namespace detail {
 
 template<typename ValueType, typename TargetValueType>
-void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix, storm::umb::UmbModel<StorageType::Memory>& umb, bool normalize) {
+void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix, storm::umb::UmbModel& umb, bool normalize) {
     if (!matrix.hasTrivialRowGrouping()) {
         umb.states.stateToChoice = matrix.getRowGroupIndices();
     }
@@ -47,7 +47,7 @@ void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix
     umb.branches.branchProbabilities.template set<TargetValueType>(std::move(branchProbabilities));
 }
 
-void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, storm::umb::UmbModel<StorageType::Memory>& umb) {
+void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, storm::umb::UmbModel& umb) {
     for (auto const& labelName : labeling.getLabels()) {
         if (labelName == "init") {
             continue;  // skip initial state labeling. Initial states are handled separately.
@@ -59,7 +59,7 @@ void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, st
     }
 }
 
-void choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigins, storm::umb::UmbModel<StorageType::Memory>& umb) {
+void choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigins, storm::umb::UmbModel& umb) {
     // choice to action
     auto& choiceToAction = umb.choices.choiceToAction.emplace();
     choiceToAction.reserve(choiceOrigins.getNumberOfChoices());
@@ -82,7 +82,7 @@ void choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigi
     }
 }
 
-void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, storm::umb::UmbModel<StorageType::Memory>& umb) {
+void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, storm::umb::UmbModel& umb) {
     // initialize umb data
     auto& choiceToAction = umb.choices.choiceToAction.emplace(labeling.getNumberOfItems(), 0);  // by default, all choices have action id 0
     auto& chars = umb.choices.actionStrings.emplace();
@@ -171,7 +171,7 @@ void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, 
 }
 
 template<typename TargetValueType>
-void setGenericVector(storm::umb::GenericVector<storm::umb::StorageType::Memory>& target, std::ranges::input_range auto&& values) {
+void setGenericVector(storm::umb::GenericVector& target, std::ranges::input_range auto&& values) {
     using ValueType = std::ranges::range_value_t<decltype(values)>;
     if constexpr (std::is_same_v<ValueType, TargetValueType>) {
         target.template set<TargetValueType>(std::forward<decltype(values)>(values));
@@ -182,7 +182,7 @@ void setGenericVector(storm::umb::GenericVector<storm::umb::StorageType::Memory>
 
 template<typename ValueType, typename TargetValueType>
 void rewardToUmb(std::string const& rewardModelName, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel,
-                 storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::umb::UmbModel<StorageType::Memory>& umb) {
+                 storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::umb::UmbModel& umb) {
     auto const rewardIdentifier = umb.index.annotations.findRewardName(rewardModelName);
     STORM_LOG_ASSERT(rewardIdentifier.has_value(), "Reward '" << rewardModelName << "' not found in the model index.");
     STORM_LOG_ASSERT(!umb.rewards.contains(*rewardIdentifier), "Reward '" << *rewardIdentifier << "' already exists in the umb model.");
@@ -343,7 +343,7 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
 }
 
 template<typename ValueType, typename TargetValueType>
-void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbModel<StorageType::Memory>& umbModel, ExportOptions const& options) {
+void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbModel& umbModel, ExportOptions const& options) {
     setIndexInformation(model, umbModel.index, options);
     umbModel.states.initialStates = model.getInitialStates();
     stateLabelingToUmb(model.getStateLabeling(), umbModel);
@@ -389,31 +389,31 @@ void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbM
 }  // namespace detail
 
 template<typename ValueType>
-storm::umb::UmbModelBase sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options) {
-    auto umbModel = std::make_unique<UmbModel<StorageType::Memory>>();
+storm::umb::UmbModel sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, ExportOptions const& options) {
+    storm::umb::UmbModel umbModel;
     using enum ExportOptions::ValueType;
     switch (options.valueType) {
         case Default:
-            detail::sparseModelToUmb<ValueType, ValueType>(model, *umbModel, options);
+            detail::sparseModelToUmb<ValueType, ValueType>(model, umbModel, options);
             break;
         case Double:
-            detail::sparseModelToUmb<ValueType, double>(model, *umbModel, options);
+            detail::sparseModelToUmb<ValueType, double>(model, umbModel, options);
             break;
         case Rational:
-            detail::sparseModelToUmb<ValueType, storm::RationalNumber>(model, *umbModel, options);
+            detail::sparseModelToUmb<ValueType, storm::RationalNumber>(model, umbModel, options);
             break;
         case DoubleInterval:
-            detail::sparseModelToUmb<ValueType, storm::Interval>(model, *umbModel, options);
+            detail::sparseModelToUmb<ValueType, storm::Interval>(model, umbModel, options);
             break;
         default:
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unexpected value type.");
     }
-    STORM_LOG_ASSERT(umbModel->validate(), "Created umb model is not valid.");
-    return storm::umb::UmbModelBase(std::move(umbModel));
+    STORM_LOG_ASSERT(umbModel.validate(std::cout), "Created umb model is not valid.");
+    return umbModel;
 }
 
-template storm::umb::UmbModelBase sparseModelToUmb<double>(storm::models::sparse::Model<double> const& model, ExportOptions const& options);
-template storm::umb::UmbModelBase sparseModelToUmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                          ExportOptions const& options);
-template storm::umb::UmbModelBase sparseModelToUmb<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model, ExportOptions const& options);
+template storm::umb::UmbModel sparseModelToUmb<double>(storm::models::sparse::Model<double> const& model, ExportOptions const& options);
+template storm::umb::UmbModel sparseModelToUmb<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
+                                                                      ExportOptions const& options);
+template storm::umb::UmbModel sparseModelToUmb<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model, ExportOptions const& options);
 }  // namespace storm::umb

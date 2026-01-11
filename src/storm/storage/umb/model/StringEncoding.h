@@ -2,7 +2,7 @@
 #include <ranges>
 #include <string_view>
 
-#include "storm/storage/umb/model/VectorType.h"
+#include "storm/storage/umb/model/Types.h"
 #include "storm/utility/macros.h"
 
 namespace storm::umb {

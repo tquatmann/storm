@@ -3,19 +3,19 @@
 #include <ranges>
 #include <variant>
 
-#include "storm/adapters/RationalNumberForward.h"
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/UnexpectedException.h"
-#include "storm/storage/umb/model/StorageType.h"
-#include "storm/storage/umb/model/VectorType.h"
+#include "storm/storage/umb/model/Types.h"
 #include "storm/utility/constants.h"
+#include "storm/utility/macros.h"
 
 namespace storm::umb {
 
-template<StorageType Storage>
 class GenericVector {
    public:
     template<typename T>
-    using Vec = VectorType<T, Storage>;
+    using Vec = storm::umb::VectorType<T>;
 
     template<typename T>
     void set(Vec<T>&& v) {

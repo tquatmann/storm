@@ -18,11 +18,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> parseModelFromUmb(std::
 template<typename ValueType>
 void exportModelToUmb(storm::models::sparse::Model<ValueType> const& model, std::filesystem::path const& targetLocation, ExportOptions const& options) {
     auto umb = storm::umb::sparseModelToUmb(model, options);
-    if (targetLocation.has_extension() && targetLocation.extension() == ".umb") {
-        storm::umb::toArchive(umb, targetLocation, options);
-    } else {
-        storm::umb::toDisk(umb, targetLocation, options);
-    }
+    storm::umb::toArchive(umb, targetLocation, options);
 }
 
 template std::shared_ptr<storm::models::sparse::Model<double>> parseModelFromUmb(std::filesystem::path const&, ImportOptions const&);

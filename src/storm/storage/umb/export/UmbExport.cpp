@@ -8,7 +8,6 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
 #include "storm/io/ArchiveWriter.h"
-#include "storm/io/BinaryFileWriter.h"
 #include "storm/io/file.h"
 #include "storm/utility/bitoperations.h"
 #include "storm/utility/macros.h"
@@ -18,7 +17,6 @@ namespace storm::umb {
 namespace detail {
 
 template<typename T>
-concept TargetType = std::same_as<std::remove_cvref_t<T>, std::filesystem::path> || std::same_as<std::remove_cvref_t<T>, storm::io::ArchiveWriter>;
 
 void createDirectory(std::filesystem::path const& umbDir, std::filesystem::path const& subdirectory) {
     std::filesystem::create_directories(umbDir / subdirectory);
@@ -29,41 +27,17 @@ void createDirectory(storm::io::ArchiveWriter& archiveWriter, std::filesystem::p
 }
 
 /*!
- * Write a vector to disk.
- * The file path must have the extension .bin.
- */
-template<typename VectorType>
-    requires storm::io::IsBinaryFileWritable<std::ranges::range_value_t<VectorType>> || std::same_as<VectorType, storm::storage::BitVector> ||
-             std::same_as<VectorType, storm::umb::UmbBitVector>
-void writeVector(VectorType const& vector, std::filesystem::path const& umbDir, std::filesystem::path const& filepath) {
-    STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
-    if constexpr (std::is_same_v<VectorType, storm::umb::UmbBitVector>) {
-        writeVector(vector.getAsBitVectorAutoSize(), umbDir, filepath);
-    } else if constexpr (std::is_same_v<VectorType, storm::storage::BitVector>) {
-        using BucketType = decltype(std::declval<storm::storage::BitVector&>().getBucket({}));
-        storm::io::BinaryFileWriter<BucketType, std::endian::little> writer(umbDir / filepath);
-        for (uint64_t i = 0; i < vector.bucketCount(); ++i) {
-            writer.write(storm::utility::reverseBits(vector.getBucket(i)));
-        }
-    } else {
-        storm::io::BinaryFileWriter<std::ranges::range_value_t<VectorType>, std::endian::little> writer(umbDir / filepath);
-        writer.write(vector);
-    }
-}
-
-/*!
  * Write a vector to archive.
  * The file path must have the extension .bin.
  */
 template<typename VectorType>
-    requires storm::io::IsBinaryFileWritable<std::ranges::range_value_t<VectorType>> || std::same_as<VectorType, storm::storage::BitVector>
+    requires(!std::is_same_v<std::remove_cvref_t<VectorType>, storm::umb::GenericVector>)
 void writeVector(VectorType const& vector, storm::io::ArchiveWriter& archiveWriter, std::filesystem::path const& filepath) {
     STORM_LOG_ASSERT(filepath.extension() == ".bin", "Unexpected file path '" << filepath.filename() << "'. File extension must be .bin");
     archiveWriter.addBinaryFile(filepath.string(), vector);
 }
 
-template<StorageType Storage>
-void writeVector(GenericVector<Storage> const& vector, TargetType auto& target, std::filesystem::path const& filepath) {
+void writeVector(GenericVector const& vector, storm::io::ArchiveWriter& target, std::filesystem::path const& filepath) {
     if (!vector.hasValue()) {
         return;
     }
@@ -81,7 +55,7 @@ void writeVector(GenericVector<Storage> const& vector, TargetType auto& target, 
 }
 
 template<typename VectorType>
-void writeVector(std::optional<VectorType> const& vector, TargetType auto& target, std::filesystem::path const& filepath) {
+void writeVector(std::optional<VectorType> const& vector, storm::io::ArchiveWriter& target, std::filesystem::path const& filepath) {
     if (vector) {
         writeVector(*vector, target, filepath);
     }
@@ -118,7 +92,7 @@ void applyToFieldWithName(UmbStructure const& umbStructure, auto&& fieldName, au
 
 template<typename UmbStructure>
     requires HasFileNames<UmbStructure>
-void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std::filesystem::path const& context) {
+void exportFiles(UmbStructure const& umbStructure, storm::io::ArchiveWriter& target, std::filesystem::path const& context) {
     static_assert(UmbStructure::FileNames.size() == boost::pfr::tuple_size_v<UmbStructure>, "Number of file names does not match number of fields in struct.");
     boost::pfr::for_each_field(umbStructure, [&](auto const& field, std::size_t fieldIndex) {
         // potentially create directory for sub-field
@@ -147,7 +121,7 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
             }
         } else if constexpr (std::is_same_v<FieldType, storm::umb::ModelIndex>) {
             writeIndexFile(field, target, context / fieldName);
-        } else if constexpr (std::is_same_v<FieldType, GenericVector<StorageType::Memory>> || std::is_same_v<FieldType, GenericVector<StorageType::Disk>>) {
+        } else if constexpr (std::is_same_v<FieldType, GenericVector>) {
             if (field.template isType<storm::RationalNumber>()) {
                 if (ValueEncoding::rationalVectorRequiresCsr(field.template get<storm::RationalNumber>())) {
                     // TODO: This is not very memory efficient as we create the entire vector in memory first instead of writing it in chunks.
@@ -181,27 +155,9 @@ void exportFiles(UmbStructure const& umbStructure, TargetType auto& target, std:
 
 }  // namespace detail
 
-void toDisk(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& umbDir, ExportOptions const& /*options*/) {
-    std::filesystem::create_directories(umbDir);
-    if (umbModel.isStorageType(StorageType::Disk)) {
-        detail::exportFiles(umbModel.template as<StorageType::Disk>(), umbDir, {});
-    } else if (umbModel.isStorageType(StorageType::Memory)) {
-        detail::exportFiles(umbModel.template as<StorageType::Memory>(), umbDir, {});
-    } else {
-        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
-    }
-}
-
-void toArchive(storm::umb::UmbModelBase const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& /*options*/) {
+void toArchive(storm::umb::UmbModel const& umbModel, std::filesystem::path const& archivePath, ExportOptions const& /*options*/) {
     storm::io::ArchiveWriter archiveWriter(archivePath);
-    if (umbModel.isStorageType(StorageType::Disk)) {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Exporting to archive from disk storage is not supported.");  // TODO
-        //        detail::exportUmb(umbModel.template as<StorageType::Disk>(), archiveWriter);
-    } else if (umbModel.isStorageType(StorageType::Memory)) {
-        detail::exportFiles(umbModel.template as<StorageType::Memory>(), archiveWriter, {});
-    } else {
-        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected storage type.");
-    }
+    detail::exportFiles(umbModel, archiveWriter, {});
 }
 
 }  // namespace storm::umb

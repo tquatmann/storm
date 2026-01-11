@@ -3,12 +3,14 @@
 #include <span>
 #include <vector>
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/exceptions/NotSupportedException.h"
 #include "storm/storage/umb/model/GenericVector.h"
-#include "storm/storage/umb/model/VectorType.h"
+#include "storm/storage/umb/model/Types.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
+
+#include "storm/exceptions/NotSupportedException.h"
 
 namespace storm::umb {
 
@@ -22,10 +24,9 @@ class ValueEncoding {
      * @param csr a CSR that is used to decode the input vector. This is only necessary for non-trivially encoded source types (like rational).
      * @return
      */
-    template<typename ValueType, StorageType Storage, typename SourceTypeEnum>
+    template<typename ValueType, typename SourceTypeEnum>
         requires std::is_enum_v<typename SourceTypeEnum::E>
-    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector<Storage> const& input, SourceTypeEnum sourceType,
-                                   std::optional<VectorType<uint64_t, Storage>> const& csr = {}) {
+    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector const& input, SourceTypeEnum sourceType, CSR const& csr = {}) {
         using E = typename decltype(sourceType)::E;
         static_assert(std::is_enum_v<E>, "Source type must be an enum.");
 
@@ -70,11 +71,10 @@ class ValueEncoding {
         }
     }
 
-    template<typename ValueType, StorageType Storage, typename SourceTypeEnum>
+    template<typename ValueType, typename SourceTypeEnum>
         requires std::is_enum_v<typename SourceTypeEnum::E>
-    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector<Storage> const& input, SourceTypeEnum sourceType,
-                                                      std::optional<VectorType<uint64_t, Storage>> const& csr = {}) {
-        return applyDecodedVector<ValueType, Storage>(
+    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector const& input, SourceTypeEnum sourceType, CSR const& csr = {}) {
+        return applyDecodedVector<ValueType>(
             [](auto&& decodedInput) {
                 std::vector<ValueType> v;
                 v.reserve(std::ranges::size(decodedInput));

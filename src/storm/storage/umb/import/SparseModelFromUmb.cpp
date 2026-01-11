@@ -38,8 +38,8 @@ auto csrRange(auto&& csr, uint64_t i) {
     }
 }
 
-template<typename ValueType, StorageType Storage>
-storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel<Storage> const& umbModel, std::ranges::input_range auto&& branchValues) {
+template<typename ValueType>
+storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const& umbModel, std::ranges::input_range auto&& branchValues) {
     auto const& tsIndex = umbModel.index.transitionSystem;
     bool const hasRowGroups = tsIndex.numPlayers >= 1;
     storm::storage::SparseMatrixBuilder<ValueType> builder(tsIndex.numChoices, tsIndex.numStates, tsIndex.numBranches, true, hasRowGroups,
@@ -61,38 +61,30 @@ storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel<Storag
     return builder.build();
 }
 
-template<typename ValueType, StorageType Storage>
-storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel<Storage> const& umbModel, auto sourceType,
-                                                     storm::umb::GenericVector<Storage> const& branchValues,
-                                                     typename storm::umb::UmbModel<Storage>::CSR const& csr) {
-    return ValueEncoding::applyDecodedVector<ValueType, Storage>([&umbModel](auto&& input) { return createMatrix<ValueType, Storage>(umbModel, input); },
-                                                                 branchValues, sourceType, csr);
+template<typename ValueType>
+storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const& umbModel, auto sourceType, storm::umb::GenericVector const& branchValues,
+                                                     storm::umb::CSR const& csr) {
+    return ValueEncoding::applyDecodedVector<ValueType>([&umbModel](auto&& input) { return createMatrix<ValueType>(umbModel, input); }, branchValues,
+                                                        sourceType, csr);
 }
 
-template<StorageType Storage>
-storm::storage::BitVector createBitVector(storm::umb::VectorType<bool, Storage> const& umbBitVector, uint64_t size) {
-    if constexpr (Storage == StorageType::Memory) {
-        STORM_LOG_ASSERT(umbBitVector.size() >= size, "Bit vector has unexpected size: " << umbBitVector.size() << " < " << size);
-        storm::storage::BitVector result = umbBitVector;
-        result.resize(size);
-        return result;
-    } else {
-        return umbBitVector.getAsBitVector(size);
-    }
+storm::storage::BitVector createBitVector(storm::umb::VectorType<bool> const& umbBitVector, uint64_t size) {
+    STORM_LOG_ASSERT(umbBitVector.size() >= size, "Bit vector has unexpected size: " << umbBitVector.size() << " < " << size);
+    storm::storage::BitVector result(umbBitVector);
+    result.resize(size);
+    return result;
 }
 
-template<StorageType Storage>
-storm::storage::BitVector createBitVector(std::optional<storm::umb::VectorType<bool, Storage>> const& umbBitVector, uint64_t size) {
+storm::storage::BitVector createBitVector(storm::umb::OptionalVectorType<bool> const& umbBitVector, uint64_t size) {
     STORM_LOG_THROW(umbBitVector.has_value(), storm::exceptions::WrongFormatException, "BitVector is not given but expected.");
-    return createBitVector<Storage>(*umbBitVector, size);
+    return createBitVector(umbBitVector.value(), size);
 }
 
-template<StorageType Storage>
-storm::models::sparse::StateLabeling constructStateLabeling(storm::umb::UmbModel<Storage> const& umbModel) {
+storm::models::sparse::StateLabeling constructStateLabeling(storm::umb::UmbModel const& umbModel) {
     auto const& numStates = umbModel.index.transitionSystem.numStates;
     storm::models::sparse::StateLabeling stateLabelling(numStates);
     if (umbModel.states.initialStates) {
-        stateLabelling.addLabel("init", createBitVector<Storage>(umbModel.states.initialStates, numStates));
+        stateLabelling.addLabel("init", createBitVector(umbModel.states.initialStates, numStates));
     } else {
         STORM_LOG_WARN("No initial states given in UMB model.");
         stateLabelling.addLabel("init", storm::storage::BitVector(numStates, false));  // default to all states not being initial
@@ -105,15 +97,14 @@ storm::models::sparse::StateLabeling constructStateLabeling(storm::umb::UmbModel
         STORM_LOG_THROW(ap.forStates.has_value(), storm::exceptions::WrongFormatException, "Atomic proposition '" << apName << "' does not apply to states.");
         STORM_LOG_THROW(!stateLabelling.containsLabel(labelName), storm::exceptions::WrongFormatException,
                         "Label '" << labelName << "' already exists in state labeling.");
-        stateLabelling.addLabel(labelName, createBitVector<Storage>(ap.forStates->values.template get<bool>(), numStates));
+        stateLabelling.addLabel(labelName, createBitVector(ap.forStates->values.template get<bool>(), numStates));
         STORM_LOG_WARN_COND(!ap.forChoices.has_value(), "Atomic propositions for choices are not supported.");
         STORM_LOG_WARN_COND(!ap.forBranches.has_value(), "Atomic propositions for branches are not supported.");
     }
     return stateLabelling;
 }
 
-template<StorageType Storage>
-storm::models::sparse::ChoiceLabeling constructChoiceLabeling(storm::umb::UmbModel<Storage> const& umbModel) {
+storm::models::sparse::ChoiceLabeling constructChoiceLabeling(storm::umb::UmbModel const& umbModel) {
     auto const& numChoices = umbModel.index.transitionSystem.numChoices;
     storm::models::sparse::ChoiceLabeling choiceLabeling(numChoices);
     auto actionStrings = storm::umb::stringVectorViewOptionalCsr(umbModel.choices.actionStrings.value(), umbModel.choices.actionToActionString);
@@ -142,8 +133,8 @@ storm::models::sparse::ChoiceLabeling constructChoiceLabeling(storm::umb::UmbMod
     return choiceLabeling;
 }
 
-template<typename ValueType, StorageType Storage>
-auto constructRewardModels(storm::umb::UmbModel<Storage> const& umbModel) {
+template<typename ValueType>
+auto constructRewardModels(storm::umb::UmbModel const& umbModel) {
     using RewardModel = storm::models::sparse::StandardRewardModel<ValueType>;
     std::unordered_map<std::string, RewardModel> rewardModels;
     for (auto const& [rewName, rew] : umbModel.rewards) {
@@ -157,22 +148,22 @@ auto constructRewardModels(storm::umb::UmbModel<Storage> const& umbModel) {
         std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
         std::optional<storm::storage::SparseMatrix<ValueType>> transitionRewards;
         if (rew.forStates) {
-            stateRewards = ValueEncoding::createDecodedVector<ValueType, Storage>(rew.forStates->values, rewIndex.type.value(), rew.forStates->toValue);
+            stateRewards = ValueEncoding::createDecodedVector<ValueType>(rew.forStates->values, rewIndex.type.value(), rew.forStates->toValue);
         }
         if (rew.forChoices) {
-            stateActionRewards = ValueEncoding::createDecodedVector<ValueType, Storage>(rew.forChoices->values, rewIndex.type.value(), rew.forChoices->toValue);
+            stateActionRewards = ValueEncoding::createDecodedVector<ValueType>(rew.forChoices->values, rewIndex.type.value(), rew.forChoices->toValue);
         }
         if (rew.forBranches) {
-            transitionRewards = createMatrix<ValueType, Storage>(umbModel, rewIndex.type.value(), rew.forBranches->values, rew.forBranches->toValue);
+            transitionRewards = createMatrix<ValueType>(umbModel, rewIndex.type.value(), rew.forBranches->values, rew.forBranches->toValue);
         }
         rewardModels.emplace(std::move(usedRewName), RewardModel(std::move(stateRewards), std::move(stateActionRewards), std::move(transitionRewards)));
     }
     return rewardModels;
 }
 
-template<typename ValueType, StorageType Storage>
-std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(storm::umb::UmbModel<Storage> const& umbModel, ImportOptions const& options) {
-    STORM_LOG_THROW(umbModel.validate(), storm::exceptions::WrongFormatException, "UMB model is not valid.");
+template<typename ValueType>
+std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(storm::umb::UmbModel const& umbModel, ImportOptions const& options) {
+    umbModel.validateOrThrow();
 
     // transitions, labelings, rewards
     auto stateLabelling = constructStateLabeling(umbModel);
@@ -208,12 +199,12 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
     if (modelType == Ctmc || modelType == MarkovAutomaton) {
         STORM_LOG_THROW(umbModel.states.exitRates.hasValue(), storm::exceptions::WrongFormatException,
                         "Exit rates are required for CTMC and Markov automaton models but not present in the UMB model.");
-        components.exitRates = ValueEncoding::createDecodedVector<ValueType, Storage>(
-            umbModel.states.exitRates, umbModel.index.transitionSystem.exitRateType.value(), umbModel.states.stateToExitRate);
+        components.exitRates = ValueEncoding::createDecodedVector<ValueType>(umbModel.states.exitRates, umbModel.index.transitionSystem.exitRateType.value(),
+                                                                             umbModel.states.stateToExitRate);
         if (modelType == MarkovAutomaton) {
             STORM_LOG_THROW(umbModel.states.markovianStates.has_value(), storm::exceptions::WrongFormatException,
                             "Markovian states are required for Markov automaton models but not present in the UMB model.");
-            components.markovianStates = createBitVector<Storage>(umbModel.states.markovianStates, umbModel.index.transitionSystem.numStates);
+            components.markovianStates = createBitVector(umbModel.states.markovianStates, umbModel.index.transitionSystem.numStates);
         }
     } else if (modelType == Smg) {
         STORM_LOG_THROW(umbModel.states.stateToPlayer.has_value(), storm::exceptions::WrongFormatException,
@@ -258,21 +249,14 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
 }
 
 template<typename ValueType>
-std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(storm::umb::UmbModelBase const& umbModel, ImportOptions const& options) {
-    if (umbModel.isStorageType(StorageType::Disk)) {
-        return detail::constructSparseModel<ValueType, StorageType::Disk>(umbModel.as<StorageType::Disk>(), options);
-    } else if (umbModel.isStorageType(StorageType::Memory)) {
-        return detail::constructSparseModel<ValueType, StorageType::Memory>(umbModel.as<StorageType::Memory>(), options);
-    } else {
-        STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Storage type not expected.");
-    }
+std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(storm::umb::UmbModel const& umbModel, ImportOptions const& options) {
+    return detail::constructSparseModel<ValueType>(umbModel, options);
 }
 
-template std::shared_ptr<storm::models::sparse::Model<double>> sparseModelFromUmb<double>(storm::umb::UmbModelBase const& umbModel,
-                                                                                          ImportOptions const& options);
-template std::shared_ptr<storm::models::sparse::Model<storm::RationalNumber>> sparseModelFromUmb<storm::RationalNumber>(
-    storm::umb::UmbModelBase const& umbModel, ImportOptions const& options);
-template std::shared_ptr<storm::models::sparse::Model<storm::Interval>> sparseModelFromUmb<storm::Interval>(storm::umb::UmbModelBase const& umbModel,
+template std::shared_ptr<storm::models::sparse::Model<double>> sparseModelFromUmb<double>(storm::umb::UmbModel const& umbModel, ImportOptions const& options);
+template std::shared_ptr<storm::models::sparse::Model<storm::RationalNumber>> sparseModelFromUmb<storm::RationalNumber>(storm::umb::UmbModel const& umbModel,
+                                                                                                                        ImportOptions const& options);
+template std::shared_ptr<storm::models::sparse::Model<storm::Interval>> sparseModelFromUmb<storm::Interval>(storm::umb::UmbModel const& umbModel,
                                                                                                             ImportOptions const& options);
 
 }  // namespace storm::umb

@@ -4,11 +4,10 @@
 #include <memory>
 
 #include "storm/storage/umb/import/ImportOptions.h"
-#include "storm/storage/umb/model/UmbModelBase.h"
+#include "storm/storage/umb/model/UmbModelForward.h"
 
 namespace storm::umb {
-class UmbModelBase;  // Forward Declaration
 
-storm::umb::UmbModelBase importUmb(std::filesystem::path const& umbLocation, ImportOptions const& options = {});
+storm::umb::UmbModel importUmb(std::filesystem::path const& umbLocation, ImportOptions const& options = {});
 
 }  // namespace storm::umb
