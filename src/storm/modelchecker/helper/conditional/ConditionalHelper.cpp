@@ -30,8 +30,8 @@ namespace internal {
 
 template<typename ValueType>
 std::optional<typename storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType> eliminateEndComponents(
-    storm::storage::BitVector possibleEcStates, bool addRowAtRepresentativeState, std::optional<uint64_t> representativeRowEntry,
-    storm::storage::SparseMatrix<ValueType>& matrix, uint64_t& initialState, storm::storage::BitVector& rowsWithSum1, std::vector<ValueType>& rowValues1,
+    storm::storage::BitVector const& possibleEcStates, bool addRowAtRepresentativeState, std::optional<uint64_t> const representativeRowEntry,
+    storm::storage::SparseMatrix<ValueType>& matrix, storm::storage::BitVector& rowsWithSum1, std::vector<ValueType>& rowValues1,
     storm::OptionalRef<std::vector<ValueType>> rowValues2 = {}) {
     storm::storage::MaximalEndComponentDecomposition<ValueType> ecs(matrix, matrix.transpose(true), possibleEcStates, rowsWithSum1);
     if (ecs.empty()) {
@@ -71,9 +71,6 @@ std::optional<typename storm::transformer::EndComponentEliminator<ValueType>::En
         updateRowValue(*rowValues2);
     }
 
-    // update initial state
-    initialState = ecElimResult.oldToNewStateMapping[initialState];
-
     // update bitvector
     storm::storage::BitVector newRowsWithSum1(ecElimResult.newToOldRowMapping.size(), true);
     uint64_t newRowIndex = 0;
@@ -90,9 +87,9 @@ std::optional<typename storm::transformer::EndComponentEliminator<ValueType>::En
 
 template<typename ValueType, typename SolutionType = ValueType>
 SolutionType solveMinMaxEquationSystem(storm::Environment const& env, storm::storage::SparseMatrix<ValueType> const& matrix,
-                                                                     std::vector<ValueType> const& rowValues, storm::storage::BitVector const& rowsWithSum1,
-                                                                     storm::solver::OptimizationDirection const dir, uint64_t const initialState,
-                                                                     storm::OptionalRef<std::vector<uint64_t>> schedulerOutput = {}) {
+                                       std::vector<ValueType> const& rowValues, storm::storage::BitVector const& rowsWithSum1,
+                                       storm::solver::OptimizationDirection const dir, uint64_t const initialState,
+                                       std::optional<std::vector<uint64_t>>& schedulerOutput) {
     // Initialize the solution vector.
     std::vector<SolutionType> x(matrix.getRowGroupCount(), storm::utility::zero<ValueType>());
 
@@ -127,7 +124,7 @@ std::unique_ptr<storm::storage::Scheduler<ValueType>> computeReachabilityProbabi
     storm::storage::BitVector const& allowedStates, storm::storage::BitVector const& targetStates, bool computeScheduler = true) {
     std::unique_ptr<storm::storage::Scheduler<ValueType>> scheduler;
     if (computeScheduler) {
-    	scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(transitionMatrix.getRowGroupCount());
+        scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(transitionMatrix.getRowGroupCount());
     }
 
     if (initialStates.empty()) {  // nothing to do
@@ -155,11 +152,11 @@ std::unique_ptr<storm::storage::Scheduler<ValueType>> computeReachabilityProbabi
     }
 
     if (computeScheduler) {
-    auto submatrixIdx = 0;
-    for (auto state : reachableStates) {
-        scheduler->setChoice(subResult.scheduler->getChoice(submatrixIdx), state);
-        ++submatrixIdx;
-    }
+        auto submatrixIdx = 0;
+        for (auto state : reachableStates) {
+            scheduler->setChoice(subResult.scheduler->getChoice(submatrixIdx), state);
+            ++submatrixIdx;
+        }
     }
 
     return scheduler;
@@ -317,9 +314,6 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
         }
     }
 
-    // TODO: avoid this
-    auto const transposedMatrixWithGroups = transitionMatrix.transpose(false);
-
     // dfs to find which choices in initial component states lead to condOrTargetStates
     storm::storage::BitVector choicesThatCanVisitCondOrTargetStates(transitionMatrix.getRowCount(), false);
     std::stack<uint64_t> toProcess;
@@ -330,22 +324,21 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
     while (!toProcess.empty()) {
         auto currentState = toProcess.top();
         toProcess.pop();
-        for (auto const& entry : transposedMatrixWithGroups.getRow(currentState)) {
-            auto predecessorChoiceIndex = entry.getColumn();
-            if (!allowedChoices.get(predecessorChoiceIndex) || choicesThatCanVisitCondOrTargetStates.get(predecessorChoiceIndex)) {
-                continue;
-            }
-            choicesThatCanVisitCondOrTargetStates.set(predecessorChoiceIndex, true);
-            uint64_t predecessorState = 0;
-            for (uint64_t state = 0; state < rowGroupCount; ++state) {
-                if (predecessorChoiceIndex < rowGroups[state + 1]) {
-                    predecessorState = state;
-                    break;
+        for (auto const& entry : backwardTransitions.getRow(currentState)) {
+            uint64_t const predecessorState = entry.getColumn();
+            for (uint64_t const predecessorChoice : transitionMatrix.getRowGroupIndices(predecessorState)) {
+                if (!allowedChoices.get(predecessorChoice) || choicesThatCanVisitCondOrTargetStates.get(predecessorChoice)) {
+                    continue;  // The choice is either not allowed or has been considered already
                 }
-            }
-            if (!visitedStates.get(predecessorState)) {
-                visitedStates.set(predecessorState, true);
-                toProcess.push(predecessorState);
+                if (auto const r = transitionMatrix.getRow(predecessorChoice);
+                    std::none_of(r.begin(), r.end(), [&currentState](auto const& e) { return e.getColumn() == currentState; })) {
+                    continue;  // not an actual predecessor choice
+                }
+                choicesThatCanVisitCondOrTargetStates.set(predecessorChoice, true);
+                if (!visitedStates.get(predecessorState)) {
+                    visitedStates.set(predecessorState, true);
+                    toProcess.push(predecessorState);
+                }
             }
         }
     }
@@ -356,34 +349,23 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
     storm::storage::BitVector choicesAllowedForInitialComponent = allowedChoices & ~disallowedInitialComponentExits;
 
     storm::storage::BitVector goodInitialComponentStates = initialComponentStates;
-    storm::storage::BitVector goodInitialComponentStatesFixpoint = initialComponentStates;
     for (auto state : initialComponentExitStates) {
-        bool allChoicesAreDisallowed = true;
-        for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
-            if (!disallowedInitialComponentExits.get(choiceIndex)) {
-                allChoicesAreDisallowed = false;
-                break;
-            }
-        }
+        auto const groupStart = transitionMatrix.getRowGroupIndices()[state];
+        auto const groupEnd = transitionMatrix.getRowGroupIndices()[state + 1];
+        bool const allChoicesAreDisallowed = disallowedInitialComponentExits.getNextUnsetIndex(groupStart) >= groupEnd;
         if (allChoicesAreDisallowed) {
             goodInitialComponentStates.set(state, false);
         }
     }
-
-    // TODO while(progress)
-    while (goodInitialComponentStates.getNumberOfSetBits() != goodInitialComponentStatesFixpoint.getNumberOfSetBits()) {
-        goodInitialComponentStatesFixpoint = goodInitialComponentStates;
+    bool progress = true;
+    while (progress) {
+        progress = false;
         for (auto state : goodInitialComponentStates) {
             bool allChoicesAreDisallowed = true;
             for (auto choiceIndex : transitionMatrix.getRowGroupIndices(state)) {
-                bool hasBadSuccessor = false;
-                for (auto const& entry : transitionMatrix.getRow(choiceIndex)) {
-                    auto targetState = entry.getColumn();
-                    if (!goodInitialComponentStates.get(targetState)) {
-                        hasBadSuccessor = true;
-                        break;
-                    }
-                }
+                auto row = transitionMatrix.getRow(choiceIndex);
+                bool const hasBadSuccessor = std::any_of(
+                    row.begin(), row.end(), [&goodInitialComponentStates](auto const& entry) { return !goodInitialComponentStates.get(entry.getColumn()); });
                 if (hasBadSuccessor) {
                     choicesAllowedForInitialComponent.set(choiceIndex, false);
                 } else {
@@ -392,6 +374,7 @@ void finalizeSchedulerForMaybeStates(storm::storage::Scheduler<SolutionType>& sc
             }
             if (allChoicesAreDisallowed) {
                 goodInitialComponentStates.set(state, false);
+                progress = true;
             }
         }
     }
@@ -442,7 +425,7 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
                                                                        storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                        NormalFormData<ValueType> const& normalForm) {
     auto const& maybeStates = normalForm.maybeStates;
-    auto const stateToMatrixIndexMap = maybeStates.getNumberOfSetBitsBeforeIndices();
+    auto originalToReducedStateIndexMap = maybeStates.getNumberOfSetBitsBeforeIndices();
     auto const numMaybeStates = maybeStates.getNumberOfSetBits();
     auto const numMaybeChoices = transitionMatrix.getNumRowsInRowGroups(maybeStates);
 
@@ -484,139 +467,144 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
                 // Insert backloop probability if we haven't done so yet and are past the initial state index
                 // This is to avoid a costly out-of-order insertion into the matrix
                 if (addRestartTransition && entry.getColumn() > initialState) {
-                    matrixBuilder.addNextValue(currentRow, stateToMatrixIndexMap[initialState], restartProbability);
+                    matrixBuilder.addNextValue(currentRow, originalToReducedStateIndexMap[initialState], restartProbability);
                     addRestartTransition = false;
                 }
                 if (maybeStates.get(entry.getColumn())) {
-                    matrixBuilder.addNextValue(currentRow, stateToMatrixIndexMap[entry.getColumn()], entry.getValue());
+                    matrixBuilder.addNextValue(currentRow, originalToReducedStateIndexMap[entry.getColumn()], entry.getValue());
                 }
             }
             // Add the backloop if we haven't done this already
             if (addRestartTransition) {
-                matrixBuilder.addNextValue(currentRow, stateToMatrixIndexMap[initialState], restartProbability);
+                matrixBuilder.addNextValue(currentRow, originalToReducedStateIndexMap[initialState], restartProbability);
             }
             ++currentRow;
         }
     }
+    STORM_LOG_ASSERT(currentRow == numMaybeChoices, "Unexpected number of constructed rows.");
 
-    // TODO: why copy
-    auto maybeMatrix = matrixBuilder.build();
-    auto matrix = storm::storage::SparseMatrix<ValueType>(maybeMatrix);
-    auto initStateInMatrix = stateToMatrixIndexMap[initialState];
+    auto matrix = matrixBuilder.build();
+    auto initStateInReduced = originalToReducedStateIndexMap[initialState];
 
     // Eliminate end components in two phases
     // First, we catch all end components that do not contain the initial state. It is possible to stay in those ECs forever
     // without reaching the condition. This is reflected by a backloop to the initial state.
-    storm::storage::BitVector selectedStatesInMatrix(numMaybeStates, true);
-    selectedStatesInMatrix.set(initStateInMatrix, false);
-    auto ecElimResult1 = eliminateEndComponents(selectedStatesInMatrix, true, initStateInMatrix, matrix, initStateInMatrix, rowsWithSum1, rowValues);
+    storm::storage::BitVector selectedStatesInReduced(numMaybeStates, true);
+    selectedStatesInReduced.set(initStateInReduced, false);
+    auto ecElimResult1 = eliminateEndComponents(selectedStatesInReduced, true, initStateInReduced, matrix, rowsWithSum1, rowValues);
+    selectedStatesInReduced.set(initStateInReduced, true);
+    if (ecElimResult1) {
+        selectedStatesInReduced.resize(matrix.getRowGroupCount(), true);
+        initStateInReduced = ecElimResult1->oldToNewStateMapping[initStateInReduced];
+    }
     // Second, eliminate the remaining ECs. These must involve the initial state and might have been introduced in the previous step.
     // A policy selecting such an EC must reach the condition with probability zero and is thus invalid.
-    selectedStatesInMatrix.set(initStateInMatrix, true);
-    auto ecElimResult2 = eliminateEndComponents(selectedStatesInMatrix, false, std::nullopt, matrix, initStateInMatrix, rowsWithSum1, rowValues);
+    auto ecElimResult2 = eliminateEndComponents(selectedStatesInReduced, false, std::nullopt, matrix, rowsWithSum1, rowValues);
+    if (ecElimResult2) {
+        initStateInReduced = ecElimResult2->oldToNewStateMapping[initStateInReduced];
+    }
 
     STORM_LOG_INFO("Processed model has " << matrix.getRowGroupCount() << " states and " << matrix.getRowGroupCount() << " choices and "
                                           << matrix.getEntryCount() << " transitions.");
-    // Finally, solve the equation system
-    auto result = solveMinMaxEquationSystem(env, matrix, rowValues, rowsWithSum1, dir, initStateInMatrix, computeScheduler);
+
+    // Finally, solve the equation system, potentially computing a scheduler
+    std::optional<std::vector<uint64_t>> reducedSchedulerChoices;
+    if (computeScheduler) {
+        reducedSchedulerChoices.emplace();
+    }
+    auto resultValue = solveMinMaxEquationSystem(env, matrix, rowValues, rowsWithSum1, dir, initStateInReduced, reducedSchedulerChoices);
+
+    // Create result (scheduler potentially added below)
+    auto finalResult = ResultReturnType<ValueType, SolutionType>(resultValue);
+
+    if (!computeScheduler) {
+        return finalResult;
+    }
+    // At this point we have to reconstruct the scheduler for the original model
+    STORM_LOG_ASSERT(reducedSchedulerChoices.has_value() && reducedSchedulerChoices->size() == matrix.getRowGroupCount(),
+                     "Requested scheduler, but it was not computed or has invalid size.");
+    // For easier access, we create and update some index mappings
+    std::vector<uint64_t> originalRowToStateIndexMap;  // maps original row indices to original state indices. transitionMatrix.getRowGroupIndices() are the
+                                                       // inverse of that mapping
+    originalRowToStateIndexMap.reserve(transitionMatrix.getRowCount());
+    for (uint64_t originalStateIndex = 0; originalStateIndex < transitionMatrix.getRowGroupCount(); ++originalStateIndex) {
+        originalRowToStateIndexMap.insert(originalRowToStateIndexMap.end(), transitionMatrix.getRowGroupSize(originalStateIndex), originalStateIndex);
+    }
+    std::vector<uint64_t> reducedToOriginalRowIndexMap;  // maps row indices of the reduced model to the original ones
+    reducedToOriginalRowIndexMap.reserve(numMaybeChoices);
+    for (uint64_t const originalMaybeState : maybeStates) {
+        for (auto const originalRowIndex : transitionMatrix.getRowGroupIndices(originalMaybeState)) {
+            reducedToOriginalRowIndexMap.push_back(originalRowIndex);
+        }
+    }
+    if (ecElimResult1.has_value() || ecElimResult2.has_value()) {
+        // reducedToOriginalRowIndexMap needs to be updated so it maps from rows of the ec-eliminated system
+        std::vector<uint64_t> tmpReducedToOriginalRowIndexMap;
+        tmpReducedToOriginalRowIndexMap.reserve(matrix.getRowCount());
+        for (uint64_t reducedRow = 0; reducedRow < matrix.getRowCount(); ++reducedRow) {
+            uint64_t intermediateRow = reducedRow;
+            if (ecElimResult2.has_value()) {
+                intermediateRow = ecElimResult2->newToOldRowMapping.at(intermediateRow);
+            }
+            if (ecElimResult1.has_value()) {
+                intermediateRow = ecElimResult1->newToOldRowMapping.at(intermediateRow);
+            }
+            tmpReducedToOriginalRowIndexMap.push_back(reducedToOriginalRowIndexMap[intermediateRow]);
+        }
+        reducedToOriginalRowIndexMap = std::move(tmpReducedToOriginalRowIndexMap);
+        // originalToReducedStateIndexMap needs to be updated so it maps into the ec-eliminated system
+        for (uint64_t originalStateIndex = 0; originalStateIndex < transitionMatrix.getRowGroupCount(); ++originalStateIndex) {
+            auto& reducedIndex = originalToReducedStateIndexMap[originalStateIndex];
+            if (maybeStates.get(originalStateIndex)) {
+                if (ecElimResult1.has_value()) {
+                    reducedIndex = ecElimResult1->oldToNewStateMapping.at(reducedIndex);
+                }
+                if (ecElimResult2.has_value()) {
+                    reducedIndex = ecElimResult2->oldToNewStateMapping.at(reducedIndex);
+                }
+            } else {
+                reducedIndex = std::numeric_limits<uint64_t>::max();  // The original state does not exist in the reduced model.
+            }
+        }
+    }
 
     storm::storage::BitVector initialComponentExitRows(transitionMatrix.getRowCount(), false);
     storm::storage::BitVector initialComponentExitStates(transitionMatrix.getRowGroupCount(), false);
-    for (auto rowIndex : matrix.getRowGroupIndices(initStateInMatrix)) {
-        uint64_t originalRowIndex = rowIndex;
-        if (ecElimResult2.has_value()) {
-            originalRowIndex = ecElimResult2->newToOldRowMapping[originalRowIndex];
-        }
-        if (ecElimResult1.has_value()) {
-            originalRowIndex = ecElimResult1->newToOldRowMapping[originalRowIndex];
-        }
+    for (auto const reducedRowIndex : matrix.getRowGroupIndices(initStateInReduced)) {
+        uint64_t const originalRowIndex = reducedToOriginalRowIndexMap[reducedRowIndex];
+        uint64_t const originalState = originalRowToStateIndexMap[originalRowIndex];
 
-        uint64_t originalState;
-        uint64_t originalChoice;
-        auto const rowGroups = maybeMatrix.getRowGroupIndices();
-        for (originalState = 0; originalState < maybeMatrix.getRowGroupCount(); ++originalState) {
-            auto const firstRowStateIndex = rowGroups[originalState + 1];
-            if (firstRowStateIndex > originalRowIndex) {
-                originalChoice = originalRowIndex - rowGroups[originalState];
-                break;
-            }
-        }
-
-        uint64_t index = maybeStates.getNextSetIndex(0);
-        for (uint64_t s = 0; s < originalState; ++s) {
-            index = maybeStates.getNextSetIndex(index + 1);
-        }
-
-        originalState = index;
-
-        initialComponentExitRows.set(transitionMatrix.getRowGroupIndices()[originalState] + originalChoice, true);
+        initialComponentExitRows.set(originalRowIndex, true);
         initialComponentExitStates.set(originalState, true);
     }
 
-    // Create result without scheduler
-    auto finalResult = ResultReturnType<ValueType, SolutionType>(result.initialStateValue);
-
     // If requested, construct the scheduler for the original model
-    if (computeScheduler && result.hasScheduler()) {
-        storm::storage::BitVector maybeStatesWithChoice(maybeStates.size(), false);
-        std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
-        uint64_t chosenInitialComponentExitState;
-        uint64_t chosenInitialComponentExit;
-        scheduler = std::make_unique<storm::storage::Scheduler<SolutionType>>(transitionMatrix.getRowGroupCount());
+    storm::storage::BitVector maybeStatesWithChoice(maybeStates.size(), false);
+    uint64_t chosenInitialComponentExitState = std::numeric_limits<uint64_t>::max();
+    uint64_t chosenInitialComponentExit = std::numeric_limits<uint64_t>::max();
+    auto scheduler = std::make_unique<storm::storage::Scheduler<SolutionType>>(transitionMatrix.getRowGroupCount());
 
-        uint64_t state = 0;
-        for (auto& choice : *result.scheduler) {
-            uint64_t firstRowIndex = matrix.getRowGroupIndices()[state];
-            uint64_t originalChoice = firstRowIndex + choice;
-            if (ecElimResult2.has_value()) {
-                originalChoice = ecElimResult2->newToOldRowMapping[originalChoice];
-            }
-            if (ecElimResult1.has_value()) {
-                originalChoice = ecElimResult1->newToOldRowMapping[originalChoice];
-            }
-
-            uint64_t originalState;
-            auto const rowGroups = maybeMatrix.getRowGroupIndices();
-            for (originalState = 0; originalState < maybeMatrix.getRowGroupCount(); ++originalState) {
-                auto const firstRowStateIndex = rowGroups[originalState + 1];
-                if (firstRowStateIndex > originalChoice) {
-                    originalChoice = originalChoice - rowGroups[originalState];
-                    break;
-                }
-            }
-
-            uint64_t index = maybeStates.getNextSetIndex(0);
-            for (uint64_t s = 0; s < originalState; ++s) {
-                index = maybeStates.getNextSetIndex(index + 1);
-            }
-
-            originalState = index;
-            scheduler->setChoice(originalChoice, originalState);
-            maybeStatesWithChoice.set(originalState, true);
-            if (state == initStateInMatrix) {
-                chosenInitialComponentExitState = originalState;
-                chosenInitialComponentExit = transitionMatrix.getRowGroupIndices()[originalState] + originalChoice;
-            }
-            ++state;
+    uint64_t reducedState = 0;
+    for (auto const& choice : reducedSchedulerChoices.value()) {
+        uint64_t const reducedRowIndex = matrix.getRowGroupIndices()[reducedState] + choice;
+        uint64_t const originalRowIndex = reducedToOriginalRowIndexMap[reducedRowIndex];
+        uint64_t const originalState = originalRowToStateIndexMap[originalRowIndex];
+        uint64_t const originalChoice = originalRowIndex - transitionMatrix.getRowGroupIndices()[originalState];
+        scheduler->setChoice(originalChoice, originalState);
+        maybeStatesWithChoice.set(originalState, true);
+        if (reducedState == initStateInReduced) {
+            chosenInitialComponentExitState = originalState;
+            chosenInitialComponentExit = originalRowIndex;
         }
-
-        std::vector<uint64_t> stateToFinalEc(transitionMatrix.getRowGroupCount(), std::numeric_limits<uint64_t>::max());
-        state = 0;
-        for (auto s : maybeStates) {
-            auto mappedState = state;
-            mappedState = ecElimResult1.has_value() ? ecElimResult1->oldToNewStateMapping[mappedState] : mappedState;
-            mappedState = ecElimResult2.has_value() ? ecElimResult2->oldToNewStateMapping[mappedState] : mappedState;
-            stateToFinalEc[s] = mappedState;
-            state++;
-        }
-
-        auto const maybeStatesWithoutChoice = maybeStates & ~maybeStatesWithChoice;
-        finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, maybeStates, maybeStatesWithoutChoice, maybeStatesWithChoice,
-                                        stateToFinalEc, normalForm, initStateInMatrix, initialComponentExitStates, initialComponentExitRows,
-                                        chosenInitialComponentExitState, chosenInitialComponentExit);
-
-        finalResult.scheduler = std::move(scheduler);
+        ++reducedState;
     }
+
+    auto const maybeStatesWithoutChoice = maybeStates & ~maybeStatesWithChoice;
+    finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, maybeStates, maybeStatesWithoutChoice, maybeStatesWithChoice,
+                                    originalToReducedStateIndexMap, normalForm, initStateInReduced, initialComponentExitStates, initialComponentExitRows,
+                                    chosenInitialComponentExitState, chosenInitialComponentExit);
+
+    finalResult.scheduler = std::move(scheduler);
 
     return finalResult;
 }
@@ -630,7 +618,7 @@ template<typename ValueType, typename SolutionType = ValueType>
 class WeightedReachabilityHelper {
    public:
     WeightedReachabilityHelper(uint64_t const initialState, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
-                               NormalFormData<ValueType> const& normalForm) {
+                               NormalFormData<ValueType> const& normalForm, bool computeScheduler) {
         // Determine rowgroups (states) and rows (choices) of the submatrix
         auto subMatrixRowGroups = normalForm.maybeStates;
         // Identify and eliminate the initial component to enforce that it is eventually exited
@@ -642,7 +630,7 @@ class WeightedReachabilityHelper {
         // action. By eliminating the initial component, we ensure that only policies that actually exit C are considered. The remaining policies have
         // probability zero of satisfying the condition.
         initialComponentExitRows = storm::storage::BitVector(transitionMatrix.getRowCount(), false);
-        initialComponentExitStates = storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false); // TODO: use sparse matrix rowfilter
+        initialComponentExitStates = storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false);
         subMatrixRowGroups.set(initialState, false);  // temporarily unset initial state
         std::vector<uint64_t> dfsStack = {initialState};
         while (!dfsStack.empty()) {
@@ -669,12 +657,16 @@ class WeightedReachabilityHelper {
         subMatrixRowGroups.set(initialState, true);  // set initial state again, as single representative state for the initial component
         auto const numSubmatrixRowGroups = subMatrixRowGroups.getNumberOfSetBits();
 
+        if (computeScheduler) {
+            reducedToOriginalRowIndexMap.reserve(numSubmatrixRows);
+        }
+
         // state index mapping and initial state
-        auto stateToMatrixIndexMap = subMatrixRowGroups.getNumberOfSetBitsBeforeIndices();
-        initialStateInSubmatrix = stateToMatrixIndexMap[initialState];
+        originalToReducedStateIndexMap = subMatrixRowGroups.getNumberOfSetBitsBeforeIndices();
+        initialStateInSubmatrix = originalToReducedStateIndexMap[initialState];
         auto const eliminatedInitialComponentStates = normalForm.maybeStates & ~subMatrixRowGroups;
         for (auto state : eliminatedInitialComponentStates) {
-            stateToMatrixIndexMap[state] = initialStateInSubmatrix;  // map all eliminated states to the initial state
+            originalToReducedStateIndexMap[state] = initialStateInSubmatrix;  // map all eliminated states to the initial state
         }
 
         // build matrix, rows that sum up to 1, target values, condition values
@@ -707,7 +699,7 @@ class WeightedReachabilityHelper {
                             conditionProbability += scaledTargetValue;  // for terminal, non-condition states, the condition value equals the target value
                         }
                     } else if (!eliminatedInitialComponentStates.get(entry.getColumn())) {
-                        auto const columnIndex = stateToMatrixIndexMap[entry.getColumn()];
+                        auto const columnIndex = originalToReducedStateIndexMap[entry.getColumn()];
                         if (!initialStateEntryInserted && columnIndex >= initialStateInSubmatrix) {
                             if (columnIndex == initialStateInSubmatrix) {
                                 matrixBuilder.addNextValue(currentRow, initialStateInSubmatrix, eliminatedInitialComponentProbability + entry.getValue());
@@ -732,46 +724,58 @@ class WeightedReachabilityHelper {
             if (state == initialState) {
                 for (auto origRowIndex : initialComponentExitRows) {
                     processRow(origRowIndex);
-                    subMatrixRowToOriginalRow.push_back(origRowIndex);
+                    reducedToOriginalRowIndexMap.push_back(origRowIndex);
                 }
             } else {
                 for (auto origRowIndex : transitionMatrix.getRowGroupIndices(state)) {
                     processRow(origRowIndex);
-                    subMatrixRowToOriginalRow.push_back(origRowIndex);
+                    reducedToOriginalRowIndexMap.push_back(origRowIndex);
                 }
             }
         }
-        fullSubmatrix = matrixBuilder.build(); // TODO: why copy
-        submatrix = storm::storage::SparseMatrix<ValueType>(fullSubmatrix);
+        submatrix = matrixBuilder.build();
 
         //  eliminate ECs if present. We already checked that the initial state can not yield observation failure, so it cannot be part of an EC.
         //  For all remaining ECs, staying in an EC forever is reflected by collecting a value of zero for both, target and condition
         storm::storage::BitVector allExceptInit(numSubmatrixRowGroups, true);
         allExceptInit.set(initialStateInSubmatrix, false);
-        ecResult = eliminateEndComponents<ValueType>(allExceptInit, true, std::nullopt, submatrix, initialStateInSubmatrix, rowsWithSum1, targetRowValues,
-                                                     conditionRowValues);
+        ecResult = eliminateEndComponents<ValueType>(allExceptInit, true, std::nullopt, submatrix, rowsWithSum1, targetRowValues, conditionRowValues);
+        if (ecResult) {
+            initialStateInSubmatrix = ecResult->oldToNewStateMapping[initialStateInSubmatrix];
+        }
         isAcyclic = !storm::utility::graph::hasCycle(submatrix);
         STORM_LOG_INFO("Processed model has " << submatrix.getRowGroupCount() << " states and " << submatrix.getRowGroupCount() << " choices and "
                                               << submatrix.getEntryCount() << " transitions. Matrix is " << (isAcyclic ? "acyclic." : "cyclic."));
 
-        // if (ecElimResult.has_value()) {
-        //     ecResult = std::make_unique<typename
-        //     storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType>(std::move(*ecElimResult));
-        // }
-
-        stateToFinalEc.resize(transitionMatrix.getRowGroupCount(), -1);
-        auto maybeStatesNotInSubmatrix = normalForm.maybeStates & ~subMatrixRowGroups;
-
-        for (auto state : maybeStatesNotInSubmatrix) {
-            stateToFinalEc[state] = 0;
-        }
-
-        uint64_t state = 0;
-        for (auto s : subMatrixRowGroups) {
-            uint64_t mappedState = state;
-            mappedState = ecResult.has_value() ? ecResult->oldToNewStateMapping[mappedState] : mappedState;
-            stateToFinalEc[s] = mappedState;
-            state++;
+        if (computeScheduler) {
+            // For easier conversion of schedulers to the original model, we create and update some index mappings
+            STORM_LOG_ASSERT(reducedToOriginalRowIndexMap.size() == numSubmatrixRows, "Unexpected size of reducedToOriginalRowIndexMap.");
+            if (ecResult.has_value()) {
+                // reducedToOriginalRowIndexMap needs to be updated so it maps from rows of the ec-eliminated system
+                std::vector<uint64_t> tmpReducedToOriginalRowIndexMap;
+                tmpReducedToOriginalRowIndexMap.reserve(submatrix.getRowCount());
+                for (uint64_t reducedRow = 0; reducedRow < submatrix.getRowCount(); ++reducedRow) {
+                    uint64_t intermediateRow = ecResult->newToOldRowMapping.at(reducedRow);
+                    tmpReducedToOriginalRowIndexMap.push_back(reducedToOriginalRowIndexMap[intermediateRow]);
+                }
+                reducedToOriginalRowIndexMap = std::move(tmpReducedToOriginalRowIndexMap);
+                // originalToReducedStateIndexMap needs to be updated so it maps into the ec-eliminated system
+                for (uint64_t originalStateIndex = 0; originalStateIndex < transitionMatrix.getRowGroupCount(); ++originalStateIndex) {
+                    auto& reducedIndex = originalToReducedStateIndexMap[originalStateIndex];
+                    if (subMatrixRowGroups.get(originalStateIndex)) {
+                        reducedIndex = ecResult->oldToNewStateMapping.at(reducedIndex);
+                    } else {
+                        reducedIndex = std::numeric_limits<uint64_t>::max();  // The original state does not exist in the reduced model.
+                    }
+                }
+            }
+        } else {
+            // Clear data that is only needed if we compute schedulers
+            originalToReducedStateIndexMap.clear();
+            reducedToOriginalRowIndexMap.clear();
+            ecResult.emplace();
+            initialComponentExitRows.clear();
+            initialComponentExitStates.clear();
         }
     }
 
@@ -878,13 +882,43 @@ class WeightedReachabilityHelper {
         return improved;
     }
 
-    storm::storage::SparseMatrix<ValueType> submatrix;
-    storm::storage::SparseMatrix<ValueType> fullSubmatrix;
-    std::vector<uint64_t> stateToFinalEc;
-    boost::optional<typename storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType> ecResult;
-    std::vector<uint64_t> subMatrixRowToOriginalRow;
-    storm::storage::BitVector initialComponentExitRows;
-    storm::storage::BitVector initialComponentExitStates;
+    std::unique_ptr<storm::storage::Scheduler<ValueType>> constructSchedulerForInputModel(
+        std::vector<uint64_t> const& schedulerForReducedModel, storm::storage::SparseMatrix<ValueType> const& originalTransitionMatrix,
+        storm::storage::SparseMatrix<ValueType> const& originalBackwardTransitions, NormalFormData<ValueType> const& normalForm) const {
+        std::vector<uint64_t> originalRowToStateIndexMap;  // maps original row indices to original state indices. transitionMatrix.getRowGroupIndices() are the
+                                                           // inverse of that mapping
+        originalRowToStateIndexMap.reserve(originalTransitionMatrix.getRowCount());
+        for (uint64_t originalStateIndex = 0; originalStateIndex < originalTransitionMatrix.getRowGroupCount(); ++originalStateIndex) {
+            originalRowToStateIndexMap.insert(originalRowToStateIndexMap.end(), originalTransitionMatrix.getRowGroupSize(originalStateIndex),
+                                              originalStateIndex);
+        }
+
+        storm::storage::BitVector maybeStatesWithChoice(normalForm.maybeStates.size(), false);
+        uint64_t chosenInitialComponentExitState = std::numeric_limits<uint64_t>::max();
+        uint64_t chosenInitialComponentExit = std::numeric_limits<uint64_t>::max();
+        auto scheduler = std::make_unique<storm::storage::Scheduler<SolutionType>>(originalTransitionMatrix.getRowGroupCount());
+
+        uint64_t reducedState = 0;
+        for (auto const& choice : schedulerForReducedModel) {
+            uint64_t const reducedRowIndex = submatrix.getRowGroupIndices()[reducedState] + choice;
+            uint64_t const originalRowIndex = reducedToOriginalRowIndexMap[reducedRowIndex];
+            uint64_t const originalState = originalRowToStateIndexMap[originalRowIndex];
+            uint64_t const originalChoice = originalRowIndex - originalTransitionMatrix.getRowGroupIndices()[originalState];
+            scheduler->setChoice(originalChoice, originalState);
+            maybeStatesWithChoice.set(originalState, true);
+            if (reducedState == initialStateInSubmatrix) {
+                chosenInitialComponentExitState = originalState;
+                chosenInitialComponentExit = originalRowIndex;
+            }
+            ++reducedState;
+        }
+
+        auto const maybeStatesWithoutChoice = normalForm.maybeStates & ~maybeStatesWithChoice;
+        finalizeSchedulerForMaybeStates(*scheduler, originalTransitionMatrix, originalBackwardTransitions, normalForm.maybeStates, maybeStatesWithoutChoice,
+                                        maybeStatesWithChoice, originalToReducedStateIndexMap, normalForm, initialStateInSubmatrix, initialComponentExitStates,
+                                        initialComponentExitRows, chosenInitialComponentExitState, chosenInitialComponentExit);
+        return scheduler;
+    }
 
    private:
     void createScaledVector(std::vector<ValueType>& out, ValueType const& w1, std::vector<ValueType> const& v1, ValueType const& w2,
@@ -917,12 +951,19 @@ class WeightedReachabilityHelper {
     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType, SolutionType>> cachedSolver;
     std::vector<ValueType> cachedX;
     std::vector<ValueType> cachedB;
+
+    // Data used to translate schedulers:
+    std::vector<uint64_t> originalToReducedStateIndexMap;
+    std::vector<uint64_t> reducedToOriginalRowIndexMap;
+    std::optional<typename storm::transformer::EndComponentEliminator<ValueType>::EndComponentEliminatorReturnType> ecResult;
+    storm::storage::BitVector initialComponentExitRows;
+    storm::storage::BitVector initialComponentExitStates;
 };
 
 template<typename ValueType, typename SolutionType = ValueType>
-typename internal::ResultReturnType<ValueType> computeViaBisection(Environment const& env, bool const useAdvancedBounds, bool const usePolicyTracking, uint64_t const initialState,
-                                                                   storm::solver::SolveGoal<ValueType, SolutionType> goal, bool computeScheduler,
-                                                                   storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+typename internal::ResultReturnType<ValueType> computeViaBisection(Environment const& env, bool const useAdvancedBounds, bool const usePolicyTracking,
+                                                                   uint64_t const initialState, storm::solver::SolveGoal<ValueType, SolutionType> const& goal,
+                                                                   bool computeScheduler, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                    storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                    NormalFormData<ValueType> const& normalForm) {
     // We currently handle sound model checking incorrectly: we would need the actual lower/upper bounds of the weightedReachabilityHelper
@@ -937,7 +978,7 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
     }();
     bool const relative = env.solver().minMax().getRelativeTerminationCriterion();
 
-    WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm);
+    WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm, computeScheduler);
     SolutionType pMin{storm::utility::zero<SolutionType>()};
     SolutionType pMax{storm::utility::one<SolutionType>()};
 
@@ -1086,83 +1127,41 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
     // Create result without scheduler
     auto finalResult = ResultReturnType<ValueType>((*lowerBound + *upperBound) / 2);
 
-    // If requested, construct the scheduler for the original model
-    if (computeScheduler) {
-    	std::vector<uint64_t> resultSchedulerChoices;
-    	if (usePolicyTracking && *lowerBound == *upperBound) {
-    		// We already have computed a scheduler
-    		resultSchedulerChoices = std::move(*lowerScheduler);
-    	} else {
-    		// Compute a scheduler on the middle result
-    		wrh.computeWeightedDiff(env, goal.direction(), storm::utility::one<ValueType>(), -finalResult.initialStateValue, resultSchedulerChoices);
-
-    	}
-        storm::storage::BitVector maybeStatesWithChoice(normalForm.maybeStates.size(), false);
-        std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
-        uint64_t chosenInitialComponentExitState;
-        uint64_t chosenInitialComponentExit;
-        scheduler = std::make_unique<storm::storage::Scheduler<SolutionType>>(transitionMatrix.getRowGroupCount());
-
-        uint64_t state = 0;
-        for (auto& choice : *res.scheduler) {
-            uint64_t originalChoice;
-            uint64_t originalState;
-
-            uint64_t firstRowIndex = wrh.submatrix.getRowGroupIndices()[state];
-            originalChoice = firstRowIndex + choice;
-            if (wrh.ecResult.has_value()) {
-                originalChoice = wrh.ecResult->newToOldRowMapping[originalChoice];
-            }
-
-            originalChoice = wrh.subMatrixRowToOriginalRow[originalChoice];
-
-            auto const& rowGroups = transitionMatrix.getRowGroupIndices();
-            for (originalState = 0; originalState < transitionMatrix.getRowGroupCount(); ++originalState) {
-                auto const firstRowStateIndex = rowGroups[originalState + 1];
-                if (firstRowStateIndex > originalChoice) {
-                    originalChoice = originalChoice - rowGroups[originalState];
-                    break;
-                }
-            }
-
-            scheduler->setChoice(originalChoice, originalState);
-            maybeStatesWithChoice.set(originalState, true);
-
-            if (state == wrh.getInternalInitialState()) {
-                chosenInitialComponentExitState = originalState;
-                chosenInitialComponentExit = transitionMatrix.getRowGroupIndices()[originalState] + originalChoice;
-            }
-
-            ++state;
-        }
-
-        auto const maybeStatesWithoutChoice = normalForm.maybeStates & ~maybeStatesWithChoice;
-        finalizeSchedulerForMaybeStates(*scheduler, transitionMatrix, backwardTransitions, normalForm.maybeStates, maybeStatesWithoutChoice,
-                                        maybeStatesWithChoice, wrh.stateToFinalEc, normalForm, wrh.getInternalInitialState(), wrh.initialComponentExitStates,
-                                        wrh.initialComponentExitRows, chosenInitialComponentExitState, chosenInitialComponentExit);
-
-        finalResult.scheduler = std::move(scheduler);
+    if (!computeScheduler) {
+        return finalResult;  // nothing else to do
     }
-
+    // If requested, construct the scheduler for the original model
+    std::vector<uint64_t> reducedSchedulerChoices;
+    if (usePolicyTracking && *lowerBound == *upperBound) {
+        // We already have computed a scheduler
+        reducedSchedulerChoices = std::move(*lowerScheduler);
+    } else {
+        // Compute a scheduler on the middle result by performing one more iteration
+        wrh.computeWeightedDiff(env, goal.direction(), storm::utility::one<ValueType>(), -finalResult.initialStateValue, reducedSchedulerChoices);
+    }
+    finalResult.scheduler = wrh.constructSchedulerForInputModel(reducedSchedulerChoices, transitionMatrix, backwardTransitions, normalForm);
     return finalResult;
 }
 
 template<typename ValueType, typename SolutionType = ValueType>
-SolutionType computeViaBisection(Environment const& env, ConditionalAlgorithmSetting const alg, uint64_t const initialState,
-                                 storm::solver::OptimizationDirection const dir, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
-                                 NormalFormData<ValueType> const& normalForm) {
+typename internal::ResultReturnType<ValueType> computeViaBisection(Environment const& env, ConditionalAlgorithmSetting const alg, uint64_t const initialState,
+                                                                   storm::solver::SolveGoal<ValueType, SolutionType> const& goal, bool computeScheduler,
+                                                                   storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                   storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
+                                                                   NormalFormData<ValueType> const& normalForm) {
     using enum ConditionalAlgorithmSetting;
     STORM_LOG_ASSERT(alg == Bisection || alg == BisectionAdvanced || alg == BisectionPolicyTracking || alg == BisectionAdvancedPolicyTracking,
                      "Unhandled Bisection algorithm " << alg << ".");
     bool const useAdvancedBounds = (alg == BisectionAdvanced || alg == BisectionAdvancedPolicyTracking);
     bool const usePolicyTracking = (alg == BisectionPolicyTracking || alg == BisectionAdvancedPolicyTracking);
-    return computeViaBisection(env, useAdvancedBounds, usePolicyTracking, initialState, dir, transitionMatrix, normalForm);
+    return computeViaBisection(env, useAdvancedBounds, usePolicyTracking, initialState, goal, computeScheduler, transitionMatrix, backwardTransitions,
+                               normalForm);
 }
 
 template<typename ValueType, typename SolutionType = ValueType>
 SolutionType computeViaPolicyIteration(Environment const& env, uint64_t const initialState, storm::solver::OptimizationDirection const dir,
                                        storm::storage::SparseMatrix<ValueType> const& transitionMatrix, NormalFormData<ValueType> const& normalForm) {
-    WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm);
+    WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm, false);  // scheduler computation not yet implemented.
 
     std::vector<uint64_t> scheduler;
     std::vector<SolutionType> targetResults, conditionResults;
@@ -1272,15 +1271,14 @@ std::unique_ptr<CheckResult> computeConditionalProbabilities(Environment const& 
                 initialStateValue = result.initialStateValue;
                 scheduler = std::move(result.scheduler);
                 break;
-            case ConditionalAlgorithmSetting::Restart:
-                initialStateValue = internal::computeViaRestartMethod(analysisEnv, initialState, goal.direction(), transitionMatrix, normalFormData);
-                break;
+            }
             case ConditionalAlgorithmSetting::Bisection:
             case ConditionalAlgorithmSetting::BisectionAdvanced:
             case ConditionalAlgorithmSetting::BisectionPolicyTracking:
-            case ConditionalAlgorithmSetting::BisectionAdvancedPolicyTracking:
-                auto result = internal::computeViaBisection(analysisEnv, alg, initialState, goal.direction(), transitionMatrix, normalFormData);
-                                initialStateValue = result.initialStateValue;
+            case ConditionalAlgorithmSetting::BisectionAdvancedPolicyTracking: {
+                auto result = internal::computeViaBisection(analysisEnv, alg, initialState, goal, checkTask.isProduceSchedulersSet(), transitionMatrix,
+                                                            backwardTransitions, normalFormData);
+                initialStateValue = result.initialStateValue;
                 scheduler = std::move(result.scheduler);
                 break;
             }
