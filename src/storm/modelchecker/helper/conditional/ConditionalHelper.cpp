@@ -88,14 +88,26 @@ std::optional<typename storm::transformer::EndComponentEliminator<ValueType>::En
 template<typename ValueType, typename SolutionType = ValueType>
 SolutionType solveMinMaxEquationSystem(storm::Environment const& env, storm::storage::SparseMatrix<ValueType> const& matrix,
                                        std::vector<ValueType> const& rowValues, storm::storage::BitVector const& rowsWithSum1,
-                                       storm::solver::OptimizationDirection const dir, uint64_t const initialState,
+                                       storm::solver::SolveGoal<ValueType, SolutionType> const& goal, uint64_t const initialState,
                                        std::optional<std::vector<uint64_t>>& schedulerOutput) {
     // Initialize the solution vector.
     std::vector<SolutionType> x(matrix.getRowGroupCount(), storm::utility::zero<ValueType>());
 
     // Set up the solver.
-    auto solver = storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType, SolutionType>().create(env, matrix);
-    solver->setOptimizationDirection(dir);
+    storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType, SolutionType> factory;
+    storm::storage::BitVector relevantValues(matrix.getRowGroupCount(), false);
+    relevantValues.set(initialState, true);
+    auto getGoal = [&env, &goal, &relevantValues]() -> storm::solver::SolveGoal<ValueType, SolutionType> {
+        if (goal.isBounded() && env.modelchecker().isAllowOptimizationForBoundedPropertiesSet()) {
+            return {goal.direction(), goal.boundComparisonType(), goal.thresholdValue(), relevantValues};
+        } else {
+            return {goal.direction(), relevantValues};
+        }
+    };
+    auto solver = storm::solver::configureMinMaxLinearEquationSolver(env, getGoal(), factory, matrix);
+
+    storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType, SolutionType>().create(env, matrix);
+    solver->setOptimizationDirection(goal.direction());
     solver->setRequirementsChecked();
     solver->setHasUniqueSolution(true);
     solver->setHasNoEndComponents(true);
@@ -420,7 +432,7 @@ struct ResultReturnType {
  */
 template<typename ValueType, typename SolutionType = ValueType>
 typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environment const& env, uint64_t const initialState,
-                                                                       storm::solver::OptimizationDirection const dir, bool computeScheduler,
+                                                                       storm::solver::SolveGoal<ValueType, SolutionType> const& goal, bool computeScheduler,
                                                                        storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                        storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                        NormalFormData<ValueType> const& normalForm) {
@@ -512,7 +524,7 @@ typename internal::ResultReturnType<ValueType> computeViaRestartMethod(Environme
     if (computeScheduler) {
         reducedSchedulerChoices.emplace();
     }
-    auto resultValue = solveMinMaxEquationSystem(env, matrix, rowValues, rowsWithSum1, dir, initStateInReduced, reducedSchedulerChoices);
+    auto resultValue = solveMinMaxEquationSystem(env, matrix, rowValues, rowsWithSum1, goal, initStateInReduced, reducedSchedulerChoices);
 
     // Create result (scheduler potentially added below)
     auto finalResult = ResultReturnType<ValueType, SolutionType>(resultValue);
@@ -1159,8 +1171,41 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
 }
 
 template<typename ValueType, typename SolutionType = ValueType>
-SolutionType computeViaPolicyIteration(Environment const& env, uint64_t const initialState, storm::solver::OptimizationDirection const dir,
-                                       storm::storage::SparseMatrix<ValueType> const& transitionMatrix, NormalFormData<ValueType> const& normalForm) {
+typename internal::ResultReturnType<ValueType> decideThreshold(Environment const& env, uint64_t const initialState,
+                                                               storm::OptimizationDirection const& direction, SolutionType const& threshold,
+                                                               bool computeScheduler, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                               storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
+                                                               NormalFormData<ValueType> const& normalForm) {
+    // We currently handle sound model checking incorrectly: we would need the actual lower/upper bounds of the weightedReachabilityHelper
+
+    WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm, computeScheduler);
+
+    std::optional<std::vector<uint64_t>> scheduler;
+    storm::OptionalRef<std::vector<uint64_t>> schedulerRef;
+    if (computeScheduler) {
+        scheduler.emplace();
+        schedulerRef.reset(*scheduler);
+    }
+
+    SolutionType val = wrh.computeWeightedDiff(env, direction, storm::utility::one<ValueType>(), -threshold, schedulerRef);
+    // if val is positive, the conditional probability is (strictly) greater than threshold
+    // if val is negative, the conditional probability is (strictly) smaller than threshold
+    // if val is zero, the conditional probability equals the threshold
+    // so, for the true probability p and comparison ~ we have:  p ~ threshold  <=>  val + threshold ~ threshold
+    auto finalResult = ResultReturnType<SolutionType>(val + threshold);
+
+    if (computeScheduler) {
+        // If requested, construct the scheduler for the original model
+        finalResult.scheduler = wrh.constructSchedulerForInputModel(scheduler.value(), transitionMatrix, backwardTransitions, normalForm);
+    }
+    return finalResult;
+}
+
+template<typename ValueType, typename SolutionType = ValueType>
+internal::ResultReturnType<SolutionType> computeViaPolicyIteration(Environment const& env, uint64_t const initialState,
+                                                                   storm::solver::OptimizationDirection const dir,
+                                                                   storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                   NormalFormData<ValueType> const& normalForm) {
     WeightedReachabilityHelper wrh(initialState, transitionMatrix, normalForm, false);  // scheduler computation not yet implemented.
 
     std::vector<uint64_t> scheduler;
@@ -1264,32 +1309,37 @@ std::unique_ptr<CheckResult> computeConditionalProbabilities(Environment const& 
         }
         STORM_LOG_INFO("Analyzing normal form with " << normalFormData.maybeStates.getNumberOfSetBits() << " maybe states using algorithm '" << alg << ".");
         // sw.restart();
+        internal::ResultReturnType<SolutionType> result{storm::utility::zero<SolutionType>()};
         switch (alg) {
             case ConditionalAlgorithmSetting::Restart: {
-                auto result = internal::computeViaRestartMethod(analysisEnv, initialState, goal.direction(), checkTask.isProduceSchedulersSet(),
-                                                                transitionMatrix, backwardTransitions, normalFormData);
-                initialStateValue = result.initialStateValue;
-                scheduler = std::move(result.scheduler);
+                result = internal::computeViaRestartMethod(analysisEnv, initialState, goal, checkTask.isProduceSchedulersSet(), transitionMatrix,
+                                                           backwardTransitions, normalFormData);
                 break;
             }
             case ConditionalAlgorithmSetting::Bisection:
             case ConditionalAlgorithmSetting::BisectionAdvanced:
             case ConditionalAlgorithmSetting::BisectionPolicyTracking:
             case ConditionalAlgorithmSetting::BisectionAdvancedPolicyTracking: {
-                auto result = internal::computeViaBisection(analysisEnv, alg, initialState, goal, checkTask.isProduceSchedulersSet(), transitionMatrix,
-                                                            backwardTransitions, normalFormData);
-                initialStateValue = result.initialStateValue;
-                scheduler = std::move(result.scheduler);
+                if (goal.isBounded() && env.modelchecker().isAllowOptimizationForBoundedPropertiesSet()) {
+                    result = internal::decideThreshold(analysisEnv, initialState, goal.direction(), goal.thresholdValue(), checkTask.isProduceSchedulersSet(),
+                                                       transitionMatrix, backwardTransitions, normalFormData);
+                } else {
+                    result = internal::computeViaBisection(analysisEnv, alg, initialState, goal, checkTask.isProduceSchedulersSet(), transitionMatrix,
+                                                           backwardTransitions, normalFormData);
+                }
                 break;
             }
             case ConditionalAlgorithmSetting::PolicyIteration: {
-                initialStateValue = internal::computeViaPolicyIteration(analysisEnv, initialState, goal.direction(), transitionMatrix, normalFormData);
+                result = internal::computeViaPolicyIteration(analysisEnv, initialState, goal.direction(), transitionMatrix, normalFormData);
                 break;
             }
             default: {
                 STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Unknown conditional probability algorithm: " << alg);
             }
         }
+        initialStateValue = result.initialStateValue;
+        scheduler = std::move(result.scheduler);
+
         // sw.stop();
         // STORM_PRINT_AND_LOG("Time for analyzing the normal form: " << sw << ".\n");
     }

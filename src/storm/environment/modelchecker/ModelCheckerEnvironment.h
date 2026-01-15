@@ -28,6 +28,9 @@ class ModelCheckerEnvironment {
     ConditionalAlgorithmSetting getConditionalAlgorithmSetting() const;
     void setConditionalAlgorithmSetting(ConditionalAlgorithmSetting value);
 
+    bool isAllowOptimizationForBoundedPropertiesSet() const;
+    void setAllowOptimizationForBoundedProperties(bool value);
+
     bool isLtl2daToolSet() const;
     std::string const& getLtl2daTool() const;
     void setLtl2daTool(std::string const& value);
@@ -38,5 +41,6 @@ class ModelCheckerEnvironment {
     boost::optional<std::string> ltl2daTool;
     SteadyStateDistributionAlgorithm steadyStateDistributionAlgorithm;
     ConditionalAlgorithmSetting conditionalAlgorithmSetting;
+    bool allowOptimizationForBoundedProperties;
 };
 }  // namespace storm

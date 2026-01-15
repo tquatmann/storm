@@ -21,6 +21,7 @@ ModelCheckerEnvironment::ModelCheckerEnvironment() {
     steadyStateDistributionAlgorithm = ioSettings.getSteadyStateDistributionAlgorithm();
 
     conditionalAlgorithmSetting = mcSettings.getConditionalAlgorithmSetting();
+    allowOptimizationForBoundedProperties = true;
 }
 
 ModelCheckerEnvironment::~ModelCheckerEnvironment() {
@@ -41,6 +42,14 @@ ConditionalAlgorithmSetting ModelCheckerEnvironment::getConditionalAlgorithmSett
 
 void ModelCheckerEnvironment::setConditionalAlgorithmSetting(ConditionalAlgorithmSetting value) {
     conditionalAlgorithmSetting = value;
+}
+
+bool ModelCheckerEnvironment::isAllowOptimizationForBoundedPropertiesSet() const {
+    return allowOptimizationForBoundedProperties;
+}
+
+void ModelCheckerEnvironment::setAllowOptimizationForBoundedProperties(bool value) {
+    allowOptimizationForBoundedProperties = value;
 }
 
 MultiObjectiveModelCheckerEnvironment& ModelCheckerEnvironment::multi() {
