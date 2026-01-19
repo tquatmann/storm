@@ -19,22 +19,13 @@ template<typename T>
 concept HasFileNames = requires { T::FileNames.size(); };
 
 template<typename T>
-concept FileNameMap = std::same_as<std::remove_cvref_t<typename T::key_type>, std::string> && HasFileNames<typename T::mapped_type>;
+concept FileNameMap = std::same_as<std::remove_cvref_t<typename T::key_type>, std::string>;
 
 template<typename T>
 concept IsOptional = std::same_as<std::remove_cvref_t<T>, std::optional<typename T::value_type>>;
 
 template<typename T>
 concept IsOptionalWithFileNames = IsOptional<T> && HasFileNames<typename T::value_type>;
-
-void parseIndexFromDisk(std::filesystem::path const& indexFilePath, storm::umb::ModelIndex& index) {
-    storm::json<storm::RationalNumber> parsedStructure;
-    std::ifstream file;
-    storm::io::openFile(indexFilePath, file);
-    file >> parsedStructure;
-    storm::io::closeFile(file);
-    parsedStructure.get_to(index);
-}
 
 void parseIndexFromString(std::string const& indexFileString, storm::umb::ModelIndex& index) {
     storm::json<storm::RationalNumber>::parse(indexFileString).get_to(index);
@@ -44,14 +35,12 @@ void parseIndexFromString(std::string const& indexFileString, storm::umb::ModelI
  * Prepares annotations so that all fields are available according to the index.
  */
 void prepareAnnotations(storm::umb::UmbModel& umbModel) {
-    if (umbModel.index.annotations.rewards) {
-        for (auto const& [name, rew] : umbModel.index.annotations.rewards.value()) {
-            umbModel.rewards[name];
-        }
+    if (!umbModel.index.annotations.has_value()) {
+        return;
     }
-    if (umbModel.index.annotations.aps) {
-        for (auto const& [name, ap] : umbModel.index.annotations.aps.value()) {
-            umbModel.aps[name];
+    for (auto const& [annotationType, annotationMap] : umbModel.index.annotations.value()) {
+        for (auto const& [annotationName, annotationIndex] : annotationMap) {
+            umbModel.annotations[annotationType][annotationName];  // ensure that the map keys exist
         }
     }
 }
@@ -88,69 +77,90 @@ void importGenericVector(storm::io::ArchiveReadEntry& src, GenericVector& target
     target.template set<ValueType>(importVector<typename GenericVector::template Vec<ValueType>>(src));
 }
 
-template<typename TypeDecl>
-    requires std::is_enum_v<typename TypeDecl::E>
-void importGenericVector(storm::io::ArchiveReadEntry& src, TypeDecl const& type, GenericVector& target) {
-    using E = typename TypeDecl::E;
-    // handle common types
-    if (type == E::Double || type == E::DoubleInterval) {
-        importGenericVector<double>(src, target);
-    } else if (type == E::Rational || type == E::RationalInterval) {
-        importGenericVector<uint64_t>(src, target);
-    } else {
-        if constexpr (std::is_same_v<E, storm::umb::ModelIndex::Annotations::Annotation::Type>) {
-            // Handle annotation-specific types.
-            if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Bool) {
-                importGenericVector<bool>(src, target);
-            } else if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Uint64) {
-                importGenericVector<uint64_t>(src, target);
-            } else if (type == storm::umb::ModelIndex::Annotations::Annotation::Type::Int64) {
-                importGenericVector<int64_t>(src, target);
-            } else {
-                STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
-                                "Annotation type " << type << " for vector located in '" << getFilePath(src) << "' is not handled");
-            }
-        } else {
+void importGenericVector(storm::io::ArchiveReadEntry& src, SizedType const& type, GenericVector& target) {
+    using enum Type;
+    switch (type.type) {
+        case Bool:
+            STORM_LOG_ASSERT(type.bitSize() == 1, "Boolean types must have size 1.");
+            importGenericVector<bool>(src, target);
+            break;
+        case Int:
+        case IntInterval:
+            STORM_LOG_ASSERT(type.bitSize() % 64 == 0, "int-based types must have size multiple of 64.");
+            importGenericVector<int64_t>(src, target);
+            break;
+        case Uint:
+        case UintInterval:
+        case Rational:
+        case RationalInterval:
+        case String:
+            STORM_LOG_ASSERT(type.bitSize() % 64 == 0, "uint-based types must have size multiple of 64.");
+            importGenericVector<uint64_t>(src, target);
+            break;
+        case Double:
+        case DoubleInterval:
+            STORM_LOG_ASSERT(type.bitSize() % 64 == 0, "Double-based types must have size 64.");
+            importGenericVector<double>(src, target);
+            break;
+        default:
             STORM_LOG_THROW(false, storm::exceptions::WrongFormatException,
-                            "Type " << type << " for numeric vector located in '" << getFilePath(src) << "' is not handled");
-        }
+                            "Type " << type.toString() << " for vector located in '" << getFilePath(src) << "' is not handled");
     }
 }
 
 void importGenericVector(storm::io::ArchiveReadEntry& src, storm::umb::ModelIndex const& index, GenericVector& target) {
     // Find type information in the index that matches the given src.
     auto srcPath = getFilePath(src);
-    if (srcPath == "branch-probabilities.bin") {
-        importGenericVector(src, index.transitionSystem.branchProbabilityType, target);
-    } else if (srcPath == "exit-rates.bin") {
-        auto const& rateType = index.transitionSystem.exitRateType;
-        STORM_LOG_THROW(rateType.has_value(), storm::exceptions::WrongFormatException,
-                        "Exit rate type is not set in the index, but exit rates are present in '" << srcPath << "'.");
-        importGenericVector(src, rateType.value(), target);
+    std::vector<std::string> srcPathVec(srcPath.begin(), srcPath.end());
+    if (srcPath == "branch-to-probability.bin") {
+        STORM_LOG_THROW(index.transitionSystem.branchProbabilityType.has_value(), storm::exceptions::WrongFormatException,
+                        "Found branch probabilities but no type specified.");
+        importGenericVector(src, index.transitionSystem.branchProbabilityType.value(), target);
+    } else if (srcPath == "state-to-exit-rate.bin") {
+        STORM_LOG_THROW(index.transitionSystem.exitRateType.has_value(), storm::exceptions::WrongFormatException, "Found exit rates but no type specified.");
+        importGenericVector(src, index.transitionSystem.exitRateType.value(), target);
+    } else if (srcPathVec.size() == 3 && srcPathVec[0] == "observations" && srcPathVec[2] == "probabilities.bin") {
+        STORM_LOG_THROW(index.transitionSystem.observationProbabilityType.has_value(), storm::exceptions::WrongFormatException,
+                        "Found observation probabilities but no type specified.");
+        importGenericVector(src, index.transitionSystem.observationProbabilityType.value(), target);
     } else {
         // Reaching this point means that we must have annotation values.
-        std::vector<std::string> p(srcPath.begin(), srcPath.end());
-        // We expect a path of the form "annotations/<annotationType>>/<annotationId>/for-<somewhere>/values.bin"
-        STORM_LOG_THROW(p.size() == 5 && p[0] == "annotations" && p[4] == "values.bin", storm::exceptions::WrongFormatException,
-                        "Unexpected file path '" << srcPath << "'. Expected 'annotations/<annotationType>/<annotationId>/for-<somewhere>/values.bin'.");
-        auto const& annotationType = p[1];
-        auto const& annotationId = p[2];
-        if (annotationType == "aps") {
-            auto const& aps = index.annotations.aps;
-            STORM_LOG_THROW(aps->contains(annotationId), storm::exceptions::WrongFormatException,
-                            "Annotation id '" << annotationId << "' for aps referenced in files but not found in index.");
-            auto const annotationType = aps->at(annotationId).type;
-            importGenericVector(src, annotationType.value_or(storm::umb::ModelIndex::Annotations::Annotation::Type::Bool), target);
-        } else if (annotationType == "rewards") {
-            auto const& rewards = index.annotations.rewards;
-            STORM_LOG_THROW(rewards->contains(annotationId), storm::exceptions::WrongFormatException,
-                            "Annotation id '" << annotationId << "' for rewards referenced in files but not found in index.");
-            auto const rewType = rewards->at(annotationId).type;
-            STORM_LOG_THROW(rewType.has_value(), storm::exceptions::WrongFormatException,
-                            "Reward type is not set in the index, but rewards are present in '" << srcPath << "'.");
-            importGenericVector(src, rewType.value(), target);
+        // We expect a path of the form "annotations/<annotationType>/<annotationId>/<entity>/[values|probabilities].bin"
+        STORM_LOG_THROW(
+            srcPathVec.size() == 5 && srcPathVec[0] == "annotations" && (srcPathVec[4] == "values.bin" || srcPathVec[4] == "probabilities.bin"),
+            storm::exceptions::WrongFormatException,
+            "Unexpected file path '" << srcPath << "'. Expected 'annotations/<annotationType>/<annotationId>/<entity>/[values|probabilities].bin'.");
+        auto annotationMap = index.annotation(srcPathVec[1]);
+        STORM_LOG_THROW(annotationMap.has_value(), storm::exceptions::WrongFormatException,
+                        "Annotation type '" << srcPathVec[1] << "' referenced in files but not found in index.");
+        auto annotationIt = annotationMap->find(srcPathVec[2]);
+        STORM_LOG_THROW(annotationIt != annotationMap->end(), storm::exceptions::WrongFormatException,
+                        "Annotation id '" << srcPathVec[2] << "' for type '" << srcPathVec[1] << "' referenced in files but not found in index.");
+        auto const& annotation = annotationIt->second;
+        if (srcPathVec[4] == "values.bin") {
+            importGenericVector(src, annotation.type, target);
+        } else {
+            STORM_LOG_THROW(
+                annotation.probabilityType.has_value(), storm::exceptions::WrongFormatException,
+                "Found probabilities for annotation '" << srcPathVec[2] << "' of type '" << srcPathVec[1] << "' but no probability type specified.");
+            importGenericVector(src, annotation.probabilityType.value(), target);
         }
     }
+}
+
+// Forward declare function so that it can be called recursively
+template<typename UmbStructure>
+    requires HasFileNames<UmbStructure>
+bool importVector(storm::io::ArchiveReadEntry& src, storm::umb::ModelIndex const& index, UmbStructure& umbStructure, std::filesystem::path const& context);
+
+bool importVector(storm::io::ArchiveReadEntry& src, storm::umb::ModelIndex const& index, FileNameMap auto& umbStructure, std::filesystem::path const& context) {
+    // Assumes that the file name maps are pre-filled (see prepareAnnotations).
+    for (auto& [key, value] : umbStructure) {
+        if (importVector(src, index, value, context / key)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 template<typename UmbStructure>
@@ -188,15 +198,12 @@ bool importVector(storm::io::ArchiveReadEntry& src, storm::umb::ModelIndex const
         if constexpr (HasFileNames<FieldType>) {
             found = importVector(src, index, field, fieldPath);
         } else if constexpr (IsOptionalWithFileNames<FieldType>) {
-            field.emplace();
+            if (!field.has_value()) {
+                field.emplace();
+            }
             found = importVector(src, index, field.value(), fieldPath);
         } else if constexpr (FileNameMap<FieldType>) {
-            for (auto& [key, value] : field) {
-                found = importVector(src, index, value, fieldPath / key);
-                if (found) {
-                    break;
-                }
-            }
+            found = importVector(src, index, field, fieldPath);
         } else {
             // reaching this point means that we have found the right field
             STORM_LOG_THROW(fieldPath == getFilePath(src), storm::exceptions::WrongFormatException,
@@ -218,7 +225,9 @@ storm::umb::UmbModel fromArchive(std::filesystem::path const& umbArchive, Import
     storm::umb::UmbModel umbModel;
     // First pass: find the index file
     bool indexFound = false;
+    uint64_t i = 0;
     for (auto entry : storm::io::openArchive(umbArchive)) {
+        ++i;
         if (entry.name() == "index.json") {
             parseIndexFromString(entry.toString(), umbModel.index);
             indexFound = true;
@@ -227,7 +236,8 @@ storm::umb::UmbModel fromArchive(std::filesystem::path const& umbArchive, Import
     }
     STORM_LOG_THROW(indexFound, storm::exceptions::FileIoException, "File 'index.json' not found in UMB archive.");
     STORM_LOG_TRACE("Index file found in umb archive " << umbArchive << ": \n" << storm::dumpJson(storm::json<storm::RationalNumber>(result->index)));
-    std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";
+    std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";  // TODO: remove this output
+    std::cout << "Index file is #" << i << " file in the archive.\n";
     stopwatch.restart();
     // Second pass: load the bin files
     prepareAnnotations(umbModel);

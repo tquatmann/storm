@@ -12,6 +12,7 @@
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
+#include "storm/models/sparse/Pomdp.h"
 #include "storm/models/sparse/Smg.h"
 #include "storm/storage/sparse/ChoiceOrigins.h"
 #include "storm/utility/macros.h"
@@ -22,18 +23,18 @@ namespace storm::umb {
 namespace detail {
 
 template<typename ValueType, typename TargetValueType>
-void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix, storm::umb::UmbModel& umb, bool normalize) {
+void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix, storm::umb::UmbModel& umb, bool const normalize) {
     if (!matrix.hasTrivialRowGrouping()) {
-        umb.states.stateToChoice = matrix.getRowGroupIndices();
+        umb.stateToChoices = matrix.getRowGroupIndices();
     }
-    umb.choices.choiceToBranch = matrix.getRowIndices();
-    umb.branches.branchToTarget.emplace().reserve(matrix.getEntryCount());
+    umb.choiceToBranches = matrix.getRowIndices();
+    umb.branchToTarget.emplace().reserve(matrix.getEntryCount());
     std::vector<TargetValueType> branchProbabilities;
     branchProbabilities.reserve(matrix.getEntryCount());
     for (uint64_t rowIndex = 0; rowIndex < matrix.getRowCount(); ++rowIndex) {
         auto const& row = matrix.getRow(rowIndex);
         for (auto const& entry : row) {
-            umb.branches.branchToTarget->push_back(entry.getColumn());
+            umb.branchToTarget->push_back(entry.getColumn());
             branchProbabilities.push_back(storm::utility::convertNumber<TargetValueType>(entry.getValue()));
         }
         if (normalize) {
@@ -44,7 +45,7 @@ void transitionMatrixToUmb(storm::storage::SparseMatrix<ValueType> const& matrix
             }
         }
     }
-    umb.branches.branchProbabilities.template set<TargetValueType>(std::move(branchProbabilities));
+    umb.branchToProbability.template set<TargetValueType>(std::move(branchProbabilities));
 }
 
 void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, storm::umb::UmbModel& umb) {
@@ -52,16 +53,19 @@ void stateLabelingToUmb(storm::models::sparse::StateLabeling const& labeling, st
         if (labelName == "init") {
             continue;  // skip initial state labeling. Initial states are handled separately.
         }
-        auto const name = umb.index.annotations.findAtomicPropositionName(labelName);
+        STORM_LOG_ASSERT(umb.index.aps(), "Model index must have annotations to store state labels.");
+        auto const name = umb.index.findAPName(labelName);
         STORM_LOG_ASSERT(name.has_value(), "Label '" << labelName << "' not found in the model index.");
-        auto& annotation = umb.aps[*name];
-        annotation.forStates.emplace().values.template set<bool>(labeling.getStates(labelName));
+        auto& aps = umb.aps(true).value();
+        STORM_LOG_ASSERT(!aps.contains(*name), "Annotation for label '" << labelName << "' already exists.");
+        auto& annotation = aps[*name];
+        annotation.states.emplace().values.template set<bool>(labeling.getStates(labelName));
     }
 }
 
-void choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigins, storm::umb::UmbModel& umb) {
+uint64_t choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigins, storm::umb::UmbModel& umb) {
     // choice to action
-    auto& choiceToAction = umb.choices.choiceToAction.emplace();
+    auto& choiceToAction = umb.choiceActions.emplace().values.emplace();
     choiceToAction.reserve(choiceOrigins.getNumberOfChoices());
     for (uint64_t c = 0; c < choiceOrigins.getNumberOfChoices(); ++c) {
         auto const& choiceId = choiceOrigins.getIdentifier(c);
@@ -70,41 +74,25 @@ void choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceOrigi
 
     // action strings
     // We always set a csr, even in cases where it could be omitted.
-    // We use the empty action string for choices with no origin, which we add to the action strings by initializing the csr with {0,0}
-    auto& chars = umb.choices.actionStrings.emplace();
-    auto& csr = umb.choices.actionToActionString.emplace(2, 0);
-    STORM_LOG_ASSERT(choiceOrigins.getIdentifierForChoicesWithNoOrigin() == 0, "Identifier for choices with no origin expected to be 0");
+    auto actionStrings = StringsBuilder(umb.choiceActions->strings.emplace(), umb.choiceActions->stringMapping.emplace());
+    // We use the empty action string for choices with no origin, which we want to be the first index.
+    auto const emptyStringIndex = actionStrings.push_back("");
+    STORM_LOG_ASSERT(emptyStringIndex == 0, "Action index for empty action string must be 0.");
+    // add to the action strings by initializing the csr with {0,0}
+    STORM_LOG_ASSERT(choiceOrigins.getIdentifierForChoicesWithNoOrigin() == 0, "Identifier for choices with no origin expected to be 0.");
 
     for (uint64_t id = 1; id < choiceOrigins.getNumberOfIdentifiers(); ++id) {  // intentionally start at 1, since we already added the empty action string
-        auto const& actionString = choiceOrigins.getIdentifierInfo(id);
-        chars.insert(chars.end(), actionString.begin(), actionString.end());
-        csr.push_back(chars.size());
+        actionStrings.push_back(choiceOrigins.getIdentifierInfo(id));
     }
+    actionStrings.finalize();
+    return actionStrings.size();
 }
 
-void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, storm::umb::UmbModel& umb) {
+uint64_t choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, storm::umb::UmbModel& umb) {
     // initialize umb data
-    auto& choiceToAction = umb.choices.choiceToAction.emplace(labeling.getNumberOfItems(), 0);  // by default, all choices have action id 0
-    auto& chars = umb.choices.actionStrings.emplace();
-    auto& csr = umb.choices.actionToActionString.emplace(1, 0);  // csr mapping must start with 0. We always set a csr, even in cases where it could be omitted.
-
-    // Auxiliary function to get the action index for a given action name and fill
-    using ActionIndexType = std::remove_cvref_t<decltype(choiceToAction.front())>;
-    auto getActionIndex = [&chars, &csr](std::string_view actionName) -> ActionIndexType {
-        // check if action is already known or append new one
-        auto actionStrings = storm::umb::stringVectorView(chars, csr);
-        ActionIndexType i = 0;
-        for (auto const& actionString : actionStrings) {
-            if (actionString == actionName) {
-                return i;  // action already exists
-            }
-            ++i;
-        }
-        // action does not exist, add it
-        chars.insert(chars.end(), actionName.begin(), actionName.end());
-        csr.push_back(chars.size());
-        return actionStrings.size();
-    };
+    // Action 0 must be the default action and is used for choices without any label (if present).
+    auto& choiceToAction = umb.choiceActions.emplace().values.emplace(labeling.getNumberOfItems(), 0);
+    auto actionStrings = StringsBuilder(umb.choiceActions->strings.emplace(), umb.choiceActions->stringMapping.emplace());
 
     // Find out which choices have zero, at least one, or multiple labels. The former two cases can be handled more efficiently
     auto const labels = labeling.getLabels();
@@ -128,18 +116,18 @@ void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, 
     // Handle choices without any labels.
     if (!choicesWithAtLeastOneLabel.full()) {
         // For consistency, unlabelled choices shall always have action index 0. So we add the empty action string.
-        getActionIndex("");
-        STORM_LOG_ASSERT(getActionIndex("") == 0, "Action index for empty action string must be 0.");
+        auto const emptyStringIndex = actionStrings.push_back("");
+        STORM_LOG_ASSERT(emptyStringIndex == 0, "Action index for empty action string must be 0.");
         // nothing else to do for unlabeled choices: we already initialized the choiceToAction mapping with 0s
     }
 
     // Handle choices with exactly one label.
-    auto setChoices = [&choiceToAction, &getActionIndex](storm::storage::BitVector const& choices, std::string_view actionName) {
+    auto setChoices = [&choiceToAction, &actionStrings](storm::storage::BitVector const& choices, std::string_view actionName) {
         auto choiceIt = choices.begin();
         auto const choiceItEnd = choices.end();
         if (choiceIt != choiceItEnd) {
             // there is at least one choice with this label
-            auto const actionIndex = getActionIndex(actionName);
+            auto const actionIndex = actionStrings.findOrPushBack(actionName);
             for (; choiceIt != choiceItEnd; ++choiceIt) {
                 choiceToAction[*choiceIt] = actionIndex;  // set action index for this choice
             }
@@ -166,8 +154,9 @@ void choiceLabelingToUmb(storm::models::sparse::ChoiceLabeling const& labeling, 
             }
             action += label;
         }
-        choiceToAction[choice] = getActionIndex(action);
+        choiceToAction[choice] = actionStrings.findOrPushBack(action);
     }
+    return actionStrings.size();
 }
 
 template<typename TargetValueType>
@@ -183,15 +172,17 @@ void setGenericVector(storm::umb::GenericVector& target, std::ranges::input_rang
 template<typename ValueType, typename TargetValueType>
 void rewardToUmb(std::string const& rewardModelName, storm::models::sparse::StandardRewardModel<ValueType> const& rewardModel,
                  storm::storage::SparseMatrix<ValueType> const& transitionMatrix, storm::umb::UmbModel& umb) {
-    auto const rewardIdentifier = umb.index.annotations.findRewardName(rewardModelName);
+    STORM_LOG_ASSERT(umb.index.rewards(), "Model index must have rewards to store state labels.");
+    auto const rewardIdentifier = umb.index.findRewardName(rewardModelName);
     STORM_LOG_ASSERT(rewardIdentifier.has_value(), "Reward '" << rewardModelName << "' not found in the model index.");
-    STORM_LOG_ASSERT(!umb.rewards.contains(*rewardIdentifier), "Reward '" << *rewardIdentifier << "' already exists in the umb model.");
-    auto& rewardAnnotation = umb.rewards[*rewardIdentifier];
+    auto& umbRewards = umb.rewards(true).value();
+    STORM_LOG_ASSERT(!umbRewards.contains(*rewardIdentifier), "Reward '" << *rewardIdentifier << "' already exists in the umb model.");
+    auto& rewardAnnotation = umbRewards[*rewardIdentifier];
     if (rewardModel.hasStateRewards()) {
-        setGenericVector<TargetValueType>(rewardAnnotation.forStates.emplace().values, rewardModel.getStateRewardVector());
+        setGenericVector<TargetValueType>(rewardAnnotation.states.emplace().values, rewardModel.getStateRewardVector());
     }
     if (rewardModel.hasStateActionRewards()) {
-        setGenericVector<TargetValueType>(rewardAnnotation.forChoices.emplace().values, rewardModel.getStateActionRewardVector());
+        setGenericVector<TargetValueType>(rewardAnnotation.choices.emplace().values, rewardModel.getStateActionRewardVector());
     }
     if (rewardModel.hasTransitionRewards()) {
         std::vector<TargetValueType> branchRewards;
@@ -215,8 +206,72 @@ void rewardToUmb(std::string const& rewardModelName, storm::models::sparse::Stan
                 }
             }
         }
-        rewardAnnotation.forBranches.emplace().values.template set<TargetValueType>(std::move(branchRewards));
+        rewardAnnotation.branches.emplace().values.template set<TargetValueType>(std::move(branchRewards));
     }
+}
+
+template<typename ValueType, typename TargetValueType>
+void playerIndicesToUmb(storm::models::sparse::Smg<ValueType> const& smg, auto& playerNames, auto& stateToPlayerIndices) {
+    STORM_LOG_ASSERT(playerNames.empty() && stateToPlayerIndices.empty(), "Expected initially empty player names and indices.");
+    auto const& origPlayerNamesToIndex = smg.getPlayerNamesToIndex();
+    playerNames.resize(smg.getNumberOfPlayers());
+    // We might have to insert names for unnamed players
+    storm::storage::BitVector unnamedIndices(playerNames.size(), true);
+    for (auto const& [name, index] : origPlayerNamesToIndex) {
+        playerNames[index] = name;
+        unnamedIndices.set(index, false);
+    }
+    auto freshPlayerName = [&origPlayerNamesToIndex](uint64_t i) {
+        std::string name = "unnamed_player" + std::to_string(i);
+        while (origPlayerNamesToIndex.contains(name)) {
+            name += "_";
+        }
+        return name;
+    };
+    for (auto const unnamedIndex : unnamedIndices) {
+        playerNames[unnamedIndex] = freshPlayerName(unnamedIndex);
+    }
+    stateToPlayerIndices.reserve(smg.getNumberOfStates());
+    // Some states might not have a player. For example, states that were not explored during model construction.
+    // These states are indicated by INVALID_PLAYER_INDEX. We assign these states to a fresh player at the end.
+    auto const invalPlayerIndex = smg.getNumberOfPlayers();
+    bool hasInvalidIndices = false;
+    for (auto const& index : smg.getStatePlayerIndications()) {
+        if (index == storm::storage::INVALID_PLAYER_INDEX) {
+            stateToPlayerIndices.push_back(invalPlayerIndex);
+            hasInvalidIndices = true;
+        } else {
+            STORM_LOG_ASSERT(index < smg.getNumberOfPlayers(), "Unexpected player index.");
+            stateToPlayerIndices.push_back(index);
+        }
+    }
+    if (hasInvalidIndices) {
+        playerNames.push_back(freshPlayerName(invalPlayerIndex));
+    }
+}
+
+template<typename ValueType>
+storm::umb::Type getExportType(ExportOptions const& options) {
+    using OptionType = ExportOptions::ValueType;
+    using ExportType = storm::umb::Type;
+    switch (options.valueType) {
+        case OptionType::Default:
+            if constexpr (std::is_same_v<ValueType, double>) {
+                return ExportType::Double;
+            } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+                return ExportType::Rational;
+            } else {
+                static_assert(std::is_same_v<ValueType, storm::Interval>, "Unhandled value type");
+                return ExportType::DoubleInterval;
+            }
+        case OptionType::Double:
+            return ExportType::Double;
+        case OptionType::Rational:
+            return ExportType::Rational;
+        case OptionType::DoubleInterval:
+            return ExportType::DoubleInterval;
+    }
+    STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected value type.");
 }
 
 template<typename ValueType>
@@ -252,7 +307,7 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
             break;
         case Smg:
             ts.time = Discrete;
-            ts.numPlayers = dynamic_cast<storm::models::sparse::Smg<ValueType> const&>(model).getNumberOfPlayers();
+            ts.numPlayers = ModelIndex::TransitionSystem::InvalidNumber;
             break;
         default:
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unexpected model type.");
@@ -260,105 +315,100 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
     ts.numStates = model.getNumberOfStates();
     ts.numInitialStates = model.getInitialStates().getNumberOfSetBits();
     ts.numChoices = model.getNumberOfChoices();
-    ts.numActions =
-        (model.hasChoiceLabeling() || model.hasChoiceOrigins()) ? ts.InvalidNumber : 1;  // action count is only known after processing choice labeling/origins.
+    ts.numChoiceActions = (model.hasChoiceLabeling() || model.hasChoiceOrigins()) ? ModelIndex::TransitionSystem::InvalidNumber
+                                                                                  : 0;  // action count is only known after processing choice labeling/origins.
     ts.numBranches = model.getNumberOfTransitions();
-    auto targetType = options.valueType;
-    if (targetType == ExportOptions::ValueType::Default) {
-        if (std::is_same_v<ValueType, double>) {
-            targetType = ExportOptions::ValueType::Double;
-        } else if (std::is_same_v<ValueType, storm::RationalNumber>) {
-            targetType = ExportOptions::ValueType::Rational;
-        } else if (std::is_same_v<ValueType, storm::Interval>) {
-            targetType = ExportOptions::ValueType::DoubleInterval;
-        } else {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unexpected value type.");
-        }
-    }
-    using Prob = storm::umb::ModelIndex::TransitionSystem::BranchProbabilityType;
-    using Rew = storm::umb::ModelIndex::Annotations::Annotation::Type;
-    Rew rewardType;
-    switch (targetType) {
-        case ExportOptions::ValueType::Double:
-            ts.branchProbabilityType = Prob::Double;
-            rewardType = Rew::Double;
-            break;
-        case ExportOptions::ValueType::Rational:
-            ts.branchProbabilityType = Prob::Rational;
-            rewardType = Rew::Rational;
-            break;
-        case ExportOptions::ValueType::DoubleInterval:
-            ts.branchProbabilityType = Prob::DoubleInterval;
-            rewardType = Rew::DoubleInterval;
-            break;
-        default:
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unexpected value type.");
-    }
+    ts.numBranchActions = 0;
+    ts.numObservations = model.isPartiallyObservable() ? ModelIndex::TransitionSystem::InvalidNumber : 0;  // observation count set later
+
+    auto const exportType = getExportType<ValueType>(options);
+    ts.branchProbabilityType.emplace(exportType, defaultBitSize(exportType));
     if (ts.time != storm::umb::ModelIndex::TransitionSystem::Time::Discrete) {
         ts.exitRateType = ts.branchProbabilityType;
     }
 
     // annotations:
+    bool const hasRewards = model.hasRewardModel();
+    bool const hasAps = model.getStateLabeling().getNumberOfLabels() >= 2 ||
+                        (model.getStateLabeling().getNumberOfLabels() == 1 && !model.getStateLabeling().containsLabel("init"));
+    if (hasRewards || hasAps) {
+        index.annotations.emplace();
+    }
+
     // rewards:
-    if (model.hasRewardModel()) {
-        auto& rewards = index.annotations.rewards.emplace();
+    if (hasRewards) {
+        auto& rewards = index.rewards(true).value();
         for (auto const& [rewardModelName, rewardModel] : model.getRewardModels()) {
-            auto identifier = umb::ModelIndex::Annotations::Annotation::getValidIdentifierFromAlias(rewardModelName);
+            auto identifier = umb::ModelIndex::Annotation::getValidIdentifierFromAlias(rewardModelName);
             STORM_LOG_THROW(!rewards.contains(identifier), storm::exceptions::WrongFormatException, "Reward id '" << identifier << "' already exists.");
             auto& rewardIndex = rewards[identifier];
             if (!rewardModelName.empty()) {
                 rewardIndex.alias = rewardModelName;  // Don't introduce an alias for unnamed rewards. They don't have a nice name.
             }
-            rewardIndex.type = rewardType;
-            rewardIndex.appliesTo.emplace();
-            using enum storm::umb::ModelIndex::Annotations::Annotation::AppliesTo;
+            if (rewardModel.hasNegativeRewards()) {
+                if (!rewardModel.hasPositiveRewards()) {
+                    rewardIndex.upper = 0;
+                }
+            } else {
+                rewardIndex.lower = 0;
+            }
+            using enum storm::umb::ModelIndex::Annotation::AppliesTo;
             if (rewardModel.hasStateRewards()) {
-                rewardIndex.appliesTo->push_back(States);
+                rewardIndex.appliesTo.push_back(States);
             }
             if (rewardModel.hasStateActionRewards()) {
-                rewardIndex.appliesTo->push_back(Choices);
+                rewardIndex.appliesTo.push_back(Choices);
             }
             if (rewardModel.hasTransitionRewards()) {
-                rewardIndex.appliesTo->push_back(Branches);
+                rewardIndex.appliesTo.push_back(Branches);
             }
+            rewardIndex.type = {exportType, defaultBitSize(exportType)};
         }
     }
 
     // aps:
-    if (model.getStateLabeling().getNumberOfLabels() > 0 || model.hasChoiceLabeling()) {
-        auto& aps = index.annotations.aps.emplace();
+    if (hasAps) {
+        auto& aps = index.aps(true).value();
         for (auto const& label : model.getStateLabeling().getLabels()) {
             if (label == "init") {
                 continue;
             }
-            auto identifier = umb::ModelIndex::Annotations::Annotation::getValidIdentifierFromAlias(label);
+            auto identifier = umb::ModelIndex::Annotation::getValidIdentifierFromAlias(label);
             STORM_LOG_THROW(!aps.contains(identifier), storm::exceptions::WrongFormatException, "AP with identifier '" << identifier << "' already exists.");
             auto& apIndex = aps[identifier];
             apIndex.alias = label;
-            apIndex.type = storm::umb::ModelIndex::Annotations::Annotation::Type::Bool;
-            apIndex.appliesTo.emplace();
-            apIndex.appliesTo->push_back(storm::umb::ModelIndex::Annotations::Annotation::AppliesTo::States);
+            apIndex.type = {storm::umb::Type::Bool, defaultBitSize(storm::umb::Type::Bool)};
+            apIndex.appliesTo.push_back(storm::umb::ModelIndex::Annotation::AppliesTo::States);
         }
     }
 }
 
 template<typename ValueType, typename TargetValueType>
 void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbModel& umbModel, ExportOptions const& options) {
-    setIndexInformation(model, umbModel.index, options);
-    umbModel.states.initialStates = model.getInitialStates();
+    // index
+    setIndexInformation<ValueType>(model, umbModel.index, options);
+
+    // initial states and APs
+    umbModel.stateIsInitial = model.getInitialStates();
     stateLabelingToUmb(model.getStateLabeling(), umbModel);
+
+    // Choice Actions
     if (options.allowChoiceOriginsAsActions && model.hasChoiceOrigins()) {
         STORM_LOG_WARN_COND(!options.allowChoiceLabelingAsActions || !model.hasChoiceLabeling(),
                             "Choice origins and choice labeling are both present but only choice origins will be used as actions for UMB export.");
-        choiceOriginsToUmb(*model.getChoiceOrigins(), umbModel);
-        umbModel.index.transitionSystem.numActions = model.getChoiceOrigins()->getNumberOfIdentifiers();
+        uint64_t const numActions = choiceOriginsToUmb(*model.getChoiceOrigins(), umbModel);
+        umbModel.index.transitionSystem.numChoiceActions = numActions;
     } else if (options.allowChoiceLabelingAsActions && model.hasChoiceLabeling()) {
-        choiceLabelingToUmb(model.getChoiceLabeling(), umbModel);
-        umbModel.index.transitionSystem.numActions = umbModel.choices.actionToActionString->size() - 1;
+        uint64_t const numActions = choiceLabelingToUmb(model.getChoiceLabeling(), umbModel);
+        umbModel.index.transitionSystem.numChoiceActions = numActions;
     }
+
+    // State valuations
     if (model.hasStateValuations()) {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "State valuations are not yet supported for UMB export.");
     }
+
+    // Transition matrix
     using enum storm::models::ModelType;
     bool normalize = model.isOfType(Ctmc);
     if (!storm::NumberTraits<ValueType>::IsExact && storm::NumberTraits<TargetValueType>::IsExact) {
@@ -366,20 +416,31 @@ void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbM
         normalize = true;
     }
     transitionMatrixToUmb<ValueType, TargetValueType>(model.getTransitionMatrix(), umbModel, normalize);
+
+    // rewards
     for (auto const& [name, rewardModel] : model.getRewardModels()) {
         rewardToUmb<ValueType, TargetValueType>(name, rewardModel, model.getTransitionMatrix(), umbModel);
     }
+
+    // Model type specific components
     if (model.isOfType(Ctmc)) {
         auto const& ctmc = *model.template as<storm::models::sparse::Ctmc<ValueType>>();
-        setGenericVector<TargetValueType>(umbModel.states.exitRates, ctmc.getExitRateVector());
+        setGenericVector<TargetValueType>(umbModel.stateToExitRate, ctmc.getExitRateVector());
     } else if (model.isOfType(MarkovAutomaton)) {
         auto const& ma = *model.template as<storm::models::sparse::MarkovAutomaton<ValueType>>();
-        umbModel.states.markovianStates = ma.getMarkovianStates();
-        setGenericVector<TargetValueType>(umbModel.states.exitRates, ma.getExitRates());
+        umbModel.stateIsMarkovian = ma.getMarkovianStates();
+        setGenericVector<TargetValueType>(umbModel.stateToExitRate, ma.getExitRates());
+    } else if (model.isOfType(Pomdp)) {
+        auto const& pomdp = *model.template as<storm::models::sparse::Pomdp<ValueType>>();
+        umbModel.index.transitionSystem.numObservations = pomdp.getNrObservations();
+        umbModel.index.transitionSystem.observationsApplyTo = storm::umb::ModelIndex::TransitionSystem::ObservationsApplyTo::States;
+        umbModel.stateObservations.emplace().values.emplace(pomdp.getObservations().begin(), pomdp.getObservations().end());
     } else if (model.isOfType(Smg)) {
         auto const& smg = *model.template as<storm::models::sparse::Smg<ValueType>>();
-        auto const& playerIds = smg.getStatePlayerIndications();
-        umbModel.states.stateToPlayer.emplace(playerIds.begin(), playerIds.end());
+        playerIndicesToUmb<ValueType, TargetValueType>(smg, umbModel.index.transitionSystem.playerNames.emplace(), umbModel.stateToPlayer.emplace());
+        umbModel.index.transitionSystem.numPlayers = umbModel.index.transitionSystem.playerNames->size();
+        STORM_LOG_WARN_COND(umbModel.index.transitionSystem.numPlayers >= 2,
+                            "Exporting SMG to UMB with zero or one players. The model will be recognized as MDP or DTMC on import.");
     } else {
         STORM_LOG_THROW(model.isOfType(Dtmc) || model.isOfType(Mdp), storm::exceptions::NotSupportedException,
                         "Unexpected model type for UMB export: " << model.getType());

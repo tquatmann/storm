@@ -5,53 +5,88 @@
 #include <string>
 
 #include "storm/storage/BitVector.h"
+#include "storm/storage/umb/model/FileTypes.h"
 #include "storm/storage/umb/model/GenericVector.h"
 #include "storm/storage/umb/model/ModelIndex.h"
-#include "storm/storage/umb/model/Types.h"
+#include "storm/utility/OptionalRef.h"
 
 namespace storm::umb {
 class UmbModel {
    public:
+    // index
     ModelIndex index;
-
-    struct States {
-        CSR stateToChoice;
-        TO1<uint32_t> stateToPlayer;
-        TO1<bool> initialStates;
-        TO1<bool> markovianStates;
-        CSR stateToExitRate;
-        SEQ<AnyValueType> exitRates;
-        CSR stateToValuation;
-        SEQ<char> stateValuations;
-        auto static constexpr FileNames = {"state-to-choice.bin",    "state-to-player.bin", "initial-states.bin",     "markovian-states.bin",
-                                           "state-to-exit-rate.bin", "exit-rates.bin",      "state-to-valuation.bin", "state-valuations.bin"};
-    } states;
-    struct Choices {
-        CSR choiceToBranch;
-        TO1<uint32_t> choiceToAction;
-        CSR actionToActionString;
-        SEQ<char> actionStrings;
-        auto static constexpr FileNames = {"choice-to-branch.bin", "choice-to-action.bin", "action-to-action-string.bin", "action-strings.bin"};
-    } choices;
-    struct Branches {
-        TO1<uint64_t> branchToTarget;
-        CSR branchToProbability;
-        SEQ<AnyValueType> branchProbabilities;
-        auto static constexpr FileNames = {"branch-to-target.bin", "branch-to-probability.bin", "branch-probabilities.bin"};
-    } branches;
-
-    struct Annotation {
-        struct Values {
-            CSR toValue;
-            SEQ<AnyValueType> values;
-            auto static constexpr FileNames = {"to-value.bin", "values.bin"};
-        };
-        std::optional<Values> forStates, forChoices, forBranches;
-        auto static constexpr FileNames = {"for-states/", "for-choices/", "for-branches/"};
+    // states
+    CSR stateToChoices;
+    TO1<uint32_t> stateToPlayer;
+    TO1<bool> stateIsInitial;
+    TO1<bool> stateIsMarkovian;
+    TO1<AnyValueType> stateToExitRate;
+    // choices
+    CSR choiceToBranches;
+    // branches
+    TO1<uint64_t> branchToTarget;
+    TO1<AnyValueType> branchToProbability;
+    // actions
+    struct ActionLabels {
+        TO1<uint32_t> values;
+        CSR stringMapping;
+        SEQ<char> strings;
+        auto static constexpr FileNames = {"values.bin", "string-mapping.bin", "strings.bin"};
     };
-    std::map<std::string, Annotation> rewards, aps;
+    std::optional<ActionLabels> choiceActions, branchActions;
+    // observations
+    struct Observations {
+        TO1<uint64_t> values;
+        CSR distributionMapping;
+        TO1<AnyValueType> probabilities;
+        auto static constexpr FileNames = {"values.bin", "distribution-mapping.bin", "probabilities.bin"};
+    };
+    std::optional<Observations> stateObservations, branchObservations;
+    // annotations
+    template<typename Values>
+    struct AppliesToEntity {
+        std::optional<Values> states, choices, branches, observations;
+        auto static constexpr FileNames = {"states/", "choices/", "branches/", "observations/"};
+    };
+    struct AnnotationValues {
+        TO1<AnyValueType> values;
+        CSR stringMapping;
+        SEQ<char> strings;
+        CSR distributionMapping;
+        TO1<AnyValueType> probabilities;
+        auto static constexpr FileNames = {"values.bin", "string-mapping.bin", "strings.bin", "distribution-mapping.bin", "probabilities.bin"};
+    };
+    using Annotation = std::map<std::string, AppliesToEntity<AnnotationValues>>;
+    std::map<std::string, Annotation> annotations;
+    // valuations
+    struct Valuation {
+        TO1<uint32_t> valuationToClass;
+        SEQ<char> valuations;
+        CSR stringMapping;
+        SEQ<char> strings;
+        auto static constexpr FileNames = {"valuation-to-class.bin", "valuations.bin", "string-mapping.bin", "strings.bin"};
+    };
+    using Valuations = AppliesToEntity<Valuation>;
+    Valuations valuations;
+    // TODO: collect non-standard files so that they are not lost during import/export
+    // non-standard files
+    // std::map<std::string, SEQ<char>> nonStandardFiles;
 
-    auto static constexpr FileNames = {"index.json", "", "", "", "annotations/rewards/", "annotations/aps/"};
+    auto static constexpr FileNames = {"index.json",
+                                       "state-to-choices.bin",
+                                       "state-to-player.bin",
+                                       "state-is-initial.bin",
+                                       "state-is-markovian.bin",
+                                       "state-to-exit-rate.bin",
+                                       "choice-to-branches.bin",
+                                       "branch-to-target.bin",
+                                       "branch-to-probability.bin",
+                                       "actions/choices/",
+                                       "actions/branches/",
+                                       "observations/states/",
+                                       "observations/branches/",
+                                       "annotations/",
+                                       "valuations/"};
 
     /*!
      * Retrieves a short string that can be used to refer to the model in user output.
@@ -64,6 +99,16 @@ class UmbModel {
     std::string getModelInformation() const;
 
     /*!
+     * Gets the annotation data with the given annotation type
+     */
+    storm::OptionalRef<Annotation> annotation(std::string const& annotationType, bool createIfMissing = false);
+    storm::OptionalRef<Annotation const> annotation(std::string const& annotationType) const;
+    storm::OptionalRef<Annotation> aps(bool createIfMissing = false);
+    storm::OptionalRef<Annotation const> aps() const;
+    storm::OptionalRef<Annotation> rewards(bool createIfMissing = false);
+    storm::OptionalRef<Annotation const> rewards() const;
+
+    /*!
      * Validates the given UMB model and writes potential errors to the given output stream.
      * @return true if the UMB model is valid.
      */
@@ -73,6 +118,16 @@ class UmbModel {
      * Validates the UmbModel. If it is invalid, an exception is thrown.
      */
     void validateOrThrow() const;
+
+    /*!
+     * Encodes all rational values stored in the model into their UMB bit representation.
+     */
+    void encodeRationals();
+
+    /*!
+     * Decodes all rational values stored in the model from their UMB bit representation.
+     */
+    void decodeRationals();
 };
 
 }  // namespace storm::umb

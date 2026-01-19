@@ -753,9 +753,12 @@ void exportModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
                 break;
-            case storm::io::ModelExportFormat::Umb:
-                storm::api::exportSparseModelAsUmb(model, ioSettings.getExportBuildFilename());
+            case storm::io::ModelExportFormat::Umb: {
+                storm::umb::ExportOptions options;
+                options.compression = ioSettings.getCompressionMode();
+                storm::api::exportSparseModelAsUmb(model, ioSettings.getExportBuildFilename(), options);
                 break;
+            }
             default:
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                                 "Exporting sparse models in " << storm::io::toString(ioSettings.getExportBuildFormat()) << " format is not supported.");

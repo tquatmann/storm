@@ -32,6 +32,7 @@ class Smg : public NondeterministicModel<ValueType, RewardModelType> {
     std::vector<storm::storage::PlayerIndex> const& getStatePlayerIndications() const;
     storm::storage::PlayerIndex getPlayerOfState(uint64_t stateIndex) const;
     storm::storage::PlayerIndex getPlayerIndex(std::string const& playerName) const;
+    std::map<std::string, storm::storage::PlayerIndex> const& getPlayerNamesToIndex() const;
     storm::storage::BitVector computeStatesOfCoalition(storm::logic::PlayerCoalition const& coalition) const;
     uint64_t getNumberOfPlayers() const;
 

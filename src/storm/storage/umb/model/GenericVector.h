@@ -6,7 +6,8 @@
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/UnexpectedException.h"
-#include "storm/storage/umb/model/Types.h"
+#include "storm/storage/BitVector.h"
+#include "storm/storage/umb/model/FileTypes.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 
@@ -27,9 +28,7 @@ class GenericVector {
         data = v;
     }
 
-    void unset() {
-        data = std::monostate();
-    }
+    void unset();
 
     template<typename T>
     Vec<T>& get() {
@@ -48,9 +47,7 @@ class GenericVector {
         return std::holds_alternative<Vec<T>>(data);
     }
 
-    bool hasValue() const {
-        return !std::holds_alternative<std::monostate>(data);
-    }
+    bool hasValue() const;
 
     template<typename FromType, typename ToType>
     auto convertFromTo() const {

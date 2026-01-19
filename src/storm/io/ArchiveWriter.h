@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "storm/io/CompressionMode.h"
 #include "storm/utility/bitoperations.h"
 #include "storm/utility/macros.h"
 
@@ -46,7 +47,7 @@ class ArchiveWriter {
     /*!
     Create a new archive and open it as a file on disk.
     */
-    explicit ArchiveWriter(std::filesystem::path const& filename);
+    ArchiveWriter(std::filesystem::path const& filename, CompressionMode const compression);
 
     /*!
       Adds a (sub-) directory to the archive

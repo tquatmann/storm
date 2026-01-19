@@ -49,6 +49,11 @@ storm::storage::PlayerIndex Smg<ValueType, RewardModelType>::getPlayerIndex(std:
 }
 
 template<typename ValueType, typename RewardModelType>
+std::map<std::string, storm::storage::PlayerIndex> const& Smg<ValueType, RewardModelType>::getPlayerNamesToIndex() const {
+    return playerNameToIndexMap;
+}
+
+template<typename ValueType, typename RewardModelType>
 storm::storage::PlayerIndex Smg<ValueType, RewardModelType>::getNumberOfPlayers() const {
     return playerNameToIndexMap.size();
 }

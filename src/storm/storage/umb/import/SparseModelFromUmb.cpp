@@ -45,14 +45,14 @@ storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const&
     storm::storage::SparseMatrixBuilder<ValueType> builder(tsIndex.numChoices, tsIndex.numStates, tsIndex.numBranches, true, hasRowGroups,
                                                            hasRowGroups ? tsIndex.numStates : 0u);
     for (uint64_t stateIndex{0}; stateIndex < tsIndex.numStates; ++stateIndex) {
-        auto choices = csrRange(umbModel.states.stateToChoice, stateIndex);
+        auto choices = csrRange(umbModel.stateToChoices, stateIndex);
         if (hasRowGroups) {
             builder.newRowGroup(*choices.begin());
         }
         for (auto const choiceIndex : choices) {
             STORM_LOG_ASSERT(choiceIndex < tsIndex.numChoices, "Choice index out of bounds.");
-            for (auto const branchIndex : csrRange(umbModel.choices.choiceToBranch, choiceIndex)) {
-                auto const& branchTarget = umbModel.branches.branchToTarget.value()[branchIndex];
+            for (auto const branchIndex : csrRange(umbModel.choiceToBranches, choiceIndex)) {
+                auto const& branchTarget = umbModel.branchToTarget.value()[branchIndex];
                 STORM_LOG_ASSERT(branchTarget < tsIndex.numStates, "Branch target index out of bounds: " << branchTarget << " >= " << tsIndex.numStates);
                 builder.addNextValue(choiceIndex, branchTarget, branchValues[branchIndex]);
             }
@@ -62,14 +62,15 @@ storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const&
 }
 
 template<typename ValueType>
-storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const& umbModel, auto sourceType, storm::umb::GenericVector const& branchValues,
-                                                     storm::umb::CSR const& csr) {
+storm::storage::SparseMatrix<ValueType> createMatrix(storm::umb::UmbModel const& umbModel, storm::umb::GenericVector const& branchValues,
+                                                     storm::umb::SizedType const& sourceType) {
     return ValueEncoding::applyDecodedVector<ValueType>([&umbModel](auto&& input) { return createMatrix<ValueType>(umbModel, input); }, branchValues,
-                                                        sourceType, csr);
+                                                        sourceType);
 }
 
 storm::storage::BitVector createBitVector(storm::umb::VectorType<bool> const& umbBitVector, uint64_t size) {
-    STORM_LOG_ASSERT(umbBitVector.size() >= size, "Bit vector has unexpected size: " << umbBitVector.size() << " < " << size);
+    STORM_LOG_THROW(umbBitVector.size() >= size, storm::exceptions::WrongFormatException,
+                    "Bit vector has unexpected size: " << umbBitVector.size() << " < " << size);
     storm::storage::BitVector result(umbBitVector);
     result.resize(size);
     return result;
@@ -83,52 +84,70 @@ storm::storage::BitVector createBitVector(storm::umb::OptionalVectorType<bool> c
 storm::models::sparse::StateLabeling constructStateLabeling(storm::umb::UmbModel const& umbModel) {
     auto const& numStates = umbModel.index.transitionSystem.numStates;
     storm::models::sparse::StateLabeling stateLabelling(numStates);
-    if (umbModel.states.initialStates) {
-        stateLabelling.addLabel("init", createBitVector(umbModel.states.initialStates, numStates));
+    if (umbModel.stateIsInitial) {
+        stateLabelling.addLabel("init", createBitVector(umbModel.stateIsInitial, numStates));
     } else {
         STORM_LOG_WARN("No initial states given in UMB model.");
         stateLabelling.addLabel("init", storm::storage::BitVector(numStates, false));  // default to all states not being initial
     }
-    for (auto const& [apName, ap] : umbModel.aps) {
-        STORM_LOG_THROW(umbModel.index.annotations.aps->contains(apName), storm::exceptions::WrongFormatException,
-                        "Atomic proposition '" << apName << "' not found in index.");
-        auto const& apIndex = umbModel.index.annotations.aps->at(apName);
-        auto labelName = apIndex.alias.value_or(apName);  // prefer alias as label name if it exists
-        STORM_LOG_THROW(ap.forStates.has_value(), storm::exceptions::WrongFormatException, "Atomic proposition '" << apName << "' does not apply to states.");
-        STORM_LOG_THROW(!stateLabelling.containsLabel(labelName), storm::exceptions::WrongFormatException,
-                        "Label '" << labelName << "' already exists in state labeling.");
-        stateLabelling.addLabel(labelName, createBitVector(ap.forStates->values.template get<bool>(), numStates));
-        STORM_LOG_WARN_COND(!ap.forChoices.has_value(), "Atomic propositions for choices are not supported.");
-        STORM_LOG_WARN_COND(!ap.forBranches.has_value(), "Atomic propositions for branches are not supported.");
+    if (umbModel.index.aps().has_value()) {
+        for (auto const& [apName, apIndex] : umbModel.index.aps().value()) {
+            STORM_LOG_THROW(umbModel.aps().has_value() && umbModel.aps()->contains(apName), storm::exceptions::WrongFormatException,
+                            "Atomic proposition '" << apName << "' mentioned in index but no files were found.");
+            STORM_LOG_THROW(isBooleanType(apIndex.type.type), storm::exceptions::WrongFormatException,
+                            "Atomic proposition '" << apName << "' must be of boolean type.");
+            STORM_LOG_THROW(apIndex.appliesTo.size() == 1 && apIndex.appliesToStates(), storm::exceptions::WrongFormatException,
+                            "Atomic proposition '" << apName << "' must apply only to states.");
+            auto const& ap = umbModel.aps()->at(apName);
+            auto labelName = apIndex.alias.value_or(apName);  // prefer alias as label name if it exists
+            STORM_LOG_THROW(ap.states.has_value(), storm::exceptions::WrongFormatException, "Atomic proposition '" << apName << "' has no states values");
+            STORM_LOG_THROW(!stateLabelling.containsLabel(labelName), storm::exceptions::WrongFormatException,
+                            "Label '" << labelName << "' already exists in state labeling.");
+            stateLabelling.addLabel(labelName, createBitVector(ap.states->values.template get<bool>(), numStates));
+        }
     }
     return stateLabelling;
 }
 
 storm::models::sparse::ChoiceLabeling constructChoiceLabeling(storm::umb::UmbModel const& umbModel) {
     auto const& numChoices = umbModel.index.transitionSystem.numChoices;
-    storm::models::sparse::ChoiceLabeling choiceLabeling(numChoices);
-    auto actionStrings = storm::umb::stringVectorViewOptionalCsr(umbModel.choices.actionStrings.value(), umbModel.choices.actionToActionString);
+    auto const& numActions = umbModel.index.transitionSystem.numChoiceActions;
 
-    uint64_t const emptyActionIndex = std::ranges::find(actionStrings, std::string_view{}) - actionStrings.begin();
+    storm::models::sparse::ChoiceLabeling choiceLabeling(numChoices);
+
+    auto const actionStrings = storm::umb::stringVectorView(umbModel.choiceActions->strings, umbModel.choiceActions->stringMapping);
+    bool const hasActionStrings = !actionStrings.empty();
+    STORM_LOG_THROW(!hasActionStrings || actionStrings.size() == numActions, storm::exceptions::WrongFormatException,
+                    "Number of action strings does not match number of actions.");
+
+    // choices where the action has the empty label will not be labeled at all. If there are no string labels, this case is not relevant.
+    uint64_t const emptyActionIndex = hasActionStrings ? std::ranges::find(actionStrings, "") - actionStrings.begin() : numActions;
 
     // for each choice, find the corresponding action index and set the bit accordingly
-    auto const& choiceToAction = umbModel.choices.choiceToAction.value();
-    std::vector<storm::storage::BitVector> actionToLabels(actionStrings.size(), storm::storage::BitVector(numChoices, false));
+    auto const& choiceToChoiceAction = umbModel.choiceActions->values.value();
+    std::vector<storm::storage::BitVector> actionToLabels(numActions, storm::storage::BitVector(numChoices, false));
     for (uint64_t choiceIndex = 0; choiceIndex < numChoices; ++choiceIndex) {
-        auto const actionIndex = choiceToAction[choiceIndex];
-        STORM_LOG_ASSERT(actionIndex < actionStrings.size(), "Choice to action mapping out of bounds.");
-        if (actionIndex == emptyActionIndex) {
+        auto const actionIndex = choiceToChoiceAction[choiceIndex];
+        STORM_LOG_ASSERT(actionIndex < numActions, "Choice to action mapping out of bounds.");
+        if (hasActionStrings && actionIndex == emptyActionIndex) {
             continue;  // skip choices with empty action. They will not be labeled.
         }
         actionToLabels[actionIndex].set(choiceIndex);
     }
 
     // add the action labels to the labeling
-    for (uint64_t actionIndex = 0; actionIndex < actionStrings.size(); ++actionIndex) {
-        if (actionIndex == emptyActionIndex) {
-            continue;
+    if (hasActionStrings) {
+        for (uint64_t actionIndex = 0; actionIndex < numActions; ++actionIndex) {
+            if (actionIndex == emptyActionIndex) {
+                continue;
+            }
+            choiceLabeling.addLabel(std::string(actionStrings[actionIndex]), std::move(actionToLabels[actionIndex]));
         }
-        choiceLabeling.addLabel(std::string(actionStrings[actionIndex]), std::move(actionToLabels[actionIndex]));
+    } else {
+        // use generic action names
+        for (uint64_t actionIndex = 0; actionIndex < numActions; ++actionIndex) {
+            choiceLabeling.addLabel("a" + std::to_string(actionIndex), std::move(actionToLabels[actionIndex]));
+        }
     }
     return choiceLabeling;
 }
@@ -137,26 +156,31 @@ template<typename ValueType>
 auto constructRewardModels(storm::umb::UmbModel const& umbModel) {
     using RewardModel = storm::models::sparse::StandardRewardModel<ValueType>;
     std::unordered_map<std::string, RewardModel> rewardModels;
-    for (auto const& [rewName, rew] : umbModel.rewards) {
-        STORM_LOG_THROW(umbModel.rewards.contains(rewName), storm::exceptions::WrongFormatException, "Reward '" << rewName << "' not found in index.");
-        auto const& rewIndex = umbModel.index.annotations.rewards->at(rewName);
-        auto usedRewName = rewIndex.alias.value_or(rewName);  // prefer alias as reward name if it exists
-        STORM_LOG_THROW(!rewardModels.contains(usedRewName), storm::exceptions::WrongFormatException,
-                        "Reward '" << usedRewName << "' already exists in reward models.");
-        STORM_LOG_THROW(rewIndex.type.has_value(), storm::exceptions::WrongFormatException,
-                        "Reward type is not set in the index for reward '" << rewName << "'.");
-        std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
-        std::optional<storm::storage::SparseMatrix<ValueType>> transitionRewards;
-        if (rew.forStates) {
-            stateRewards = ValueEncoding::createDecodedVector<ValueType>(rew.forStates->values, rewIndex.type.value(), rew.forStates->toValue);
+    if (umbModel.index.rewards().has_value()) {
+        for (auto const& [rewName, rewIndex] : umbModel.index.rewards().value()) {
+            STORM_LOG_THROW(umbModel.rewards().has_value() && umbModel.rewards()->contains(rewName), storm::exceptions::WrongFormatException,
+                            "Reward " << rewName << "' mentioned in index but no files were found.");
+            auto const& rew = umbModel.rewards()->at(rewName);
+            auto usedRewName = rewIndex.alias.value_or(rewName);  // prefer alias as reward name if it exists
+            STORM_LOG_THROW(!rewardModels.contains(usedRewName), storm::exceptions::WrongFormatException,
+                            "Reward '" << usedRewName << "' already exists in reward models.");
+            STORM_LOG_THROW(isNumericType(rewIndex.type.type), storm::exceptions::WrongFormatException,
+                            "Reward type for reward '" << rewName << "' must be numeric.");
+            std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
+            std::optional<storm::storage::SparseMatrix<ValueType>> transitionRewards;
+            if (rewIndex.appliesToStates() && rew.states.has_value()) {
+                stateRewards = ValueEncoding::createDecodedVector<ValueType>(rew.states->values, rewIndex.type);
+            }
+            if (rewIndex.appliesToChoices() && rew.choices.has_value()) {
+                stateActionRewards = ValueEncoding::createDecodedVector<ValueType>(rew.choices->values, rewIndex.type);
+            }
+            if (rewIndex.appliesToBranches() && rew.branches.has_value()) {
+                transitionRewards = createMatrix<ValueType>(umbModel, rew.branches->values, rewIndex.type);
+            }
+            STORM_LOG_THROW(!rewIndex.appliesToObservations(), storm::exceptions::WrongFormatException,
+                            "Observation rewards are not supported for reward '" << rewName << "'.");
+            rewardModels.emplace(std::move(usedRewName), RewardModel(std::move(stateRewards), std::move(stateActionRewards), std::move(transitionRewards)));
         }
-        if (rew.forChoices) {
-            stateActionRewards = ValueEncoding::createDecodedVector<ValueType>(rew.forChoices->values, rewIndex.type.value(), rew.forChoices->toValue);
-        }
-        if (rew.forBranches) {
-            transitionRewards = createMatrix<ValueType>(umbModel, rewIndex.type.value(), rew.forBranches->values, rew.forBranches->toValue);
-        }
-        rewardModels.emplace(std::move(usedRewName), RewardModel(std::move(stateRewards), std::move(stateActionRewards), std::move(transitionRewards)));
     }
     return rewardModels;
 }
@@ -167,20 +191,22 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
 
     // transitions, labelings, rewards
     auto stateLabelling = constructStateLabeling(umbModel);
-    auto transitionMatrix = createMatrix<ValueType>(umbModel, umbModel.index.transitionSystem.branchProbabilityType, umbModel.branches.branchProbabilities,
-                                                    umbModel.branches.branchToProbability);
+    STORM_LOG_THROW(umbModel.index.transitionSystem.branchProbabilityType.has_value(), storm::exceptions::WrongFormatException,
+                    "Branch probability type must be given in the UMB model index.");
+    auto transitionMatrix = createMatrix<ValueType>(umbModel, umbModel.branchToProbability, umbModel.index.transitionSystem.branchProbabilityType.value());
     storm::storage::sparse::ModelComponents<ValueType> components(std::move(transitionMatrix), std::move(stateLabelling),
                                                                   constructRewardModels<ValueType>(umbModel));
-    if (options.buildChoiceLabeling && umbModel.choices.choiceToAction) {
+    if (options.buildChoiceLabeling && umbModel.index.transitionSystem.numChoiceActions > 0) {
+        STORM_LOG_THROW(umbModel.choiceActions.has_value() && umbModel.choiceActions->values.has_value(), storm::exceptions::WrongFormatException,
+                        "Choice actions mentioned in the index but no files given.");
         components.choiceLabeling = constructChoiceLabeling(umbModel);
     }
-    if (options.buildStateValuations && umbModel.states.stateValuations) {
-        std::vector<char> bytes(umbModel.states.stateValuations->begin(), umbModel.states.stateValuations->end());
-        std::optional<std::vector<uint64_t>> stateToValuation;
-        if (umbModel.states.stateToValuation) {
-            stateToValuation.emplace(umbModel.states.stateToValuation->begin(), umbModel.states.stateToValuation->end());
-        }
-        storm::umb::StateValuations stateValuations(std::move(bytes), std::move(stateToValuation), umbModel.index.stateValuations.value());
+    if (options.buildStateValuations && umbModel.index.valuations.has_value() && umbModel.index.valuations->states.has_value()) {
+        STORM_LOG_THROW(umbModel.valuations.states.has_value() && umbModel.valuations.states->valuations.has_value(), storm::exceptions::WrongFormatException,
+                        "State valuations mentioned in the index but no files given.");
+        auto const& sv = umbModel.valuations.states.value();
+        storm::umb::StateValuations stateValuations(umbModel.index.valuations->states.value(), sv.valuations.value(), sv.valuationToClass, sv.stringMapping,
+                                                    sv.strings);
         uint64_t i = 0;
         for (auto const& val : stateValuations.getRange()) {
             std::cout << "\n" << i++ << ": \t";
@@ -190,27 +216,45 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "State valuations are not yet supported.");
     } else {
         STORM_LOG_WARN_COND(!options.buildStateValuations, "State valuations requested but the UMB model does not have any.");
-        STORM_LOG_INFO_COND(!umbModel.states.stateValuations, "State valuations given but not constructed as per import options.");
     }
 
     // model type-specific components
     using enum storm::models::ModelType;
     auto const modelType = deriveModelType(umbModel.index);
     if (modelType == Ctmc || modelType == MarkovAutomaton) {
-        STORM_LOG_THROW(umbModel.states.exitRates.hasValue(), storm::exceptions::WrongFormatException,
+        STORM_LOG_THROW(umbModel.stateToExitRate.hasValue(), storm::exceptions::WrongFormatException,
                         "Exit rates are required for CTMC and Markov automaton models but not present in the UMB model.");
-        components.exitRates = ValueEncoding::createDecodedVector<ValueType>(umbModel.states.exitRates, umbModel.index.transitionSystem.exitRateType.value(),
-                                                                             umbModel.states.stateToExitRate);
+        components.exitRates = ValueEncoding::createDecodedVector<ValueType>(umbModel.stateToExitRate, umbModel.index.transitionSystem.exitRateType.value());
         if (modelType == MarkovAutomaton) {
-            STORM_LOG_THROW(umbModel.states.markovianStates.has_value(), storm::exceptions::WrongFormatException,
-                            "Markovian states are required for Markov automaton models but not present in the UMB model.");
-            components.markovianStates = createBitVector(umbModel.states.markovianStates, umbModel.index.transitionSystem.numStates);
+            if (umbModel.stateIsMarkovian) {
+                components.markovianStates = createBitVector(umbModel.stateIsMarkovian, umbModel.index.transitionSystem.numStates);
+            } else {
+                // Default to no Markovian state
+                components.markovianStates.emplace(umbModel.index.transitionSystem.numStates, false);
+            }
         }
+    } else if (modelType == Pomdp) {
+        STORM_LOG_THROW(umbModel.index.transitionSystem.observationsApplyTo == storm::umb::ModelIndex::TransitionSystem::ObservationsApplyTo::States,
+                        storm::exceptions::NotSupportedException, "Only state observations are currently supported for POMDP models.");
+        STORM_LOG_THROW(!umbModel.index.transitionSystem.observationProbabilityType.has_value(), storm::exceptions::NotSupportedException,
+                        "Only deterministic state observations are currently supported for POMDP models.");
+        STORM_LOG_THROW(umbModel.stateObservations.has_value(), storm::exceptions::WrongFormatException,
+                        "State observations are required for POMDP models but not present in the UMB model.");
+        components.observabilityClasses.emplace(umbModel.stateObservations->values->begin(), umbModel.stateObservations->values->end());
     } else if (modelType == Smg) {
-        STORM_LOG_THROW(umbModel.states.stateToPlayer.has_value(), storm::exceptions::WrongFormatException,
+        STORM_LOG_THROW(umbModel.stateToPlayer.has_value(), storm::exceptions::WrongFormatException,
                         "Player information is required for SMG models but not present in the UMB model.");
-        auto const stateToPlayer = umbModel.states.stateToPlayer.value();
+        auto const& stateToPlayer = umbModel.stateToPlayer.value();
         components.statePlayerIndications.emplace(stateToPlayer.begin(), stateToPlayer.end());
+        if (umbModel.index.transitionSystem.playerNames.has_value()) {
+            auto const& names = umbModel.index.transitionSystem.playerNames.value();
+            STORM_LOG_THROW(names.size() == umbModel.index.transitionSystem.numPlayers, storm::exceptions::WrongFormatException,
+                            "Number of player names does not match number of players in the UMB model index.");
+            components.playerNameToIndexMap.emplace();
+            for (uint64_t i = 0; i < names.size(); ++i) {
+                components.playerNameToIndexMap->emplace(names[i], i);
+            }
+        }
     } else {
         STORM_LOG_THROW(modelType == Dtmc || modelType == Mdp, storm::exceptions::NotSupportedException, "Unexpected model type for UMB import: " << modelType);
     }
@@ -224,8 +268,7 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
 
     auto const& ts = index.transitionSystem;
 
-    STORM_LOG_THROW(ts.branchProbabilityType != storm::umb::ModelIndex::TransitionSystem::BranchProbabilityType::None, storm::exceptions::NotSupportedException,
-                    "Models without branch values are not supported.");
+    STORM_LOG_THROW(ts.branchProbabilityType.has_value(), storm::exceptions::NotSupportedException, "Models without branch values are not supported.");
     switch (ts.time) {
         using enum storm::umb::ModelIndex::TransitionSystem::Time;
         case Discrete:
@@ -233,8 +276,10 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
                 case 0:
                     return Dtmc;
                 case 1:
-                    return Mdp;
+                    return ts.numObservations == 0 ? Mdp : Pomdp;
                 default:
+                    STORM_LOG_THROW(ts.numObservations == 0, storm::exceptions::NotSupportedException,
+                                    "Multiplayer partially observable models are not supported.");
                     return Smg;
             }
         case Stochastic:

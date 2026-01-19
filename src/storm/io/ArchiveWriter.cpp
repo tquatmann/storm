@@ -8,18 +8,30 @@
 namespace storm::io {
 
 #ifdef STORM_HAVE_LIBARCHIVE
-ArchiveWriter::ArchiveWriter(std::filesystem::path const& filename) : _archive(archive_write_new(), ArchiveDeleter{}) {
+ArchiveWriter::ArchiveWriter(std::filesystem::path const& filename, CompressionMode const compression) : _archive(archive_write_new(), ArchiveDeleter{}) {
     STORM_LOG_THROW(_archive, storm::exceptions::FileIoException, "Failed to create archive reader.");
 
     // Set format to gzipped TAR with restricted pax extensions
-    archive_write_add_filter_gzip(_archive.get());
+    switch (compression) {
+        case CompressionMode::None:
+            break;
+        case CompressionMode::Gzip:
+            archive_write_add_filter_gzip(_archive.get());
+            break;
+        case CompressionMode::Xz:
+        case CompressionMode::Default:  // Following suggestions from UMB, we use xz as default compression
+            archive_write_add_filter_xz(_archive.get());
+            break;
+        default:
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unsupported compression mode.");
+    }
     checkResult(archive_write_set_format_pax_restricted(_archive.get()));
 
     // Open file for writing
     checkResult(archive_write_open_filename(_archive.get(), filename.c_str()));
 }
 #else
-ArchiveWriter::ArchiveWriter(std::filesystem::path const& filename) {
+ArchiveWriter::ArchiveWriter(std::filesystem::path const&, CompressionMode const) {
     throw storm::exceptions::NotSupportedException() << "Writing archives is not supported. Storm is compiled without LibArchive.";
 }
 #endif

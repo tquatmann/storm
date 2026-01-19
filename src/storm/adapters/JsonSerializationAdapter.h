@@ -25,7 +25,7 @@ class SerializedEnum {
     SerializedEnum(E value) : value(value) {}
     SerializedEnum(std::string_view str) {
         auto findRes = std::find(std::begin(Keys), std::end(Keys), str);
-        STORM_LOG_THROW(findRes != std::end(Keys), storm::exceptions::WrongFormatException, "Invalid enum value " << "'str'");
+        STORM_LOG_THROW(findRes != std::end(Keys), storm::exceptions::WrongFormatException, "Invalid enum value '" << str << "'.");
         value = static_cast<E>(std::distance(std::begin(Keys), findRes));
     }
 
@@ -44,12 +44,9 @@ class SerializedEnum {
 
     std::string_view toString() const {
         auto const index = static_cast<std::underlying_type_t<E>>(value);
-        if (isInitialized()) {
-            STORM_LOG_ASSERT(std::cmp_less(index, Keys.size()), "Enum value with index " << index << " does not have a key.");
-            return *(std::begin(Keys) + index);
-        } else {
-            return "__UNINITIALIZED__";
-        }
+        STORM_LOG_ASSERT(isInitialized(), "Enum value not initialized.");
+        STORM_LOG_ASSERT(std::cmp_less(index, Keys.size()), "Enum value with index " << index << " does not have a key.");
+        return *(std::begin(Keys) + index);
     }
 
     friend std::ostream& operator<<(std::ostream& os, SerializedEnum const& val) {

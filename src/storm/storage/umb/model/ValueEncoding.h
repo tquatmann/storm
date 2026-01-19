@@ -5,8 +5,9 @@
 
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/storage/umb/model/FileTypes.h"
 #include "storm/storage/umb/model/GenericVector.h"
-#include "storm/storage/umb/model/Types.h"
+#include "storm/storage/umb/model/Type.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 
@@ -21,44 +22,41 @@ class ValueEncoding {
      * @param func a function that takes a range of value type and returns the result
      * @param input the input vector
      * @param sourceType The type that the input vector represents
-     * @param csr a CSR that is used to decode the input vector. This is only necessary for non-trivially encoded source types (like rational).
+     * @param sourceTypeSize the number of bits of the encoding for the source type. This is necessary for non-trivially encoded source types (like rational).
      * @return
      */
-    template<typename ValueType, typename SourceTypeEnum>
-        requires std::is_enum_v<typename SourceTypeEnum::E>
-    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector const& input, SourceTypeEnum sourceType, CSR const& csr = {}) {
-        using E = typename decltype(sourceType)::E;
-        static_assert(std::is_enum_v<E>, "Source type must be an enum.");
+    template<typename ValueType>
+    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
+        STORM_LOG_ASSERT(input.hasValue(), "Input vector is not set.");
+        using enum storm::umb::Type;
 
         // find out how to interpret the input values
-        switch (sourceType) {
-            case E::Double:
+        switch (sourceType.type) {
+            case Double:
                 STORM_LOG_WARN_COND(
                     !storm::NumberTraits<ValueType>::IsExact,
                     "Some values are given in type double but will be converted to an exact (arbitrary precision) type. Rounding errors may occur.");
                 STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for values. Expected double.");
+                STORM_LOG_ASSERT(sourceType.bitSize() == 64, "Unexpected source type size for double representation. Expected 64.");
                 return func(conversionView<ValueType>(input.template get<double>()));
-            case E::Rational:
+            case Rational:
                 STORM_LOG_WARN_COND(storm::NumberTraits<ValueType>::IsExact,
                                     "Some values are given in an exact type but converted to an inexact type. Rounding errors may occur.");
                 if (input.template isType<storm::RationalNumber>()) {
                     return func(conversionView<ValueType>(input.template get<storm::RationalNumber>()));
                 } else {
                     STORM_LOG_ASSERT(input.template isType<uint64_t>(), "Unexpected type for rational representation. Expected uint64.");
-                    // Only this case might require the csr. It is ignored in all other cases.
-                    if (csr) {
-                        return func(conversionView<ValueType>(uint64ToRationalRangeView(input.template get<uint64_t>(), *csr)));
-                    } else {
-                        return func(conversionView<ValueType>(uint64ToRationalRangeView(input.template get<uint64_t>())));
-                    }
+                    // Only this case requires the source type size. It is optional in all other cases.
+                    return func(conversionView<ValueType>(uint64ToRationalRangeView(input.template get<uint64_t>(), sourceType.bitSize())));
                 }
-            case E::DoubleInterval:
+            case DoubleInterval:
                 // For intervals, there is no suitable value conversion since we would drop the uncertainty
                 if constexpr (!std::is_same_v<ValueType, storm::Interval>) {
                     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                                     "Some values are given as double intervals but a model with a non-interval type is requested.");
                     return func(std::ranges::empty_view<ValueType>{});
                 } else {
+                    STORM_LOG_ASSERT(sourceType.bitSize() == 128ull, "Unexpected source type size for double representation. Expected 64.");
                     if (input.template isType<storm::Interval>()) {
                         return func(input.template get<storm::Interval>());
                     } else {
@@ -67,13 +65,12 @@ class ValueEncoding {
                     }
                 }
             default:
-                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Values have unsupported type " << sourceType << ".");
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Values have unsupported type " << sourceType.toString() << ".");
         }
     }
 
-    template<typename ValueType, typename SourceTypeEnum>
-        requires std::is_enum_v<typename SourceTypeEnum::E>
-    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector const& input, SourceTypeEnum sourceType, CSR const& csr = {}) {
+    template<typename ValueType>
+    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
         return applyDecodedVector<ValueType>(
             [](auto&& decodedInput) {
                 std::vector<ValueType> v;
@@ -81,9 +78,9 @@ class ValueEncoding {
                 for (auto&& value : decodedInput) {
                     v.push_back(value);
                 }
-                return v;  //{std::ranges::begin(decodedInput), std::ranges::end(decodedInput)};
+                return v;
             },
-            input, sourceType, csr);
+            input, sourceType);
     }
 
     template<std::ranges::input_range InputRange>
@@ -132,16 +129,16 @@ class ValueEncoding {
         return decodeFromUnsignedRange(reverse_input);
     }
 
-    template<std::ranges::input_range InputRange, std::ranges::input_range CsrRange>
-        requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t> and std::same_as<std::ranges::range_value_t<CsrRange>, uint64_t>
-    static auto uint64ToRationalRangeView(InputRange&& input, CsrRange&& csr) {
-        STORM_LOG_ASSERT(std::ranges::size(csr) > 0, "CSR must not be empty.");
-        auto const numEntries = std::ranges::size(csr) - 1;
-        STORM_LOG_ASSERT(std::ranges::size(csr) % 2 == 0, "Input size is not even: " << std::ranges::size(input));
-        return std::ranges::iota_view(0ull, numEntries) | std::ranges::views::transform([&input, csr](auto i) -> storm::RationalNumber {
-                   auto const left = 2 * csr[i];
-                   auto const right = 2 * csr[i + 1];
-                   auto mid = left + (right - left) / 2;
+    template<std::ranges::input_range InputRange>
+        requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
+    static auto uint64ToRationalRangeView(InputRange&& input, uint64_t const numberSize) {
+        STORM_LOG_ASSERT(numberSize % 128ull == 0ull && numberSize > 0ull, "Type size must be a positive multiple of 128 for rational representation.");
+        auto const uint64ValuesPerNumber = numberSize / 64ull;
+        auto const size = std::ranges::size(input) / uint64ValuesPerNumber;
+        return std::ranges::iota_view(0ull, size) | std::ranges::views::transform([&input, uint64ValuesPerNumber](auto i) -> storm::RationalNumber {
+                   auto const left = uint64ValuesPerNumber * i;
+                   auto const right = left + uint64ValuesPerNumber;
+                   auto mid = left + uint64ValuesPerNumber / 2;
 
                    std::ranges::subrange numeratorRange{std::ranges::begin(input) + left, std::ranges::begin(input) + mid};
                    storm::RationalNumber numerator = decodeArbitraryPrecisionInteger<true>(numeratorRange);  // signed
@@ -153,55 +150,52 @@ class ValueEncoding {
                });
     }
 
-    template<std::ranges::input_range InputRange>
-        requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
-    static bool rationalVectorRequiresCsr(InputRange&& input) {
-        return std::any_of(std::ranges::begin(input), std::ranges::end(input), [](storm::RationalNumber const& r) {
-            return storm::utility::numerator(r) < storm::utility::convertNumber<storm::RationalNumber>(std::numeric_limits<int64_t>::min()) ||
-                   storm::utility::numerator(r) > storm::utility::convertNumber<storm::RationalNumber>(std::numeric_limits<int64_t>::max()) ||
-                   storm::utility::denominator(r) > storm::utility::convertNumber<storm::RationalNumber>(std::numeric_limits<uint64_t>::max());
-        });
+    template<bool Signed>
+    static uint64_t getSizeOfIntegerEncoding(typename storm::NumberTraits<storm::RationalNumber>::IntegerType const& value) {
+        // The bitsize method returns the smallest n with -2^n <= x < 2^n.
+        if constexpr (Signed) {
+            // For signed integers, we need one additional bit for the sign.
+            return storm::utility::bitsize(value) + 1;
+        } else {
+            // For unsigned integers, we get n with 2^{n-1} <= x < 2^n.
+            return storm::utility::bitsize(value);
+        }
     }
+
     template<std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
-    static auto rationalToUint64ViewNoCsr(InputRange&& input) {
+    static uint64_t getMinimalRationalSize(InputRange&& input) {
+        // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
         static_assert(storm::RationalNumberDenominatorAlwaysPositive);
-        return std::ranges::iota_view(0ull, std::ranges::size(input) * 2) | std::views::transform([&input](auto i) -> uint64_t {
-                   storm::RationalNumber const& r = input[i / 2];
-                   if (i % 2 == 0) {
-                       // numerator
-                       return static_cast<uint64_t>(storm::utility::convertNumber<int64_t, storm::RationalNumber>(storm::utility::numerator(r)));
-                   } else {
-                       // denominator
-                       // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
-                       STORM_LOG_ASSERT(storm::utility::denominator(r) > 0, "Denominator is not positive: " << storm::utility::denominator(r));
-                       return storm::utility::convertNumber<uint64_t, storm::RationalNumber>(storm::utility::denominator(r));
-                   }
-               });
+        uint64_t minimalIntegerSize = 64;
+        for (auto const& r : input) {
+            minimalIntegerSize = std::max(minimalIntegerSize, getSizeOfIntegerEncoding<true>(storm::utility::numerator(r)));
+            minimalIntegerSize = std::max(minimalIntegerSize, getSizeOfIntegerEncoding<false>(storm::utility::denominator(r)));
+        }
+        // Round up to the next multiple of 64
+        minimalIntegerSize = ((minimalIntegerSize + 63ull) / 64ull) * 64ull;
+        // Each rational number consists of two integers (numerator and denominator)
+        return minimalIntegerSize * 2ull;
     }
 
     template<bool Signed>
-    static uint64_t appendEncodedInteger(std::vector<uint64_t>& result, typename storm::NumberTraits<storm::RationalNumber>::IntegerType const& value) {
+    static void appendEncodedInteger(std::vector<uint64_t>& result, typename storm::NumberTraits<storm::RationalNumber>::IntegerType const& value,
+                                     uint64_t uint64BucketsPerInteger) {
         if constexpr (Signed) {
             if (value < 0) {
                 // Two's complement representation (e.g. -3 is 1111...1101)
                 // We encode the corresponding positive value and then invert the bits.
-                auto buckets = appendEncodedInteger<true>(result, -(value + 1));
+                appendEncodedInteger<true>(result, -(value + 1), uint64BucketsPerInteger);
                 // Invert the bits
-                for (auto& v : std::span<uint64_t>(result.end() - buckets, buckets)) {
+                for (auto& v : std::span<uint64_t>(result.end() - uint64BucketsPerInteger, result.end())) {
                     v = ~v;
                 }
-                return buckets;
             } else {
                 // We encode the non-negative value as if it were unsigned.
-                auto buckets = appendEncodedInteger<false>(result, value);
+                appendEncodedInteger<false>(result, value, uint64BucketsPerInteger);
                 // Special case: the most significant bit must not be set. Otherwise, it would indicate a negative number in two's complement.
-                uint64_t constexpr mostSignificantBitMask = 1ull << 63;
-                if (result.back() & mostSignificantBitMask) {
-                    result.push_back(0);
-                    ++buckets;
-                }
-                return buckets;
+                STORM_LOG_ASSERT((result.back() & (1ull << 63)) == 0ull,
+                                 "Encoding error for positive signed integer: most significant bit is set. Not enough uint64 buckets allocated?");
             }
         } else {
             using IntegerType = typename storm::NumberTraits<storm::RationalNumber>::IntegerType;
@@ -217,57 +211,33 @@ class ValueEncoding {
                 result.push_back(storm::utility::convertNumber<uint64_t, storm::RationalNumber>(divisionResult.second));
                 ++buckets;
             }
-            return buckets;
+            // fill remaining buckets with zeros
+            result.resize(result.size() + (uint64BucketsPerInteger - buckets), 0ull);
         }
     }
 
-    static uint64_t appendEncodedRational(std::vector<uint64_t>& result, storm::RationalNumber const& value) {
+    static void appendEncodedRational(std::vector<uint64_t>& result, storm::RationalNumber const& value, uint64_t uint64BucketsPerInteger) {
         // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
         static_assert(storm::RationalNumberDenominatorAlwaysPositive);
-        auto const numeratorBuckets = appendEncodedInteger<true>(result, storm::utility::numerator(value));       // signed
-        auto const denominatorBuckets = appendEncodedInteger<false>(result, storm::utility::denominator(value));  // unsigned
-
-        if (numeratorBuckets < denominatorBuckets) {
-            // add numerator buckets, requiring to move the denominator buckets to the end
-            auto const oldStartOfDenominator = result.size() - denominatorBuckets;
-            uint64_t const bucketsToAdd = denominatorBuckets - numeratorBuckets;
-            auto const newStartOfDenominator = oldStartOfDenominator + bucketsToAdd;
-
-            // move the denominator buckets to the new position
-            result.resize(result.size() + bucketsToAdd);
-            uint64_t i = result.size() - 1;
-            for (; i >= newStartOfDenominator; --i) {
-                result[i] = result[i - bucketsToAdd];
-            }
-            // fill the added numerator buckets with zeros
-            for (; i >= oldStartOfDenominator; --i) {
-                result[i] = 0;
-            }
-            return denominatorBuckets * 2;
-        } else if (numeratorBuckets > denominatorBuckets) {
-            // add denominator buckets to the end
-            result.resize(result.size() + numeratorBuckets - denominatorBuckets, 0);
-            return numeratorBuckets * 2;
-        } else {
-            // numeratorBuckets == denominatorBuckets
-            return numeratorBuckets * 2;
-        }
+        appendEncodedInteger<true>(result, storm::utility::numerator(value), uint64BucketsPerInteger);     // signed
+        appendEncodedInteger<false>(result, storm::utility::denominator(value), uint64BucketsPerInteger);  // unsigned
     }
 
     template<std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
-    static std::pair<std::vector<uint64_t>, std::vector<uint64_t>> createUint64AndCsrFromRationalRange(InputRange&& input) {
-        std::vector<uint64_t> values, csr;
-        csr.reserve(std::ranges::size(input) + 1);
-        csr.push_back(0);
-        values.reserve(std::ranges::size(input) * 4);  // we guess that on average 256 bits are required per rational number...
+    static std::vector<uint64_t> createUint64FromRationalRange(InputRange&& input, uint64_t const numberSize) {
+        STORM_LOG_ASSERT(numberSize % 128ull == 0ull && numberSize > 0ull, "Type size must be a positive multiple of 128 for rational representation.");
+        auto const uint64BucketsPerNumber = numberSize / 64ull;
+        auto const size = std::ranges::size(input) * uint64BucketsPerNumber;
+
+        std::vector<uint64_t> values;
+        values.reserve(size);
         for (auto const& r : input) {
-            appendEncodedRational(values, r);
-            csr.push_back(values.size() / 2);  // we store the number of 128-bit buckets used for the numerator and denominator
+            appendEncodedRational(values, r, numberSize / 128ull);
         }
         values.shrink_to_fit();
-        csr.shrink_to_fit();
-        return {values, csr};
+        STORM_LOG_ASSERT(values.size() == size, "Unexpected size of encoded rational values: " << values.size() << " vs. " << size);
+        return values;
     }
 
     template<std::ranges::input_range InputRange>

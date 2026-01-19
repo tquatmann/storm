@@ -6,6 +6,7 @@
 #include "storm/storage/umb/model/UmbModel.h"
 #include "storm/utility/macros.h"
 
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/exceptions/WrongFormatException.h"
 
 namespace storm::umb {
@@ -34,6 +35,47 @@ bool validateCsr(auto const& csr, std::string_view const name, uint64_t numMappe
     }
     return true;
 }
+
+bool validateTypeDeclaration(storm::umb::SizedType const& type, bool requireStandardSize, std::ostream& err) {
+    using enum storm::umb::Type;
+    uint64_t const size = type.bitSize();
+    if (size == 0) {
+        err << "Type declaration " << type.toString() << " has size 0.\n";
+        return false;
+    }
+    uint64_t const defaultSize = defaultBitSize(type.type);
+    bool sizeError = false;
+    switch (type.type) {
+        case Double:
+        case DoubleInterval:
+        case String:
+            // types that always must be their default size
+            sizeError = size != defaultSize;
+            break;
+        case Bool:
+        case Int:
+        case Uint:
+        case IntInterval:
+        case UintInterval:
+            // types that occasionally must be their default size
+            sizeError = requireStandardSize && (size != defaultSize);
+            break;
+            // types that occasionally must be a multiple of their default size
+        case Rational:
+        case RationalInterval:
+            // types that occasionally must be their default size
+            sizeError = requireStandardSize && ((size % defaultSize) != 0);
+    }
+    if (isIntervalType(type.type)) {
+        // interval type sizes must be multiples of four or two
+        sizeError = sizeError || (size % (type.type == RationalInterval ? 4 : 2) != 0);
+    }
+    if (sizeError) {
+        err << "Type declaration " << type.toString() << " has invalid bit size: " << size << " (default size is " << defaultSize << ").\n";
+        return false;
+    }
+    return true;
+}
 }  // namespace validation
 
 bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
@@ -42,65 +84,142 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
     bool isValid = true;
 
     // validate counts
-    auto checkNum = [&err](uint64_t num, auto&& name) {
+    auto checkNum = [&err](uint64_t num, auto&& name, uint64_t lowerBound = 0) {
         if (num == storm::umb::ModelIndex::TransitionSystem::InvalidNumber) {
             err << "Number of " << name << " is not set.\n";
+            return false;
+        } else if (num < lowerBound) {
+            err << "Number of " << name << " is " << num << " which is below lower bound " << lowerBound << ".\n";
             return false;
         }
         return true;
     };
     isValid &= checkNum(tsIndex.numPlayers, "players");
-    isValid &= checkNum(tsIndex.numStates, "states");
+    isValid &= checkNum(tsIndex.numStates, "states", 1u);
     isValid &= checkNum(tsIndex.numInitialStates, "initial-states");
     isValid &= checkNum(tsIndex.numChoices, "choices");
-    isValid &= checkNum(tsIndex.numActions, "actions");
+    isValid &= checkNum(tsIndex.numChoiceActions, "choice-actions");
     isValid &= checkNum(tsIndex.numBranches, "branches");
+    isValid &= checkNum(tsIndex.numBranchActions, "branch-actions");
+    isValid &= checkNum(tsIndex.numObservations, "observations");
+
+    // validate types
+    if (tsIndex.branchProbabilityType) {
+        isValid &= validation::validateTypeDeclaration(tsIndex.branchProbabilityType.value(), true, err);
+        if (!isContinuousNumericType(tsIndex.branchProbabilityType->type)) {
+            err << "Branch probability type must be a continuous numeric type.\n";
+            isValid = false;
+        }
+    }
+    if (tsIndex.exitRateType) {
+        isValid &= validation::validateTypeDeclaration(tsIndex.exitRateType.value(), true, err);
+        if (!isContinuousNumericType(tsIndex.exitRateType->type)) {
+            err << "Exit rate type must be a continuous numeric type.\n";
+            isValid = false;
+        }
+    }
+    if (tsIndex.observationProbabilityType) {
+        isValid &= validation::validateTypeDeclaration(tsIndex.observationProbabilityType.value(), true, err);
+        if (!isContinuousNumericType(tsIndex.observationProbabilityType->type)) {
+            err << "Observation probability type must be a continuous numeric type.\n";
+            isValid = false;
+        }
+    }
+
+    if (index.annotations) {
+        for (auto const& [annotationType, annotationMap] : index.annotations.value()) {
+            for (auto const& [name, annotation] : annotationMap) {
+                isValid &= validation::validateTypeDeclaration(annotation.type, true, err);
+                if (annotation.probabilityType) {
+                    isValid &= validation::validateTypeDeclaration(annotation.probabilityType.value(), true, err);
+                    if (!isContinuousNumericType(annotation.probabilityType->type)) {
+                        err << "Probability type for annotation '" << name << "' must be a continuous numeric type.\n";
+                        isValid = false;
+                    }
+                }
+                if (annotationType == "aps") {
+                    if (!isBooleanType(annotation.type.type)) {
+                        err << "Atomic proposition annotation '" << name << "' must be of boolean type.\n";
+                        isValid = false;
+                    }
+                } else if (annotationType == "rewards") {
+                    if (!isNumericType(annotation.type.type)) {
+                        err << "Reward annotation '" << name << "' must have numeric type.\n";
+                        isValid = false;
+                    }
+                }
+            }
+        }
+    }
+
+    if (index.valuations) {
+        boost::pfr::for_each_field_with_name(index.valuations.value(), [&isValid, &err](std::string_view name, auto const& descriptions) {
+            for (auto const& descr : descriptions.value_or(std::vector<ValuationDescription>())) {
+                for (auto const& var : descr.variables) {
+                    if (std::holds_alternative<ValuationDescription::Variable>(var)) {
+                        auto const& variable = std::get<ValuationDescription::Variable>(var);
+                        if (variable.name.empty()) {
+                            err << name << " valuation description has a variable with an empty name.\n";
+                            isValid = false;
+                        }
+                        isValid &= validation::validateTypeDeclaration(variable.type, false, err);
+                    }
+                }
+                if (descr.sizeInBits() % 8 != 0) {
+                    err << name << " valuation description has size " << descr.sizeInBits() << " bits which is not a multiple of 8.\n";
+                    isValid = false;
+                }
+            }
+        });
+    }
 
     // Validate CSR mappings
     auto sizeOr = [](auto&& input, std::size_t defaultValue) { return input.has_value() ? input->size() : defaultValue; };
-    isValid &= validation::validateCsr(umbModel.states.stateToChoice, "state-to-choice", tsIndex.numStates, tsIndex.numChoices, err);
-    isValid &= validation::validateCsr(umbModel.choices.choiceToBranch, "choice-to-branch", tsIndex.numChoices, tsIndex.numBranches, err);
+    isValid &= validation::validateCsr(umbModel.stateToChoices, "state-to-choice", tsIndex.numStates, tsIndex.numChoices, err);
+    isValid &= validation::validateCsr(umbModel.choiceToBranches, "choice-to-branch", tsIndex.numChoices, tsIndex.numBranches, err);
     // todo: check what the default behavior of action strings is.
     // isValid &= validation::validateCsr(umbModel.choices.actionToActionString, "action-to-action-strings", tsIndex.numActions,
     //                                   sizeOr(umbModel.choices.actionStrings, 0), err);
 
-    // Validate state valuations
-    if (index.stateValuations.has_value() != umbModel.states.stateValuations.has_value()) {
-        if (index.stateValuations.has_value()) {
-            err << "State valuations described in index file but not present.\n";
-        } else {
-            err << "State valuations present but not described in index file.\n";
-        }
-        isValid = false;
-    } else if (index.stateValuations.has_value()) {
-        uint64_t const alignment = index.stateValuations->alignment;
-        uint64_t const numBytes = umbModel.states.stateValuations->size();
-        if (alignment == 0) {
-            err << "State valuation alignment is 0.\n";
-            isValid = false;
-        }
-        if (numBytes % alignment != 0) {
-            err << "State valuation data size is " << umbModel.states.stateValuations->size() << " which is not a multiple of the alignment '" << alignment
-                << "'.\n";
-            isValid = false;
-        }
-        isValid &= validation::validateCsr(umbModel.states.stateToValuation, "state-to-valuation", tsIndex.numStates, numBytes / alignment, err);
-    }
-
-    // Validate other inputs
-    if (!umbModel.branches.branchToTarget.has_value()) {
-        err << "Branch to target mapping is missing.\n";
-        isValid = false;
-    } else if (umbModel.branches.branchToTarget->size() != tsIndex.numBranches) {
-        err << "Branch to target mapping has invalid size: " << umbModel.branches.branchToTarget->size() << " != " << tsIndex.numBranches << ".\n";
-        isValid = false;
-    }
-    if (!umbModel.branches.branchProbabilities.hasValue()) {
-        err << "Branch probabilities are missing.";
-        isValid = false;
-    }
-
     // TODO: add more validations
+
+    //    // Validate state valuations
+    //    if (index.stateValuations.has_value() != umbModel.states.stateValuations.has_value()) {
+    //        if (index.stateValuations.has_value()) {
+    //            err << "State valuations described in index file but not present.\n";
+    //        } else {
+    //            err << "State valuations present but not described in index file.\n";
+    //        }
+    //        isValid = false;
+    //    } else if (index.stateValuations.has_value()) {
+    //        uint64_t const alignment = index.stateValuations->alignment;
+    //        uint64_t const numBytes = umbModel.states.stateValuations->size();
+    //        if (alignment == 0) {
+    //            err << "State valuation alignment is 0.\n";
+    //            isValid = false;
+    //        }
+    //        if (numBytes % alignment != 0) {
+    //            err << "State valuation data size is " << umbModel.states.stateValuations->size() << " which is not a multiple of the alignment '" <<
+    //            alignment
+    //                << "'.\n";
+    //            isValid = false;
+    //        }
+    //        isValid &= validation::validateCsr(umbModel.states.stateToValuation, "state-to-valuation", tsIndex.numStates, numBytes / alignment, err);
+    //    }
+    //
+    //    // Validate other inputs
+    //    if (!umbModel.branches.branchToTarget.has_value()) {
+    //        err << "Branch to target mapping is missing.\n";
+    //        isValid = false;
+    //    } else if (umbModel.branches.branchToTarget->size() != tsIndex.numBranches) {
+    //        err << "Branch to target mapping has invalid size: " << umbModel.branches.branchToTarget->size() << " != " << tsIndex.numBranches << ".\n";
+    //        isValid = false;
+    //    }
+    //    if (!umbModel.branches.branchToProbability.hasValue()) {
+    //        err << "Branch probabilities are missing.";
+    //        isValid = false;
+    //    }
+
     // If prob type is rational, probabilities are either rational or uint64
     // if annotation forStates/forChoices/forBranches is set, values are set too
     // annotations in index are unique, and present as files
