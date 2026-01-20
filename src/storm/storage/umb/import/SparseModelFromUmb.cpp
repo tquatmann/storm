@@ -3,8 +3,8 @@
 #include <ranges>
 #include <utility>
 
-#include "storm/storage/umb/model/StateValuations.h"
 #include "storm/storage/umb/model/UmbModel.h"
+#include "storm/storage/umb/model/Valuations.h"
 
 #include "storm/models/ModelType.h"
 #include "storm/models/sparse/Ctmc.h"
@@ -205,12 +205,16 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> constructSparseModel(st
         STORM_LOG_THROW(umbModel.valuations.states.has_value() && umbModel.valuations.states->valuations.has_value(), storm::exceptions::WrongFormatException,
                         "State valuations mentioned in the index but no files given.");
         auto const& sv = umbModel.valuations.states.value();
-        storm::umb::StateValuations stateValuations(umbModel.index.valuations->states.value(), sv.valuations.value(), sv.valuationToClass, sv.stringMapping,
-                                                    sv.strings);
-        uint64_t i = 0;
-        for (auto const& val : stateValuations.getRange()) {
-            std::cout << "\n" << i++ << ": \t";
-            val.forEachAssignment([&i](auto const& value) { std::cout << value << ", "; });
+        storm::umb::Valuations stateValuations(umbModel.index.valuations->states.value().classes, sv.valuations.value(), sv.valuationToClass);
+        for (uint64_t state = 0; state < stateValuations.size(); ++state) {
+            std::cout << state << "=[";
+            stateValuations.read(state, [](uint64_t state, storm::expressions::Variable const& var, auto const& value) {
+                if constexpr (std::is_same_v<std::remove_cvref_t<decltype(value)>, std::nullopt_t>) {
+                    std::cout << "null, ";
+                } else {
+                    std::cout << value << ", ";
+                }
+            });
             std::cout << std::endl;
         }
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "State valuations are not yet supported.");

@@ -1,7 +1,7 @@
 #include "storm/storage/umb/model/ValuationDescription.h"
 
 namespace storm::umb {
-uint64_t ValuationDescription::sizeInBits() const {
+uint64_t ValuationClassDescription::sizeInBits() const {
     uint64_t totalSize = 0;
     for (auto const& variable : variables) {
         if (std::holds_alternative<Padding>(variable)) {

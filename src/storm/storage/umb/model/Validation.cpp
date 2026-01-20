@@ -153,11 +153,14 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
     }
 
     if (index.valuations) {
-        boost::pfr::for_each_field_with_name(index.valuations.value(), [&isValid, &err](std::string_view name, auto const& descriptions) {
-            for (auto const& descr : descriptions.value_or(std::vector<ValuationDescription>())) {
+        boost::pfr::for_each_field_with_name(index.valuations.value(), [&isValid, &err](std::string_view name, auto const& description) {
+            if (!description.has_value()) {
+                return;
+            }
+            for (auto const& descr : description->classes) {
                 for (auto const& var : descr.variables) {
-                    if (std::holds_alternative<ValuationDescription::Variable>(var)) {
-                        auto const& variable = std::get<ValuationDescription::Variable>(var);
+                    if (std::holds_alternative<ValuationClassDescription::Variable>(var)) {
+                        auto const& variable = std::get<ValuationClassDescription::Variable>(var);
                         if (variable.name.empty()) {
                             err << name << " valuation description has a variable with an empty name.\n";
                             isValid = false;

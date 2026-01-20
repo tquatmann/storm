@@ -78,7 +78,6 @@ struct ModelIndex {
 
     struct Annotation {
         std::optional<std::string> alias, description;
-        std::optional<int64_t> lower, upper;
         enum class AppliesTo { States, Choices, Branches, Observations };
         struct AppliesToDeclaration {
             using Values = AppliesTo;
@@ -86,8 +85,10 @@ struct ModelIndex {
         };
         std::vector<storm::SerializedEnum<AppliesToDeclaration>> appliesTo;
         SizedType type;
+        std::optional<int64_t> lower, upper;
+        std::optional<uint64_t> numStrings;
         std::optional<SizedType> probabilityType;
-        auto static constexpr JsonKeys = {"alias", "description", "lower", "upper", "applies-to", "type", "probability-type"};
+        auto static constexpr JsonKeys = {"alias", "description", "applies-to", "type", "lower", "upper", "strings", "probability-type"};
         using JsonSerialization = storm::JsonSerialization;
 
         /*!
@@ -106,7 +107,7 @@ struct ModelIndex {
     std::optional<std::map<std::string, AnnotationMap>> annotations;
 
     struct Valuations {
-        std::optional<std::vector<ValuationDescription>> states, choices, branches, observations;
+        std::optional<ValuationDescription> states, choices, branches, observations;
         auto static constexpr JsonKeys = {"states", "choices", "branches", "observations"};
         using JsonSerialization = storm::JsonSerialization;
     };

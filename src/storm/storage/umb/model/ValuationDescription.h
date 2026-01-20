@@ -9,8 +9,7 @@
 #include "storm/storage/umb/model/Type.h"
 
 namespace storm::umb {
-
-struct ValuationDescription {
+struct ValuationClassDescription {
     struct Padding {
         uint64_t padding{0};
         static auto constexpr JsonKeys = {"padding"};
@@ -33,5 +32,13 @@ struct ValuationDescription {
      * The size is the sum of all padding and size values plus 1 for each variable where isOptional is true.
      */
     uint64_t sizeInBits() const;
+};
+
+struct ValuationDescription {
+    bool unique{false};
+    std::optional<uint64_t> numStrings;
+    std::vector<ValuationClassDescription> classes;
+    static auto constexpr JsonKeys = {"unique", "#strings", "classes"};
+    using JsonSerialization = storm::JsonSerialization;
 };
 }  // namespace storm::umb
