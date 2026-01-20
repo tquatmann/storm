@@ -26,12 +26,13 @@ TEST(UmbTest, RationalEncoding) {
     values[7] = int64min / uint64max;
 
     auto const simpleRationals = std::span<storm::RationalNumber>(values.data(), 8);
-    ASSERT_FALSE(storm::umb::ValueEncoding::rationalVectorRequiresCsr(simpleRationals));
-    auto encodedSimple = storm::umb::ValueEncoding::rationalToUint64ViewNoCsr(simpleRationals);
-    auto decodedSimple = storm::umb::ValueEncoding::uint64ToRationalRangeView(encodedSimple);
-    ASSERT_EQ(simpleRationals.size(), decodedSimple.size());
+    ASSERT_EQ(128ull, storm::umb::ValueEncoding::getMinimalRationalSize(simpleRationals, false));
+    ASSERT_EQ(128ull, storm::umb::ValueEncoding::getMinimalRationalSize(simpleRationals, true));
+    auto encoded1 = storm::umb::ValueEncoding::createUint64FromRationalRange(simpleRationals, 128ull);
+    auto decoded1 = storm::umb::ValueEncoding::uint64ToRationalRangeView(encoded1, 128ull);
+    ASSERT_EQ(simpleRationals.size(), decoded1.size());
     for (size_t i = 0; i < simpleRationals.size(); ++i) {
-        EXPECT_EQ(simpleRationals[i], decodedSimple[i]) << " at index " << i;
+        EXPECT_EQ(simpleRationals[i], decoded1[i]) << " at index " << i;
     }
 
     // The following values are chosen such that they are not representable with two 64-bit numbers.
@@ -49,11 +50,13 @@ TEST(UmbTest, RationalEncoding) {
     values[15] = -values[13];
     values[16] = -values[14];
 
-    ASSERT_TRUE(storm::umb::ValueEncoding::rationalVectorRequiresCsr(values));
-    auto [encoded, csr] = storm::umb::ValueEncoding::createUint64AndCsrFromRationalRange(values);
-    auto decoded = storm::umb::ValueEncoding::uint64ToRationalRangeView(encoded, csr);
-    ASSERT_EQ(values.size(), decoded.size());
+    ASSERT_EQ(1616ull, storm::umb::ValueEncoding::getMinimalRationalSize(values, false));
+    ASSERT_EQ(1664ull, storm::umb::ValueEncoding::getMinimalRationalSize(values, true));
+    auto encoded2 = storm::umb::ValueEncoding::createUint64FromRationalRange(values, 1664ull);
+    auto decoded2 = storm::umb::ValueEncoding::uint64ToRationalRangeView(encoded2, 1664ull);
+
+    ASSERT_EQ(values.size(), decoded2.size());
     for (size_t i = 0; i < values.size(); ++i) {
-        EXPECT_EQ(values[i], decoded[i]) << " at index " << i;
+        EXPECT_EQ(values[i], decoded2[i]) << " at index " << i;
     }
 }

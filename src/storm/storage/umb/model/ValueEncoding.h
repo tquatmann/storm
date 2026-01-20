@@ -83,17 +83,6 @@ class ValueEncoding {
             input, sourceType);
     }
 
-    template<std::ranges::input_range InputRange>
-        requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
-    static auto uint64ToRationalRangeView(InputRange&& input) {
-        STORM_LOG_ASSERT(std::ranges::size(input) % 2 == 0, "Input size is not even: " << std::ranges::size(input));
-        return std::ranges::iota_view(0ull, std::ranges::size(input) / 2) | std::ranges::views::transform([&input](auto i) -> storm::RationalNumber {
-                   // numerator is signed
-                   return storm::utility::convertNumber<storm::RationalNumber>(static_cast<int64_t>(input[2 * i])) /
-                          storm::utility::convertNumber<storm::RationalNumber>(input[2 * i + 1]);
-               });
-    }
-
     template<bool Signed, std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
     static storm::NumberTraits<storm::RationalNumber>::IntegerType decodeArbitraryPrecisionInteger(InputRange&& input) {
@@ -155,6 +144,10 @@ class ValueEncoding {
         // The bitsize method returns the smallest n with -2^n <= x < 2^n.
         if constexpr (Signed) {
             // For signed integers, we need one additional bit for the sign.
+            // the only exception is when value is equal to -2^n, in which case we don't need that extra bit.
+            if (value < 0) {
+                return storm::utility::bitsize(typename storm::NumberTraits<storm::RationalNumber>::IntegerType(value + 1)) + 1;
+            }
             return storm::utility::bitsize(value) + 1;
         } else {
             // For unsigned integers, we get n with 2^{n-1} <= x < 2^n.
@@ -164,16 +157,18 @@ class ValueEncoding {
 
     template<std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, storm::RationalNumber>
-    static uint64_t getMinimalRationalSize(InputRange&& input) {
+    static uint64_t getMinimalRationalSize(InputRange&& input, bool multiplesOf64) {
         // We may assume that the denominator is always positive as this is a requirement for both GMP and CLN
         static_assert(storm::RationalNumberDenominatorAlwaysPositive);
-        uint64_t minimalIntegerSize = 64;
+        uint64_t minimalIntegerSize = 1;
         for (auto const& r : input) {
             minimalIntegerSize = std::max(minimalIntegerSize, getSizeOfIntegerEncoding<true>(storm::utility::numerator(r)));
             minimalIntegerSize = std::max(minimalIntegerSize, getSizeOfIntegerEncoding<false>(storm::utility::denominator(r)));
         }
-        // Round up to the next multiple of 64
-        minimalIntegerSize = ((minimalIntegerSize + 63ull) / 64ull) * 64ull;
+        if (multiplesOf64) {
+            // Round up to the next multiple of 64
+            minimalIntegerSize = ((minimalIntegerSize + 63ull) / 64ull) * 64ull;
+        }
         // Each rational number consists of two integers (numerator and denominator)
         return minimalIntegerSize * 2ull;
     }

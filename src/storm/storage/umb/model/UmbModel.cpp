@@ -104,7 +104,7 @@ void UmbModel::validateOrThrow() const {
 void UmbModel::encodeRationals() {
     auto getSize = [](storm::umb::GenericVector& v) -> uint64_t {
         if (v.isType<storm::RationalNumber>()) {
-            return ValueEncoding::getMinimalRationalSize(v.template get<storm::RationalNumber>());
+            return ValueEncoding::getMinimalRationalSize(v.template get<storm::RationalNumber>(), true);
         }
         return 0ull;
     };
