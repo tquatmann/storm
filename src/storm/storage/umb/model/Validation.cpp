@@ -177,12 +177,8 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
     }
 
     // Validate CSR mappings
-    auto sizeOr = [](auto&& input, std::size_t defaultValue) { return input.has_value() ? input->size() : defaultValue; };
     isValid &= validation::validateCsr(umbModel.stateToChoices, "state-to-choice", tsIndex.numStates, tsIndex.numChoices, err);
     isValid &= validation::validateCsr(umbModel.choiceToBranches, "choice-to-branch", tsIndex.numChoices, tsIndex.numBranches, err);
-    // todo: check what the default behavior of action strings is.
-    // isValid &= validation::validateCsr(umbModel.choices.actionToActionString, "action-to-action-strings", tsIndex.numActions,
-    //                                   sizeOr(umbModel.choices.actionStrings, 0), err);
 
     // TODO: add more validations
 
