@@ -265,7 +265,7 @@ class Valuations {
         STORM_LOG_ASSERT(numBytes <= 9, "Invalid number of bytes computed: " << numBytes);
         uint64_t result;
         // set the first (up to) 8 bytes
-        std::memcpy(&result, &bytes[firstByte], std::min(numBytes, 8ull));
+        std::memcpy(&result, &bytes[firstByte], std::min<uint64_t>(numBytes, 8ull));
         result >>= bitOffsetWithinByte;
         // if necessary, set the most significant bits by reading a 9th byte
         if (numBytes == 9ull) {

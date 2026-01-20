@@ -68,7 +68,6 @@ uint64_t choiceOriginsToUmb(storm::storage::sparse::ChoiceOrigins const& choiceO
     auto& choiceToAction = umb.choiceActions.emplace().values.emplace();
     choiceToAction.reserve(choiceOrigins.getNumberOfChoices());
     for (uint64_t c = 0; c < choiceOrigins.getNumberOfChoices(); ++c) {
-        auto const& choiceId = choiceOrigins.getIdentifier(c);
         choiceToAction.push_back(choiceOrigins.getIdentifier(c));
     }
 

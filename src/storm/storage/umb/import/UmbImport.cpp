@@ -235,7 +235,7 @@ storm::umb::UmbModel fromArchive(std::filesystem::path const& umbArchive, Import
         }
     }
     STORM_LOG_THROW(indexFound, storm::exceptions::FileIoException, "File 'index.json' not found in UMB archive.");
-    STORM_LOG_TRACE("Index file found in umb archive " << umbArchive << ": \n" << storm::dumpJson(storm::json<storm::RationalNumber>(result->index)));
+    STORM_LOG_TRACE("Index file found in umb archive " << umbArchive << ": \n" << storm::dumpJson(storm::json<storm::RationalNumber>(umbModel.index)));
     std::cout << "First pass: Index file loaded in " << stopwatch << " seconds.\n";  // TODO: remove this output
     std::cout << "Index file is #" << i << " file in the archive.\n";
     stopwatch.restart();
