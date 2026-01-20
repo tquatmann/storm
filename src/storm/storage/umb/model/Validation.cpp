@@ -153,7 +153,7 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
     }
 
     if (index.valuations) {
-        boost::pfr::for_each_field_with_name(index.valuations.value(), [&isValid, &err](std::string_view name, auto const& description) {
+        boost::pfr::for_each_field(index.valuations.value(), [&isValid, &err](auto const& description) {
             if (!description.has_value()) {
                 return;
             }
@@ -162,14 +162,14 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
                     if (std::holds_alternative<ValuationClassDescription::Variable>(var)) {
                         auto const& variable = std::get<ValuationClassDescription::Variable>(var);
                         if (variable.name.empty()) {
-                            err << name << " valuation description has a variable with an empty name.\n";
+                            err << "A valuation description has a variable with an empty name.\n";
                             isValid = false;
                         }
                         isValid &= validation::validateTypeDeclaration(variable.type, false, err);
                     }
                 }
                 if (descr.sizeInBits() % 8 != 0) {
-                    err << name << " valuation description has size " << descr.sizeInBits() << " bits which is not a multiple of 8.\n";
+                    err << "A valuation description has size " << descr.sizeInBits() << " bits which is not a multiple of 8.\n";
                     isValid = false;
                 }
             }
