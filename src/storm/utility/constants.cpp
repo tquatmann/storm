@@ -317,8 +317,6 @@ uint64_t bitsize(ValueType const& number) {
     if constexpr (std::is_same_v<ValueType, uint64_t>) {
         return std::bit_width(number);
     } else {
-        static_assert(std::is_same_v<ValueType, GmpIntegerNumber> || std::is_same_v<ValueType, ClnIntegerNumber>,
-                      "bitsize is only implemented for uint64_t, GmpIntegerNumber, and ClnRationalNumber.");
         if (storm::utility::isZero(number)) {
             return 0;
         } else {
