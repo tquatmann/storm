@@ -17,72 +17,6 @@ namespace storm::umb {
 
 class ValueEncoding {
    public:
-    /*!
-     * returns func(<decoded_input>) where <decoded_input> is a range that (if necessary) decodes and converts the given input.
-     * @param func a function that takes a range of value type and returns the result
-     * @param input the input vector
-     * @param sourceType The type that the input vector represents
-     * @param sourceTypeSize the number of bits of the encoding for the source type. This is necessary for non-trivially encoded source types (like rational).
-     * @return
-     */
-    template<typename ValueType>
-    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
-        STORM_LOG_ASSERT(input.hasValue(), "Input vector is not set.");
-        using enum storm::umb::Type;
-
-        // find out how to interpret the input values
-        switch (sourceType.type) {
-            case Double:
-                STORM_LOG_WARN_COND(
-                    !storm::NumberTraits<ValueType>::IsExact,
-                    "Some values are given in type double but will be converted to an exact (arbitrary precision) type. Rounding errors may occur.");
-                STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for values. Expected double.");
-                STORM_LOG_ASSERT(sourceType.bitSize() == 64, "Unexpected source type size for double representation. Expected 64.");
-                return func(conversionView<ValueType>(input.template get<double>()));
-            case Rational:
-                STORM_LOG_WARN_COND(storm::NumberTraits<ValueType>::IsExact,
-                                    "Some values are given in an exact type but converted to an inexact type. Rounding errors may occur.");
-                if (input.template isType<storm::RationalNumber>()) {
-                    return func(conversionView<ValueType>(input.template get<storm::RationalNumber>()));
-                } else {
-                    STORM_LOG_ASSERT(input.template isType<uint64_t>(), "Unexpected type for rational representation. Expected uint64.");
-                    // Only this case requires the source type size. It is optional in all other cases.
-                    return func(conversionView<ValueType>(uint64ToRationalRangeView(input.template get<uint64_t>(), sourceType.bitSize())));
-                }
-            case DoubleInterval:
-                // For intervals, there is no suitable value conversion since we would drop the uncertainty
-                if constexpr (!std::is_same_v<ValueType, storm::Interval>) {
-                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
-                                    "Some values are given as double intervals but a model with a non-interval type is requested.");
-                    return func(std::ranges::empty_view<ValueType>{});
-                } else {
-                    STORM_LOG_ASSERT(sourceType.bitSize() == 128ull, "Unexpected source type size for double representation. Expected 64.");
-                    if (input.template isType<storm::Interval>()) {
-                        return func(input.template get<storm::Interval>());
-                    } else {
-                        STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for double interval representation. Expected double.");
-                        return func(doubleToIntervalRangeView(input.template get<double>()));
-                    }
-                }
-            default:
-                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Values have unsupported type " << sourceType.toString() << ".");
-        }
-    }
-
-    template<typename ValueType>
-    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
-        return applyDecodedVector<ValueType>(
-            [](auto&& decodedInput) {
-                std::vector<ValueType> v;
-                v.reserve(std::ranges::size(decodedInput));
-                for (auto&& value : decodedInput) {
-                    v.push_back(value);
-                }
-                return v;
-            },
-            input, sourceType);
-    }
-
     template<bool Signed, std::ranges::input_range InputRange>
         requires std::same_as<std::ranges::range_value_t<InputRange>, uint64_t>
     static storm::NumberTraits<storm::RationalNumber>::IntegerType decodeArbitraryPrecisionInteger(InputRange&& input) {
@@ -255,17 +189,80 @@ class ValueEncoding {
                });
     }
 
-   private:
-    template<typename TargetType, std::ranges::range Range>
-    static auto conversionView(Range&& input) {
-        using SourceType = std::ranges::range_value_t<Range>;
-        if constexpr (std::same_as<TargetType, SourceType>) {
-            return input;
-        } else {
-            return input | std::ranges::views::transform(
-                               [](SourceType const& value) -> TargetType { return storm::utility::convertNumber<TargetType, SourceType>(value); });
+    /*!
+     * returns func(<decoded_input>) where <decoded_input> is a range that (if necessary) decodes and converts the given input.
+     * @param func a function that takes a range of value type and returns the result
+     * @param input the input vector
+     * @param sourceType The type that the input vector represents
+     * @param sourceTypeSize the number of bits of the encoding for the source type. This is necessary for non-trivially encoded source types (like rational).
+     * @return
+     */
+    template<typename ValueType>
+    static auto applyDecodedVector(auto&& func, storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
+        STORM_LOG_ASSERT(input.hasValue(), "Input vector is not set.");
+        auto conversionView = [](auto&& input) {
+            using SourceType = std::ranges::range_value_t<decltype(input)>;
+            if constexpr (std::same_as<ValueType, SourceType>) {
+                return input;
+            } else {
+                return input | std::ranges::views::transform(
+                                   [](SourceType const& value) -> ValueType { return storm::utility::convertNumber<ValueType, SourceType>(value); });
+            }
+        };
+
+        using enum storm::umb::Type;
+
+        // find out how to interpret the input values
+        switch (sourceType.type) {
+            case Double:
+                STORM_LOG_WARN_COND(
+                    !storm::NumberTraits<ValueType>::IsExact,
+                    "Some values are given in type double but will be converted to an exact (arbitrary precision) type. Rounding errors may occur.");
+                STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for values. Expected double.");
+                STORM_LOG_ASSERT(sourceType.bitSize() == 64, "Unexpected source type size for double representation. Expected 64.");
+                return func(conversionView(input.template get<double>()));
+            case Rational:
+                STORM_LOG_WARN_COND(storm::NumberTraits<ValueType>::IsExact,
+                                    "Some values are given in an exact type but converted to an inexact type. Rounding errors may occur.");
+                if (input.template isType<storm::RationalNumber>()) {
+                    return func(conversionView(input.template get<storm::RationalNumber>()));
+                } else {
+                    STORM_LOG_ASSERT(input.template isType<uint64_t>(), "Unexpected type for rational representation. Expected uint64.");
+                    // Only this case requires the source type size. It is optional in all other cases.
+                    return func(conversionView(uint64ToRationalRangeView(input.template get<uint64_t>(), sourceType.bitSize())));
+                }
+            case DoubleInterval:
+                // For intervals, there is no suitable value conversion since we would drop the uncertainty
+                if constexpr (!std::is_same_v<ValueType, storm::Interval>) {
+                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
+                                    "Some values are given as double intervals but a model with a non-interval type is requested.");
+                    return func(std::ranges::empty_view<ValueType>{});
+                } else {
+                    STORM_LOG_ASSERT(sourceType.bitSize() == 128ull, "Unexpected source type size for double representation. Expected 64.");
+                    if (input.template isType<storm::Interval>()) {
+                        return func(input.template get<storm::Interval>());
+                    } else {
+                        STORM_LOG_ASSERT(input.template isType<double>(), "Unexpected type for double interval representation. Expected double.");
+                        return func(doubleToIntervalRangeView(input.template get<double>()));
+                    }
+                }
+            default:
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Values have unsupported type " << sourceType.toString() << ".");
         }
     }
-};
 
+    template<typename ValueType>
+    static std::vector<ValueType> createDecodedVector(storm::umb::GenericVector const& input, storm::umb::SizedType const& sourceType) {
+        return applyDecodedVector<ValueType>(
+            [](auto&& decodedInput) {
+                std::vector<ValueType> v;
+                v.reserve(std::ranges::size(decodedInput));
+                for (auto&& value : decodedInput) {
+                    v.push_back(value);
+                }
+                return v;
+            },
+            input, sourceType);
+    }
+};
 }  // namespace storm::umb
