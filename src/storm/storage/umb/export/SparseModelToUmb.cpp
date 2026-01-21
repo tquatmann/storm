@@ -321,7 +321,7 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
     ts.numObservations = model.isPartiallyObservable() ? ModelIndex::TransitionSystem::InvalidNumber : 0;  // observation count set later
 
     auto const exportType = getExportType<ValueType>(options);
-    ts.branchProbabilityType = storm::umb::SizedType(exportType, defaultBitSize(exportType));
+    ts.branchProbabilityType = {exportType, defaultBitSize(exportType)};
     if (ts.time != storm::umb::ModelIndex::TransitionSystem::Time::Discrete) {
         ts.exitRateType = ts.branchProbabilityType;
     }
