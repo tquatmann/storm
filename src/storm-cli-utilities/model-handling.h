@@ -741,6 +741,9 @@ void exportModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
 
     if (ioSettings.isExportBuildSet()) {
+        storm::utility::Stopwatch modelExportWatch;
+        modelExportWatch.start();
+        STORM_PRINT("\nExporting model to '" << ioSettings.getExportBuildFilename() << "'.\n");
         switch (ioSettings.getExportBuildFormat()) {
             case storm::io::ModelExportFormat::Dot:
                 storm::api::exportSparseModelAsDot(model, ioSettings.getExportBuildFilename(), ioSettings.getExportDotMaxWidth());
@@ -763,6 +766,8 @@ void exportModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                                 "Exporting sparse models in " << storm::io::toString(ioSettings.getExportBuildFormat()) << " format is not supported.");
         }
+        modelExportWatch.stop();
+        STORM_PRINT("Time for model export: " << modelExportWatch << ".\n\n");
     }
 
     // TODO: The following options are depreciated and shall be removed at some point:

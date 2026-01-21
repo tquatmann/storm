@@ -25,7 +25,7 @@ void ModelIndex::FileData::setCreationDateToNow() {
     }
 }
 
-constexpr std::string DefaultAnnotationAlias = "default";
+const std::string DefaultAnnotationAlias = "default";
 
 std::string ModelIndex::Annotation::getValidIdentifierFromAlias(std::string const& alias) {
     auto isAllowed = [](auto ch) { return (std::isalnum(ch) && !std::isupper(ch)) || ch == '_' || ch == '-'; };

@@ -41,7 +41,7 @@ class Valuations {
         if (classes.has_value()) {
             STORM_LOG_ASSERT(classes->size() == descriptions.size(), "Mismatch between number of descriptions and class mapping.");
             uniqueSizeInBytes = std::numeric_limits<uint64_t>::max();  // not unique
-            this->classes.emplace(std::move(*classes), std::vector<uint64_t>{1, 0});
+            this->classes = {std::move(*classes), std::vector<uint64_t>{1, 0}};
             std::vector<uint64_t> classSizesInBytes;
             for (auto const& descr : descriptions) {
                 classSizesInBytes.push_back(descr.sizeInBits() / 8);
