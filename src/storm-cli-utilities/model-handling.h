@@ -593,9 +593,13 @@ std::shared_ptr<storm::models::ModelBase> buildModelExplicit(storm::settings::mo
         options.buildStateValuations = buildSettings.isBuildStateValuationsSet();
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "RationalFunction currently not supported for UMB models.");
+        } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+            options.valueType = umb::ImportOptions::ValueType::Rational;
         } else {
-            result = storm::api::buildExplicitUmbModel<ValueType>(ioSettings.getExplicitUmbFilename(), options);
+            static_assert(std::is_same_v<ValueType, double>, "Unhandled value type.");
+            options.valueType = umb::ImportOptions::ValueType::Double;
         }
+        result = storm::api::buildExplicitUmbModel(ioSettings.getExplicitUmbFilename(), options);
     } else {
         STORM_LOG_THROW(ioSettings.isExplicitIMCASet(), storm::exceptions::InvalidSettingsException, "Unexpected explicit model input type.");
         result = storm::api::buildExplicitIMCAModel<ValueType>(ioSettings.getExplicitIMCAFilename());

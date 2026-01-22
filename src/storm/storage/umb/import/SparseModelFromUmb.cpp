@@ -7,11 +7,6 @@
 #include "storm/storage/umb/model/Valuations.h"
 
 #include "storm/models/ModelType.h"
-#include "storm/models/sparse/Ctmc.h"
-#include "storm/models/sparse/Dtmc.h"
-#include "storm/models/sparse/MarkovAutomaton.h"
-#include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/Smg.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/storage/sparse/ModelComponents.h"
@@ -298,8 +293,46 @@ storm::models::ModelType deriveModelType(storm::umb::ModelIndex const& index) {
 }
 
 template<typename ValueType>
+bool deriveValueType(storm::umb::ModelIndex const& index, ImportOptions const& options) {
+    STORM_LOG_THROW(index.transitionSystem.branchProbabilityType.has_value(), storm::exceptions::NotSupportedException,
+                    "Models without branch values are not supported.");
+    bool const haveDouble = index.transitionSystem.branchProbabilityType->type == storm::umb::Type::Double;
+    bool const haveRational = index.transitionSystem.branchProbabilityType->type == storm::umb::Type::Rational;
+    bool const haveInterval = index.transitionSystem.branchProbabilityType->type == storm::umb::Type::DoubleInterval;
+    bool const useDefault = options.valueType == ImportOptions::ValueType::Default;
+    bool const useDouble = options.valueType == ImportOptions::ValueType::Double;
+    bool const useRational = options.valueType == ImportOptions::ValueType::Rational;
+
+    STORM_LOG_ASSERT(useDefault || useDouble || useRational, "Unexpected value type option: " << static_cast<int>(options.valueType) << ".");
+
+    if constexpr (std::is_same_v<ValueType, double>) {
+        return (useDefault && haveDouble) || (useDouble && !haveInterval);
+    } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+        return (useDefault && haveRational) || (useRational && !haveInterval);
+    } else {
+        static_assert(std::is_same_v<ValueType, storm::Interval>, "Unhandled value type");
+        // Rational intervals currently not supported.
+        return (useDefault && haveInterval) || (useDouble && haveInterval);
+    }
+}
+
+template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> sparseModelFromUmb(storm::umb::UmbModel const& umbModel, ImportOptions const& options) {
     return detail::constructSparseModel<ValueType>(umbModel, options);
+}
+
+std::shared_ptr<storm::models::ModelBase> sparseModelFromUmb(storm::umb::UmbModel const& umbModel, ImportOptions const& options) {
+    if (deriveValueType<double>(umbModel.index, options)) {
+        return detail::constructSparseModel<double>(umbModel, options);
+    } else if (deriveValueType<storm::RationalNumber>(umbModel.index, options)) {
+        return detail::constructSparseModel<storm::RationalNumber>(umbModel, options);
+    } else if (deriveValueType<storm::Interval>(umbModel.index, options)) {
+        return detail::constructSparseModel<storm::Interval>(umbModel, options);
+    } else {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
+                        "Could not derive a supported value type for the UMB model with branch probabilities of type "
+                            << umbModel.index.transitionSystem.branchProbabilityType->toString() << ".");
+    }
 }
 
 template std::shared_ptr<storm::models::sparse::Model<double>> sparseModelFromUmb<double>(storm::umb::UmbModel const& umbModel, ImportOptions const& options);

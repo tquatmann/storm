@@ -33,10 +33,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDRNModel(
     return storm::parser::DirectEncodingParser<ValueType>::parseModel(drnFile, options);
 }
 
-template<typename ValueType>
-    requires(!std::is_same_v<ValueType, storm::RationalFunction>)  // RationalFunction currently not supported for UMB models
-std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitUmbModel(std::string const& umbLocation, storm::umb::ImportOptions const& options = {}) {
-    return storm::umb::parseModelFromUmb<ValueType>(umbLocation, options);
+std::shared_ptr<storm::models::ModelBase> buildExplicitUmbModel(std::string const& umbLocation, storm::umb::ImportOptions const& options = {}) {
+    return storm::umb::buildModelFromUmb(umbLocation, options);
 }
 
 template<typename ValueType>
