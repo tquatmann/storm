@@ -1016,6 +1016,7 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
     [[maybe_unused]] SolutionType rationalCandiate = middle;  // relevant for exact computations
     [[maybe_unused]] uint64_t rationalCandidateCount = 0;
     std::set<SolutionType> checkedMiddleValues;  // Middle values that have been checked already
+    bool terminatedThroughPolicyTracking = false;
     for (uint64_t iterationCount = 1; true; ++iterationCount) {
         // evaluate the current middle
         SolutionType const middleValue = wrh.computeWeightedDiff(env, goal.direction(), storm::utility::one<ValueType>(), -middle, middleSchedulerRef);
@@ -1081,6 +1082,7 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
             auto result = wrh.evaluateScheduler(env, *lowerScheduler);
             lowerBound &= result;
             upperBound &= result;
+            terminatedThroughPolicyTracking = true;
             break;
         }
         // Check if bounds are fully below or above threshold
@@ -1144,7 +1146,7 @@ typename internal::ResultReturnType<ValueType> computeViaBisection(Environment c
     }
     // If requested, construct the scheduler for the original model
     std::vector<uint64_t> reducedSchedulerChoices;
-    if (usePolicyTracking && *lowerBound == *upperBound) {
+    if (terminatedThroughPolicyTracking) {
         // We already have computed a scheduler
         reducedSchedulerChoices = std::move(*lowerScheduler);
     } else {
