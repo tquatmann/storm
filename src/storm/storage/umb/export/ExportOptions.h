@@ -19,7 +19,7 @@ struct ExportOptions {
      * Whether export of choice origins is enabled.
      * @note If both, choice origins and choice labeling are present and enabled, choice origins will be used.
      */
-    bool allowChoiceOriginsAsActions{true};
+    bool allowChoiceOriginsAsActions{false};
 
     /*!
      * Whether export of choice origins is enabled.
@@ -31,5 +31,10 @@ struct ExportOptions {
      * The type of compression used for the exported UMB model.
      */
     storm::io::CompressionMode compression{storm::io::CompressionMode::Xz};
+
+    /*!
+     * Whether to canonicize POMDPs before export.
+     */
+    bool canonicizePomdp{true};
 };
 }  // namespace storm::umb
