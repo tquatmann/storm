@@ -126,6 +126,12 @@ bool validate(storm::umb::UmbModel const& umbModel, std::ostream& err) {
         }
     }
 
+    if ((tsIndex.numObservations != 0) == tsIndex.observationsApplyTo.has_value()) {
+        err << "observations-apply-to is " << (tsIndex.observationsApplyTo.has_value() ? "set" : "not set") << " although the number of observations is "
+            << tsIndex.numObservations << ".\n";
+        isValid = false;
+    }
+
     if (index.annotations) {
         for (auto const& [annotationType, annotationMap] : index.annotations.value()) {
             for (auto const& [name, annotation] : annotationMap) {
