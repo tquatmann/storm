@@ -33,7 +33,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> buildExplicitDRNModel(
     return storm::parser::DirectEncodingParser<ValueType>::parseModel(drnFile, options);
 }
 
-std::shared_ptr<storm::models::ModelBase> buildExplicitUmbModel(std::string const& umbLocation, storm::umb::ImportOptions const& options = {}) {
+inline std::shared_ptr<storm::models::ModelBase> buildExplicitUmbModel(std::string const& umbLocation, storm::umb::ImportOptions const& options = {}) {
     return storm::umb::buildModelFromUmb(umbLocation, options);
 }
 
