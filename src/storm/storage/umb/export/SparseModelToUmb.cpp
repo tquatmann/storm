@@ -394,7 +394,7 @@ void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbM
             storm::transformer::MakePOMDPCanonic<ValueType> makeCanonic(*pomdp);
             auto newOptions = options;
             newOptions.canonicizePomdp = false;  // avoid infinite recursion
-            sparseModelToUmb<ValueType, TargetValueType>(*makeCanonic.transform(), umbModel, options);
+            sparseModelToUmb<ValueType, TargetValueType>(*makeCanonic.transform(), umbModel, newOptions);
             return;
         }
     }
