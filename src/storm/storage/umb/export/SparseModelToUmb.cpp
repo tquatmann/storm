@@ -15,6 +15,7 @@
 #include "storm/models/sparse/Pomdp.h"
 #include "storm/models/sparse/Smg.h"
 #include "storm/storage/sparse/ChoiceOrigins.h"
+#include "storm/transformer/MakePOMDPCanonic.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
 
@@ -384,6 +385,20 @@ void setIndexInformation(storm::models::sparse::Model<ValueType> const& model, s
 
 template<typename ValueType, typename TargetValueType>
 void sparseModelToUmb(storm::models::sparse::Model<ValueType> const& model, UmbModel& umbModel, ExportOptions const& options) {
+    // Possibly canonicize POMDP
+    if (options.canonicizePomdp && model.isPartiallyObservable()) {
+        STORM_LOG_ASSERT(model.isOfType(storm::models::ModelType::Pomdp), "Only POMDPs are supported as partially observable models.");
+        auto pomdp = model.template as<storm::models::sparse::Pomdp<ValueType>>();
+        if (!pomdp->isCanonic()) {
+            STORM_LOG_INFO("Canonicizing POMDP before UMB export.");
+            storm::transformer::MakePOMDPCanonic<ValueType> makeCanonic(*pomdp);
+            auto newOptions = options;
+            newOptions.canonicizePomdp = false;  // avoid infinite recursion
+            sparseModelToUmb<ValueType, TargetValueType>(*makeCanonic.transform(), umbModel, options);
+            return;
+        }
+    }
+
     // index
     setIndexInformation<ValueType>(model, umbModel.index, options);
 

@@ -1,4 +1,4 @@
-#include "storm-pomdp/transformer/MakePOMDPCanonic.h"
+#include "storm/transformer/MakePOMDPCanonic.h"
 
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/AmbiguousModelException.h"
