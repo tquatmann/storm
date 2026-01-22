@@ -68,7 +68,7 @@ struct ModelIndex {
                                           "#branches",
                                           "#branch-actions",
                                           "#observations",
-                                          "#observations-apply-to",
+                                          "observations-apply-to",
                                           "branch-probability-type",
                                           "exit-rate-type",
                                           "observation-probability-type",
