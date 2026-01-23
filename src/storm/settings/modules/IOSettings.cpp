@@ -28,6 +28,7 @@ const std::string IOSettings::exportCdfOptionShortName = "cdf";
 const std::string IOSettings::exportSchedulerOptionName = "exportscheduler";
 const std::string IOSettings::exportCheckResultOptionName = "exportresult";
 const std::string IOSettings::exportCompressionOptionName = "compression";
+const std::string IOSettings::exportDigitsOptionName = "digits";
 const std::string IOSettings::explicitOptionName = "explicit";
 const std::string IOSettings::explicitOptionShortName = "exp";
 const std::string IOSettings::explicitDrnOptionName = "explicit-drn";
@@ -94,6 +95,11 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(compressionModes))
                                          .setDefaultValueString("default")
                                          .build())
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, exportDigitsOptionName, false, "Sets number of output digits of export (if supported).")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createUnsignedIntegerArgument("num", "Number of digits.").build())
                         .build());
 
     this->addOption(
@@ -318,6 +324,14 @@ bool IOSettings::isCompressionSet() const {
 storm::io::CompressionMode IOSettings::getCompressionMode() const {
     auto mode = this->getOption(exportCompressionOptionName).getArgumentByName("mode").getValueAsString();
     return storm::io::getCompressionModeFromString(mode);
+}
+
+bool IOSettings::isExportDigitsSet() const {
+    return this->getOption(exportDigitsOptionName).getHasOptionBeenSet();
+}
+
+std::size_t IOSettings::getExportDigits() const {
+    return this->getOption(exportDigitsOptionName).getArgumentByName("num").getValueAsUnsignedInteger();
 }
 
 bool IOSettings::isExportJaniDotSet() const {

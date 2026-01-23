@@ -752,11 +752,17 @@ void exportModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
             case storm::io::ModelExportFormat::Dot:
                 storm::api::exportSparseModelAsDot(model, ioSettings.getExportBuildFilename(), ioSettings.getExportDotMaxWidth());
                 break;
-            case storm::io::ModelExportFormat::Drn:
-                storm::api::exportSparseModelAsDrn(model, ioSettings.getExportBuildFilename(),
-                                                   input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-                                                   !ioSettings.isExplicitExportPlaceholdersDisabled());
+            case storm::io::ModelExportFormat::Drn: {
+                storm::io::DirectEncodingOptions options;
+                options.allowPlaceholders = !ioSettings.isExplicitExportPlaceholdersDisabled();
+                options.compression = ioSettings.getCompressionMode();
+                if (ioSettings.isExportDigitsSet()) {
+                    options.outputPrecision = ioSettings.getExportDigits();
+                }
+                storm::api::exportSparseModelAsDrn(model, ioSettings.getExportBuildFilename(), options,
+                                                   input.model ? input.model.get().getParameterNames() : std::vector<std::string>());
                 break;
+            }
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
                 break;

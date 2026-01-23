@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/io/CompressionMode.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -41,10 +42,16 @@ std::string toString(ModelExportFormat const& input) {
 
 ModelExportFormat getModelExportFormatFromFileExtension(std::string const& filename) {
     std::filesystem::path path(filename);
-    if (path.has_extension()) {
-        return getModelExportFormatFromString(path.extension().string().substr(1));
-    } else {
-        return ModelExportFormat::Umb;
+    // correctly get the relevant extension (e.g. '.drn' in model.drn and model.drn.gz)
+    auto compression = getCompressionModeFromFileExtension(path);
+    std::string extension = compression == CompressionMode::None ? path.extension() : path.stem().extension();
+    try {
+        return getModelExportFormatFromString(extension.substr(1));
+    } catch (storm::exceptions::InvalidArgumentException&) {
+        STORM_LOG_THROW(
+            false, storm::exceptions::InvalidArgumentException,
+            "The file '" << filename
+                         << "' does not have an extension to determine the model export format from. Add a file extension or specify the format explicitly.");
     }
 }
 

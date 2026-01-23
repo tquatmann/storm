@@ -71,7 +71,7 @@ void ArchiveWriter::addFile(std::filesystem::path const& archivePath, char const
 void ArchiveWriter::addBinaryFile(std::filesystem::path const& archivePath, storm::storage::BitVector const& data) {
     using BucketType = decltype(std::declval<storm::storage::BitVector&>().getBucket({}));
     static_assert(BufferSize % sizeof(BucketType) == 0, "Buffer size must be a multiple of sizeof(BucketType).");
-    std::vector<BucketType> buffer(BufferSize / sizeof(BucketType));  // todo check array
+    std::array<BucketType, BufferSize / sizeof(BucketType)> buffer;
 
     // need to reverse bits and potentially swap bytes
     uint64_t startOfChunk = 0;

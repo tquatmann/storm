@@ -1,5 +1,9 @@
 #include "storm/io/ArchiveReader.h"
 
+#include <array>
+#include <cstring>
+#include <fstream>
+
 namespace storm::io {
 
 #ifdef STORM_HAVE_LIBARCHIVE
@@ -9,9 +13,9 @@ namespace storm::io {
 void checkResult(archive* arch, auto resultCode) {
     static_assert(ARCHIVE_OK == 0, "Expected that return value >= 0 means a valid result");
     STORM_LOG_THROW(arch != nullptr, storm::exceptions::FileIoException, "Unexpected result: Archive not loaded.");
-    STORM_LOG_WARN_COND(std::cmp_greater_equal(resultCode, ARCHIVE_OK), "Unexpected result from archive: " << archive_error_string(arch) << ".");
     STORM_LOG_THROW(std::cmp_greater_equal(resultCode, ARCHIVE_WARN), storm::exceptions::FileIoException,
                     "Unexpected result from archive: " << archive_error_string(arch) << ".");
+    STORM_LOG_WARN_COND(std::cmp_greater_equal(resultCode, ARCHIVE_OK), "Unexpected result from archive: " << archive_error_string(arch) << ".");
 }
 
 void ArchiveReader::ArchiveDeleter::operator()(archive* arch) const noexcept {
@@ -36,7 +40,7 @@ std::filesystem::path ArchiveReader::ArchiveReadEntry::name() const {
     }
     return result;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -45,7 +49,7 @@ bool ArchiveReader::ArchiveReadEntry::isDir() const {
     STORM_LOG_THROW(_currentEntry, storm::exceptions::FileIoException, "No valid entry loaded.");
     return archive_entry_filetype(_currentEntry) == AE_IFDIR;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -92,9 +96,8 @@ Vec<T> ArchiveReader::ArchiveReadEntry::toVector() {
         }
     };
 
-    // todo: try out std::array as buffer instead
     static_assert(BufferSize % sizeof(DataType) == 0, "Buffer size should be a multiple of sizeof(DataType).");
-    std::vector<char> buffer(BufferSize);
+    std::array<char, BufferSize> buffer;
     auto bytesRead = archive_read_data(_archive, buffer.data(), BufferSize);
     checkResult(_archive, bytesRead);
     while (true) {
@@ -135,7 +138,7 @@ Vec<T> ArchiveReader::ArchiveReadEntry::toVector() {
     _archive = nullptr;
     return content;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -147,8 +150,7 @@ std::string ArchiveReader::ArchiveReadEntry::toString() {
     checkResult(_archive, entrySize);
     content.reserve(std::max<decltype(entrySize)>(entrySize, 0));
 
-    // todo: try out std::array as buffer instead
-    std::vector<char> buffer(BufferSize);
+    std::array<char, BufferSize> buffer;
     la_ssize_t bytesRead = 0;
     while ((bytesRead = archive_read_data(_archive, buffer.data(), BufferSize)) > 0) {
         content.append(buffer.data(), bytesRead);
@@ -160,7 +162,7 @@ std::string ArchiveReader::ArchiveReadEntry::toString() {
     _archive = nullptr;
     return content;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -180,7 +182,7 @@ bool ArchiveReader::Iterator::operator==(Iterator const& other) const {
 #ifdef STORM_HAVE_LIBARCHIVE
     return _currentEntry == other._currentEntry;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -188,7 +190,7 @@ bool ArchiveReader::Iterator::operator!=(Iterator const& other) const {
 #ifdef STORM_HAVE_LIBARCHIVE
     return _currentEntry != other._currentEntry;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -207,7 +209,7 @@ typename ArchiveReader::Iterator& ArchiveReader::Iterator::operator++() {
     }
     return *this;
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -215,7 +217,57 @@ typename ArchiveReader::ArchiveReadEntry ArchiveReader::Iterator::operator*() co
 #ifdef STORM_HAVE_LIBARCHIVE
     return ArchiveReadEntry(_currentEntry, _archive.get());
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
+#endif
+}
+
+bool ArchiveReader::isReadableArchive() const {
+    if (!std::filesystem::is_regular_file(file)) {
+        return false;
+    }
+
+#ifdef STORM_HAVE_LIBARCHIVE
+    // Try to open the archive
+    struct archive* a = archive_read_new();
+    if (!a) {
+        return false;
+    }
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+    if (archive_read_open_filename(a, file.string().c_str(), 10240) != ARCHIVE_OK) {
+        archive_read_free(a);
+        return false;
+    }
+    struct archive_entry* entry = nullptr;
+    auto const r = archive_read_next_header(a, &entry);
+    bool const result = (r == ARCHIVE_OK || r == ARCHIVE_EOF || r == ARCHIVE_WARN);
+    archive_read_free(a);
+    return result;
+#else
+    // read magic bytes
+    std::ifstream in(file, std::ios::binary);
+    if (!in) {
+        return false;
+    }
+    // 512 bytes is enough for signatures below (including tar header).
+    std::array<unsigned char, 512> buf;
+    in.read(reinterpret_cast<char*>(buf.data()), buf.size());
+    std::streamsize const n = in.gcount();
+    if (n <= 0) {
+        return false;
+    }
+    std::span<unsigned char> bytes(buf.data(), static_cast<std::size_t>(n));
+    auto starts_with_bytes = [&bytes](std::initializer_list<unsigned char> magic, std::size_t offset = 0) -> bool {
+        return bytes.size() >= magic.size() + offset && std::equal(magic.begin(), magic.end(), bytes.begin() + offset);
+    };
+
+    // see https://en.wikipedia.org/wiki/List_of_file_signatures
+    std::initializer_list<unsigned char> const gz{0x1F, 0x8B},                                              // Gzip
+        xz{0xFD, '7', 'z', 'X', 'Z', 0x00},                                                                 // XZ
+        tar{'u', 's', 't', 'a', 'r'},                                                                       // TAR, at offset 257
+        zip{0x50, 0x4B, 0x03, 0x04}, zipEmpty{0x50, 0x4B, 0x05, 0x06}, zipSpanned{0x50, 0x4B, 0x07, 0x08};  // Zip
+    return starts_with_bytes(gz) || starts_with_bytes(xz) || starts_with_bytes(tar, 257) || starts_with_bytes(zip) || starts_with_bytes(zipEmpty) ||
+           starts_with_bytes(zipSpanned);
 #endif
 }
 
@@ -225,7 +277,7 @@ typename ArchiveReader::Iterator ArchiveReader::begin() const {
 #ifdef STORM_HAVE_LIBARCHIVE
     return Iterator(file);
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 
@@ -233,7 +285,7 @@ typename ArchiveReader::Iterator ArchiveReader::end() const {
 #ifdef STORM_HAVE_LIBARCHIVE
     return Iterator();
 #else
-    throw storm::exceptions::NotSupportedException() << "Reading archives is not supported. Storm is compiled without LibArchive.";
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Reading archives is not supported. Storm is compiled without LibArchive.");
 #endif
 }
 

@@ -105,7 +105,22 @@ class ArchiveReader {
 
     ArchiveReader(std::filesystem::path const& file);
 
+    /*!
+     * @return true if the provided file is a readable archive
+     * @note if libarchive is not installed, this check looks at the magic bytes and might be inaccurate
+     */
+    bool isReadableArchive() const;
+
+    /*!
+     * @return an iterator to the beginning of the archive entries
+     * @throws if libarchive is not installed.
+     */
     Iterator begin() const;
+
+    /*!
+     * @return an iterator to the end of the archive entries
+     * @throws if libarchive is not installed
+     */
     Iterator end() const;
 
    private:

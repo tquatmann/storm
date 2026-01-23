@@ -73,6 +73,16 @@ class IOSettings : public ModuleSettings {
     storm::io::CompressionMode getCompressionMode() const;
 
     /*!
+     * Retrieves whether the number of digits for exporting floating point numbers was set
+     */
+    bool isExportDigitsSet() const;
+
+    /*!
+     * Retrieves the number of digits for exporting floating point numbers
+     */
+    size_t getExportDigits() const;
+    
+    /*!
      * Retrieves whether the export-to-dot option for jani was set.
      *
      * @return True if the export-to-jani-dot option was set.
@@ -420,6 +430,7 @@ class IOSettings : public ModuleSettings {
     static const std::string exportSchedulerOptionName;
     static const std::string exportCheckResultOptionName;
     static const std::string exportCompressionOptionName;
+    static const std::string exportDigitsOptionName;
     static const std::string explicitOptionName;
     static const std::string explicitOptionShortName;
     static const std::string explicitDrnOptionName;

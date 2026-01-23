@@ -36,4 +36,13 @@ std::string toString(CompressionMode const& input) {
     return "";
 }
 
+CompressionMode getCompressionModeFromFileExtension(std::filesystem::path const& filename) {
+    if (filename.extension() == ".gz") {
+        return CompressionMode::Gzip;
+    } else if (filename.extension() == ".xz") {
+        return CompressionMode::Xz;
+    }
+    return CompressionMode::None;
+}
+
 }  // namespace storm::io
