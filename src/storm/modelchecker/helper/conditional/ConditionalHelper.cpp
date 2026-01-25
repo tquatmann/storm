@@ -1178,11 +1178,18 @@ typename internal::ResultReturnType<ValueType> decideThreshold(Environment const
     }
 
     SolutionType val = wrh.computeWeightedDiff(env, direction, storm::utility::one<ValueType>(), -threshold, schedulerRef);
-    // if val is positive, the conditional probability is (strictly) greater than threshold
-    // if val is negative, the conditional probability is (strictly) smaller than threshold
-    // if val is zero, the conditional probability equals the threshold
-    // so, for the true probability p and comparison ~ we have:  p ~ threshold  <=>  val + threshold ~ threshold
-    auto finalResult = ResultReturnType<SolutionType>(val + threshold);
+    SolutionType outputProbability;
+    if (val > storm::utility::zero<SolutionType>()) {
+        // if val is positive, the conditional probability is (strictly) greater than threshold
+        outputProbability = storm::utility::one<SolutionType>();
+    } else if (val < storm::utility::zero<SolutionType>()) {
+        // if val is negative, the conditional probability is (strictly) smaller than threshold
+        outputProbability = storm::utility::zero<SolutionType>();
+    } else {
+        // if val is zero, the conditional probability equals the threshold
+        outputProbability = threshold;
+    }
+    auto finalResult = ResultReturnType<SolutionType>(outputProbability);
 
     if (computeScheduler) {
         // If requested, construct the scheduler for the original model
