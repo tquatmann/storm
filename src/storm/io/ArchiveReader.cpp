@@ -71,6 +71,9 @@ Vec<T> ArchiveReader::ArchiveReadEntry::toVector() {
     auto entrySize = archive_entry_size(_currentEntry);
     checkResult(_archive, entrySize);
     entrySize = std::max<decltype(entrySize)>(entrySize, 0);
+    STORM_LOG_THROW((entrySize % sizeof(DataType) == 0), storm::exceptions::FileIoException,
+                    "Archive entry '" << name() << "' can not be extracted as vector of a " << sizeof(DataType) << "-bytes type: File size " << entrySize
+                                      << " bytes is not a multiple of " << sizeof(DataType) << " bytes.");
     if constexpr (IsBitVector) {
         content.resize(entrySize * 8);  // 8 bits in a byte
     } else {
