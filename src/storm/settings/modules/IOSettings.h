@@ -81,7 +81,7 @@ class IOSettings : public ModuleSettings {
      * Retrieves the number of digits for exporting floating point numbers
      */
     size_t getExportDigits() const;
-    
+
     /*!
      * Retrieves whether the export-to-dot option for jani was set.
      *
