@@ -13,7 +13,7 @@
 namespace storm::umb {
 
 struct ModelIndex {
-    uint64_t formatVersion{0}, formatRevision{0};  // TODO: set to 1
+    uint64_t formatVersion{1}, formatRevision{0};
 
     struct ModelData {
         std::optional<std::string> name, version;
