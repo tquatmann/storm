@@ -901,6 +901,18 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessDdModelImpl
         STORM_LOG_THROW(result, storm::exceptions::NotSupportedException, "The translation to a sparse model is not supported for the given model type.");
     }
 
+    auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
+    if (result && result->first->isSparseModel()) {
+        if (auto order = transformationSettings.getModelPermutation(); order.has_value()) {
+            auto seed = transformationSettings.getModelPermutationSeed();
+            STORM_PRINT_AND_LOG("Permuting model states using " << storm::utility::permutation::orderKindtoString(order.value()) << " order"
+                                                                << (seed.has_value() ? " with seed " + std::to_string(seed.value()) : "") << ".\n");
+            result->first = storm::api::permuteModelStates(result->first->template as<storm::models::sparse::Model<ValueType>>(), order.value(), seed)
+                                ->template as<storm::models::Model<ExportValueType>>();
+            result->second = true;
+        }
+    }
+
     return *result;
 }
 
