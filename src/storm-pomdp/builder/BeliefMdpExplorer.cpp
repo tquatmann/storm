@@ -889,7 +889,6 @@ typename BeliefMdpExplorer<PomdpType, BeliefValueType>::ValueType BeliefMdpExplo
     STORM_LOG_ASSERT(!pomdpValueBounds.lower.empty(), "Requested lower value bounds but none were available.");
     STORM_LOG_ASSERT(pomdpValueBounds.lower.size() > schedulerId, "Requested lower value bound for scheduler with ID " << schedulerId << " not available.");
     return beliefManager->getWeightedSum(beliefId, pomdpValueBounds.lower[schedulerId]);
-    ;
 }
 
 template<typename PomdpType, typename BeliefValueType>
@@ -1386,7 +1385,6 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::adjustActions(uint64_t total
         for (uint64_t i = getCurrentMdpState() + 1; i < exploredChoiceIndices.size(); i++) {
             exploredChoiceIndices[i] -= numberOfActionsToRemove;
         }
-        return;
     }
 }
 

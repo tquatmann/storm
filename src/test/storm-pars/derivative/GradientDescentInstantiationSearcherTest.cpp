@@ -1,6 +1,11 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
+#include "storm-pars/derivative/GradientDescentInstantiationSearcher.h"
+#include "storm-pars/transformer/SparseParametricDtmcSimplifier.h"
+#include "storm-pars/utility/FeasibilitySynthesisTask.h"
+#include "storm-parsers/api/storm-parsers.h"
+#include "storm-parsers/parser/PrismParser.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/api/builder.h"
 #include "storm/api/storm.h"
@@ -8,24 +13,6 @@
 #include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/environment/solver/TopologicalSolverEnvironment.h"
 #include "storm/logic/Formulas.h"
-#include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
-#include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-#include "storm/solver/EliminationLinearEquationSolver.h"
-#include "storm/storage/SparseMatrix.h"
-#include "storm/storage/expressions/BinaryRelationExpression.h"
-#include "storm/storage/expressions/ExpressionManager.h"
-
-#include "storm-parsers/api/storm-parsers.h"
-#include "storm-parsers/parser/AutoParser.h"
-#include "storm-parsers/parser/FormulaParser.h"
-#include "storm-parsers/parser/PrismParser.h"
-
-#include "storm-pars/api/storm-pars.h"
-#include "storm-pars/derivative/GradientDescentInstantiationSearcher.h"
-#include "storm-pars/modelchecker/region/monotonicity/OrderExtender.h"
-#include "storm-pars/transformer/SparseParametricDtmcSimplifier.h"
-#include "storm-pars/utility/FeasibilitySynthesisTask.h"
 
 using namespace storm::pars;
 
@@ -107,9 +94,9 @@ class GradientDescentInstantiationSearcherTest : public ::testing::Test {
 typedef ::testing::Types<
 // The rational environments take ages... GD is just not made for rational arithmetic.
 #ifdef STORM_HAVE_GMM
-    DoubleGmmxxEnvironment,
+    DoubleGmmxxEnvironment, /*RationalGmmxxEnvironment,*/
 #endif
-    DoubleEigenEnvironment, DoubleEigenTopologicalEnvironment>
+    DoubleEigenEnvironment, DoubleEigenTopologicalEnvironment /*, RationalEigenEnvironment*/>
     TestingTypes;
 }  // namespace
 

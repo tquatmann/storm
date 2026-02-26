@@ -1,11 +1,10 @@
-#include "MonotonicityResult.h"
+#include "storm-pars/modelchecker/region/monotonicity/MonotonicityResult.h"
 
 #include <sstream>
 
-#include "storm/exceptions/NotImplementedException.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/utility/macros.h"
 
 namespace storm {
 namespace analysis {

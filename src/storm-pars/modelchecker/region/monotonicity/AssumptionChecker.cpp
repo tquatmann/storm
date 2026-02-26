@@ -1,5 +1,4 @@
-#include "AssumptionChecker.h"
-#include <storm/solver/Z3SmtSolver.h>
+#include "storm-pars/modelchecker/region/monotonicity/AssumptionChecker.h"
 
 #include "storm-pars/utility/ModelInstantiator.h"
 #include "storm/exceptions/NotSupportedException.h"
@@ -7,6 +6,7 @@
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
+#include "storm/solver/Z3SmtSolver.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/storage/expressions/RationalFunctionToExpression.h"
 #include "storm/storage/expressions/SimpleValuation.h"
@@ -44,11 +44,11 @@ void AssumptionChecker<ValueType, ConstantType>::initializeCheckingOnSamples(std
         std::unique_ptr<modelchecker::CheckResult> checkResult;
         if (formula->isProbabilityOperatorFormula() && formula->asProbabilityOperatorFormula().getSubformula().isUntilFormula()) {
             const modelchecker::CheckTask<logic::UntilFormula, ConstantType> checkTask =
-                modelchecker::CheckTask<logic::UntilFormula, ConstantType>((*formula).asProbabilityOperatorFormula().getSubformula().asUntilFormula());
+                modelchecker::CheckTask<logic::UntilFormula, ConstantType>(formula->asProbabilityOperatorFormula().getSubformula().asUntilFormula());
             checkResult = checker.computeUntilProbabilities(Environment(), checkTask);
         } else if (formula->isProbabilityOperatorFormula() && formula->asProbabilityOperatorFormula().getSubformula().isEventuallyFormula()) {
-            const modelchecker::CheckTask<logic::EventuallyFormula, ConstantType> checkTask = modelchecker::CheckTask<logic::EventuallyFormula, ConstantType>(
-                (*formula).asProbabilityOperatorFormula().getSubformula().asEventuallyFormula());
+            const modelchecker::CheckTask<logic::EventuallyFormula, ConstantType> checkTask =
+                modelchecker::CheckTask<logic::EventuallyFormula, ConstantType>(formula->asProbabilityOperatorFormula().getSubformula().asEventuallyFormula());
             checkResult = checker.computeReachabilityProbabilities(Environment(), checkTask);
         } else {
             STORM_LOG_THROW(false, exceptions::NotSupportedException, "Expecting until or eventually formula");

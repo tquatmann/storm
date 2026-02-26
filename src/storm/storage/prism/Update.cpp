@@ -1,10 +1,10 @@
-#include "Update.h"
+#include "storm/storage/prism/Update.h"
 
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
-#include <storm/exceptions/IllegalArgumentException.h>
-#include "storm/adapters/RationalNumberAdapter.h"
 
+#include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/OutOfRangeException.h"
 #include "storm/utility/macros.h"
 
@@ -192,9 +192,9 @@ std::ostream& operator<<(std::ostream& stream, Update const& update) {
     } else {
         std::vector<std::string> assignmentsAsStrings;
         std::for_each(update.getAssignments().cbegin(), update.getAssignments().cend(), [&assignmentsAsStrings](Assignment const& assignment) {
-            std::stringstream stream;
-            stream << assignment;
-            assignmentsAsStrings.push_back(stream.str());
+            std::stringstream sstream;
+            sstream << assignment;
+            assignmentsAsStrings.push_back(sstream.str());
         });
         stream << boost::algorithm::join(assignmentsAsStrings, " & ");
     }

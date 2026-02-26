@@ -3,15 +3,14 @@
 
 #include "storm-parsers/api/storm-parsers.h"
 #include "storm/api/storm.h"
+#include "storm/environment/Environment.h"
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
-#include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
+#include "storm/modelchecker/multiobjective/MultiObjectiveModelChecking.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/GeneralSettings.h"
 #include "storm/storage/jani/Property.h"
-
-#include "storm/environment/Environment.h"
 
 class SparseMdpCbMultiObjectiveModelCheckerTest : public ::testing::Test {
    protected:
@@ -39,7 +38,6 @@ TEST_F(SparseMdpCbMultiObjectiveModelCheckerTest, consensus) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 

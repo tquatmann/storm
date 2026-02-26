@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/OutOfRangeException.h"
 #include "storm/utility/constants.h"
@@ -337,10 +338,8 @@ std::ostream& operator<<(std::ostream& out, ParameterRegion<ParametricType> cons
     return out;
 }
 
-#ifdef STORM_HAVE_CARL
 template class ParameterRegion<storm::RationalFunction>;
 template std::ostream& operator<<(std::ostream& out, ParameterRegion<storm::RationalFunction> const& region);
-#endif
 
 }  // namespace storage
 }  // namespace storm

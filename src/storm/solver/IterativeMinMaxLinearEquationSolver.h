@@ -72,10 +72,8 @@ class IterativeMinMaxLinearEquationSolver : public StandardMinMaxLinearEquationS
                                       std::vector<ValueType> const& bLower, std::vector<ValueType> const& bUpper) const;
 
     void setUpViOperator() const;
-    void extractScheduler(std::vector<SolutionType>& x, std::vector<ValueType> const& b, OptimizationDirection const& dir, bool robust,
-                          bool updateX = true) const;
-
-    void createLinearEquationSolver(Environment const& env) const;
+    void extractScheduler(std::vector<SolutionType>& x, std::vector<ValueType> const& b, OptimizationDirection const& dir,
+                          UncertaintyResolutionMode uncertaintyResolutionMode, bool updateX = true) const;
 
     /// The factory used to obtain linear equation solvers.
     std::unique_ptr<LinearEquationSolverFactory<SolutionType>> linearEquationSolverFactory;

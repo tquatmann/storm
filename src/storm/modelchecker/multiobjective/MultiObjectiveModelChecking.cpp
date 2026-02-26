@@ -1,10 +1,12 @@
-#include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
+#include "storm/modelchecker/multiobjective/MultiObjectiveModelChecking.h"
 
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/environment/solver/NativeSolverEnvironment.h"
-#include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/environment/solver/TopologicalSolverEnvironment.h"
+#include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/exceptions/InvalidEnvironmentException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/modelchecker/multiobjective/MultiObjectivePostprocessing.h"
 #include "storm/modelchecker/multiobjective/constraintbased/SparseCbAchievabilityQuery.h"
 #include "storm/modelchecker/multiobjective/deterministicScheds/DeterministicSchedsAchievabilityChecker.h"
@@ -15,14 +17,10 @@
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/utility/Stopwatch.h"
 #include "storm/utility/macros.h"
-
-#include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/exceptions/InvalidEnvironmentException.h"
 
 namespace storm {
 namespace modelchecker {

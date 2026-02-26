@@ -329,9 +329,6 @@ MinMaxLinearEquationSolverRequirements LpMinMaxLinearEquationSolver<ValueType>::
 }
 
 template class LpMinMaxLinearEquationSolver<double>;
-
-#ifdef STORM_HAVE_CARL
 template class LpMinMaxLinearEquationSolver<storm::RationalNumber>;
-#endif
 }  // namespace solver
 }  // namespace storm

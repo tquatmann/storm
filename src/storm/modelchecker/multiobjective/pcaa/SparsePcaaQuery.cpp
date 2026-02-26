@@ -2,6 +2,8 @@
 
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/exceptions/NotSupportedException.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/io/export.h"
 #include "storm/modelchecker/multiobjective/MultiObjectivePostprocessing.h"
 #include "storm/modelchecker/multiobjective/Objective.h"
@@ -10,7 +12,6 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/solver/Z3LpSolver.h"
@@ -18,9 +19,6 @@
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/vector.h"
-
-#include "storm/exceptions/NotSupportedException.h"
-#include "storm/exceptions/UnexpectedException.h"
 
 namespace storm {
 namespace modelchecker {
@@ -444,13 +442,11 @@ void SparsePcaaQuery<SparseModelType, GeometryValueType>::exportPlotOfCurrentApp
     }
 }
 
-#ifdef STORM_HAVE_CARL
 template class SparsePcaaQuery<storm::models::sparse::Mdp<double>, storm::RationalNumber>;
 template class SparsePcaaQuery<storm::models::sparse::MarkovAutomaton<double>, storm::RationalNumber>;
 
 template class SparsePcaaQuery<storm::models::sparse::Mdp<storm::RationalNumber>, storm::RationalNumber>;
 template class SparsePcaaQuery<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>, storm::RationalNumber>;
-#endif
 }  // namespace multiobjective
 }  // namespace modelchecker
 }  // namespace storm

@@ -339,7 +339,7 @@ void setLowerUpperTotalRewardBoundsToSolver(storm::solver::AbstractEquationSolve
                     .computeUpperBounds());
         }
     }
-    if (reqLower && !upperBound.has_value()) {
+    if (reqLower && !lowerBound.has_value()) {
         // For lower bounds we actually compute upper bounds for the negated rewards.
         // We therefore need tmpRewards in any way.
         tmpRewards.resize(rewards.size());
@@ -570,7 +570,6 @@ void DeterministicSchedsObjectiveHelper<ModelType>::computeLowerUpperBounds(Envi
         ValueType rewardValueForPosInfCase;
         if (getInfinityCase() == InfinityCase::HasPositiveInfinite) {
             rewardValueForPosInfCase = getThreshold();
-            ;
             // We need to substract a lower bound for the value at the initial state
             std::vector<ValueType> rewards2Negative;
             rewards2Negative.reserve(rewards2.size());

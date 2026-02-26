@@ -1,10 +1,9 @@
 #include "storm/models/sparse/ItemLabeling.h"
 
-#include "storm/models/sparse/ChoiceLabeling.h"
-#include "storm/models/sparse/StateLabeling.h"
-
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/OutOfRangeException.h"
+#include "storm/models/sparse/ChoiceLabeling.h"
+#include "storm/models/sparse/StateLabeling.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -52,7 +51,7 @@ bool ItemLabeling::operator==(ItemLabeling const& other) const {
     return true;
 }
 
-ItemLabeling ItemLabeling::getSubLabeling(storm::storage::BitVector const& items) const {
+ItemLabeling ItemLabeling::getSubItemLabeling(storm::storage::BitVector const& items) const {
     ItemLabeling result(items.getNumberOfSetBits());
     for (auto const& labelIndexPair : nameToLabelingIndexMap) {
         result.addLabel(labelIndexPair.first, labelings[labelIndexPair.second] % items);

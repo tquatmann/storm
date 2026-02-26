@@ -1,35 +1,28 @@
+#include "storm-config.h"
+#include "test/storm_gtest.h"
+
 #include <memory>
 #include <string>
-#include "gtest/gtest.h"
-#include "storm-config.h"
+
 #include "storm-pars/api/region.h"
 #include "storm-pars/modelchecker/instantiation/SparseInstantiationModelChecker.h"
-#include "storm-pars/modelchecker/region/SparseParameterLiftingModelChecker.h"
 #include "storm-pars/transformer/BigStep.h"
 #include "storm-parsers/api/model_descriptions.h"
 #include "storm-parsers/api/properties.h"
-#include "storm-parsers/parser/AutoParser.h"
-#include "storm-parsers/parser/FormulaParser.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/adapters/RationalNumberForward.h"
 #include "storm/api/bisimulation.h"
 #include "storm/api/builder.h"
 #include "storm/environment/Environment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/modelchecker/CheckTask.h"
-#include "storm/modelchecker/reachability/SparseDtmcEliminationModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/solver/OptimizationDirection.h"
 #include "storm/storage/bisimulation/BisimulationType.h"
 #include "storm/storage/prism/Program.h"
-#include "storm/utility/prism.h"
-#include "test/storm_gtest.h"
-
 #include "storm/utility/constants.h"
-#include "storm/utility/macros.h"
+#include "storm/utility/prism.h"
 
 void testModel(std::string programFile, std::string formulaAsString, std::string constantsAsString) {
     storm::prism::Program program = storm::api::parseProgram(programFile);

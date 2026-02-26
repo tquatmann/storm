@@ -1,8 +1,6 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#include <carl/core/VariablePool.h>
-
 #include "storm-pars/utility/ModelInstantiator.h"
 #include "storm-parsers/api/storm-parsers.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
@@ -13,7 +11,6 @@
 #include "storm/models/sparse/Model.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/GeneralSettings.h"
-#include "storm/storage/jani/Property.h"
 
 class ModelInstantiatorTest : public ::testing::Test {
    protected:

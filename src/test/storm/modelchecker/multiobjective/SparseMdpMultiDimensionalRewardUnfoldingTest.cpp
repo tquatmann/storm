@@ -6,7 +6,7 @@
 #include "storm/environment/Environment.h"
 #include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
-#include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
+#include "storm/modelchecker/multiobjective/MultiObjectiveModelChecking.h"
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
@@ -43,7 +43,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_one_dim_walk_sma
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
     result = storm::api::verifyWithSparseEngine(mdp, storm::api::createTask<storm::RationalNumber>(formulas[0], true));
@@ -91,7 +90,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_one_dim_walk_lar
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -129,7 +127,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_tiny_ec) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -187,7 +184,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_zeroconf_dl) {
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -217,7 +213,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_csma) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -250,7 +245,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, single_obj_lower_bounds) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -316,7 +310,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, one_dim_walk_small) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -397,7 +390,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, one_dim_walk_large) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -442,7 +434,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, tiny_ec) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -510,7 +501,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, zeroconf_dl) {
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -541,7 +531,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, csma) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 
@@ -580,7 +569,6 @@ TEST_F(SparseMdpMultiDimensionalRewardUnfoldingTest, lower_bounds) {
     std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> mdp =
         storm::api::buildSparseModel<storm::RationalNumber>(program, formulas)->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result;
 

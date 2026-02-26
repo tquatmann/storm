@@ -6,6 +6,11 @@
 #include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/environment/solver/SolverEnvironment.h"
+#include "storm/exceptions/IllegalFunctionCallException.h"
+#include "storm/exceptions/NotImplementedException.h"
+#include "storm/exceptions/NotSupportedException.h"
+#include "storm/exceptions/UncheckedRequirementException.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/multiobjective/preprocessing/SparseMultiObjectiveRewardAnalysis.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
@@ -21,12 +26,6 @@
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
-
-#include "storm/exceptions/IllegalFunctionCallException.h"
-#include "storm/exceptions/NotImplementedException.h"
-#include "storm/exceptions/NotSupportedException.h"
-#include "storm/exceptions/UncheckedRequirementException.h"
-#include "storm/exceptions/UnexpectedException.h"
 
 namespace storm {
 namespace modelchecker {
@@ -1002,10 +1001,9 @@ void StandardPcaaWeightVectorChecker<SparseModelType>::transformEcqSolutionToOri
 
 template class StandardPcaaWeightVectorChecker<storm::models::sparse::Mdp<double>>;
 template class StandardPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<double>>;
-#ifdef STORM_HAVE_CARL
+
 template class StandardPcaaWeightVectorChecker<storm::models::sparse::Mdp<storm::RationalNumber>>;
 template class StandardPcaaWeightVectorChecker<storm::models::sparse::MarkovAutomaton<storm::RationalNumber>>;
-#endif
 
 }  // namespace multiobjective
 }  // namespace modelchecker

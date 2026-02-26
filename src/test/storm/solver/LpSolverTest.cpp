@@ -10,6 +10,7 @@
 #include "storm/storage/expressions/Variable.h"
 #include "storm/utility/solver.h"
 #include "storm/utility/vector.h"
+
 namespace {
 
 class DefaultEnvironment {
@@ -171,7 +172,6 @@ typedef ::testing::Types<DefaultEnvironment
 TYPED_TEST_SUITE(LpSolverTest, TestingTypes, );
 
 TYPED_TEST(LpSolverTest, LPOptimizeMax) {
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -236,7 +236,6 @@ TYPED_TEST(LpSolverTest, LPOptimizeMaxRaw) {
 }
 
 TYPED_TEST(LpSolverTest, LPOptimizeMin) {
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Minimize);
     storm::expressions::Variable x;
@@ -307,7 +306,6 @@ TYPED_TEST(LpSolverTest, MILPOptimizeMax) {
     if (!this->supportsInteger()) {
         GTEST_SKIP();
     }
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -381,7 +379,6 @@ TYPED_TEST(LpSolverTest, MILPOptimizeMin) {
     if (!this->supportsInteger()) {
         GTEST_SKIP();
     }
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Minimize);
     storm::expressions::Variable x;
@@ -416,7 +413,6 @@ TYPED_TEST(LpSolverTest, MILPOptimizeMin) {
 }
 
 TYPED_TEST(LpSolverTest, LPInfeasible) {
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -451,7 +447,6 @@ TYPED_TEST(LpSolverTest, MILPInfeasible) {
     if (!this->supportsInteger()) {
         GTEST_SKIP();
     }
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -483,7 +478,6 @@ TYPED_TEST(LpSolverTest, MILPInfeasible) {
 }
 
 TYPED_TEST(LpSolverTest, LPUnbounded) {
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -512,7 +506,6 @@ TYPED_TEST(LpSolverTest, MILPUnbounded) {
     if (!this->supportsInteger()) {
         GTEST_SKIP();
     }
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x;
@@ -541,7 +534,6 @@ TYPED_TEST(LpSolverTest, Incremental) {
     if (!this->supportsIncremental()) {
         GTEST_SKIP();
     }
-    typedef typename TestFixture::ValueType ValueType;
     auto solver = this->factory()->create("");
     solver->setOptimizationDirection(storm::OptimizationDirection::Maximize);
     storm::expressions::Variable x, y, z;
