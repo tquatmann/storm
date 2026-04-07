@@ -100,28 +100,58 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::buildQuotie
         } else {
             // Compute the outgoing transitions of the block.
             std::map<storm::storage::sparse::state_type, ValueType> blockProbability;
-            for (auto const& entry : this->model.getTransitionMatrix().getRow(representativeState)) {
-                auto targetBlock = blocksMapping.at(this->partition.getBlockOfElement(entry.getColumn()).front());
+            if (this->options.getUsesEpsilon()) {
+                auto blockIterator = block.begin();
 
-                // If we are computing a weak bisimulation quotient, there is no need to add self-loops.
-                // TODO: Extend for weak bisimulation
-
-                auto probIterator = blockProbability.find(targetBlock);
-                if (probIterator != blockProbability.end()) {
-                    probIterator->second += entry.getValue();
-
-                    // Normalize interval
-                    auto normalizedInterval = storm::Interval(std::min(1.0, probIterator->second.lower()), std::min(1.0, probIterator->second.upper()));
-                    probIterator->second = normalizedInterval;
-                } else {
-                    blockProbability[targetBlock] = entry.getValue();
+                // Start block distribution over partition with the first state of the block
+                auto currentState = *blockIterator;
+                auto blockDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+                for (auto const& e : this->model.getTransitionMatrix().getRow(currentState)) {
+                    blockDistribution.addProbability(blocksMapping.at(this->partition.getBlockOfElement(e.getColumn()).front()), e.getValue());
                 }
-            }
+                ++blockIterator;
 
-            // Now add them to the actual matrix.
-            for (auto const& probabilityEntry : blockProbability) {
-                // TODO: Handle case for weak bisimulation
-                builder.addNextValue(blockIndex, probabilityEntry.first, probabilityEntry.second);
+                // Now we enhance the block distribution with the intervals of every other state in the block
+                while (blockIterator != block.end()) {
+                    currentState = *blockIterator;
+                    auto distributionOfState = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+                    for (auto const& e : this->model.getTransitionMatrix().getRow(currentState)) {
+                        distributionOfState.addProbability(blocksMapping.at(this->partition.getBlockOfElement(e.getColumn()).front()), e.getValue());
+                    }
+                    blockDistribution = computeCandidateDistribution(blockDistribution, distributionOfState);
+                    ++blockIterator;
+                }
+
+                // Now add them to the actual matrix
+                auto blockDistributionIterator = blockDistribution.begin();
+                while (blockDistributionIterator != blockDistribution.end()) {
+                    builder.addNextValue(blockIndex, blockDistributionIterator->first, blockDistributionIterator->second);
+                    blockDistributionIterator++;
+                }
+            } else {
+                for (auto const& entry : this->model.getTransitionMatrix().getRow(representativeState)) {
+                    auto targetBlock = blocksMapping.at(this->partition.getBlockOfElement(entry.getColumn()).front());
+
+                    // If we are computing a weak bisimulation quotient, there is no need to add self-loops.
+                    // TODO: Extend for weak bisimulation
+
+                    auto probIterator = blockProbability.find(targetBlock);
+                    if (probIterator != blockProbability.end()) {
+                        probIterator->second += entry.getValue();
+
+                        // Normalize interval
+                        auto normalizedInterval = storm::Interval(std::min(1.0, probIterator->second.lower()), std::min(1.0, probIterator->second.upper()));
+                        probIterator->second = normalizedInterval;
+                    } else {
+                        blockProbability[targetBlock] = entry.getValue();
+                    }
+                }
+
+                // Now add them to the actual matrix
+                for (auto const& probabilityEntry : blockProbability) {
+                    // TODO: Handle case for weak bisimulation
+                    builder.addNextValue(blockIndex, probabilityEntry.first, probabilityEntry.second);
+                }
             }
 
             // Otherwise add all atomic propositions to the equivalence class that the representative state
@@ -186,9 +216,28 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::postProcess
             distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
         }
 
-        originalStateDistributions[i] = distribution;
+        originalStateDistributions[i] = getClampedDistribution(distribution);  // TODO: distribution yields smaller state space
         i++;
     }
+}
+
+template<typename ModelType>
+Distribution<typename ModelType::ValueType, sparse::state_type> DeterministicIntervalModelBisimulationDecomposition<ModelType>::getClampedDistribution(
+    Distribution<ValueType, storm::storage::sparse::state_type> distribution) const {
+    auto clampedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+    clampedDistribution.reserve(distribution.size());
+
+    for (auto it = distribution.begin(); it != distribution.end(); ++it) {
+        auto key = it->first;
+        auto interval = it->second;
+
+        double lowerBound = std::max(0.0, interval.lower());
+        double upperBound = std::min(1.0, interval.upper());
+
+        clampedDistribution.addProbability(key, storm::Interval(lowerBound, upperBound));
+    }
+
+    return clampedDistribution;
 }
 
 template<typename ModelType>
@@ -305,8 +354,9 @@ template<typename ModelType>
 void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
     std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
     double epsilon) {
-    // cluster states in this block
+    // cluster states of this block in groups
     std::vector<std::pair<std::vector<storm::storage::sparse::state_type>, storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>>> groups;
+
     for (auto s : block) {
         bool placed = false;
         for (auto& g : groups) {
@@ -343,6 +393,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
     if (groups.size() <= 1)
         return;  // nothing to split
 
+    // split block by grouping
     bool wasSplit = this->partition.splitBlockByOrder(block, [&](auto a, auto b) {
         int ga = -1, gb = -1;
         for (int i = 0; i < (int)groups.size(); ++i) {
@@ -372,7 +423,8 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::refineBlock
                     for (auto const& e : this->model.getTransitionMatrix().getRow(predecessorState)) {
                         distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
                     }
-                    originalStateDistributions[predecessorState] = distribution;
+                    originalStateDistributions[predecessorState] =
+                        getClampedDistribution(distribution);  // TODO: distribution yields smaller state space (no clamping)
                 }
             }
         });
@@ -406,25 +458,29 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidate
         }
     }
 
-    // respect \cap [0, 1] when extending intervals
-    auto clamped = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-    clamped.reserve(candidateDistribution.size());
+    for (auto it = groupDistribution.begin(); it != groupDistribution.end(); ++it) {
+        auto blockKey = it->first;
+        auto groupInterval = it->second;
+        auto stateInterval = stateDistribution.getProbability(blockKey);  // will be [0,0] if absent
 
-    for (auto it = candidateDistribution.begin(); it != candidateDistribution.end(); ++it) {
-        auto state = it->first;
-        auto candidateInterval = it->second;
+        // Only handle keys that were missing from stateDistribution
+        if (!(stateInterval == storm::utility::zero<ValueType>())) {
+            continue;
+        }
 
-        double lowerBound = std::max(0.0, candidateInterval.lower());
-        double upperBound = std::min(1.0, candidateInterval.upper());
+        if (stateInterval.lower() < groupInterval.lower()) {
+            auto absoluteDifference = storm::utility::abs(stateInterval.lower() - groupInterval.lower());
+            candidateDistribution.removeProbability(blockKey, storm::Interval(absoluteDifference, absoluteDifference));
+            candidateDistribution.addProbability(blockKey, storm::Interval(0.0, absoluteDifference));
+        }
 
-        clamped.addProbability(state, storm::Interval(lowerBound, upperBound));
+        if (stateInterval.upper() > groupInterval.upper()) {
+            candidateDistribution.addProbability(blockKey, storm::Interval(0.0, storm::utility::abs(stateInterval.upper() - groupInterval.upper())));
+        }
     }
 
-    candidateDistribution = std::move(clamped);
-
-    // std::cout << "Enhanced distribution: " << candidateDistribution << std::endl;
-
-    return candidateDistribution;
+    // respect \cap [0, 1] when extending intervals
+    return getClampedDistribution(candidateDistribution);
 }
 
 template<typename ModelType>
@@ -445,34 +501,6 @@ double DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeDe
     }
 
     return delta;
-}
-
-template<typename ModelType>
-std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> DeterministicIntervalModelBisimulationDecomposition<ModelType>::create2DPolytope(
-    storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound, storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound) {
-    using Point = typename storm::storage::geometry::Polytope<storm::RationalNumber>::Point;
-
-    // Halfspace in R² is given by: a1 * p1 + a2 * p2 <= b, where (a1, a2) is the normal vector and b is the offset
-    std::vector<storm::storage::geometry::Halfspace<storm::RationalNumber>> halfspaces;
-
-    // Interval bounds
-    halfspaces.emplace_back(Point{-1.0, 0.0},  // a1, a2
-                            -c1LowerBound);    // => (-p1 <= -l1) <=> (p1 >= l1)
-    halfspaces.emplace_back(Point{1.0, 0.0},   // a1, a2
-                            c1UpperBound);     // => (p1 <= u1)
-    halfspaces.emplace_back(Point{0.0, -1.0},  // a1, a2
-                            -c2LowerBound);    // => (-p2 <= -l2) <=> (p2 >= l2)
-    halfspaces.emplace_back(Point{0.0, 1.0},   // a1, a2
-                            c2UpperBound);     // => (p2 <= u2)
-
-    // Normalization constraint: p1 + p2 = 1
-    halfspaces.emplace_back(Point{1.0, 1.0},    // a1, a2
-                            1.0);               // p1 + p2 <= 1
-    halfspaces.emplace_back(Point{-1.0, -1.0},  // a1, a2
-                            -1.0);              // -(p1 + p2) <= -1  => p1 + p2 >= 1
-
-    // Polytope is "intersection" of all halfspaces
-    return storm::storage::geometry::Polytope<storm::RationalNumber>::create(halfspaces);
 }
 
 template<typename ModelType>

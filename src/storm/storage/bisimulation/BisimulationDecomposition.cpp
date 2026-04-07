@@ -39,8 +39,7 @@ BisimulationDecomposition<ModelType>::Options::Options(ModelType const& model, s
 }
 
 template<typename ModelType>
-BisimulationDecomposition<ModelType>::Options::Options(ModelType const& model,
-                                                                      std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas)
+BisimulationDecomposition<ModelType>::Options::Options(ModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas)
     : Options() {
     if (formulas.empty()) {
         this->respectedAtomicPropositions = model.getStateLabeling().getLabels();
@@ -107,8 +106,7 @@ void BisimulationDecomposition<ModelType>::Options::preserveSingleFormula(ModelT
 }
 
 template<typename ModelType>
-void BisimulationDecomposition<ModelType>::Options::checkAndSetMeasureDrivenInitialPartition(ModelType const& model,
-                                                                                                            storm::logic::Formula const& formula) {
+void BisimulationDecomposition<ModelType>::Options::checkAndSetMeasureDrivenInitialPartition(ModelType const& model, storm::logic::Formula const& formula) {
     std::shared_ptr<storm::logic::Formula const> newFormula = formula.asSharedPointer();
 
     if (formula.isProbabilityOperatorFormula()) {
@@ -188,10 +186,15 @@ BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const&
 }
 
 template<typename ModelType>
-BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const& model,
-                                                                               storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
-                                                                               Options const& options)
-    : model(model), backwardTransitions(backwardTransitions), options(options), partition(model.getNumberOfStates()), comparator(), quotient(nullptr), absorbingBlocks() {
+BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const& model, storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
+                                                                Options const& options)
+    : model(model),
+      backwardTransitions(backwardTransitions),
+      options(options),
+      partition(model.getNumberOfStates()),
+      comparator(),
+      quotient(nullptr),
+      absorbingBlocks() {
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || model.hasUniqueRewardModel(), storm::exceptions::IllegalFunctionCallException,
                     "Bisimulation currently only supports models with at most one reward model.");
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || !model.getUniqueRewardModel().hasTransitionRewards(),
@@ -212,7 +215,7 @@ void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
     std::chrono::high_resolution_clock::time_point totalStart = std::chrono::high_resolution_clock::now();
     std::chrono::high_resolution_clock::time_point initialPartitionStart = std::chrono::high_resolution_clock::now();
     // initialize the initial partition.
-    if (false/*options.measureDrivenInitialPartition*/) {
+    if (false /*options.measureDrivenInitialPartition*/) {
         std::cout << "Initializing measure driven!" << std::endl;
         STORM_LOG_THROW(options.phiStates, storm::exceptions::InvalidOptionException, "Unable to compute measure-driven initial partition without phi states.");
         STORM_LOG_THROW(options.psiStates, storm::exceptions::InvalidOptionException, "Unable to compute measure-driven initial partition without psi states.");
@@ -229,7 +232,7 @@ void BisimulationDecomposition<ModelType>::computeBisimulationDecomposition() {
 
     if (this->options.getUsesEpsilon()) {
         auto epsilon = this->options.getEpsilon();
-        this->performEpsilonSignatureRefinementUsingCompleteLinkage(epsilon);
+        this->performEpsilonStableAbstractionViaCandidateClustering(epsilon);
     } else {
         this->performPartitionRefinement();
         // this->performSignatureRefinement();
@@ -294,138 +297,12 @@ void BisimulationDecomposition<ModelType>::performPartitionRefinement() {
     std::cout << "Size of final partition " << partition.getNumberOfBlocks() << "." << std::endl;
 }
 
-// uint_fast64_t iterations = 0;
-//
-// uint_fast64_t numberOfBlocks;
-// do {
-//     numberOfBlocks = partition.getNumberOfBlocks();
-//
-//     partition.forEachBlock([this, &iterations] (auto const& splitterBlock) {
-//         ++iterations;
-//
-//         refinePartitionBasedOnSplitter(splitterBlock);
-//     });
-// } while (partition.getNumberOfBlocks() > numberOfBlocks);
-//
-// std::cout << "Finished refinement after " << iterations << " iterations." << std::endl;
-
-
 template<typename ModelType>
-void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinement(double epsilon) {
+void BisimulationDecomposition<ModelType>::performEpsilonStableAbstractionViaCandidateClustering(double epsilon) {
     std::cout << "Computing epsilon-bisimulation with epsilon: " << epsilon << std::endl;
 
     if constexpr (!storm::IsIntervalType<ValueType>) {
         STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
-    }
-
-    // Insert all blocks into the queue for refinement
-    std::deque<typename Partition::Block> blocksQueue;
-
-    storm::storage::Partition::BlockSet enqueuedSplitterBlocks;
-    // Initially, add all current blocks to the queue
-    this->partition.forEachBlock([&](auto const& block) {
-        // TODO: maybe one has to handle the absorbing blocks differently for weak bisimulation, i.e., that they are still enqueued here and handled differently
-        // while splitting based on the computed signatures
-        if (!this->absorbingBlocks.contains(block.front())) {
-            blocksQueue.push_back(block);
-            enqueuedSplitterBlocks.insert(block);
-        }
-    });
-
-    std::vector<std::optional<storm::storage::bisimulation::BucketKey>> stateToBucketKey(backwardTransitions.getColumnCount());
-    std::vector<storm::storage::sparse::state_type> statesWithInvalidBucketKey;
-
-    // Refine the partition as long as the queue is not empty
-    uint_fast64_t iterations = 0;
-    uint_fast64_t noSplitCounter = 0;
-    while (!blocksQueue.empty()) {
-        ++iterations;
-
-        auto blockToRefine = blocksQueue.back();
-        blocksQueue.pop_back();
-        enqueuedSplitterBlocks.erase(blockToRefine);
-
-        auto projectionFn = [&](std::uint64_t state, std::span<const std::uint64_t> block) -> std::pair<double,double> {
-            if constexpr (storm::IsIntervalType<ValueType>) {
-                double lower = 0.0;
-                double upper = 0.0;
-
-                auto intervalToBlock = storm::utility::zero<ValueType>();
-
-                for (auto const& entry : model.getTransitionMatrix().getRow(state)) {
-                    if (!partition.contains(block, entry.getColumn())) continue;
-                    intervalToBlock += entry.getValue();
-                }
-
-                // normalize to [0,1]
-                lower = std::min(1.0, intervalToBlock.lower());
-                upper = std::min(1.0, intervalToBlock.upper());
-                return {lower, upper};
-            } else {
-                STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
-            }
-        };
-
-        storm::storage::bisimulation::BucketKeyBuilder keyBuilder(partition, epsilon, projectionFn);
-        // TODO: Compute intervals to each block for every state in blockToRefine
-        // TODO: Create BucketKey for every state based on intervals
-        for (auto state : blockToRefine) {
-            if (!stateToBucketKey[state].has_value()) {
-                stateToBucketKey[state] = keyBuilder.buildForState(state);
-            }
-        }
-
-        // TODO: Split states according to BucketKey; invalidate intervals for all predecessors (and their corresponding blocks)
-        auto wasSplit = this->partition.splitBlockByOrder(blockToRefine, [&stateToBucketKey]
-                                                          (auto const& a, auto const& b) { return stateToBucketKey.at(a) < stateToBucketKey.at(b); });
-
-        if (wasSplit) {
-            this->partition.forEachSubBlock(blockToRefine, [this, &blocksQueue, &statesWithInvalidBucketKey, &enqueuedSplitterBlocks](auto const& block) {
-                // TODO: If representative state is already on queue, then don't add it
-                if (block.size() > 1 && !enqueuedSplitterBlocks.contains(block)) {
-                    blocksQueue.push_back(block);
-                    enqueuedSplitterBlocks.insert(block);
-                }
-
-                for (auto state : block) {
-                    for (auto &transition: backwardTransitions.getRow(state)) {
-                        auto predecessorState = transition.getColumn();
-                        auto predecessorBlock = partition.getBlockOfElement(predecessorState);
-
-                        // place target block on queue only if it is not already there
-                        if (predecessorBlock.size() > 1 && !enqueuedSplitterBlocks.contains(predecessorBlock)) {
-                            blocksQueue.push_back(predecessorBlock);
-                            enqueuedSplitterBlocks.insert(predecessorBlock);
-                        }
-
-                        // remember which states have an invalid signature now
-                        statesWithInvalidBucketKey.emplace_back(predecessorState);
-                    }
-                }
-            });
-        }
-
-        // invalidate signatures of affected states
-        for (auto currentState : statesWithInvalidBucketKey) {
-            stateToBucketKey[currentState].reset();
-        }
-        statesWithInvalidBucketKey.clear();
-
-        if (storm::utility::resources::isTerminate()) {
-            // std::cout << "Performed " << iterations << " iterations of partition refinement before abort.\n";
-            STORM_LOG_THROW(false, storm::exceptions::AbortException, "Aborted in bisimulation computation.");
-            break;
-        }
-    }
-}
-
-template<typename ModelType>
-void BisimulationDecomposition<ModelType>::performEpsilonSignatureRefinementUsingCompleteLinkage(double epsilon) {
-    std::cout << "Computing epsilon-bisimulation with epsilon: " << epsilon << std::endl;
-
-    if constexpr (!storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
-                        "Cannot compute epsilon-bisimulation on non-interval model!");
     }
 
     std::deque<typename Partition::Block> blocksQueue;
@@ -518,8 +395,8 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
 
         auto oldFront = blockToRefine.front();
         // split blocks according to their state signatures, if possible
-        auto wasSplit = this->partition.splitBlockByOrder(blockToRefine, [&stateToSignature]
-                                                          (auto const& a, auto const& b) { return stateToSignature.at(a) < stateToSignature.at(b); });
+        auto wasSplit = this->partition.splitBlockByOrder(
+            blockToRefine, [&stateToSignature](auto const& a, auto const& b) { return stateToSignature.at(a) < stateToSignature.at(b); });
 
         if (wasSplit) {
             auto newFront = blockToRefine.front();
@@ -534,7 +411,7 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
                 }
 
                 for (auto state : block) {
-                    for (auto &transition: backwardTransitions.getRow(state)) {
+                    for (auto& transition : backwardTransitions.getRow(state)) {
                         auto predecessorState = transition.getColumn();
                         auto predecessorBlock = partition.getBlockOfElement(predecessorState);
 
@@ -573,8 +450,7 @@ void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
 }
 
 template<typename ModelType>
-std::size_t BisimulationDecomposition<ModelType>::computeStateSignatureHash(
-    storm::storage::sparse::state_type state) const {
+std::size_t BisimulationDecomposition<ModelType>::computeStateSignatureHash(storm::storage::sparse::state_type state) const {
     // TODO: Interestingly, the boost hash function seems to create collisions, hence the quotient is not minimal per default.
     // TODO: When using --exact, the quotient gets calculated correctly. Thus, Boost does not guarantee a sufficient
     // TODO: precision for doubles
@@ -585,13 +461,12 @@ std::size_t BisimulationDecomposition<ModelType>::computeStateSignatureHash(
 
 template<typename ModelType>
 storm::storage::bisimulation::Signature<typename ModelType::ValueType> BisimulationDecomposition<ModelType>::computeStateSignature(
-    storm::storage::sparse::state_type state,
-    storm::storage::bisimulation::Partition const& currentPartition) const {
+    storm::storage::sparse::state_type state, storm::storage::bisimulation::Partition const& currentPartition) const {
     storm::storage::bisimulation::Signature<typename ModelType::ValueType> signature;
 
     for (auto entry : model.getTransitionMatrix().getRow(state)) {
         // std::cout << "Prob for state " << state << " to reach target state " << entry.getColumn() << ": " << entry.getValue() << std::endl;
-        auto targetBlock = partition.getBlockOfElement(entry.getColumn()); // column marks the id of the target state
+        auto targetBlock = partition.getBlockOfElement(entry.getColumn());  // column marks the id of the target state
         signature.addBlockProbability(targetBlock.front(), entry.getValue());
     }
 
@@ -682,23 +557,21 @@ void BisimulationDecomposition<ModelType>::initializeMeasureDrivenPartition() {
     // TODO: These blocks should be marked as absorbing
     auto initialBlock = partition.getBlockOfElement(0);
     if (!prob0States.empty()) {
-        auto [notProb0Block, prob0Block] = partition.splitBlockByPredicate(initialBlock, [&prob0States]
-                                                                           (auto const& state) { return prob0States.get(state); });
+        auto [notProb0Block, prob0Block] = partition.splitBlockByPredicate(initialBlock, [&prob0States](auto const& state) { return prob0States.get(state); });
         absorbingBlocks.emplace(prob0Block.front(), prob0Block.front());
 
         if (!prob1States.empty()) {
-            auto [notProb1Block, prob1Block] = partition.splitBlockByPredicate(notProb0Block, [&prob1States]
-                                                                               (auto const& state) { return prob1States.get(state); });
+            auto [notProb1Block, prob1Block] =
+                partition.splitBlockByPredicate(notProb0Block, [&prob1States](auto const& state) { return prob1States.get(state); });
             absorbingBlocks.emplace(prob1Block.front(), representativePsiState.get());
         }
     } else if (!prob1States.empty()) {
-        auto [notProb1Block, prob1Block] = partition.splitBlockByPredicate(initialBlock, [&prob1States]
-                                                                           (auto const& state) { return prob1States.get(state); });
+        auto [notProb1Block, prob1Block] = partition.splitBlockByPredicate(initialBlock, [&prob1States](auto const& state) { return prob1States.get(state); });
         absorbingBlocks.emplace(prob1Block.front(), representativePsiState.get());
 
         if (!prob0States.empty()) {
-            auto [notProb0Block, prob0Block] = partition.splitBlockByPredicate(notProb1Block, [&prob0States]
-                                                                               (auto const& state) { return prob0States.get(state); });
+            auto [notProb0Block, prob0Block] =
+                partition.splitBlockByPredicate(notProb1Block, [&prob0States](auto const& state) { return prob0States.get(state); });
             absorbingBlocks.emplace(prob0Block.front(), prob0Block.front());
         }
     }
@@ -733,12 +606,9 @@ template class BisimulationDecomposition<storm::models::sparse::Dtmc<storm::Rati
 template class BisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalFunction>>;
 template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalFunction>>;
 
-template class storm::storage::BisimulationDecomposition<
-    storm::models::sparse::Dtmc<carl::Interval<double>>>;
-template class storm::storage::BisimulationDecomposition<
-    storm::models::sparse::Ctmc<carl::Interval<double>>>;
-template class storm::storage::BisimulationDecomposition<
-    storm::models::sparse::Mdp<carl::Interval<double>>>;
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>>;
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Ctmc<carl::Interval<double>>>;
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Mdp<carl::Interval<double>>>;
 
 #endif
 }  // namespace storage

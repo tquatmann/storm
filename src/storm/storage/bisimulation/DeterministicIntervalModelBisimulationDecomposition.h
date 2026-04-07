@@ -68,6 +68,8 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& groupDistribution,
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution);
 
+    Distribution<ValueType, sparse::state_type> getClampedDistribution(Distribution<ValueType, storm::storage::sparse::state_type> distribution) const;
+
     // A vector that holds the probabilities of states going into the splitter. This is used by the method that
     // refines a block based on probabilities.
     std::vector<ValueType> probabilitiesToCurrentSplitter;
@@ -81,6 +83,7 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
     // Note that this bitvector also indicates whether a state is a direct predecessor of the splitter block or not.
     storm::storage::BitVector touchedProbabilitiesToSplitter;
 
+    // A vector of the distributions over the current partition of each state
     std::vector<storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>> originalStateDistributions;
 };
 

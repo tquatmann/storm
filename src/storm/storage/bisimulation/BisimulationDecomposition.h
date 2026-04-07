@@ -245,12 +245,17 @@ class BisimulationDecomposition {
      */
     void performSignatureRefinement();
 
-    void performEpsilonSignatureRefinement(double epsilon);
-
-    void performEpsilonSignatureRefinementUsingCompleteLinkage(double epsilon);
+    /*!
+     * Performs the epsilon-stable abstraction on the model and thereby merges suitable states which satisfy
+     * the epsilon-stability criterion. If required, the quotient model is built and may be retrieved using
+     * getQuotient().
+     * @param epsilon TODO: is 'epsilon' here the right naming? This actually corresponds to the allowed
+     * delta during interval enhancement (upper bound).
+     */
+    void performEpsilonStableAbstractionViaCandidateClustering(double epsilon);
 
     virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
-                                                        bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) = 0;
+                                                    bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) = 0;
 
     /*!
      * Computes the signature of the given state with respect to the given partition.
@@ -259,8 +264,7 @@ class BisimulationDecomposition {
      * @return hash value of the state's signature.
      */
     storm::storage::bisimulation::Signature<typename ModelType::ValueType> computeStateSignature(
-        storm::storage::sparse::state_type state,
-        storm::storage::bisimulation::Partition const& currentPartition) const;
+        storm::storage::sparse::state_type state, storm::storage::bisimulation::Partition const& currentPartition) const;
 
     /*!
      * Computes a hash value based of the signature of the given state with respect to the given partition.
@@ -280,7 +284,7 @@ class BisimulationDecomposition {
 
     /*!
      * Builds the quotient model based on the previously computed equivalence classes (stored in the blocks
-     * of the decomposition.
+     * of the decomposition).
      */
     virtual void buildQuotient() = 0;
 
