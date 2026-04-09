@@ -31,6 +31,7 @@ endif()
 if (STORM_COMPILE_WITH_ADDRESS_SANITIZER)
     message(STATUS "Storm - Enabling AddressSanitizer")
     add_compile_options(-fsanitize=address)
+    add_link_options(-fsanitize=address)
 endif()
 
 # In release mode, we turn on even more optimizations if we do not have to provide a portable binary.
@@ -121,6 +122,11 @@ else()
     add_compile_options($<$<CONFIG:RELEASE>:-fomit-frame-pointer>)
 endif()
 
+if(STORM_WARNING_AS_ERROR)
+    # Reenable soon
+    add_compile_options(-Wno-unused-parameter)
+endif()
+
 
 add_custom_target(binaries)
 
@@ -140,6 +146,7 @@ add_subdirectory(storm-pomdp)
 add_subdirectory(storm-cli-utilities)
 
 if(STORM_BUILD_EXECUTABLES)
+    message(STATUS "Storm - Enabled building executables." )
     # Typically an idea to switch this off, if you want to build a library on top of Storm.
     add_subdirectory(storm-cli)
     add_subdirectory(storm-conv-cli)
@@ -147,10 +154,15 @@ if(STORM_BUILD_EXECUTABLES)
     add_subdirectory(storm-gspn-cli)
     add_subdirectory(storm-pars-cli)
     add_subdirectory(storm-pomdp-cli)
+else()
+    message(STATUS "Storm - Disabled building executables." )
 endif()
 
-if (STORM_BUILD_TESTS)
+if (PROJECT_IS_TOP_LEVEL AND STORM_BUILD_TESTS)
+    message(STATUS "Storm - Enabled building tests." )
     add_subdirectory(test)
+else()
+    message(STATUS "Storm - Disabled building tests." )
 endif()
 
 set(STORM_TARGETS ${STORM_TARGETS} PARENT_SCOPE)

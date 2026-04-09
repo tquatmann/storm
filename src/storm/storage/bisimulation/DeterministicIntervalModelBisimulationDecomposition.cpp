@@ -50,7 +50,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::buildQuotie
 
     // Prepare the new state labeling for (b).
     storm::models::sparse::StateLabeling newLabeling(this->partition.getNumberOfBlocks());
-    std::set<std::string> atomicPropositionsSet = this->options.respectedAtomicPropositions.get();
+    std::set<std::string> atomicPropositionsSet = this->options.respectedAtomicPropositions.value();
     atomicPropositionsSet.insert("init");
     std::vector<std::string> atomicPropositions = std::vector<std::string>(atomicPropositionsSet.begin(), atomicPropositionsSet.end());
     for (auto const& ap : atomicPropositions) {
@@ -191,7 +191,7 @@ void DeterministicIntervalModelBisimulationDecomposition<ModelType>::buildQuotie
     }
 
     // Finally construct the quotient model.
-    this->quotient = std::shared_ptr<ModelType>(new ModelType(builder.build(), std::move(newLabeling), std::move(rewardModels)));
+    this->quotient = std::make_shared<ModelType>(builder.build(), std::move(newLabeling), std::move(rewardModels));
 }
 
 template<typename ModelType>
@@ -449,7 +449,7 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidate
 
         if (stateInterval.lower() < groupInterval.lower()) {
             auto absoluteDifference = storm::utility::abs(stateInterval.lower() - groupInterval.lower());
-            candidateDistribution.removeProbability(it->first, storm::Interval(absoluteDifference, absoluteDifference));
+            candidateDistribution.removeProbability(it->first, storm::Interval(absoluteDifference, absoluteDifference), this->comparator);
             candidateDistribution.addProbability(it->first, storm::Interval(0.0, absoluteDifference));
         }
 
@@ -470,7 +470,7 @@ DeterministicIntervalModelBisimulationDecomposition<ModelType>::computeCandidate
 
         if (stateInterval.lower() < groupInterval.lower()) {
             auto absoluteDifference = storm::utility::abs(stateInterval.lower() - groupInterval.lower());
-            candidateDistribution.removeProbability(blockKey, storm::Interval(absoluteDifference, absoluteDifference));
+            candidateDistribution.removeProbability(blockKey, storm::Interval(absoluteDifference, absoluteDifference), this->comparator);
             candidateDistribution.addProbability(blockKey, storm::Interval(0.0, absoluteDifference));
         }
 
@@ -509,8 +509,8 @@ std::pair<storm::storage::BitVector, storm::storage::BitVector> DeterministicInt
     return {storm::storage::BitVector(), storm::storage::BitVector()};
 }
 
-template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<carl::Interval<double>>>;
-template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Ctmc<carl::Interval<double>>>;
+template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>>;
+template class DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Ctmc<storm::Interval>>;
 
 }  // namespace storage
 }  // namespace storm

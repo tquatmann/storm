@@ -21,14 +21,17 @@ ARG no_threads=1
 # CMake build type
 ARG build_type=Release
 # Carl tag to use
-ARG carl_tag="14.32.1"
+ARG carl_tag="14.34"
 # Specify Storm configuration (ON/OFF)
+ARG disable_cudd="OFF"
 ARG disable_glpk="OFF"
 ARG disable_gmm="OFF"
 ARG disable_gurobi="OFF"
+ARG disable_libarchive="OFF"
 ARG disable_mathsat="OFF"
 ARG disable_soplex="OFF"
 ARG disable_spot="OFF"
+ARG disable_sylvan="OFF"
 ARG disable_xerces="OFF"
 ARG disable_z3="OFF"
 ARG developer="OFF"
@@ -56,17 +59,21 @@ WORKDIR /opt/storm/build
 RUN cmake -DCMAKE_BUILD_TYPE=$build_type \
           -DSTORM_PORTABLE=ON \
           -DSTORM_CARL_GIT_TAG=$carl_tag \
-          -DSTORM_DISABLE_GMM=$disable_gmm \
+          -DSTORM_DISABLE_CUDD=$disable_cudd \
           -DSTORM_DISABLE_GLPK=$disable_glpk \
+          -DSTORM_DISABLE_GMM=$disable_gmm \
           -DSTORM_DISABLE_GUROBI=$disable_gurobi \
+          -DSTORM_DISABLE_LIBARCHIVE=$disable_libarchive \
           -DSTORM_DISABLE_MATHSAT=$disable_mathsat \
           -DSTORM_DISABLE_SOPLEX=$disable_soplex \
           -DSTORM_DISABLE_SPOT=$disable_spot \
+          -DSTORM_DISABLE_SYLVAN=$disable_sylvan \
           -DSTORM_DISABLE_XERCES=$disable_xerces \
           -DSTORM_DISABLE_Z3=$disable_z3 \
           -DSTORM_DEVELOPER=$developer \
           -DSTORM_USE_CLN_EA=$cln_exact \
           -DSTORM_USE_CLN_RF=$cln_ratfunc \
+          -DSTORM_COMPILE_WITH_ALL_SANITIZERS=$all_sanitizers \
           $cmake_args ..
 
 # Build Storm

@@ -1,39 +1,42 @@
 #include <sstream>
-#include "storm/storage/bisimulation/Partition.h"
 #include "storm/models/sparse/Dtmc.h"
+#include "storm/storage/bisimulation/Partition.h"
 
 #include "test/storm_gtest.h"
 
 #include <storm-parsers/parser/DirectEncodingParser.h>
 #include <memory>
 #include <vector>
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/storage/geometry/Halfspace.h"
 #include "storm/storage/geometry/Polytope.h"
 
 namespace {
 
-std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound, storm::RationalNumber c1UpperBound,
-                                                                                          storm::RationalNumber c2LowerBound, storm::RationalNumber c2UpperBound) {
+std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound,
+                                                                                            storm::RationalNumber c1UpperBound,
+                                                                                            storm::RationalNumber c2LowerBound,
+                                                                                            storm::RationalNumber c2UpperBound) {
     using Point = typename storm::storage::geometry::Polytope<storm::RationalNumber>::Point;
 
     // Halfspace in R² is given by: a1 * p1 + a2 * p2 <= b, where (a1, a2) is the normal vector and b is the offset
     std::vector<storm::storage::geometry::Halfspace<storm::RationalNumber>> halfspaces;
 
     // Interval bounds
-    halfspaces.emplace_back(Point{-1.0, 0.0}, // a1, a2
-                            -c1LowerBound);  // => (-p1 <= -l1) <=> (p1 >= l1)
-    halfspaces.emplace_back(Point{ 1.0, 0.0}, // a1, a2
-                            c1UpperBound);  // => (p1 <= u1)
-    halfspaces.emplace_back(Point{ 0.0,-1.0}, // a1, a2
-                            -c2LowerBound);  // => (-p2 <= -l2) <=> (p2 >= l2)
-    halfspaces.emplace_back(Point{ 0.0, 1.0}, // a1, a2
-                            c2UpperBound);  // => (p2 <= u2)
+    halfspaces.emplace_back(Point{-1.0, 0.0},  // a1, a2
+                            -c1LowerBound);    // => (-p1 <= -l1) <=> (p1 >= l1)
+    halfspaces.emplace_back(Point{1.0, 0.0},   // a1, a2
+                            c1UpperBound);     // => (p1 <= u1)
+    halfspaces.emplace_back(Point{0.0, -1.0},  // a1, a2
+                            -c2LowerBound);    // => (-p2 <= -l2) <=> (p2 >= l2)
+    halfspaces.emplace_back(Point{0.0, 1.0},   // a1, a2
+                            c2UpperBound);     // => (p2 <= u2)
 
     // Normalization constraint: p1 + p2 = 1
-    halfspaces.emplace_back(Point{ 1.0, 1.0}, // a1, a2
-                            1.0);  // p1 + p2 <= 1
-    halfspaces.emplace_back(Point{-1.0,-1.0}, // a1, a2
-                            -1.0);  // -(p1 + p2) <= -1  => p1 + p2 >= 1
+    halfspaces.emplace_back(Point{1.0, 1.0},    // a1, a2
+                            1.0);               // p1 + p2 <= 1
+    halfspaces.emplace_back(Point{-1.0, -1.0},  // a1, a2
+                            -1.0);              // -(p1 + p2) <= -1  => p1 + p2 >= 1
 
     // Polytope is "intersection" of all halfspaces
     return storm::storage::geometry::Polytope<storm::RationalNumber>::create(halfspaces);
@@ -82,7 +85,7 @@ TEST(PolytopeTest, CreatePolytopesfromIDTMC) {
     // Just tests the parsing of an IDTMC and creates useless polytopes from it.
 
     std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
-        storm::parser::DirectEncodingParser<storm::Interval>::parseModel(STORM_TEST_RESOURCES_DIR "/idtmc/brp-16-2.drn");
+        storm::parser::parseDirectEncodingModel<storm::Interval>(STORM_TEST_RESOURCES_DIR "/idtmc/brp-16-2.drn");
     std::shared_ptr<storm::models::sparse::Dtmc<storm::Interval>> dtmc = modelPtr->as<storm::models::sparse::Dtmc<storm::Interval>>();
     ASSERT_EQ(storm::models::ModelType::Dtmc, modelPtr->getType());
     ASSERT_EQ(613ul, dtmc->getNumberOfStates());
@@ -92,12 +95,11 @@ TEST(PolytopeTest, CreatePolytopesfromIDTMC) {
 
     for (auto i = 0; i < dtmc->getNumberOfStates(); i++) {
         for (const auto& entry : dtmc->getTransitionMatrix().getRow(i)) {
-            polytopesOfStates.emplace_back(create2DPolytope(entry.getValue().lower(), entry.getValue().upper(),
-                                                            0.0, 1.0));
+            polytopesOfStates.emplace_back(create2DPolytope(entry.getValue().lower(), entry.getValue().upper(), 0.0, 1.0));
         }
     }
 
     std::cout << polytopesOfStates.size() << std::endl;
 }
 
-}
+}  // namespace

@@ -94,6 +94,11 @@ void printVersion() {
 
     // Print linked dependencies
     STORM_PRINT("Linked with CArL v" << STORM_CARL_VERSION << ".\n");
+#ifdef STORM_HAVE_CUDD
+    STORM_PRINT("Linked with CUDD.\n");
+#else
+    STORM_PRINT("Not linked with CUDD.\n");
+#endif
 #ifdef STORM_HAVE_GLPK
     STORM_PRINT("Linked with GLPK v" << GLP_MAJOR_VERSION << "." << GLP_MINOR_VERSION << ".\n");
 #else
@@ -126,6 +131,11 @@ void printVersion() {
 #else
     STORM_PRINT("Not linked with Spot.\n");
 #endif
+#ifdef STORM_HAVE_SYLVAN
+    STORM_PRINT("Linked with Sylvan.\n");
+#else
+    STORM_PRINT("Not linked with Sylvan.\n");
+#endif
 #ifdef STORM_HAVE_XERCES
     STORM_PRINT("Linked with Xerces-C v" << gXercesMajVersion << "." << gXercesMinVersion << "." << gXercesRevision << ".\n");
 #else
@@ -134,12 +144,7 @@ void printVersion() {
 #ifdef STORM_HAVE_Z3
     unsigned int z3Major, z3Minor, z3BuildNumber, z3RevisionNumber;
     Z3_get_version(&z3Major, &z3Minor, &z3BuildNumber, &z3RevisionNumber);
-#ifdef STORM_HAVE_Z3_OPTIMIZE
-    STORM_PRINT("Linked with Z3 Theorem Prover v" << z3Major << "." << z3Minor << " Build " << z3BuildNumber << " Rev " << z3RevisionNumber
-                                                  << " (with optimization features).\n");
-#else
     STORM_PRINT("Linked with Z3 Theorem Prover v" << z3Major << "." << z3Minor << " Build " << z3BuildNumber << " Rev " << z3RevisionNumber << ".\n");
-#endif
 #else
     STORM_PRINT("Not linked with Z3 Theorem Prover\n");
 #endif

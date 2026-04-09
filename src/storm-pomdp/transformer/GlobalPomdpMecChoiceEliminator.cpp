@@ -1,14 +1,14 @@
 #include "storm-pomdp/transformer/GlobalPomdpMecChoiceEliminator.h"
+
 #include <vector>
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/InvalidPropertyException.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/transformer/ChoiceSelector.h"
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
-
-#include "storm/exceptions/InvalidPropertyException.h"
 
 namespace storm {
 namespace transformer {
@@ -234,11 +234,10 @@ storm::storage::BitVector GlobalPomdpMecChoiceEliminator<ValueType>::checkPropos
     storm::modelchecker::SparsePropositionalModelChecker<storm::models::sparse::Mdp<ValueType>> mc(pomdp);
     STORM_LOG_THROW(mc.canHandle(propositionalFormula), storm::exceptions::InvalidPropertyException,
                     "Propositional model checker can not handle formula " << propositionalFormula);
-    return mc.check(propositionalFormula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    return mc.check(propositionalFormula)->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 }
 
-template class GlobalPomdpMecChoiceEliminator<storm::RationalNumber>;
-
 template class GlobalPomdpMecChoiceEliminator<double>;
+template class GlobalPomdpMecChoiceEliminator<storm::RationalNumber>;
 }  // namespace transformer
 }  // namespace storm

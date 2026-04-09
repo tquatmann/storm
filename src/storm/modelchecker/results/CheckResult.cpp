@@ -1,8 +1,7 @@
 #include "storm/modelchecker/results/CheckResult.h"
 
-#include "storm-config.h"
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
-
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
@@ -11,9 +10,6 @@
 #include "storm/modelchecker/results/SymbolicParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/SymbolicQualitativeCheckResult.h"
 #include "storm/modelchecker/results/SymbolicQuantitativeCheckResult.h"
-
-#include "storm/exceptions/InvalidOperationException.h"
-#include "storm/utility/macros.h"
 
 namespace storm {
 namespace modelchecker {
@@ -82,12 +78,14 @@ bool CheckResult::isHybridQuantitativeCheckResult() const {
     return false;
 }
 
-ExplicitQualitativeCheckResult& CheckResult::asExplicitQualitativeCheckResult() {
-    return dynamic_cast<ExplicitQualitativeCheckResult&>(*this);
+template<typename ValueType>
+ExplicitQualitativeCheckResult<ValueType>& CheckResult::asExplicitQualitativeCheckResult() {
+    return dynamic_cast<ExplicitQualitativeCheckResult<ValueType>&>(*this);
 }
 
-ExplicitQualitativeCheckResult const& CheckResult::asExplicitQualitativeCheckResult() const {
-    return dynamic_cast<ExplicitQualitativeCheckResult const&>(*this);
+template<typename ValueType>
+ExplicitQualitativeCheckResult<ValueType> const& CheckResult::asExplicitQualitativeCheckResult() const {
+    return dynamic_cast<ExplicitQualitativeCheckResult<ValueType> const&>(*this);
 }
 
 template<typename ValueType>
@@ -188,6 +186,8 @@ template QuantitativeCheckResult<double> const& CheckResult::asQuantitativeCheck
 
 template ExplicitQuantitativeCheckResult<double>& CheckResult::asExplicitQuantitativeCheckResult();
 template ExplicitQuantitativeCheckResult<double> const& CheckResult::asExplicitQuantitativeCheckResult() const;
+template ExplicitQualitativeCheckResult<double>& CheckResult::asExplicitQualitativeCheckResult();
+template ExplicitQualitativeCheckResult<double> const& CheckResult::asExplicitQualitativeCheckResult() const;
 template ExplicitParetoCurveCheckResult<double>& CheckResult::asExplicitParetoCurveCheckResult();
 template ExplicitParetoCurveCheckResult<double> const& CheckResult::asExplicitParetoCurveCheckResult() const;
 template LexicographicCheckResult<double>& CheckResult::asLexicographicCheckResult();
@@ -215,12 +215,13 @@ template SymbolicParetoCurveCheckResult<storm::dd::DdType::Sylvan, double> const
 template HybridQuantitativeCheckResult<storm::dd::DdType::Sylvan, double>& CheckResult::asHybridQuantitativeCheckResult();
 template HybridQuantitativeCheckResult<storm::dd::DdType::Sylvan, double> const& CheckResult::asHybridQuantitativeCheckResult() const;
 
-#ifdef STORM_HAVE_CARL
 template QuantitativeCheckResult<storm::RationalNumber>& CheckResult::asQuantitativeCheckResult();
 template QuantitativeCheckResult<storm::RationalNumber> const& CheckResult::asQuantitativeCheckResult() const;
 
 template ExplicitQuantitativeCheckResult<storm::RationalNumber>& CheckResult::asExplicitQuantitativeCheckResult();
 template ExplicitQuantitativeCheckResult<storm::RationalNumber> const& CheckResult::asExplicitQuantitativeCheckResult() const;
+template ExplicitQualitativeCheckResult<storm::RationalNumber>& CheckResult::asExplicitQualitativeCheckResult();
+template ExplicitQualitativeCheckResult<storm::RationalNumber> const& CheckResult::asExplicitQualitativeCheckResult() const;
 
 template QuantitativeCheckResult<storm::RationalFunction>& CheckResult::asQuantitativeCheckResult();
 template QuantitativeCheckResult<storm::RationalFunction> const& CheckResult::asQuantitativeCheckResult() const;
@@ -228,12 +229,18 @@ template QuantitativeCheckResult<storm::RationalFunction> const& CheckResult::as
 template ExplicitQuantitativeCheckResult<storm::RationalFunction>& CheckResult::asExplicitQuantitativeCheckResult();
 template ExplicitQuantitativeCheckResult<storm::RationalFunction> const& CheckResult::asExplicitQuantitativeCheckResult() const;
 
+template ExplicitQualitativeCheckResult<storm::RationalFunction>& CheckResult::asExplicitQualitativeCheckResult();
+template ExplicitQualitativeCheckResult<storm::RationalFunction> const& CheckResult::asExplicitQualitativeCheckResult() const;
+
 template ExplicitParetoCurveCheckResult<storm::RationalNumber>& CheckResult::asExplicitParetoCurveCheckResult();
 template ExplicitParetoCurveCheckResult<storm::RationalNumber> const& CheckResult::asExplicitParetoCurveCheckResult() const;
 
 template LexicographicCheckResult<storm::RationalNumber>& CheckResult::asLexicographicCheckResult();
 template LexicographicCheckResult<storm::RationalNumber> const& CheckResult::asLexicographicCheckResult() const;
 
-#endif
+// Instantiation for storm::Interval (carl::Interval<double>)
+template ExplicitQualitativeCheckResult<storm::Interval>& CheckResult::asExplicitQualitativeCheckResult();
+template ExplicitQualitativeCheckResult<storm::Interval> const& CheckResult::asExplicitQualitativeCheckResult() const;
+
 }  // namespace modelchecker
 }  // namespace storm

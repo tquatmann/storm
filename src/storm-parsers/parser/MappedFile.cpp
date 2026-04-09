@@ -1,18 +1,10 @@
-/*
- * MappedFile.cpp
- *
- *  Created on: Jan 21, 2014
- *      Author: Manuel Sascha Weiand
- */
-
 #include "storm-parsers/parser/MappedFile.h"
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <boost/integer/integer_mask.hpp>
 #include <cstring>
 #include <fstream>
-
-#include <boost/integer/integer_mask.hpp>
 
 #include "storm/exceptions/FileIoException.h"
 #include "storm/io/file.h"
@@ -28,7 +20,7 @@ MappedFile::MappedFile(const char* filename) {
     // Do file mapping for reasonable systems.
     // stat64(), open(), mmap()
 
-#ifdef MACOSX
+#if defined MACOS || !defined __GLIBC__
     if (stat(filename, &(this->st)) != 0) {
 #else
     if (stat64(filename, &(this->st)) != 0) {

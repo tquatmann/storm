@@ -1,19 +1,13 @@
 #include "storm/storage/dd/DdManager.h"
 
-#include "storm/storage/expressions/ExpressionManager.h"
+#include <cmath>
 
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/exceptions/InvalidOperationException.h"
+#include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
-
-#include "storm/exceptions/InvalidOperationException.h"
-#include "storm/exceptions/NotSupportedException.h"
-
-#include "storm-config.h"
-#include "storm/adapters/RationalFunctionAdapter.h"
-
-#include <cmath>
-#include <iostream>
 
 namespace storm {
 namespace dd {
@@ -180,19 +174,13 @@ Bdd<LibraryType> DdManager<LibraryType>::getIdentity(storm::expressions::Variabl
     return result;
 }
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winfinite-recursion"
-#endif
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winfinite-recursion"
 template<DdType LibraryType>
 Bdd<LibraryType> DdManager<LibraryType>::getCube(storm::expressions::Variable const& variable) const {
     return getCube({variable});
 }
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
+#pragma GCC diagnostic pop
 
 template<DdType LibraryType>
 Bdd<LibraryType> DdManager<LibraryType>::getCube(std::set<storm::expressions::Variable> const& variables) const {
@@ -485,7 +473,7 @@ std::vector<uint_fast64_t> DdManager<LibraryType>::getSortedVariableIndices(std:
     }
 
     // Next, we need to sort them, since they may be arbitrarily ordered otherwise.
-    std::sort(ddVariableIndices.begin(), ddVariableIndices.end());
+    std::ranges::sort(ddVariableIndices);
     return ddVariableIndices;
 }
 
@@ -523,27 +511,18 @@ template class DdManager<DdType::CUDD>;
 
 template Add<DdType::CUDD, double> DdManager<DdType::CUDD>::getAddZero() const;
 template Add<DdType::CUDD, uint_fast64_t> DdManager<DdType::CUDD>::getAddZero() const;
-
-#ifdef STORM_HAVE_CARL
 template Add<DdType::CUDD, storm::RationalNumber> DdManager<DdType::CUDD>::getAddZero() const;
-#endif
 
 template Add<DdType::CUDD, double> DdManager<DdType::CUDD>::getAddOne() const;
 template Add<DdType::CUDD, uint_fast64_t> DdManager<DdType::CUDD>::getAddOne() const;
-
-#ifdef STORM_HAVE_CARL
 template Add<DdType::CUDD, storm::RationalNumber> DdManager<DdType::CUDD>::getAddOne() const;
-#endif
 
 template Add<DdType::CUDD, double> DdManager<DdType::CUDD>::getInfinity<double>() const;
 template Add<DdType::CUDD, uint_fast64_t> DdManager<DdType::CUDD>::getInfinity<uint_fast64_t>() const;
 
 template Add<DdType::CUDD, double> DdManager<DdType::CUDD>::getConstant(double const& value) const;
 template Add<DdType::CUDD, uint_fast64_t> DdManager<DdType::CUDD>::getConstant(uint_fast64_t const& value) const;
-
-#ifdef STORM_HAVE_CARL
 template Add<DdType::CUDD, storm::RationalNumber> DdManager<DdType::CUDD>::getConstant(storm::RationalNumber const& value) const;
-#endif
 
 template Add<DdType::CUDD, double> DdManager<DdType::CUDD>::getIdentity(storm::expressions::Variable const& variable) const;
 template Add<DdType::CUDD, uint_fast64_t> DdManager<DdType::CUDD>::getIdentity(storm::expressions::Variable const& variable) const;
@@ -552,44 +531,32 @@ template class DdManager<DdType::Sylvan>;
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getAddZero() const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getAddZero() const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getAddZero() const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getAddZero() const;
-#endif
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getAddUndefined() const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getAddUndefined() const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getAddUndefined() const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getAddUndefined() const;
-#endif
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getAddOne() const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getAddOne() const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getAddOne() const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getAddOne() const;
-#endif
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getInfinity<double>() const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getInfinity<uint_fast64_t>() const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getInfinity<storm::RationalNumber>() const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getInfinity<storm::RationalFunction>() const;
-#endif
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getConstant(double const& value) const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getConstant(uint_fast64_t const& value) const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getConstant(storm::RationalNumber const& value) const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getConstant(storm::RationalFunction const& value) const;
-#endif
 
 template Add<DdType::Sylvan, double> DdManager<DdType::Sylvan>::getIdentity(storm::expressions::Variable const& variable) const;
 template Add<DdType::Sylvan, uint_fast64_t> DdManager<DdType::Sylvan>::getIdentity(storm::expressions::Variable const& variable) const;
-#ifdef STORM_HAVE_CARL
 template Add<DdType::Sylvan, storm::RationalNumber> DdManager<DdType::Sylvan>::getIdentity(storm::expressions::Variable const& variable) const;
 template Add<DdType::Sylvan, storm::RationalFunction> DdManager<DdType::Sylvan>::getIdentity(storm::expressions::Variable const& variable) const;
-#endif
 }  // namespace dd
 }  // namespace storm

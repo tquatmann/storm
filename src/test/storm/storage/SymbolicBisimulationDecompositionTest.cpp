@@ -4,35 +4,48 @@
 #include "storm-parsers/parser/FormulaParser.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/builder/DdPrismModelBuilder.h"
-#include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SymbolicDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/prctl/SymbolicMdpPrctlModelChecker.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/QuantitativeCheckResult.h"
 #include "storm/modelchecker/results/SymbolicQualitativeCheckResult.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/models/symbolic/Dtmc.h"
 #include "storm/models/symbolic/Mdp.h"
 #include "storm/models/symbolic/StandardRewardModel.h"
 #include "storm/solver/SymbolicLinearEquationSolver.h"
-#include "storm/solver/SymbolicMinMaxLinearEquationSolver.h"
 #include "storm/storage/SymbolicModelDescription.h"
-#include "storm/storage/dd/BisimulationDecomposition.h"
+#include "storm/storage/dd/bisimulation/BisimulationDecomposition.h"
 
 class Cudd {
    public:
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static const storm::dd::DdType DdType = storm::dd::DdType::CUDD;
 };
 
 class Sylvan {
    public:
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static const storm::dd::DdType DdType = storm::dd::DdType::Sylvan;
 };
 
 template<typename TestType>
 class SymbolicModelBisimulationDecomposition : public ::testing::Test {
    public:
+    void SetUp() override {
+        TestType::checkLibraryAvailable();
+    }
+
     static const storm::dd::DdType DdType = TestType::DdType;
 };
 

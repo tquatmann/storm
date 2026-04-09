@@ -10,6 +10,7 @@
 #include "storm/settings/SettingsManager.h"
 
 #include "storm/exceptions/IllegalArgumentValueException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -27,10 +28,14 @@ const std::string IOSettings::exportCdfOptionName = "exportcdf";
 const std::string IOSettings::exportCdfOptionShortName = "cdf";
 const std::string IOSettings::exportSchedulerOptionName = "exportscheduler";
 const std::string IOSettings::exportCheckResultOptionName = "exportresult";
+const std::string IOSettings::exportCompressionOptionName = "compression";
+const std::string IOSettings::exportDigitsOptionName = "digits";
 const std::string IOSettings::explicitOptionName = "explicit";
 const std::string IOSettings::explicitOptionShortName = "exp";
 const std::string IOSettings::explicitDrnOptionName = "explicit-drn";
 const std::string IOSettings::explicitDrnOptionShortName = "drn";
+const std::string IOSettings::explicitUmbOptionName = "explicit-umb";
+const std::string IOSettings::explicitUmbOptionShortName = "umb";
 const std::string IOSettings::explicitImcaOptionName = "explicit-imca";
 const std::string IOSettings::explicitImcaOptionShortName = "imca";
 const std::string IOSettings::prismInputOptionName = "prism";
@@ -55,6 +60,8 @@ const std::string IOSettings::qvbsInputOptionShortName = "qvbs";
 const std::string IOSettings::qvbsRootOptionName = "qvbsroot";
 const std::string IOSettings::propertiesAsMultiOptionName = "propsasmulti";
 
+const std::string IOSettings::uncertaintyResolutionModeName = "uncertainty-resolution";
+
 std::string preventDRNPlaceholderOptionName = "no-drn-placeholders";
 
 IOSettings::IOSettings() : ModuleSettings(moduleName) {
@@ -74,7 +81,7 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .setDefaultValueUnsignedInteger(0)
                                          .build())
                         .build());
-    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json"});
+    std::vector<std::string> exportFormats({"auto", "dot", "drdd", "drn", "json", "umb"});
     this->addOption(
         storm::settings::OptionBuilder(moduleName, exportBuildOptionName, false, "Exports the built model to a file.")
             .addArgument(storm::settings::ArgumentBuilder::createStringArgument("file", "The output file.").build())
@@ -84,6 +91,20 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                              .makeOptional()
                              .build())
             .build());
+
+    std::vector<std::string> compressionModes({"default", "none", "gzip", "xz"});
+    this->addOption(storm::settings::OptionBuilder(moduleName, exportCompressionOptionName, false, "Configures compression of exported files (if supported).")
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("mode", "The preferred compression mode.")
+                                         .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(compressionModes))
+                                         .setDefaultValueString("default")
+                                         .build())
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, exportDigitsOptionName, false, "Sets number of output digits of export (if supported).")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createUnsignedIntegerArgument("num", "Number of digits.").build())
+                        .build());
+
     this->addOption(
         storm::settings::OptionBuilder(moduleName, exportJaniDotOptionName, false,
                                        "If given, the loaded jani model will be written to the specified file in the dot format.")
@@ -137,6 +158,11 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                                          .addValidatorString(ArgumentValidatorFactory::createExistingFileValidator())
                                          .build())
                         .build());
+    this->addOption(
+        storm::settings::OptionBuilder(moduleName, explicitUmbOptionName, false, "Parses the model given in the UMB format. The file can be compressed.")
+            .setShortName(explicitUmbOptionShortName)
+            .addArgument(storm::settings::ArgumentBuilder::createStringArgument("umb location", "The location of the umb encoding.").build())
+            .build());
     this->addOption(storm::settings::OptionBuilder(moduleName, explicitDrnOptionName, false, "Parses the model given in the DRN format.")
                         .setShortName(explicitDrnOptionShortName)
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("drn filename", "The name of the DRN file containing the model.")
@@ -255,6 +281,13 @@ IOSettings::IOSettings() : ModuleSettings(moduleName) {
                         .setIsAdvanced()
                         .build());
 
+    std::vector<std::string> uncertaintyResolutionModes = {"minimize", "maximize", "robust", "cooperative", "min", "max"};
+    this->addOption(storm::settings::OptionBuilder(moduleName, uncertaintyResolutionModeName, false, "Mode to resolve the uncertainty (intervals)")
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("mode", "Mode to resolve the uncertainty (intervals) by nature.")
+                                         .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(uncertaintyResolutionModes))
+                                         .build())
+                        .build());
+
 #ifdef STORM_HAVE_QVBS
     std::string qvbsRootDefault = STORM_QVBS_ROOT;
 #else
@@ -293,6 +326,23 @@ storm::io::ModelExportFormat IOSettings::getExportBuildFormat() const {
     } else {
         return storm::io::getModelExportFormatFromString(format);
     }
+}
+
+bool IOSettings::isCompressionSet() const {
+    return this->getOption(exportCompressionOptionName).getHasOptionBeenSet();
+}
+
+storm::io::CompressionMode IOSettings::getCompressionMode() const {
+    auto mode = this->getOption(exportCompressionOptionName).getArgumentByName("mode").getValueAsString();
+    return storm::io::getCompressionModeFromString(mode);
+}
+
+bool IOSettings::isExportDigitsSet() const {
+    return this->getOption(exportDigitsOptionName).getHasOptionBeenSet();
+}
+
+std::size_t IOSettings::getExportDigits() const {
+    return this->getOption(exportDigitsOptionName).getArgumentByName("num").getValueAsUnsignedInteger();
 }
 
 bool IOSettings::isExportJaniDotSet() const {
@@ -369,6 +419,14 @@ bool IOSettings::isExplicitDRNSet() const {
 
 std::string IOSettings::getExplicitDRNFilename() const {
     return this->getOption(explicitDrnOptionName).getArgumentByName("drn filename").getValueAsString();
+}
+
+bool IOSettings::isExplicitUmbSet() const {
+    return this->getOption(explicitUmbOptionName).getHasOptionBeenSet();
+}
+
+std::string IOSettings::getExplicitUmbFilename() const {
+    return this->getOption(explicitUmbOptionName).getArgumentByName("umb location").getValueAsString();
 }
 
 bool IOSettings::isExplicitIMCASet() const {
@@ -518,6 +576,28 @@ std::string IOSettings::getQvbsRoot() const {
 
 bool IOSettings::isPropertiesAsMultiSet() const {
     return this->getOption(propertiesAsMultiOptionName).getHasOptionBeenSet();
+}
+
+UncertaintyResolutionModeSetting IOSettings::getUncertaintyResolutionMode() const {
+    std::string uncertaintyResolutionModeString = this->getOption(uncertaintyResolutionModeName).getArgumentByName("mode").getValueAsString();
+
+    if (uncertaintyResolutionModeString == "minimize" || uncertaintyResolutionModeString == "min") {
+        return UncertaintyResolutionModeSetting::Minimize;
+    } else if (uncertaintyResolutionModeString == "maximize" || uncertaintyResolutionModeString == "max") {
+        return UncertaintyResolutionModeSetting::Maximize;
+    } else if (uncertaintyResolutionModeString == "robust") {
+        return UncertaintyResolutionModeSetting::Robust;
+    } else if (uncertaintyResolutionModeString == "cooperative") {
+        return UncertaintyResolutionModeSetting::Cooperative;
+    } else if (uncertaintyResolutionModeString == "both") {
+        STORM_LOG_ASSERT(false, "Uncertainty resolution mode 'both' not yet implemented.");
+        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Uncertainty resolution mode 'both' not yet implemented.");
+    }
+    STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown nature resolution mode '" << uncertaintyResolutionModeString << "'.");
+}
+
+bool IOSettings::isUncertaintyResolutionModeSet() const {
+    return this->getOption(uncertaintyResolutionModeName).getHasOptionBeenSet();
 }
 
 void IOSettings::finalize() {

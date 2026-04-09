@@ -30,6 +30,7 @@ namespace {
 
 enum class CtmcEngine { PrismSparse, JaniSparse, PrismHybrid, JaniHybrid };
 
+#ifdef STORM_HAVE_GMM
 class SparseGmmxxGmresIluEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::Sylvan;  // unused for sparse models
@@ -63,6 +64,7 @@ class JaniSparseGmmxxGmresIluEnvironment {
         return env;
     }
 };
+#endif
 
 class SparseEigenDGmresEnvironment {
    public:
@@ -114,6 +116,7 @@ class SparseNativeSorEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class HybridCuddGmmxxGmresEnvironment {
    public:
     static const storm::dd::DdType ddType = storm::dd::DdType::CUDD;
@@ -121,6 +124,13 @@ class HybridCuddGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Ctmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -137,6 +147,13 @@ class JaniHybridCuddGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Ctmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_CUDD
+        GTEST_SKIP() << "Library CUDD not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -153,6 +170,13 @@ class HybridSylvanGmmxxGmresEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::Ctmc<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().setLinearEquationSolverType(storm::solver::EquationSolverType::Gmmxx);
@@ -161,6 +185,7 @@ class HybridSylvanGmmxxGmresEnvironment {
         return env;
     }
 };
+#endif
 
 template<typename TestType>
 class CtmcCslModelCheckerTest : public ::testing::Test {
@@ -175,6 +200,9 @@ class CtmcCslModelCheckerTest : public ::testing::Test {
 #ifndef STORM_HAVE_Z3
         GTEST_SKIP() << "Z3 not available.";
 #endif
+        if constexpr (TestType::engine == CtmcEngine::PrismHybrid || TestType::engine == CtmcEngine::JaniHybrid) {
+            TestType::checkLibraryAvailable();
+        }
     }
 
     storm::Environment const& env() const {
@@ -290,7 +318,7 @@ class CtmcCslModelCheckerTest : public ::testing::Test {
 
     std::unique_ptr<storm::modelchecker::QualitativeCheckResult> getInitialStateFilter(std::shared_ptr<storm::models::Model<ValueType>> const& model) const {
         if (isSparseModel()) {
-            return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult>(model->template as<SparseModelType>()->getInitialStates());
+            return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult<ValueType>>(model->template as<SparseModelType>()->getInitialStates());
         } else {
             return std::make_unique<storm::modelchecker::SymbolicQualitativeCheckResult<TestType::ddType>>(
                 model->template as<SymbolicModelType>()->getReachableStates(), model->template as<SymbolicModelType>()->getInitialStates());
@@ -496,7 +524,7 @@ TEST(CtmcCslModelCheckerTest, TransientProbabilities) {
     storm::storage::BitVector psiStates(2);
     storm::Environment env;
     std::vector<double> result =
-        storm::modelchecker::helper::SparseCtmcCslHelper::computeAllTransientProbabilities(env, matrix, initialStates, phiStates, psiStates, exitRates, 1);
+        storm::modelchecker::helper::SparseCtmcCslHelper::computeAllTransientProbabilities(env, matrix, initialStates, phiStates, psiStates, exitRates, 1.0);
 
     EXPECT_NEAR(0.404043, result[0], 1e-6);
     EXPECT_NEAR(0.595957, result[1], 1e-6);

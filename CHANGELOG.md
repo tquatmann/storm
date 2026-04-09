@@ -4,6 +4,67 @@ Changelog
 This changelog lists only the most important changes. Smaller (bug)fixes as well as non-mature features are not part of the changelog.
 The releases of major and minor versions contain an overview of changes since the last major/minor update.
 
+
+Version 1.12.x
+--------------
+
+## Version 1.12.0 (2026/03)
+- Support for verifying IDTMCs.
+- Extended DRN file format:
+    * Use `--io:digits` option to control precision of floats.
+    * Reading from and writing to compressed DRN files (use `.drn.gz` / `.drn.xz` file extensions and/or the new `--compression` option) (requires libarchive).
+    * Added `@value_type` to determine the type of the parsed values.
+    * Support for parsing of DRN interval models.
+- Multi-objective model checking:
+    * Multi-objective model checking in `--sound`mode handles approximation errors correctly.
+    * Added `--multiobjective:approxtradeoff` setting to control Pareto curve approximation heuristic.
+    * Extended support for multi-objective properties: distinguish between trade-off and lexicographic properties, introduce `multilex(..)` syntax for Prism-style properties.
+- `storm-pars`:
+    * Added BigStep transformation.
+    * Added generalized parameter lifting.
+    * Support for not graph-preserving regions and for not well-defined regions.
+    * Region verification API uses `RefinementOptions`.
+- Support build without DD support.
+- Added state-valuation transformer.
+- Preparation for using probability matrix in CTMC bisimulation.
+- Revised check for probabilistic transition matrix.
+- ConstantsComparator no longer depends on global state.
+- New (optional) dependency: libarchive which supports directly reading/writing from an archive.
+- Updated dependencies: carl-storm, Eigen, ExprTk, gmm, googletest, Gurobi, parallel-hashmap, Spot.
+- Bug fixes in returning rate parameters and requiring MultiObjectiveSettings.
+- Developer: modernized CTMC helpers.
+- Developer: general code clean up such as revising includes, assertions and CMake defines.
+- Developer: CI treats compiler warnings as errors.
+
+
+Version 1.11.x
+--------------
+
+## Version 1.11.1 (2025/10)
+- Bug fixes in conditional probabilities computation with the (recent) bisection method.
+- Sound value iteration diagnostics in debug mode are more robust.
+- Improved support for ARM.
+- Support for musl libc.
+- Code quality fixes (reduced warnings)
+
+## Version 1.11.0 (2025/09)
+- Completely restructured CMake build process:
+    * Storm can now be properly installed.
+    * Carl-storm is now automatically fetched from a predefined repository and tag. Use CMake option `-DFETCHCONTENT_SOURCE_DIR_CARL=<path_to_carl>` to set a local path.
+- Improved support for interval models, especially parsing support for Prism models with intervals and CLI support for interval models.
+- Support for discounted properties in DTMCs and MDPs.
+- Added guessing value iteration.
+- Support exporting schedulers for multi-objective properties.
+- Revised implementation of conditional probabilities for MDPs.
+- Added building of choice labels for Jani.
+- Support time limits for the Gurobi LP Solver.
+- Various fixes in DRN parser, BitVector, (negative) expected rewards, parsing of PDEP and for compiler warnings.
+- Updated dependencies: carl-storm, gmm, googletest, l3pp, spot.
+- Removed support for Intel TBB.
+- Developer: Replaced `GmmxxMultiplier` by `ViOperatorMultiplier`.
+- Developer: Added CI workflow for new releases.
+
+
 Version 1.10.x
 --------------
 
@@ -72,7 +133,7 @@ Version 1.8.x
 - Experimental support for compiling on Apple Silicon
 - Added SoPlex as a possible LP solver
 - Upgraded shipped version of sylvan
-- Upgraded repo / version for carl (for polynomials), requires [carl-storm](https://github.com/moves-rwth/carl-storm) in at least version 14.23.
+- Upgraded repo / version for carl (for polynomials), requires [carl-storm](https://github.com/stormchecker/carl-storm) in at least version 14.23.
 - Removed support for just-in-time compilation (JIT). If the JIT engine is needed, use Storm version 1.7.0.
 - `storm-dft`: better modularization: improved algorithm for finding independent modules and revised the DFT analysis via modularization.
 - `storm-dft`: added checks whether a given DFT is well-formed and conventional.
@@ -112,7 +173,7 @@ Version 1.6.x
 - Added support for PRISM models that use unbounded integer variables.
 - Added support for nested arrays in JANI.
 - Added `--location-elimination` that can be applied to Jani DTMC models to reduce the size of the resulting Markov models, see [here](https://arxiv.org/abs/2011.00983).
-- Added an export of check results to json. Use `--exportresult` in the command line interface.
+- Added an export of check results to JSON. Use `--exportresult` in the command line interface.
 - Added `--exportbuilt` option that exports the built model in various formats. Deprecates `--io:exportexplicit`, `--io:exportdd` and `--io:exportdot`
 - Added export of built model in .json. which can be used to debug and explore the model.
 - Added computation of steady state probabilities for DTMC/CTMC in the sparse engine. Use `--steadystate` in the command line interface.
@@ -121,9 +182,9 @@ Version 1.6.x
 - API: Simulation of prism-models 
 - API: Model-builder takes a callback function to prevent extension of particular actions, prism-to-explicit mapping can be exported
 - API: Export of dice-formatted expressions
-- Prism-language/explicit builder: Allow action names in commands writing to global variables if these (clearly) do not conflict with assignments of synchronizing commads.
+- Prism-language/explicit builder: Allow action names in commands writing to global variables if these (clearly) do not conflict with assignments of synchronizing commands.
 - Prism-language: n-ary predicates are supported (e.g., ExactlyOneOf)
-- Added support for continuous integration with Github Actions.
+- Added support for continuous integration with GitHub Actions.
 - `storm-pars`: Exploit monotonicity for computing extremal values and parameter space partitioning.
 - `storm-dft`: Support for analysis of static fault trees via BDDs (Flag `--bdd`). In particular, efficient computation of multiple time bounds was added and support for several importance measures (Argument `--importance`).
 - `storm-dft`: Computation of minimal cut sets for static fault trees (Flag `--mcs`).
@@ -137,10 +198,10 @@ Version 1.6.x
 - Simulator supports exact arithmetic.
 - Added switch `--no-simplify` to disable simplification of PRISM programs (which sometimes costs a bit of time on extremely large inputs).
 - Fixed issues with JANI inputs concerning .
-    - transient variable expressions in properties,
-    - constants in properties, and
-    - integer variables with either only an upper or only a lower bound.
-- `storm-pomdp`: States can be labelled with values for observable predicates.
+    * transient variable expressions in properties,
+    * constants in properties, and
+    * integer variables with either only an upper or only a lower bound.
+- `storm-pomdp`: States can be labeled with values for observable predicates.
 - `storm-pomdp`: (Only API) Track state estimates.
 - `storm-pomdp`: (Only API) Reduce computation of state estimates to computation on unrolled MDP.
 
@@ -159,13 +220,13 @@ Version 1.6.x
 - CMake: Search for Gurobi prefers new versions.
 - CMake: We no longer ship xerces-c. If xerces-c is not found on the system, storm-gspn will not be able to parse xml-based GSPN formats.
 - CMake: Added option `STORM_LOAD_QVBS` to automatically download the quantitative verification benchmark set.
-- Eigen library: The source code of Eigen is no longer included but downloaded from an external repository instead. Incremented Eigen version to 3.3.7 which fixes a compilation issue with recent XCode versions.
+- Eigen library: The source code of Eigen is no longer included but downloaded from an external repository instead. Incremented Eigen version to 3.3.7 which fixes a compilation issue with recent Xcode versions.
 - Tests: Enabled tests for permissive schedulers.
 - `storm-counterexamples`: fix when computing multiple counterexamples in debug mode.
 - `storm-dft`: Renamed setting `--show-dft-stats` to `dft-statistics` and added approximation information to statistics.
-- `storm-pomdp`: Implemented approximation algorithms that explore (a discritization of) the belief MDP, allowing to compute safe lower- and upper bounds for a given property.
+- `storm-pomdp`: Implemented approximation algorithms that explore (a discretization of) the belief MDP, allowing to compute safe lower- and upper bounds for a given property.
 - `storm-pomdp`: Implemented almost-sure reachability computations: graph-based, one-shot SAT-based, and iterative SAT-based.
-- `storm-pomdp': Various changes such that transformation to pMCs is now again supported (and improved).
+- `storm-pomdp`: Various changes such that transformation to pMCs is now again supported (and improved).
 - Fixed several compiler warnings.
 
 
@@ -211,7 +272,7 @@ Version 1.4.x
 - If an option is unknown, Storm now suggests similar option names.
 - Flagged several options as 'advanced' to clean up the `--help`-message. Use `--help all` to display a complete list of options.
 - Support for parsing of exact time bounds for properties, e.g., `P=? [F=27 "goal"]`.
-- Export of optimal schedulers when checking MDPs with the sparse engine (experimental). Use  `--exportscheduler <filename>`.
+- Export of optimal schedulers when checking MDPs with the sparse engine (experimental). Use `--exportscheduler <filename>`.
 - PRISM language: Support for the new `round` operator.
 - PRISM language: Improved error messages of the parser.
 - JANI: Allow bounded types for constants.
@@ -269,7 +330,7 @@ Version 1.3.x
 ### Comparison with Version 1.2.0 (details see below)
 - Heavily extended JANI-support
 - New binary `storm-conv` that handles conversion between model files
-- New binary `storm-pomdp` that  handles the translation of POMDPs to pMCs.
+- New binary `storm-pomdp` that handles the translation of POMDPs to pMCs.
 - `storm-gspn` improved
 - Sound value iteration
 
@@ -296,7 +357,7 @@ Version 1.2.x
 - Several bug fixes
 
 ### Version 1.2.1 (2018/02)
-- Multi-dimensional reward bounded reachability properties for DTMCs.
+- Multidimensional reward bounded reachability properties for DTMCs.
 - `storm-dft`: transformation of DFTs to GSPNs
 - Several bug fixes
 
@@ -308,14 +369,14 @@ Version 1.2.x
 - DRN parser improved
 - LP-based MDP model checking
 - Sound (interval) value iteration
-- Support for Multi-objective multi-dimensional reward bounded reachability properties for MDPs.
+- Support for Multi-objective multidimensional reward bounded reachability properties for MDPs.
 - RationalSearch method to solve equation systems exactly
 - WalkerChae method for solving linear equation systems with guaranteed convergence
 - Performance improvements for sparse model building
 - Performance improvements for conditional properties on MDPs
 - Automatically convert MA without probabilistic states into CTMC
-- Fixed implemention of Fox and Glynn' algorithm
-- `storm-pars`: support for welldefinedness constraints in mdps.
+- Fixed implementation of Fox and Glynn's algorithm
+- `storm-pars`: support for welldefinedness constraints in MDPs.
 - `storm-dft`: split DFT settings into IO settings and fault tree settings
 - `storm-dft`: removed obsolete explicit model builder for DFTs
 - Features for developers:

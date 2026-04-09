@@ -8,6 +8,7 @@
 #include "storm/exceptions/IllegalFunctionCallException.h"
 #include "storm/utility/macros.h"
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 
 namespace storm {
@@ -17,10 +18,8 @@ using namespace bisimulation;
 
 template<typename ModelType>
 NondeterministicModelBisimulationDecomposition<ModelType>::NondeterministicModelBisimulationDecomposition(
-    ModelType const& model,
-    typename BisimulationDecomposition<ModelType>::Options const& options)
-    : BisimulationDecomposition<ModelType>(model, model.getTransitionMatrix().transpose(false),
-                                                                                                          options),
+    ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options)
+    : BisimulationDecomposition<ModelType>(model, model.getTransitionMatrix().transpose(false), options),
       choiceToStateMapping(model.getNumberOfChoices()),
       quotientDistributions(model.getNumberOfChoices()),
       orderedQuotientDistributions(model.getNumberOfChoices()) {
@@ -34,10 +33,10 @@ std::pair<storm::storage::BitVector, storm::storage::BitVector> Nondeterministic
                     "Can only compute states with probability 0/1 with an optimization direction (min/max).");
     if (this->options.getOptimizationDirection() == OptimizationDirection::Minimize) {
         return storm::utility::graph::performProb01Min(this->model.getTransitionMatrix(), this->model.getTransitionMatrix().getRowGroupIndices(),
-                                                       this->model.getBackwardTransitions(), this->options.phiStates.get(), this->options.psiStates.get());
+                                                       this->model.getBackwardTransitions(), this->options.phiStates.value(), this->options.psiStates.value());
     } else {
         return storm::utility::graph::performProb01Max(this->model.getTransitionMatrix(), this->model.getTransitionMatrix().getRowGroupIndices(),
-                                                       this->model.getBackwardTransitions(), this->options.phiStates.get(), this->options.psiStates.get());
+                                                       this->model.getBackwardTransitions(), this->options.phiStates.value(), this->options.psiStates.value());
     }
 }
 
@@ -137,27 +136,22 @@ bool NondeterministicModelBisimulationDecomposition<ModelType>::quotientDistribu
 // }
 
 template<typename ModelType>
-void NondeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                                                               bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
-
-}
+void NondeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
+    std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
+    bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {}
 
 template<typename ModelType>
-void NondeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
-                                                                                                bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) {
+void NondeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
+    std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
+    double epsilon) {
     // TODO: Implement
-    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
-                    "Cannot compute epsilon-bisimulation on non-interval model!");
+    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
 }
 
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<double>>;
 
-#ifdef STORM_HAVE_CARL
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalNumber>>;
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalFunction>>;
-
-template class storm::storage::NondeterministicModelBisimulationDecomposition<
-    storm::models::sparse::Mdp<carl::Interval<double>>>;
-#endif
+template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<storm::Interval>>;
 }  // namespace storage
 }  // namespace storm

@@ -1,5 +1,4 @@
-#ifndef STORM_STORAGE_BISIMULATION_NONDETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
-#define STORM_STORAGE_BISIMULATION_NONDETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
+#pragma once
 
 #include <deque>
 #include "storm/storage/bisimulation/BisimulationDecomposition.h"
@@ -72,7 +71,7 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
     bool printDistributions(storm::storage::sparse::state_type state) const;
     // bool checkDistributionsDifferent(bisimulation::Block<BlockDataType> const& block, storm::storage::sparse::state_type end) const;
 
-    // A mapping from choice indices to the state state that has this choice.
+    // A mapping from choice indices to the state that has this choice.
     std::vector<storm::storage::sparse::state_type> choiceToStateMapping;
 
     // A vector that holds the quotient distributions for all nondeterministic choices of all states.
@@ -83,5 +82,3 @@ class NondeterministicModelBisimulationDecomposition : public BisimulationDecomp
 };
 }  // namespace storage
 }  // namespace storm
-
-#endif /* STORM_STORAGE_BISIMULATION_NONDETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_ */

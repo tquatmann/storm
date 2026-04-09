@@ -7,6 +7,7 @@
 #include "storm/models/Model.h"
 #include "storm/models/ModelRepresentation.h"
 #include "storm/models/sparse/ChoiceLabeling.h"
+#include "storm/models/sparse/ModelForward.h"
 #include "storm/models/sparse/StateLabeling.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/storage/sparse/ChoiceOrigins.h"
@@ -22,13 +23,10 @@ class BitVector;
 namespace models {
 namespace sparse {
 
-template<typename ValueType>
-class StandardRewardModel;
-
 /*!
  * Base class for all sparse models.
  */
-template<class CValueType, class CRewardModelType = StandardRewardModel<CValueType>>
+template<class CValueType, class CRewardModelType>
 class Model : public storm::models::Model<CValueType> {
    public:
     typedef CValueType ValueType;
@@ -56,14 +54,6 @@ class Model : public storm::models::Model<CValueType> {
      * @return A sparse matrix that represents the backward transitions of this model.
      */
     storm::storage::SparseMatrix<ValueType> getBackwardTransitions() const;
-
-    /*!
-     * Returns an object representing the matrix rows associated with the given state.
-     *
-     * @param state The state for which to retrieve the rows.
-     * @return An object representing the matrix rows associated with the given state.
-     */
-    virtual typename storm::storage::SparseMatrix<ValueType>::const_rows getRows(storm::storage::sparse::state_type state) const;
 
     /*!
      * Returns the number of states of the model.
@@ -403,19 +393,6 @@ class Model : public storm::models::Model<CValueType> {
 
    protected:
     RewardModelType& rewardModel(std::string const& rewardModelName);
-    /*!
-     * Sets the transition matrix of the model.
-     *
-     * @param transitionMatrix The new transition matrix of the model.
-     */
-    void setTransitionMatrix(storm::storage::SparseMatrix<ValueType> const& transitionMatrix);
-
-    /*!
-     * Sets the transition matrix of the model.
-     *
-     * @param transitionMatrix The new transition matrix of the model.
-     */
-    void setTransitionMatrix(storm::storage::SparseMatrix<ValueType>&& transitionMatrix);
 
     /*!
      * Prints the information header (number of states and transitions) of the model to the specified stream.

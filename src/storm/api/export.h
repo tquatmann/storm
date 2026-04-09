@@ -11,6 +11,7 @@
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/storage/Scheduler.h"
+#include "storm/storage/umb/Umb.h"
 #include "storm/utility/macros.h"
 
 #include "storm/exceptions/UnexpectedException.h"
@@ -28,12 +29,15 @@ void exportJaniModelAsDot(storm::jani::Model const& model, std::string const& fi
 template<typename ValueType>
 void exportSparseModelAsDrn(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
                             std::vector<std::string> const& parameterNames = {}, bool allowPlaceholders = true) {
-    std::ofstream stream;
-    storm::io::openFile(filename, stream);
-    storm::io::DirectEncodingOptions options;
+    storm::io::DirectEncodingExporterOptions options;
     options.allowPlaceholders = allowPlaceholders;
-    storm::io::explicitExportSparseModel(stream, model, parameterNames, options);
-    storm::io::closeFile(stream);
+    storm::io::explicitExportSparseModel(filename, model, parameterNames, options);
+}
+
+template<typename ValueType>
+void exportSparseModelAsDrn(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
+                            storm::io::DirectEncodingExporterOptions options, std::vector<std::string> const& parameterNames = {}) {
+    storm::io::explicitExportSparseModel(filename, model, parameterNames, options);
 }
 
 template<storm::dd::DdType Type, typename ValueType>
@@ -55,6 +59,16 @@ void exportSparseModelAsJson(std::shared_ptr<storm::models::sparse::Model<ValueT
     storm::io::openFile(filename, stream);
     model->writeJsonToStream(stream);
     storm::io::closeFile(stream);
+}
+
+template<typename ValueType>
+void exportSparseModelAsUmb(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::string const& filename,
+                            storm::umb::ExportOptions const& options = {}) {
+    if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Export of rational functions to UMB is not supported.");
+    } else {
+        storm::umb::exportModelToUmb(*model, filename, options);
+    }
 }
 
 template<storm::dd::DdType Type, typename ValueType>
@@ -115,7 +129,8 @@ inline void exportCheckResultToJson(std::shared_ptr<storm::models::sparse::Model
     std::ofstream stream;
     storm::io::openFile(filename, stream);
     if (checkResult->isExplicitQualitativeCheckResult()) {
-        auto j = checkResult->asExplicitQualitativeCheckResult().toJson<storm::RationalNumber>(model->getOptionalStateValuations(), model->getStateLabeling());
+        auto j = checkResult->template asExplicitQualitativeCheckResult<ValueType>().template toJson<storm::RationalNumber>(model->getOptionalStateValuations(),
+                                                                                                                            model->getStateLabeling());
         stream << storm::dumpJson(j);
     } else {
         STORM_LOG_THROW(checkResult->isExplicitQuantitativeCheckResult(), storm::exceptions::NotSupportedException,

@@ -1,21 +1,17 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#ifdef STORM_HAVE_Z3_OPTIMIZE
-
-#include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
-#include "storm/modelchecker/multiobjective/multiObjectiveModelChecking.h"
-
 #include "storm-parsers/api/storm-parsers.h"
 #include "storm/api/storm.h"
 #include "storm/environment/Environment.h"
+#include "storm/environment/modelchecker/MultiObjectiveModelCheckerEnvironment.h"
+#include "storm/environment/solver/SolverEnvironment.h"
+#include "storm/modelchecker/multiobjective/MultiObjectiveModelChecking.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/GeneralSettings.h"
 #include "storm/storage/Scheduler.h"
 #include "storm/storage/geometry/Hyperrectangle.h"
 #include "storm/storage/geometry/Polytope.h"
@@ -140,9 +136,19 @@ void assertParetoResult(storm::Environment const& env, storm::models::sparse::Md
     }
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_memory) {
+class SparseMdpPcaaMultiObjectiveModelCheckerTest : public ::testing::Test {
+   protected:
+    void SetUp() override {
+#ifndef STORM_HAVE_Z3
+        GTEST_SKIP() << "Z3 not available.";
+#endif
+    }
+};
+
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_memory) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    env.solver().setForceExact(true);
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/multiobj_memory.prism";
     std::string const formulasAsString = "multi(Pmax=? [ s<4 U s=1 ], Pmax=? [ s<4 U s=2], Pmax=? [ s<4 U s=3] );\n";  // pareto
@@ -154,7 +160,7 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_memory) {
     std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     storm::generator::NextStateGeneratorOptions options(formulas);
-    auto mdp = storm::builder::ExplicitModelBuilder<double>(program, options).build()->as<storm::models::sparse::Mdp<double>>();
+    auto mdp = storm::builder::ExplicitModelBuilder<storm::RationalNumber>(program, options).build()->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
 
     std::vector<std::vector<std::string>> expectedPoints;
     auto add = [&expectedPoints](std::string const& first, std::string const& second, std::string const& third) {
@@ -178,7 +184,7 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_memory) {
     program = storm::api::parseProgram(programFile);
     program = storm::utility::prism::preprocess(program, "p=0.1");  // quantitative version
     program.checkValidity();
-    mdp = storm::builder::ExplicitModelBuilder<double>(program, options).build()->as<storm::models::sparse::Mdp<double>>();
+    mdp = storm::builder::ExplicitModelBuilder<storm::RationalNumber>(program, options).build()->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
 
     expectedPoints.clear();
     add("9/10", "81/100", "1");
@@ -202,12 +208,11 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_memory) {
     }
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, consensus) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, consensus) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    env.solver().setForceSoundness(true);
+    auto const prec = storm::utility::convertNumber<double>(env.modelchecker().multi().getPrecision());
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/multiobj_consensus2_3_2.nm";
     std::string formulasAsString = "multi(Pmax=? [ F \"one_proc_err\" ], P>=0.8916673903 [ G \"one_coin_ok\" ]) ";  // numerical
@@ -221,30 +226,25 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, consensus) {
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
     uint_fast64_t const initState = *mdp->getInitialStates().begin();
-    ;
 
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQuantitativeCheckResult());
-    EXPECT_NEAR(0.10833260970000025, result->asExplicitQuantitativeCheckResult<double>()[initState],
-                storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
-
+    EXPECT_NEAR(0.1083326097, result->asExplicitQuantitativeCheckResult<double>()[initState], prec);
     result = storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[1]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQualitativeCheckResult());
-    EXPECT_TRUE(result->asExplicitQualitativeCheckResult()[initState]);
+    EXPECT_TRUE(result->template asExplicitQualitativeCheckResult<double>()[initState]);
 
     result = storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[2]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQualitativeCheckResult());
-    EXPECT_FALSE(result->asExplicitQualitativeCheckResult()[initState]);
+    EXPECT_FALSE(result->template asExplicitQualitativeCheckResult<double>()[initState]);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, zeroconf) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
-
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, zeroconf) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    env.solver().setForceSoundness(true);
+    auto const prec = storm::utility::convertNumber<double>(env.modelchecker().multi().getPrecision());
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/multiobj_zeroconf4.nm";
     std::string formulasAsString = "multi(Pmax=? [ F l=4 & ip=1 ] , P>=0.993141[ G (error=0) ]) ";  // numerical
@@ -260,17 +260,14 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, zeroconf) {
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQuantitativeCheckResult());
-    EXPECT_NEAR(0.0003075787401574803, result->asExplicitQuantitativeCheckResult<double>()[initState],
-                storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+    EXPECT_NEAR(0.0003075787401574803, result->asExplicitQuantitativeCheckResult<double>()[initState], prec);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, team3with3objectives) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
-
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, team3with3objectives) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    env.solver().setForceSoundness(true);
+    auto const prec = storm::utility::convertNumber<double>(env.modelchecker().multi().getPrecision());
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/multiobj_team3.nm";
     std::string formulasAsString = "multi(Pmax=? [ F \"task1_compl\" ], R{\"w_1_total\"}>=2.210204082 [ C ], P>=0.5 [ F \"task2_compl\" ])";  // numerical
@@ -286,11 +283,10 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, team3with3objectives) {
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQuantitativeCheckResult());
-    EXPECT_NEAR(0.7448979591841851, result->asExplicitQuantitativeCheckResult<double>()[initState],
-                storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+    EXPECT_NEAR(0.7448979591841851, result->asExplicitQuantitativeCheckResult<double>()[initState], prec);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, tiny_rewards_negative) {
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, tiny_rewards_negative) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
@@ -307,14 +303,10 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, tiny_rewards_negative) {
 
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
-    EXPECT_TRUE(result->asExplicitQualitativeCheckResult()[initState]);
+    EXPECT_TRUE(result->template asExplicitQualitativeCheckResult<double>()[initState]);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, scheduler) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
-
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, scheduler) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
@@ -331,16 +323,13 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, scheduler) {
 
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
-    EXPECT_TRUE(result->asExplicitQualitativeCheckResult()[initState]);
+    EXPECT_TRUE(result->template asExplicitQualitativeCheckResult<double>()[initState]);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, dpm) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
-
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, dpm) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    auto const prec = storm::utility::convertNumber<double>(env.modelchecker().multi().getPrecision());
 
     std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/multiobj_dpm100.nm";
     std::string formulasAsString = "multi(R{\"power\"}min=? [ C<=100 ], R{\"queue\"}<=70 [ C<=100 ])";  // numerical
@@ -356,14 +345,10 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, dpm) {
     std::unique_ptr<storm::modelchecker::CheckResult> result =
         storm::modelchecker::multiobjective::performMultiObjectiveModelChecking(env, *mdp, formulas[0]->asMultiObjectiveFormula());
     ASSERT_TRUE(result->isExplicitQuantitativeCheckResult());
-    EXPECT_NEAR(121.6128842, result->asExplicitQuantitativeCheckResult<double>()[initState],
-                storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+    EXPECT_NEAR(121.6128842094743, result->asExplicitQuantitativeCheckResult<double>()[initState], prec);
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_lra) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_lra) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
@@ -447,10 +432,7 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, simple_lra) {
     }
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, resource_gathering) {
-    if (!storm::test::z3AtLeastVersion(4, 8, 5)) {
-        GTEST_SKIP() << "Test disabled since it triggers a bug in the installed version of z3.";
-    }
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, resource_gathering) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
 
@@ -544,9 +526,10 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, resource_gathering) {
     }
 }
 
-TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, uav) {
+TEST_F(SparseMdpPcaaMultiObjectiveModelCheckerTest, uav) {
     storm::Environment env;
     env.modelchecker().multi().setMethod(storm::modelchecker::multiobjective::MultiObjectiveMethod::Pcaa);
+    env.solver().setForceExact(true);
 
     std::string const programFile = STORM_TEST_RESOURCES_DIR "/mdp/uav.prism";
     std::string const constantsDef = "B=500,Unf=1,COUNTER=0";
@@ -558,7 +541,7 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, uav) {
     std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     storm::generator::NextStateGeneratorOptions options(formulas);
-    auto mdp = storm::builder::ExplicitModelBuilder<double>(program, options).build()->as<storm::models::sparse::Mdp<double>>();
+    auto mdp = storm::builder::ExplicitModelBuilder<storm::RationalNumber>(program, options).build()->as<storm::models::sparse::Mdp<storm::RationalNumber>>();
 
     std::vector<std::vector<std::string>> expectedPoints;
     auto add = [&expectedPoints](std::string const& first, std::string const& second) {
@@ -600,4 +583,3 @@ TEST(SparseMdpPcaaMultiObjectiveModelCheckerTest, uav) {
         assertParetoResult(env, *mdp, formulas[0]->asMultiObjectiveFormula(), *result, expectedPoints, true);
     }
 }
-#endif /* STORM_HAVE_Z3_OPTIMIZE */

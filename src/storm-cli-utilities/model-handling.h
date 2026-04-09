@@ -1,44 +1,27 @@
 #pragma once
 
+#include <filesystem>
+#include <storm/utility/SignalHandler.h>
+#include <type_traits>
+
 #include "storm/api/storm.h"
 
+#include "AutomaticSettings.h"
 #include "storm-counterexamples/api/counterexamples.h"
 #include "storm-gamebased-ar/api/verification.h"
 #include "storm-parsers/api/storm-parsers.h"
 #include "storm-parsers/parser/ExpressionParser.h"
-
-#include "AutomaticSettings.h"
-#include "storm/io/file.h"
-#include "storm/utility/Engine.h"
-#include "storm/utility/NumberTraits.h"
-#include "storm/utility/SignalHandler.h"
-#include "storm/utility/macros.h"
-
-#include "storm/utility/Stopwatch.h"
-#include "storm/utility/initialize.h"
-
-#include <filesystem>
-#include <type_traits>
-
-#include "storm/storage/SymbolicModelDescription.h"
-#include "storm/storage/jani/Property.h"
-
 #include "storm/builder/BuilderType.h"
-
-#include "storm/models/ModelBase.h"
-
 #include "storm/environment/Environment.h"
-
 #include "storm/exceptions/OptionParserException.h"
-
+#include "storm/io/file.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitParetoCurveCheckResult.h"
 #include "storm/modelchecker/results/SymbolicQualitativeCheckResult.h"
-
+#include "storm/models/ModelBase.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/models/symbolic/MarkovAutomaton.h"
 #include "storm/models/symbolic/StandardRewardModel.h"
-
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/AbstractionSettings.h"
 #include "storm/settings/modules/BuildSettings.h"
@@ -47,6 +30,7 @@
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/settings/modules/IOSettings.h"
 #include "storm/settings/modules/ModelCheckerSettings.h"
+#include "storm/settings/modules/MultiObjectiveSettings.h"
 #include "storm/settings/modules/ResourceSettings.h"
 #include "storm/settings/modules/SylvanSettings.h"
 #include "storm/settings/modules/TransformationSettings.h"
@@ -441,7 +425,9 @@ inline std::pair<SymbolicInput, ModelProcessingInformation> preprocessSymbolicIn
     if (ioSettings.isPropertiesAsMultiSet()) {
         STORM_LOG_THROW(!input.properties.empty(), storm::exceptions::InvalidArgumentException,
                         "Can not translate properties to multi-objective formula because no properties were specified.");
-        output.properties = {storm::api::createMultiObjectiveProperty(output.properties)};
+        // If we come from storm-pars, the following fails as multiObjectiveSettings are not loaded
+        auto multiObjSettings = storm::settings::getModule<storm::settings::modules::MultiObjectiveSettings>();
+        output.properties = {storm::api::createMultiObjectiveProperty(output.properties, multiObjSettings.isLexicographicModelCheckingSet())};
     }
 
     // Substitute constant definitions in symbolic input.
@@ -596,7 +582,30 @@ std::shared_ptr<storm::models::ModelBase> buildModelExplicit(storm::settings::mo
     } else if (ioSettings.isExplicitDRNSet()) {
         storm::parser::DirectEncodingParserOptions options;
         options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
-        result = storm::api::buildExplicitDRNModel<ValueType>(ioSettings.getExplicitDRNFilename(), options);
+        using enum storm::parser::DirectEncodingValueType;
+        storm::parser::DirectEncodingValueType valueType{Default};
+        if constexpr (std::is_same_v<ValueType, double>) {
+            valueType = Double;
+        } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+            valueType = Rational;
+        } else {
+            static_assert(std::is_same_v<ValueType, storm::RationalFunction>, "Unexpected value type.");
+            valueType = Parametric;
+        }
+        result = storm::api::buildExplicitDRNModel(ioSettings.getExplicitDRNFilename(), valueType, options);
+    } else if (ioSettings.isExplicitUmbSet()) {
+        storm::umb::ImportOptions options;
+        options.buildChoiceLabeling = buildSettings.isBuildChoiceLabelsSet();
+        options.buildStateValuations = buildSettings.isBuildStateValuationsSet();
+        if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "RationalFunction currently not supported for UMB models.");
+        } else if constexpr (std::is_same_v<ValueType, storm::RationalNumber>) {
+            options.valueType = umb::ImportOptions::ValueType::Rational;
+        } else {
+            static_assert(std::is_same_v<ValueType, double>, "Unhandled value type.");
+            options.valueType = umb::ImportOptions::ValueType::Double;
+        }
+        result = storm::api::buildExplicitUmbModel(ioSettings.getExplicitUmbFilename(), options);
     } else {
         STORM_LOG_THROW(ioSettings.isExplicitIMCASet(), storm::exceptions::InvalidSettingsException, "Unexpected explicit model input type.");
         result = storm::api::buildExplicitIMCAModel<ValueType>(ioSettings.getExplicitIMCAFilename());
@@ -619,7 +628,7 @@ inline std::shared_ptr<storm::models::ModelBase> buildModel(SymbolicInput const&
                 return buildModelSparse<VT>(input, options);
             });
         }
-    } else if (ioSettings.isExplicitSet() || ioSettings.isExplicitDRNSet() || ioSettings.isExplicitIMCASet()) {
+    } else if (ioSettings.isExplicitSet() || ioSettings.isExplicitDRNSet() || ioSettings.isExplicitUmbSet() || ioSettings.isExplicitIMCASet()) {
         STORM_LOG_THROW(mpi.engine == storm::utility::Engine::Sparse, storm::exceptions::InvalidSettingsException,
                         "Can only use sparse engine with explicit input.");
         result = applyValueType(mpi.buildValueType, [&ioSettings]<typename VT>() {
@@ -816,7 +825,7 @@ void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueTy
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBisimulation(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
-    storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
+    storm::settings::modules::BisimulationSettings const& bisimulationSettings, bool graphPreserving = true) {
     storm::storage::BisimulationType bisimType = storm::storage::BisimulationType::Strong;
     if (bisimulationSettings.isWeakBisimulationSet()) {
         bisimType = storm::storage::BisimulationType::Weak;
@@ -950,22 +959,39 @@ void exportModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
 
     if (ioSettings.isExportBuildSet()) {
+        storm::utility::Stopwatch modelExportWatch;
+        modelExportWatch.start();
+        STORM_PRINT("\nExporting model to '" << ioSettings.getExportBuildFilename() << "'.\n");
         switch (ioSettings.getExportBuildFormat()) {
             case storm::io::ModelExportFormat::Dot:
                 storm::api::exportSparseModelAsDot(model, ioSettings.getExportBuildFilename(), ioSettings.getExportDotMaxWidth());
                 break;
-            case storm::io::ModelExportFormat::Drn:
-                storm::api::exportSparseModelAsDrn(model, ioSettings.getExportBuildFilename(),
-                                                   input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-                                                   !ioSettings.isExplicitExportPlaceholdersDisabled());
+            case storm::io::ModelExportFormat::Drn: {
+                storm::io::DirectEncodingExporterOptions options;
+                options.allowPlaceholders = !ioSettings.isExplicitExportPlaceholdersDisabled();
+                options.compression = ioSettings.getCompressionMode();
+                if (ioSettings.isExportDigitsSet()) {
+                    options.outputPrecision = ioSettings.getExportDigits();
+                }
+                storm::api::exportSparseModelAsDrn(model, ioSettings.getExportBuildFilename(), options,
+                                                   input.model ? input.model.get().getParameterNames() : std::vector<std::string>());
                 break;
+            }
             case storm::io::ModelExportFormat::Json:
                 storm::api::exportSparseModelAsJson(model, ioSettings.getExportBuildFilename());
                 break;
+            case storm::io::ModelExportFormat::Umb: {
+                storm::umb::ExportOptions options;
+                options.compression = ioSettings.getCompressionMode();
+                storm::api::exportSparseModelAsUmb(model, ioSettings.getExportBuildFilename(), options);
+                break;
+            }
             default:
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                                 "Exporting sparse models in " << storm::io::toString(ioSettings.getExportBuildFormat()) << " format is not supported.");
         }
+        modelExportWatch.stop();
+        STORM_PRINT("Time for model export: " << modelExportWatch << ".\n\n");
     }
 
     // TODO: The following options are depreciated and shall be removed at some point:
@@ -1513,8 +1539,18 @@ void verifyModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
     auto const& ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto verificationCallback = [&sparseModel, &ioSettings, &mpi](std::shared_ptr<storm::logic::Formula const> const& formula,
                                                                   std::shared_ptr<storm::logic::Formula const> const& states) {
-        bool filterForInitialStates = states->isInitialFormula();
-        auto task = storm::api::createTask<ValueType>(formula, filterForInitialStates);
+        auto createTask = [&ioSettings](auto const& f, bool onlyInitialStates) {
+            if constexpr (storm::IsIntervalType<ValueType>) {
+                STORM_LOG_THROW(ioSettings.isUncertaintyResolutionModeSet(), storm::exceptions::InvalidSettingsException,
+                                "Uncertainty resolution mode required for uncertain (interval) models.");
+                return storm::api::createTask<ValueType>(f, storm::solver::convert(ioSettings.getUncertaintyResolutionMode()), onlyInitialStates);
+            } else {
+                (void)ioSettings;  // suppress unused lambda capture warning. [[maybe_unused]] doesn't work for lambda captures.
+                return storm::api::createTask<ValueType>(f, onlyInitialStates);
+            }
+        };
+        bool const filterForInitialStates = states->isInitialFormula();
+        auto task = createTask(formula, filterForInitialStates);
         if (ioSettings.isExportSchedulerSet()) {
             task.setProduceSchedulers(true);
         }
@@ -1522,9 +1558,10 @@ void verifyModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
 
         std::unique_ptr<storm::modelchecker::CheckResult> filter;
         if (filterForInitialStates) {
-            filter = std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult>(sparseModel->getInitialStates());
+            using SolutionType = std::conditional_t<!std::is_same_v<ValueType, storm::Interval>, ValueType, double>;
+            filter = std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult<SolutionType>>(sparseModel->getInitialStates());
         } else if (!states->isTrueFormula()) {  // No need to apply filter if it is the formula 'true'
-            filter = storm::api::verifyWithSparseEngine<ValueType>(mpi.env, sparseModel, storm::api::createTask<ValueType>(states, false));
+            filter = storm::api::verifyWithSparseEngine<ValueType>(mpi.env, sparseModel, createTask(states, false));
         }
         if (result && filter) {
             result->filter(filter->asQualitativeCheckResult());
@@ -1567,6 +1604,13 @@ void verifyModel(std::shared_ptr<storm::models::sparse::Model<ValueType>> const&
                 } else {
                     auto const& paretoRes = result->template asExplicitParetoCurveCheckResult<ValueType>();
                     storm::api::exportParetoScheduler(sparseModel, paretoRes.getPoints(), paretoRes.getSchedulers(), schedulerExportPath.string());
+                }
+            } else if (result->isExplicitQualitativeCheckResult()) {
+                if constexpr (storm::IsIntervalType<ValueType>) {
+                    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Scheduler export for interval models is not supported.");
+                } else {
+                    storm::api::exportScheduler(sparseModel, result->template asExplicitQualitativeCheckResult<ValueType>().getScheduler(),
+                                                schedulerExportPath.string());
                 }
             } else {
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Scheduler export not supported for this value type.");

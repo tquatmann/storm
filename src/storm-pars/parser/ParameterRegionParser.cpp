@@ -1,9 +1,10 @@
-#include <boost/algorithm/string.hpp>
-#include <storm/exceptions/WrongFormatException.h>
-
 #include "storm-pars/parser/ParameterRegionParser.h"
 
+#include <boost/algorithm/string.hpp>
+
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
+#include "storm/exceptions/WrongFormatException.h"
 #include "storm/io/file.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
@@ -78,7 +79,6 @@ storm::storage::ParameterRegion<ParametricType> ParameterRegionParser<Parametric
     Valuation upperBoundaries;
     std::vector<std::string> parameterBoundaries;
     CoefficientType bound = storm::utility::convertNumber<CoefficientType>(regionBound);
-    STORM_LOG_THROW(0 < bound && bound < 1, storm::exceptions::WrongFormatException, "Bound must be between 0 and 1, " << bound << " is not.");
     for (auto const& v : consideredVariables) {
         lowerBoundaries.emplace(std::make_pair(v, 0 + bound));
         upperBoundaries.emplace(std::make_pair(v, 1 - bound));
@@ -126,8 +126,6 @@ std::vector<storm::storage::ParameterRegion<ParametricType>> ParameterRegionPars
     return result;
 }
 
-#ifdef STORM_HAVE_CARL
 template class ParameterRegionParser<storm::RationalFunction>;
-#endif
 }  // namespace parser
 }  // namespace storm

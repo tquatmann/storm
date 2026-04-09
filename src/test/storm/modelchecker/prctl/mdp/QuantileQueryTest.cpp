@@ -1,14 +1,10 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#include "test/storm_gtest.h"
-
 #include "storm-parsers/api/model_descriptions.h"
 #include "storm-parsers/api/properties.h"
 #include "storm/api/builder.h"
 #include "storm/api/properties.h"
-#include "storm/parser/CSVParser.h"
-
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
@@ -18,11 +14,10 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"
+#include "storm/parser/CSVParser.h"
 #include "storm/storage/jani/Property.h"
 
 namespace {
-
-enum class MdpEngine { PrismSparse, JaniSparse, Hybrid, PrismDd, JaniDd };
 
 class UnsoundEnvironment {
    public:
@@ -167,7 +162,7 @@ class QuantileQueryTest : public ::testing::Test {
 
     std::unique_ptr<storm::modelchecker::QualitativeCheckResult> getInitialStateFilter(
         std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) const {
-        return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult>(model->getInitialStates());
+        return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult<ValueType>>(model->getInitialStates());
     }
 };
 

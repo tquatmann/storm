@@ -1,24 +1,22 @@
-#include <boost/functional/hash.hpp>
-
-#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/storage/SparseMatrix.h"
-#include "storm/storage/sparse/StateType.h"
 
-#include "storm/storage/BitVector.h"
-#include "storm/utility/ConstantsComparator.h"
-#include "storm/utility/constants.h"
-#include "storm/utility/permutation.h"
-#include "storm/utility/vector.h"
+#include <iterator>
 
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/InvalidStateException.h"
 #include "storm/exceptions/NotImplementedException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/OutOfRangeException.h"
-
+#include "storm/storage/BitVector.h"
+#include "storm/storage/sparse/StateType.h"
+#include "storm/utility/ConstantsComparator.h"
+#include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
-
-#include <iterator>
+#include "storm/utility/permutation.h"
+#include "storm/utility/vector.h"
 
 namespace storm {
 namespace storage {
@@ -771,6 +769,11 @@ std::vector<typename SparseMatrix<ValueType>::index_type> const& SparseMatrix<Va
         this->rowGroupIndices = storm::utility::vector::buildVectorForRange(static_cast<index_type>(0), this->getRowGroupCount() + 1);
     }
     return rowGroupIndices.get();
+}
+
+template<typename ValueType>
+std::vector<typename SparseMatrix<ValueType>::index_type> const& SparseMatrix<ValueType>::getRowIndices() const {
+    return rowIndications;
 }
 
 template<typename ValueType>
@@ -1654,7 +1657,6 @@ typename std::pair<storm::storage::SparseMatrix<ValueType>, std::vector<ValueTyp
     return std::make_pair(luBuilder.build(), std::move(invertedDiagonal));
 }
 
-#ifdef STORM_HAVE_CARL
 template<>
 typename std::pair<storm::storage::SparseMatrix<Interval>, std::vector<Interval>> SparseMatrix<Interval>::getJacobiDecomposition() const {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "This operation is not supported.");
@@ -1665,7 +1667,6 @@ typename std::pair<storm::storage::SparseMatrix<RationalFunction>, std::vector<R
     const {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "This operation is not supported.");
 }
-#endif
 
 template<typename ValueType>
 template<typename OtherValueType, typename ResultValueType>
@@ -1819,12 +1820,10 @@ void SparseMatrix<ValueType>::performSuccessiveOverRelaxationStep(ValueType omeg
     }
 }
 
-#ifdef STORM_HAVE_CARL
 template<>
 void SparseMatrix<Interval>::performSuccessiveOverRelaxationStep(Interval, std::vector<Interval>&, std::vector<Interval> const&) const {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "This operation is not supported.");
 }
-#endif
 
 template<typename ValueType>
 void SparseMatrix<ValueType>::performWalkerChaeStep(std::vector<ValueType> const& x, std::vector<ValueType> const& columnSums, std::vector<ValueType> const& b,
@@ -2110,12 +2109,10 @@ void SparseMatrix<ValueType>::divideRowsInPlace(std::vector<ValueType> const& di
     }
 }
 
-#ifdef STORM_HAVE_CARL
 template<>
 void SparseMatrix<Interval>::divideRowsInPlace(std::vector<Interval> const&) {
     STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "This operation is not supported.");
 }
-#endif
 
 template<typename ValueType>
 typename SparseMatrix<ValueType>::const_rows SparseMatrix<ValueType>::getRows(index_type startRow, index_type endRow) const {
@@ -2259,19 +2256,64 @@ typename SparseMatrix<ValueType>::index_type SparseMatrix<ValueType>::getNoncons
 }
 
 template<typename ValueType>
-bool SparseMatrix<ValueType>::isProbabilistic() const {
-    storm::utility::ConstantsComparator<ValueType> comparator;
-    for (index_type row = 0; row < this->rowCount; ++row) {
-        auto rowSum = getRowSum(row);
-        if (!comparator.isOne(rowSum)) {
-            return false;
+bool SparseMatrix<ValueType>::isProbabilistic(ValueType const& tolerance, storm::OptionalRef<std::string> reason) const {
+    using BaseType =
+        std::conditional_t<std::is_same_v<ValueType, storm::RationalFunction>, storm::RationalFunctionCoefficient, storm::IntervalBaseType<ValueType>>;
+    auto toBaseType = [](ValueType const& value) {
+        if constexpr (std::is_same_v<ValueType, BaseType>) {
+            return value;
+        } else {
+            return storm::utility::convertNumber<BaseType>(value);
         }
-    }
-    for (auto const& entry : *this) {
-        if (comparator.isConstant(entry.getValue())) {
-            if (comparator.isLess(entry.getValue(), storm::utility::zero<ValueType>())) {
+    };
+    STORM_LOG_ASSERT(storm::utility::isConstant(tolerance), "Expected constant tolerance. Got " << tolerance);
+    BaseType const zeroMinusTolerance = storm::utility::zero<BaseType>() - toBaseType(tolerance);
+    BaseType const onePlusTolerance = storm::utility::one<BaseType>() + toBaseType(tolerance);
+    BaseType const oneMinusTolerance = storm::utility::one<BaseType>() - toBaseType(tolerance);
+
+    auto isContained = [&toBaseType](ValueType const& value, BaseType const& lower, BaseType const& upper) {
+        // surpress unused lambda capture warning for toBaseType in case it is not needed for the given ValueType.
+        (void)toBaseType;
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            // check if the interval contains some value in [lower,upper]
+            return value.lower() <= upper && value.upper() >= lower;
+        } else if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+            // for rational functions, we only perform a check if the value is constant.
+            if (storm::utility::isConstant(value)) {
+                auto const constValue = toBaseType(value);
+                return constValue <= upper && constValue >= lower;
+            }
+            return true;
+        } else {
+            // in all other cases, we expect the value to be constant
+            STORM_LOG_ASSERT(storm::utility::isConstant(value), "Expected constant value. Got " << value);
+            return value <= upper && value >= lower;
+        }
+    };
+
+    auto toString = [](ValueType const& value) {
+        std::stringstream s;
+        s << value;
+        return s.str();
+    };
+
+    for (index_type row = 0; row < this->rowCount; ++row) {
+        auto rowSum = storm::utility::zero<ValueType>();
+        for (auto const& entry : getRow(row)) {
+            if (!isContained(entry.getValue(), zeroMinusTolerance, onePlusTolerance)) {
+                if (reason) {
+                    *reason = "Entry in row " + std::to_string(row) + " is not a probability: " + toString(entry.getValue());
+                }
                 return false;
             }
+            rowSum += entry.getValue();
+        }
+        if (!isContained(rowSum, oneMinusTolerance, onePlusTolerance)) {
+            if (reason) {
+                // print sum-1 to ensure that the reason is informative even if the sum is very close to one.
+                *reason = "Sum of entries in row " + std::to_string(row) + " is not one: sum-1=" + toString(rowSum - storm::utility::one<ValueType>());
+            }
+            return false;
         }
     }
     return true;
@@ -2279,9 +2321,8 @@ bool SparseMatrix<ValueType>::isProbabilistic() const {
 
 template<typename ValueType>
 bool SparseMatrix<ValueType>::hasOnlyPositiveEntries() const {
-    storm::utility::ConstantsComparator<ValueType> comparator;
     for (auto const& entry : *this) {
-        if (!comparator.isLess(storm::utility::zero<ValueType>(), entry.getValue())) {
+        if (!storm::utility::isPositive(entry.getValue())) {
             return false;
         }
     }
@@ -2479,7 +2520,6 @@ template class SparseMatrix<storm::storage::sparse::state_type>;
 template std::ostream& operator<<(std::ostream& out, SparseMatrix<storm::storage::sparse::state_type> const& matrix);
 template bool SparseMatrix<int>::isSubmatrixOf(SparseMatrix<storm::storage::sparse::state_type> const& matrix) const;
 
-#ifdef STORM_HAVE_CARL
 // Rational Numbers
 
 #if defined(STORM_HAVE_CLN)
@@ -2541,7 +2581,6 @@ template std::vector<storm::Interval> SparseMatrix<Interval>::getPointwiseProduc
 template bool SparseMatrix<storm::Interval>::isSubmatrixOf(SparseMatrix<storm::Interval> const& matrix) const;
 
 template bool SparseMatrix<storm::Interval>::isSubmatrixOf(SparseMatrix<double> const& matrix) const;
-#endif
 
 }  // namespace storage
 }  // namespace storm

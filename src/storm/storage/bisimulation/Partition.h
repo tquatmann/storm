@@ -1,14 +1,9 @@
 #pragma once
 
-#include <concepts>
-#include <cstdint>
-#include <iostream>
-#include <set>
-#include <span>
-#include <type_traits>
-#include <vector>
 #include <boost/sort/block_indirect_sort/block_indirect_sort.hpp>
-#include <unordered_set>
+#include <cstddef>
+#include <list>
+#include <memory>
 
 #include "storm/storage/BitVector.h"
 #include "storm/utility/macros.h"
@@ -48,6 +43,22 @@ class Partition {
     // };
     using BlockSet = std::set<Block, BlockCompare>;
 
+    /*!
+     * Creates a partition with three blocks: one with all phi states, one with all psi states and one with
+     * all other states. The former two blocks are marked as being absorbing, because their outgoing
+     * transitions shall not be taken into account for future refinement.
+     *
+     * @param numberOfStates The number of states the partition holds.
+     * @param prob0States The states which have probability 0 of satisfying phi until psi.
+     * @param prob1States The states which have probability 1 of satisfying phi until psi.
+     * @param representativeProb1State If the set of prob1States is non-empty, this needs to be a state
+     * that is representative for this block in the sense that the state representing this block in the quotient
+     * model will receive exactly the atomic propositions of the representative state.
+     */
+    // Partition(std::size_t numberOfStates, storm::storage::BitVector const& prob0States, storm::storage::BitVector const& prob1States,
+    //           std::optional<storm::storage::sparse::state_type> representativeProb1State);
+
+    Partition() = default;
     Partition(Partition const& other) = default;
     Partition& operator=(Partition const& other) = default;
     Partition(Partition&& other) noexcept = default;
@@ -301,7 +312,7 @@ class Partition {
     /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
     std::vector<BlockIndex> elementToBlockIndex;
 
-    mutable std::vector<BlockIndex> blockEndCache; // Caching block end indices
+    mutable std::vector<BlockIndex> blockEndCache;  // Caching block end indices
 };
 
 std::ostream& operator<<(std::ostream& os, const Partition& partition);

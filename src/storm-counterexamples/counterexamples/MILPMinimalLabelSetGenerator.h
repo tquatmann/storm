@@ -98,8 +98,8 @@ class MILPMinimalLabelSetGenerator {
      * @param psiStates A bit vector characterizing all states satisfying psi.
      * @return A structure that stores the relevant and problematic states.
      */
-    static struct StateInformation determineRelevantAndProblematicStates(storm::models::sparse::Mdp<T> const& mdp, storm::storage::BitVector const& phiStates,
-                                                                         storm::storage::BitVector const& psiStates) {
+    static StateInformation determineRelevantAndProblematicStates(storm::models::sparse::Mdp<T> const& mdp, storm::storage::BitVector const& phiStates,
+                                                                  storm::storage::BitVector const& psiStates) {
         StateInformation result;
         result.relevantStates = storm::utility::graph::performProbGreater0E(mdp.getBackwardTransitions(), phiStates, psiStates);
         result.relevantStates &= ~psiStates;
@@ -122,10 +122,9 @@ class MILPMinimalLabelSetGenerator {
      * @return A structure that stores the relevant and problematic choices in the model as well as the set
      * of relevant labels.
      */
-    static struct ChoiceInformation determineRelevantAndProblematicChoices(storm::models::sparse::Mdp<T> const& mdp,
-                                                                           std::vector<storm::storage::FlatSet<uint_fast64_t>> const& labelSets,
-                                                                           StateInformation const& stateInformation,
-                                                                           storm::storage::BitVector const& psiStates) {
+    static ChoiceInformation determineRelevantAndProblematicChoices(storm::models::sparse::Mdp<T> const& mdp,
+                                                                    std::vector<storm::storage::FlatSet<uint_fast64_t>> const& labelSets,
+                                                                    StateInformation const& stateInformation, storm::storage::BitVector const& psiStates) {
         // Create result and shortcuts to needed data for convenience.
         ChoiceInformation result;
         storm::storage::SparseMatrix<T> const& transitionMatrix = mdp.getTransitionMatrix();
@@ -1023,8 +1022,8 @@ class MILPMinimalLabelSetGenerator {
             std::unique_ptr<storm::modelchecker::CheckResult> leftResult = modelchecker.check(env, untilFormula.getLeftSubformula());
             std::unique_ptr<storm::modelchecker::CheckResult> rightResult = modelchecker.check(env, untilFormula.getRightSubformula());
 
-            storm::modelchecker::ExplicitQualitativeCheckResult const& leftQualitativeResult = leftResult->asExplicitQualitativeCheckResult();
-            storm::modelchecker::ExplicitQualitativeCheckResult const& rightQualitativeResult = rightResult->asExplicitQualitativeCheckResult();
+            storm::modelchecker::ExplicitQualitativeCheckResult<T> const& leftQualitativeResult = leftResult->template asExplicitQualitativeCheckResult<T>();
+            storm::modelchecker::ExplicitQualitativeCheckResult<T> const& rightQualitativeResult = rightResult->template asExplicitQualitativeCheckResult<T>();
 
             phiStates = leftQualitativeResult.getTruthValuesVector();
             psiStates = rightQualitativeResult.getTruthValuesVector();
@@ -1033,7 +1032,7 @@ class MILPMinimalLabelSetGenerator {
 
             std::unique_ptr<storm::modelchecker::CheckResult> subResult = modelchecker.check(env, eventuallyFormula.getSubformula());
 
-            storm::modelchecker::ExplicitQualitativeCheckResult const& subQualitativeResult = subResult->asExplicitQualitativeCheckResult();
+            storm::modelchecker::ExplicitQualitativeCheckResult<T> const& subQualitativeResult = subResult->template asExplicitQualitativeCheckResult<T>();
 
             phiStates = storm::storage::BitVector(mdp.getNumberOfStates(), true);
             psiStates = subQualitativeResult.getTruthValuesVector();

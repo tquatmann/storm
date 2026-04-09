@@ -2,13 +2,13 @@
 
 #include <map>
 
+#include "storm-dft/builder/DFTBuilder.h"
+#include "storm-dft/utility/RelevantEvents.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/WrongFormatException.h"
 #include "storm/utility/vector.h"
-
-#include "storm-dft/builder/DFTBuilder.h"
-#include "storm-dft/utility/RelevantEvents.h"
 
 namespace storm::dft {
 namespace storage {
@@ -649,8 +649,8 @@ std::vector<size_t> DFT<ValueType>::findModularisationRewrite() const {
                     if (isdElemId == child->id())
                         continue;
                     if (std::find_if(children.begin(), children.end(),
-                                     [&isdElemId](std::shared_ptr<storm::dft::storage::elements::DFTElement<ValueType>> const& e) {
-                                         return e->id() == isdElemId;
+                                     [&isdElemId](std::shared_ptr<storm::dft::storage::elements::DFTElement<ValueType>> const& element) {
+                                         return element->id() == isdElemId;
                                      }) != children.end()) {
                         // element in subtree is also child
                         rewrite.push_back(isdElemId);

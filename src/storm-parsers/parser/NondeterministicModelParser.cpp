@@ -3,14 +3,11 @@
 #include <string>
 #include <vector>
 
-#include "storm/models/sparse/StandardRewardModel.h"
-
 #include "storm-parsers/parser/NondeterministicSparseTransitionParser.h"
 #include "storm-parsers/parser/SparseItemLabelingParser.h"
 #include "storm-parsers/parser/SparseStateRewardParser.h"
-
-#include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/utility/macros.h"
+#include "storm/adapters/IntervalAdapter.h"
+#include "storm/models/sparse/StandardRewardModel.h"
 
 namespace storm {
 namespace parser {
@@ -23,7 +20,7 @@ NondeterministicModelParser<ValueType, RewardValueType>::parseNondeterministicMo
                                                                                     std::string const& choiceLabelingFilename) {
     // Parse the transitions.
     storm::storage::SparseMatrix<ValueType> transitions(
-        std::move(storm::parser::NondeterministicSparseTransitionParser<ValueType>::parseNondeterministicTransitions(transitionsFilename)));
+        storm::parser::NondeterministicSparseTransitionParser<ValueType>::parseNondeterministicTransitions(transitionsFilename));
 
     uint_fast64_t stateCount = transitions.getColumnCount();
 
@@ -74,10 +71,7 @@ NondeterministicModelParser<ValueType, RewardValueType>::parseMdp(std::string co
 }
 
 template class NondeterministicModelParser<double, double>;
-
-#ifdef STORM_HAVE_CARL
 template class NondeterministicModelParser<double, storm::Interval>;
-#endif
 
 } /* namespace parser */
 } /* namespace storm */

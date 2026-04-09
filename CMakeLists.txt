@@ -6,7 +6,7 @@ endif()
 # Set project name
 project (storm
 		LANGUAGES CXX C
-		VERSION 1.10.0.1)
+		VERSION 1.12.0.1)
 # Version x.y.z.1 should be read as: This is an updated version of x.y.z that has not been released as x.y.z+1 yet.
 
 # Add the resources/cmake folder to Module Search Path
@@ -35,6 +35,8 @@ set(CMAKE_CXX_STANDARD 20)
 ## Compilation options.
 option(STORM_DEVELOPER "Sets whether the development mode is used." OFF)
 option(STORM_ALLWARNINGS "Compile with even more warnings" OFF)
+option(STORM_WARNING_AS_ERROR "Sets whether compile warnings are treated as errors." OFF)
+MARK_AS_ADVANCED(STORM_WARNING_AS_ERROR)
 option(STORM_USE_LTO "Sets whether link-time optimizations are enabled." ON)
 MARK_AS_ADVANCED(STORM_USE_LTO)
 option(STORM_USE_THIN_LTO "Sets whether thin link-time optimizations are enabled (faster compile times than normal LTO)." OFF)
@@ -68,9 +70,10 @@ set(STORM_QVBS_ROOT "" CACHE STRING "The root directory of the Quantitative Veri
 MARK_AS_ADVANCED(STORM_QVBS_ROOT)
 
 ## Configuring dependencies
-set(STORM_CARL_GIT_REPO "https://github.com/moves-rwth/carl-storm.git" CACHE STRING "For fetching carl: which git repo to use")
-option(STORM_CARL_GIT_TAG "For fetching carl: which git tag to use" "14.32.1")
+set(STORM_CARL_GIT_REPO "https://github.com/stormchecker/carl-storm.git" CACHE STRING "For fetching carl: which git repo to use")
+option(STORM_CARL_GIT_TAG "For fetching carl: which git tag to use" "14.34")
 MARK_AS_ADVANCED(STORM_CARL_GIT_TAG)
+option(STORM_DISABLE_CUDD "Sets whether linking with CUDD should be disabled." OFF)
 option(STORM_DISABLE_GLPK "Sets whether linking with GLPK should be disabled." OFF)
 set(GLPK_ROOT "" CACHE STRING "A hint to the root directory of GLPK.")
 MARK_AS_ADVANCED(GLPK_ROOT)
@@ -78,6 +81,9 @@ option(STORM_DISABLE_GMM "Sets whether linking with GMM should be disabled." OFF
 option(STORM_DISABLE_GUROBI "Sets whether linking with Gurobi should be disabled." OFF)
 set(GUROBI_ROOT "" CACHE STRING "A hint to the root directory of Gurobi.")
 MARK_AS_ADVANCED(GUROBI_ROOT)
+option(STORM_DISABLE_LIBARCHIVE "Sets whether linking with LibArchive should be disabled." OFF)
+set(LibArchive_ROOT "" CACHE STRING "A hint to the root directory of LibArchive.")
+MARK_AS_ADVANCED(LibArchive_ROOT)
 option(STORM_DISABLE_MATHSAT "Sets whether linking with MathSAT should be disabled." OFF)
 set(MATHSAT_ROOT "" CACHE STRING "A hint to the root directory of MathSAT.")
 MARK_AS_ADVANCED(MATHSAT_ROOT)
@@ -88,6 +94,7 @@ option(STORM_DISABLE_SPOT "Sets whether linking with Spot should be disabled." O
 option(STORM_SPOT_FORCE_SHIPPED "Sets whether system versions of Spot should be ignored (if available)." OFF)
 set(SPOT_ROOT "" CACHE STRING "A hint to the root directory of Spot.")
 MARK_AS_ADVANCED(SPOT_ROOT)
+option(STORM_DISABLE_SYLVAN "Sets whether linking with Sylvan should be disabled." OFF)
 option(STORM_DISABLE_XERCES "Sets whether linking with Xerces should be disabled." OFF)
 set(XERCESC_ROOT "" CACHE STRING "A hint to the root directory of Xerces (optional).")
 mark_as_advanced(XERCESC_ROOT)
@@ -128,7 +135,7 @@ set(STORM_LIB_INSTALL_DIR lib/storm CACHE PATH "Installation directory for libra
 set(STORM_BIN_INSTALL_DIR bin/storm CACHE PATH "Installation directory for executables")
 set(STORM_CMAKE_INSTALL_DIR lib/cmake/storm CACHE PATH  "Installation directory for CMake files")
 set(STORM_RESOURCE_INCLUDE_INSTALL_DIR include/storm/resources/ CACHE PATH "Installation directory for dependency header files")
-set(STORM_RESOURCE_LIBRARY_INSTALL_DIR lib/storm/resources/ CACHE PATH "Installation directory for depency library files")
+set(STORM_RESOURCE_LIBRARY_INSTALL_DIR lib/storm/resources/ CACHE PATH "Installation directory for dependency library files")
 if(PROJECT_IS_TOP_LEVEL)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
@@ -145,12 +152,14 @@ if (STORM_DEVELOPER)
     set(STORM_DEBUG_CUDD ON)
     set(STORM_DEBUG_SPOT ON)
     set(STORM_DEBUG_SYLVAN ON)
+    set(STORM_WARNING_AS_ERROR ON)
 else()
     set(STORM_LOG_DISABLE_DEBUG ON)
     if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "RELEASE")
     endif()
 endif()
+set(CMAKE_COMPILE_WARNING_AS_ERROR ${STORM_WARNING_AS_ERROR})
 
 message(STATUS "Storm - Building ${CMAKE_BUILD_TYPE} version.")
 
@@ -397,18 +406,38 @@ message(STATUS "Storm - Build type: ${CMAKE_BUILD_TYPE}")
 # in the the system does not have a library
 include(resources/3rdparty/CMakeLists.txt)
 
-if(STORM_HAVE_GLPK OR STORM_HAVE_GUROBI OR STORM_HAVE_SOPLEX OR STORM_HAVE_Z3_OPTIMIZE)
+if(STORM_HAVE_GLPK OR STORM_HAVE_GUROBI OR STORM_HAVE_SOPLEX OR STORM_HAVE_Z3)
 	set(STORM_HAVE_LP_SOLVER ON)
 	message(STATUS "Storm - Compiled with an LP solver.")
 else()
 	set(STORM_HAVE_LP_SOLVER OFF)
 	message(WARNING "Storm - Compiled without an LP solver. This may yield errors at run time.")
 endif()
+if(STORM_HAVE_CUDD OR STORM_HAVE_SYLVAN)
+	set(STORM_HAVE_DD_LIBRARY ON)
+	message(STATUS "Storm - Compiled with a DD library.")
+else()
+	set(STORM_HAVE_DD_LIBRARY OFF)
+	message(WARNING "Storm - Compiled without a DD library. Symbolic model representations are not supported.")
+endif()
+
+export_option(STORM_HAVE_CUDD)
+export_option(STORM_HAVE_GMM)
+export_option(STORM_HAVE_GLPK)
+export_option(STORM_HAVE_GUROBI)
+export_option(STORM_HAVE_MATHSAT)
+export_option(STORM_HAVE_SOPLEX)
+export_option(STORM_HAVE_SPOT)
+export_option(STORM_HAVE_SYLVAN)
+export_option(STORM_HAVE_XERCES)
+export_option(STORM_HAVE_Z3)
+export_option(STORM_HAVE_LP_SOLVER)
 
 if(PROJECT_IS_TOP_LEVEL)
 	# Include Doxygen
 	include(resources/doxygen/CMakeLists.txt)
 endif()
+
 #############################################################
 ##
 ##	CMake-generated Config File for Storm
@@ -475,7 +504,7 @@ configure_file (
 	"${PROJECT_BINARY_DIR}/include/storm-config.h"
 )
 
-if(PROJECT_IS_TOP_LEVEL)
+if(PROJECT_IS_TOP_LEVEL AND STORM_BUILD_TESTS)
 	include(CTest)
 	# Compiles all tests
 	add_custom_target(tests)
@@ -495,13 +524,7 @@ endif()
 set(STORM_TARGETS "")
 add_subdirectory(src)
 
-export_option(STORM_HAVE_GMM)
-export_option(STORM_HAVE_GUROBI)
-export_option(STORM_HAVE_SPOT)
-export_option(STORM_HAVE_SOPLEX)
-export_option(STORM_HAVE_XERCES)
-export_option(STORM_HAVE_Z3)
-
+# Export options
 include(export)
 
 install(DIRECTORY ${STORM_CMAKE_FIND_MODULES} DESTINATION ${STORM_CMAKE_INSTALL_DIR})

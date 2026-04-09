@@ -1,15 +1,14 @@
 #include "storm-pomdp/analysis/QualitativeAnalysisOnGraphs.h"
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/InvalidPropertyException.h"
+#include "storm/exceptions/NotImplementedException.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/Pomdp.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
-
-#include "storm/exceptions/InvalidPropertyException.h"
-#include "storm/exceptions/NotImplementedException.h"
 
 namespace storm {
 namespace analysis {
@@ -202,11 +201,10 @@ storm::storage::BitVector QualitativeAnalysisOnGraphs<ValueType>::checkPropositi
     storm::modelchecker::SparsePropositionalModelChecker<storm::models::sparse::Mdp<ValueType>> mc(pomdp);
     STORM_LOG_THROW(mc.canHandle(propositionalFormula), storm::exceptions::InvalidPropertyException,
                     "Propositional model checker can not handle formula " << propositionalFormula);
-    return mc.check(propositionalFormula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    return mc.check(propositionalFormula)->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 }
 
-template class QualitativeAnalysisOnGraphs<storm::RationalNumber>;
-
 template class QualitativeAnalysisOnGraphs<double>;
+template class QualitativeAnalysisOnGraphs<storm::RationalNumber>;
 }  // namespace analysis
 }  // namespace storm

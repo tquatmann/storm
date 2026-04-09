@@ -1,39 +1,21 @@
 @type: DTMC
+@value_type: double-interval
 @parameters
 
 @reward_models
 
 @nr_states
-7
+3
 @nr_choices
-7
+3
 @model
-state 0 a
+state 0 init
 	action 0
-		0 : [1, 1]
-state 1 a
+		1 : [0.3, 0.5]
+		2 : [0.5, 0.7]
+state 1 target
 	action 0
-		0 : [0.2, 0.8]
-		1 : [0.3, 0.6]
+		1 : [1, 1]
 state 2
 	action 0
-		0 : [0.8, 0.9]
-		1 : [0.1, 0.3]
-state 3
-    action 0
-        0 : [0.7, 1]
-        4 : [0.1, 0.6]
-state 4 a
-    action 0
-        0 : [0.4, 0.7]
-        4 : [0.1, 0.3]
-state 5 init
-    action 0
-        1 : [0.1, 0.5]
-        2 : [0.6, 0.7]
-        3 : [0.2, 0.3]
-state 6 init
-    action 0
-        2 : [0.2, 0.4]
-        3 : [0.5, 0.8]
-        4 : [0.1, 0.3]
+		2 : [1, 1]

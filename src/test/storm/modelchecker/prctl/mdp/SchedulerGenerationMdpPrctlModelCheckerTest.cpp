@@ -6,7 +6,8 @@
 #include "storm-parsers/api/properties.h"
 #include "storm/api/builder.h"
 #include "storm/api/properties.h"
-
+#include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
+#include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/prctl/SparseMdpPrctlModelChecker.h"
@@ -14,9 +15,6 @@
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/GeneralSettings.h"
-
-#include "storm/environment/solver/LongRunAverageSolverEnvironment.h"
-#include "storm/environment/solver/MinMaxSolverEnvironment.h"
 
 namespace {
 class DoubleViEnvironment {
@@ -194,7 +192,7 @@ TYPED_TEST(SchedulerGenerationMdpPrctlModelCheckerTest, total_reward) {
 }
 
 TYPED_TEST(SchedulerGenerationMdpPrctlModelCheckerTest, reach_reward) {
-    // Test case taken from https://github.com/moves-rwth/storm/issues/297
+    // Test case taken from https://github.com/stormchecker/storm/issues/297
     typedef typename TestFixture::ValueType ValueType;
 
     std::string formulasString = "Rmax=? [ F \"goal\" ];";
@@ -229,7 +227,7 @@ TYPED_TEST(SchedulerGenerationMdpPrctlModelCheckerTest, reach_reward) {
 }
 
 TYPED_TEST(SchedulerGenerationMdpPrctlModelCheckerTest, reach_reward2) {
-    // Test case taken from https://github.com/moves-rwth/storm/issues/683
+    // Test case taken from https://github.com/stormchecker/storm/issues/683
     typedef typename TestFixture::ValueType ValueType;
 
     std::string formulasString = "Rmax=? [ F \"goal\" ];";

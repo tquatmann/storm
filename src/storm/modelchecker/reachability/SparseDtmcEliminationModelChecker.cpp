@@ -7,12 +7,9 @@
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/InvalidPropertyException.h"
-#include "storm/exceptions/InvalidSettingsException.h"
-#include "storm/exceptions/InvalidStateException.h"
 #include "storm/logic/FragmentSpecification.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/settings/modules/EliminationSettings.h"
@@ -40,7 +37,7 @@ SparseDtmcEliminationModelChecker<SparseDtmcModelType>::SparseDtmcEliminationMod
 }
 
 template<typename SparseDtmcModelType>
-bool SparseDtmcEliminationModelChecker<SparseDtmcModelType>::canHandle(CheckTask<storm::logic::Formula, ValueType> const& checkTask) const {
+bool SparseDtmcEliminationModelChecker<SparseDtmcModelType>::canHandle(CheckTask<storm::logic::Formula, SolutionType> const& checkTask) const {
     storm::logic::Formula const& formula = checkTask.getFormula();
     storm::logic::FragmentSpecification fragment = storm::logic::prctl().setCumulativeRewardFormulasAllowed(false).setInstantaneousFormulasAllowed(false);
     fragment.setNestedOperatorsAllowed(false)
@@ -52,10 +49,10 @@ bool SparseDtmcEliminationModelChecker<SparseDtmcModelType>::canHandle(CheckTask
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeLongRunAverageProbabilities(
-    Environment const& env, CheckTask<storm::logic::StateFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::StateFormula, SolutionType> const& checkTask) {
     storm::logic::StateFormula const& stateFormula = checkTask.getFormula();
     std::unique_ptr<CheckResult> subResultPointer = this->check(stateFormula);
-    storm::storage::BitVector const& psiStates = subResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector const& psiStates = subResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 
     storm::storage::SparseMatrix<ValueType> const& transitionMatrix = this->getModel().getTransitionMatrix();
     uint_fast64_t numberOfStates = transitionMatrix.getRowCount();
@@ -112,14 +109,14 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
     if (checkTask.isOnlyInitialStatesRelevantSet()) {
         // If we computed the results for the initial states only, we need to filter the result to only
         // communicate these results.
-        checkResult->filter(ExplicitQualitativeCheckResult(initialStates));
+        checkResult->filter(ExplicitQualitativeCheckResult<ValueType>(initialStates));
     }
     return checkResult;
 }
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeLongRunAverageRewards(
-    Environment const& env, CheckTask<storm::logic::LongRunAverageRewardFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::LongRunAverageRewardFormula, SolutionType> const& checkTask) {
     // Do some sanity checks to establish some required properties.
     RewardModelType const& rewardModel = this->getModel().getRewardModel(checkTask.isRewardModelSet() ? checkTask.getRewardModel() : "");
     STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::IllegalArgumentException, "Input model does not have a reward model.");
@@ -177,13 +174,13 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
     if (checkTask.isOnlyInitialStatesRelevantSet()) {
         // If we computed the results for the initial states only, we need to filter the result to only
         // communicate these results.
-        checkResult->filter(ExplicitQualitativeCheckResult(initialStates));
+        checkResult->filter(ExplicitQualitativeCheckResult<ValueType>(initialStates));
     }
     return checkResult;
 }
 
 template<typename SparseDtmcModelType>
-std::vector<typename SparseDtmcEliminationModelChecker<SparseDtmcModelType>::ValueType>
+std::vector<typename SparseDtmcEliminationModelChecker<SparseDtmcModelType>::SolutionType>
 SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeLongRunValues(storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                              storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                              storm::storage::BitVector const& initialStates,
@@ -340,7 +337,7 @@ SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeLongRunValues(sto
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeBoundedUntilProbabilities(
-    Environment const& env, CheckTask<storm::logic::BoundedUntilFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::BoundedUntilFormula, SolutionType> const& checkTask) {
     storm::logic::BoundedUntilFormula const& pathFormula = checkTask.getFormula();
 
     STORM_LOG_THROW(!pathFormula.hasLowerBound() && pathFormula.hasUpperBound(), storm::exceptions::InvalidPropertyException,
@@ -350,8 +347,8 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
     // Retrieve the appropriate bitvectors by model checking the subformulas.
     std::unique_ptr<CheckResult> leftResultPointer = this->check(pathFormula.getLeftSubformula());
     std::unique_ptr<CheckResult> rightResultPointer = this->check(pathFormula.getRightSubformula());
-    storm::storage::BitVector const& phiStates = leftResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
-    storm::storage::BitVector const& psiStates = rightResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector const& phiStates = leftResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
+    storm::storage::BitVector const& psiStates = rightResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 
     // Start by determining the states that have a non-zero probability of reaching the target states within the
     // time bound.
@@ -444,21 +441,21 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
     if (checkTask.isOnlyInitialStatesRelevantSet()) {
         // If we computed the results for the initial (and prob 0 and prob1) states only, we need to filter the
         // result to only communicate these results.
-        checkResult->filter(ExplicitQualitativeCheckResult(this->getModel().getInitialStates() | psiStates));
+        checkResult->filter(ExplicitQualitativeCheckResult<ValueType>(this->getModel().getInitialStates() | psiStates));
     }
     return checkResult;
 }
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeUntilProbabilities(
-    Environment const& env, CheckTask<storm::logic::UntilFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::UntilFormula, SolutionType> const& checkTask) {
     storm::logic::UntilFormula const& pathFormula = checkTask.getFormula();
 
     // Retrieve the appropriate bitvectors by model checking the subformulas.
     std::unique_ptr<CheckResult> leftResultPointer = this->check(pathFormula.getLeftSubformula());
     std::unique_ptr<CheckResult> rightResultPointer = this->check(pathFormula.getRightSubformula());
-    storm::storage::BitVector const& phiStates = leftResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
-    storm::storage::BitVector const& psiStates = rightResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector const& phiStates = leftResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
+    storm::storage::BitVector const& psiStates = rightResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 
     return computeUntilProbabilities(this->getModel().getTransitionMatrix(), this->getModel().getBackwardTransitions(), this->getModel().getInitialStates(),
                                      phiStates, psiStates, checkTask.isOnlyInitialStatesRelevantSet());
@@ -532,13 +529,13 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeReachabilityRewards(
-    Environment const& env, CheckTask<storm::logic::EventuallyFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::EventuallyFormula, SolutionType> const& checkTask) {
     storm::logic::EventuallyFormula const& eventuallyFormula = checkTask.getFormula();
 
     // Retrieve the appropriate bitvectors by model checking the subformulas.
     std::unique_ptr<CheckResult> subResultPointer = this->check(eventuallyFormula.getSubformula());
     storm::storage::BitVector trueStates(this->getModel().getNumberOfStates(), true);
-    storm::storage::BitVector const& targetStates = subResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector const& targetStates = subResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
 
     // Do some sanity checks to establish some required properties.
     RewardModelType const& rewardModel = this->getModel().getRewardModel(checkTask.isRewardModelSet() ? checkTask.getRewardModel() : "");
@@ -640,7 +637,7 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
 
 template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelType>::computeConditionalProbabilities(
-    Environment const& env, CheckTask<storm::logic::ConditionalFormula, ValueType> const& checkTask) {
+    Environment const& env, CheckTask<storm::logic::ConditionalFormula, SolutionType> const& checkTask) {
     storm::logic::ConditionalFormula const& conditionalFormula = checkTask.getFormula();
 
     // Retrieve the appropriate bitvectors by model checking the subformulas.
@@ -650,8 +647,8 @@ std::unique_ptr<CheckResult> SparseDtmcEliminationModelChecker<SparseDtmcModelTy
 
     std::unique_ptr<CheckResult> leftResultPointer = this->check(conditionalFormula.getSubformula().asEventuallyFormula().getSubformula());
     std::unique_ptr<CheckResult> rightResultPointer = this->check(conditionalFormula.getConditionFormula().asEventuallyFormula().getSubformula());
-    storm::storage::BitVector phiStates = leftResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
-    storm::storage::BitVector psiStates = rightResultPointer->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector phiStates = leftResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
+    storm::storage::BitVector psiStates = rightResultPointer->template asExplicitQualitativeCheckResult<ValueType>().getTruthValuesVector();
     storm::storage::BitVector trueStates(this->getModel().getNumberOfStates(), true);
 
     // Do some sanity checks to establish some required properties.
@@ -1084,9 +1081,7 @@ bool SparseDtmcEliminationModelChecker<SparseDtmcModelType>::checkConsistent(sto
 template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<double>>;
 // template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<storm::Interval>>;
 
-#ifdef STORM_HAVE_CARL
 template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<storm::RationalNumber>>;
 template class SparseDtmcEliminationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>>;
-#endif
 }  // namespace modelchecker
 }  // namespace storm

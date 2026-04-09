@@ -1,20 +1,15 @@
 #include "storm/solver/multiplier/Multiplier.h"
 
-#include "storm-config.h"
-
-#include "storm/storage/SparseMatrix.h"
-
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
-
 #include "storm/environment/solver/MultiplierEnvironment.h"
 #include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/NotImplementedException.h"
-
-#include "storm/solver/multiplier/NativeMultiplier.h"
-
 #include "storm/solver/SolverSelectionOptions.h"
+#include "storm/solver/multiplier/NativeMultiplier.h"
 #include "storm/solver/multiplier/ViOperatorMultiplier.h"
+#include "storm/storage/SparseMatrix.h"
 #include "storm/utility/ProgressMeasurement.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/macros.h"
@@ -66,7 +61,42 @@ void Multiplier<ValueType>::repeatedMultiplyAndReduce(Environment const& env, Op
     progress.setMaxCount(n);
     progress.startNewMeasurement(0);
     for (uint64_t i = 0; i < n; ++i) {
+        progress.updateProgress(i);
         multiplyAndReduce(env, dir, x, b, x);
+        if (storm::utility::resources::isTerminate()) {
+            STORM_LOG_WARN("Aborting after " << i << " of " << n << " multiplications");
+            break;
+        }
+    }
+}
+
+template<typename ValueType>
+void Multiplier<ValueType>::repeatedMultiplyAndReduceWithFactor(Environment const& env, OptimizationDirection const& dir, std::vector<ValueType>& x,
+                                                                std::vector<ValueType> const* b, uint64_t n, ValueType factor) const {
+    storm::utility::ProgressMeasurement progress("multiplications");
+    progress.setMaxCount(n);
+    progress.startNewMeasurement(0);
+    for (uint64_t i = 0; i < n; ++i) {
+        progress.updateProgress(i);
+        std::transform(x.begin(), x.end(), x.begin(), [factor](ValueType& c) { return c * factor; });
+        multiplyAndReduce(env, dir, x, b, x);
+        if (storm::utility::resources::isTerminate()) {
+            STORM_LOG_WARN("Aborting after " << i << " of " << n << " multiplications");
+            break;
+        }
+    }
+}
+
+template<typename ValueType>
+void Multiplier<ValueType>::repeatedMultiplyWithFactor(Environment const& env, std::vector<ValueType>& x, std::vector<ValueType> const* b, uint64_t n,
+                                                       ValueType factor) const {
+    storm::utility::ProgressMeasurement progress("multiplications");
+    progress.setMaxCount(n);
+    progress.startNewMeasurement(0);
+    for (uint64_t i = 0; i < n; ++i) {
+        progress.updateProgress(i);
+        std::transform(x.begin(), x.end(), x.begin(), [factor](ValueType& c) { return c * factor; });
+        multiply(env, x, b, x);
         if (storm::utility::resources::isTerminate()) {
             STORM_LOG_WARN("Aborting after " << i << " of " << n << " multiplications");
             break;

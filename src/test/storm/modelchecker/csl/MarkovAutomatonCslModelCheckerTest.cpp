@@ -63,6 +63,13 @@ class JaniHybridDoubleValueIterationEnvironment {
     static const bool isExact = false;
     typedef double ValueType;
     typedef storm::models::symbolic::MarkovAutomaton<ddType, ValueType> ModelType;
+
+    static void checkLibraryAvailable() {
+#ifndef STORM_HAVE_SYLVAN
+        GTEST_SKIP() << "Library Sylvan not available.";
+#endif
+    }
+
     static storm::Environment createEnvironment() {
         storm::Environment env;
         env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration, true);
@@ -126,6 +133,9 @@ class MarkovAutomatonCslModelCheckerTest : public ::testing::Test {
 #ifndef STORM_HAVE_Z3
         GTEST_SKIP() << "Z3 not available.";
 #endif
+        if constexpr (TestType::engine == MaEngine::JaniHybrid) {
+            TestType::checkLibraryAvailable();
+        }
     }
 
     storm::Environment const& env() const {
@@ -235,7 +245,7 @@ class MarkovAutomatonCslModelCheckerTest : public ::testing::Test {
 
     std::unique_ptr<storm::modelchecker::QualitativeCheckResult> getInitialStateFilter(std::shared_ptr<storm::models::Model<ValueType>> const& model) const {
         if (isSparseModel()) {
-            return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult>(model->template as<SparseModelType>()->getInitialStates());
+            return std::make_unique<storm::modelchecker::ExplicitQualitativeCheckResult<ValueType>>(model->template as<SparseModelType>()->getInitialStates());
         } else {
             return std::make_unique<storm::modelchecker::SymbolicQualitativeCheckResult<TestType::ddType>>(
                 model->template as<SymbolicModelType>()->getReachableStates(), model->template as<SymbolicModelType>()->getInitialStates());
@@ -347,22 +357,16 @@ TYPED_TEST(MarkovAutomatonCslModelCheckerTest, simple2) {
         EXPECT_TRUE(storm::utility::isInfinity(this->getQuantitativeResultAtInitialState(model, result)));
     }
 
-#ifndef STORM_HAVE_Z3_OPTIMIZE
-    if (!storm::utility::isZero(this->precision())) {
-#endif
-        // Checking LRA properties exactly requires an exact LP solver.
-        result = checker->check(this->env(), tasks[7]);
-        EXPECT_NEAR(this->parseNumber("0"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
+    // Checking LRA properties exactly requires an exact LP solver.
+    result = checker->check(this->env(), tasks[7]);
+    EXPECT_NEAR(this->parseNumber("0"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
 
-        result = checker->check(this->env(), tasks[8]);
-        EXPECT_NEAR(this->parseNumber("407"), this->getQuantitativeResultAtInitialState(model, result),
-                    this->precision() * this->parseNumber("407"));  // use relative precision!
+    result = checker->check(this->env(), tasks[8]);
+    EXPECT_NEAR(this->parseNumber("407"), this->getQuantitativeResultAtInitialState(model, result),
+                this->precision() * this->parseNumber("407"));  // use relative precision!
 
-        result = checker->check(this->env(), tasks[9]);
-        EXPECT_NEAR(this->parseNumber("27"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
-#ifndef STORM_HAVE_Z3_OPTIMIZE
-    }
-#endif
+    result = checker->check(this->env(), tasks[9]);
+    EXPECT_NEAR(this->parseNumber("27"), this->getQuantitativeResultAtInitialState(model, result), this->precision());
 }
 
 TYPED_TEST(MarkovAutomatonCslModelCheckerTest, LtlSimple) {

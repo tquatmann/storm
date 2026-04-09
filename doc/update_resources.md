@@ -6,7 +6,10 @@
 In Eigen, we have adapted `SparseLU` to work with scalar types that do not default construct from a double (like CLN numbers) or that do not have an operator< or std::abs
 
 To update the Eigen version, just change the corresponding commit hash in `$STORM_DIR/resources/3rdparty/CmakeLists.txt`.
-Check whether the patch located at `$STORM_DIR/resources/3rdparty/patches/eigen.patch` can be applied without issues (in particular check for changes in `Eigen/src/SparseLU/`)
+Check whether the patch located at `$STORM_DIR/resources/3rdparty/patches/eigen.patch` can be applied without issues (in particular check for changes in `Eigen/src/SparseLU/`).
+
+The commit hash is forwarded to carl-storm via the `CARL_EIGEN_GIT_TAG` variable to ensure that carl-storm and Storm check out the same Eigen version.
+It might be reasonable to update the default value of `CARL_EIGEN_GIT_TAG` in carl-storm as well.
 
 In case a new patch needs to be created follow these steps:
 
@@ -18,6 +21,10 @@ In case a new patch needs to be created follow these steps:
 6. Resolve issues, make changes, and commit them
 7. Create a new patch file via `git format-patch <new_commit_hash> --stdout > eigen.patch`, where `<new_commit_hash>` is the tag, branch or commit from step 5
 8. add the patch to resources/patches/ and change the resources/3rdparty/CmakeLists.txt file accordingly.
+
+# ExprTk
+
+To update ExrtTk, download the latest version from the [website](https://www.partow.net/programming/exprtk/index.html#downloads) and copy the file `exprtk.hpp` to `$STORM_DIR/resources/3rdparty/exprtk/`.
 
 ## GMM
 To update GMM, simply change the corresponding version in `$STORM_DIR/resources/3rdparty/CmakeLists.txt`.
@@ -32,6 +39,7 @@ We add some extra code to gtest located in `$STORM_DIR/src/test/storm_gtest.h`. 
 ## Gurobi
 
 To support newer versions of Gurobi, adapt `$STORM_DIR/resources/cmake/find_modules/FindGUROBI.cmake` with the new version numbers.
+Also update the error message in the Gurobi section of `$STORM_DIR/resources/CMakeLists.txt`
 
 
 ## l3pp
@@ -48,7 +56,7 @@ To update, you can follow these steps:
 1. Check out the above commit in a separate repository
 2. Copy the contents of `$STORM_DIR/resources/3rdparty/modernjson/include` to the repository you just checked out and commit to a fresh branch
 3. The diff for that commit shows you the exact modifications we made.
-4. Merge the json version you want to update to into your branch.
+4. Merge the JSON version you want to update to into your branch.
 5. Resolve potential conflicts and review what has changed, in particular if it affects handling of floating point numbers.
 6. When this is all done, copy the contents back into the storm directory. Make sure to not apply any unnecessary code formatting to keep the diff smallish.
 7. *Update the commit hash mentioned in this document*
@@ -57,7 +65,7 @@ To update, you can follow these steps:
 ## parallel hashmap
 
 Download the new sources from [GitHub](https://github.com/greg7mdp/parallel-hashmap) and put them to `$STORM_DIR/resources/3rdparty/parallel_hashmap/`.
-Remove directories that are not needed, e.g, `rm -r doc examples html css benchmark tests index.html`.
+Remove directories that are not needed, e.g, `rm -r .github doc examples html css benchmark tests index.html`.
 
 
 ## Spot

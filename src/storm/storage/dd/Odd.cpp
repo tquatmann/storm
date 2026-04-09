@@ -2,16 +2,13 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <fstream>
-#include <set>
-
-#include "storm/storage/BitVector.h"
-
-#include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/io/file.h"
-#include "storm/utility/macros.h"
 
 #include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
+#include "storm/io/file.h"
+#include "storm/storage/BitVector.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace dd {
@@ -148,7 +145,6 @@ void Odd::exportToDot(std::string const& filename) const {
 
     for (auto const& levelNodes : levelToOddNodesMap) {
         dotFile << "{ rank = same; \"" << levelNodes.first << "\"\n";
-        ;
         for (auto const& node : levelNodes.second) {
             dotFile << "\"" << node << "\";\n";
         }

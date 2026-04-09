@@ -6,8 +6,8 @@
 #include "storm/environment/solver/NativeSolverEnvironment.h"
 #include "storm/environment/solver/TopologicalSolverEnvironment.h"
 #include "storm/solver/LinearEquationSolver.h"
-
 #include "storm/utility/vector.h"
+
 namespace {
 
 class NativeDoublePowerEnvironment {
@@ -173,6 +173,7 @@ class EliminationRationalEnvironment {
     }
 };
 
+#ifdef STORM_HAVE_GMM
 class GmmGmresIluEnvironment {
    public:
     typedef double ValueType;
@@ -242,6 +243,7 @@ class GmmQmrDiagonalEnvironment {
         return env;
     }
 };
+#endif
 
 class EigenDGmresDiagonalEnvironment {
    public:

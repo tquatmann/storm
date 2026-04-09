@@ -4,6 +4,7 @@
 #include <storm/storage/Distribution.h>
 #include <storm/storage/bisimulation/Partition.h>
 #include <storm/storage/geometry/Polytope.h>
+#include "storm/adapters/IntervalForward.h"
 #include "storm/models/sparse/DeterministicModel.h"
 #include "storm/storage/bisimulation/BisimulationDecomposition.h"
 

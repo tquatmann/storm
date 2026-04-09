@@ -1,23 +1,20 @@
 #include "MemoryIncorporation.h"
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/logic/Formulas.h"
 #include "storm/logic/FragmentSpecification.h"
 #include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/memorystructure/MemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/NondeterministicMemoryStructureBuilder.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProduct.h"
 #include "storm/storage/memorystructure/SparseModelMemoryProductReverseData.h"
 #include "storm/storage/memorystructure/SparseModelNondeterministicMemoryProduct.h"
-
 #include "storm/utility/macros.h"
 
-#include "storm/exceptions/NotImplementedException.h"
-#include "storm/exceptions/NotSupportedException.h"
 namespace storm {
 namespace transformer {
 
@@ -27,7 +24,8 @@ storm::storage::MemoryStructure getGoalMemory(SparseModelType const& model, stor
                     "The  subformula " << propositionalGoalStateFormula << " should be propositional.");
 
     storm::modelchecker::SparsePropositionalModelChecker<SparseModelType> mc(model);
-    storm::storage::BitVector goalStates = mc.check(propositionalGoalStateFormula)->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    storm::storage::BitVector goalStates =
+        mc.check(propositionalGoalStateFormula)->template asExplicitQualitativeCheckResult<typename SparseModelType::ValueType>().getTruthValuesVector();
 
     // Check if the formula is already satisfied for all initial states. In such a case the trivial memory structure suffices.
     if (model.getInitialStates().isSubsetOf(goalStates)) {

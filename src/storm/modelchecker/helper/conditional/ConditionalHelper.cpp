@@ -1,11 +1,12 @@
-#include <algorithm>
-#include <iterator>
-
 #include "storm/modelchecker/helper/conditional/ConditionalHelper.h"
+
+#include <algorithm>
 
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/environment/modelchecker/ModelCheckerEnvironment.h"
 #include "storm/environment/solver/MinMaxSolverEnvironment.h"
+#include "storm/exceptions/NotImplementedException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/solver/SolveGoal.h"
@@ -18,9 +19,6 @@
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
-
-#include "storm/exceptions/NotImplementedException.h"
-#include "storm/exceptions/NotSupportedException.h"
 
 namespace storm::modelchecker {
 
@@ -588,14 +586,23 @@ SolutionType computeViaBisection(Environment const& env, BisectionMethodBounds b
             }
             // update middle to the average of the bounds, but scale it according to the middle value (which is in [-1,1])
             middle = *lowerBound + (storm::utility::one<SolutionType>() + middleValue) * (*upperBound - *lowerBound) / 2;
-            STORM_LOG_ASSERT(middle >= *lowerBound && middle <= *upperBound, "Bisection method bounds are inconsistent.");
+
+            if (!storm::NumberTraits<SolutionType>::IsExact && storm::utility::isAlmostZero(*upperBound - *lowerBound)) {
+                if (*lowerBound > *upperBound) {
+                    std::swap(*lowerBound, *upperBound);
+                }
+                STORM_LOG_WARN("Precision of non-exact type reached during bisection method. Result might be inaccurate.");
+            } else {
+                STORM_LOG_ASSERT(middle >= *lowerBound && middle <= *upperBound, "Bisection method bounds are inconsistent.");
+            }
         }
         // check for convergence
         SolutionType const boundDiff = *upperBound - *lowerBound;
-        STORM_LOG_TRACE("Iteration #" << iterationCount << ":\n\t Lower bound: " << storm::utility::convertNumber<double>(*lowerBound)
-                                      << ",\n\t Upper bound: " << storm::utility::convertNumber<double>(*upperBound)
-                                      << ",\n\t Difference:  " << storm::utility::convertNumber<double>(boundDiff)
-                                      << ",\n\t Middle val:  " << storm::utility::convertNumber<double>(middleValue) << ".");
+        STORM_LOG_TRACE("Iteration #" << iterationCount << ":\n\t Lower bound:      " << storm::utility::convertNumber<double>(*lowerBound)
+                                      << ",\n\t Upper bound:      " << storm::utility::convertNumber<double>(*upperBound)
+                                      << ",\n\t Difference:       " << storm::utility::convertNumber<double>(boundDiff)
+                                      << ",\n\t Middle val:       " << storm::utility::convertNumber<double>(middleValue) << ",\n\t Difference bound: "
+                                      << storm::utility::convertNumber<double>((relative ? (precision * *lowerBound) : precision)) << ".");
         if (boundDiff <= (relative ? (precision * *lowerBound) : precision)) {
             STORM_LOG_INFO("Bisection method converged after " << iterationCount << " iterations. Difference is "
                                                                << std::setprecision(std::numeric_limits<double>::digits10)
@@ -612,8 +619,10 @@ SolutionType computeViaBisection(Environment const& env, BisectionMethodBounds b
         if constexpr (storm::NumberTraits<SolutionType>::IsExact) {
             // find a rational number with a concise representation close to middle and within the bounds
             auto const exactMiddle = middle;
-            auto numDigits = storm::utility::convertNumber<uint64_t>(
-                storm::utility::floor(storm::utility::log10<SolutionType>(storm::utility::one<SolutionType>() / (*upperBound - *lowerBound))));
+
+            // Find number of digits - 1. Method using log10 does not work since that uses doubles internally.
+            auto numDigits = storm::utility::numDigits<SolutionType>(*upperBound - *lowerBound) - 1;
+
             do {
                 ++numDigits;
                 middle = storm::utility::kwek_mehlhorn::sharpen<SolutionType, SolutionType>(numDigits, exactMiddle);
@@ -683,7 +692,7 @@ std::optional<SolutionType> handleTrivialCases(uint64_t const initialState, Norm
         // Catch the case where all terminal states have value zero
         if (normalForm.nonZeroTargetStateValues.empty()) {
             return storm::utility::zero<SolutionType>();
-        };
+        }
     }
     return std::nullopt;  // No trivial case applies, we need to compute the value.
 }

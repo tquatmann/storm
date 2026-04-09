@@ -33,13 +33,13 @@ DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimu
     : BisimulationDecomposition<ModelType>(model, options),
       probabilitiesToCurrentSplitter(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
       probabilitiesToOtherBlocks(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
-      touchedProbabilitiesToSplitter(model.getNumberOfStates(), false)  {
+      touchedProbabilitiesToSplitter(model.getNumberOfStates(), false) {
     // Intentionally left empty.
 }
 
 template<typename ModelType>
 std::pair<storm::storage::BitVector, storm::storage::BitVector> DeterministicModelBisimulationDecomposition<ModelType>::getStatesWithProbability01() {
-    return storm::utility::graph::performProb01(this->backwardTransitions, this->options.phiStates.get(), this->options.psiStates.get());
+    return storm::utility::graph::performProb01(this->backwardTransitions, this->options.phiStates.value(), this->options.psiStates.value());
 }
 
 template<typename ModelType>
@@ -100,7 +100,8 @@ typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType Deter
 }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
+void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock,
+                                                                                            std::deque<typename bisimulation::Partition::Block>& splitterQueue,
                                                                                             bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
     storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
     // std::cout << "Performing standard bisimulation!" << std::endl;
@@ -132,8 +133,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not
         auto [noPredecessors, predecessors] =
-            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this]
-                                                  (auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
+            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this](auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
 
         if (noPredecessors.size() > 0) {
             if (!enqueuedSplitterBlocks.contains(noPredecessors)) {
@@ -143,10 +143,9 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
         }
 
         if (predecessors.size() > 0) {
-            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this]
-                                                              (auto const& a, auto const& b) {
-                                                                  return this->comparator.isLess(probabilitiesToCurrentSplitter[a], probabilitiesToCurrentSplitter[b]);
-                                                              });
+            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this](auto const& a, auto const& b) {
+                return this->comparator.isLess(probabilitiesToCurrentSplitter[a], probabilitiesToCurrentSplitter[b]);
+            });
 
             // Add all blocks that were split to splitter queue
             if (wasSplit) {
@@ -198,11 +197,11 @@ bool DeterministicModelBisimulationDecomposition<ModelType>::possiblyNeedsRefine
 // }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
-                                                bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) {
+void DeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
+    std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
+    double epsilon) {
     // TODO: Implement
-    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException,
-                    "Cannot compute epsilon-bisimulation on non-interval model!");
+    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
 }
 
 template<typename ModelType>
@@ -217,7 +216,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
 
     // Prepare the new state labeling for (b).
     storm::models::sparse::StateLabeling newLabeling(this->partition.getNumberOfBlocks());
-    std::set<std::string> atomicPropositionsSet = this->options.respectedAtomicPropositions.get();
+    std::set<std::string> atomicPropositionsSet = this->options.respectedAtomicPropositions.value();
     atomicPropositionsSet.insert("init");
     std::vector<std::string> atomicPropositions = std::vector<std::string>(atomicPropositionsSet.begin(), atomicPropositionsSet.end());
     for (auto const& ap : atomicPropositions) {
@@ -275,9 +274,10 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
 
                 auto probIterator = blockProbability.find(targetBlock);
                 if (probIterator != blockProbability.end()) {
-                    probIterator->second += entry.getValue();
+                    probIterator->second += getTransitionValue(entry, representativeState);
                 } else {
-                    blockProbability[targetBlock] = entry.getValue();
+                    blockProbability[targetBlock] = getTransitionValue(entry, representativeState);
+                    ;
                 }
             }
 
@@ -324,19 +324,30 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
     }
 
     // Finally construct the quotient model.
-    this->quotient = std::shared_ptr<ModelType>(new ModelType(builder.build(), std::move(newLabeling), std::move(rewardModels)));
+    this->quotient = std::make_shared<ModelType>(builder.build(), std::move(newLabeling), std::move(rewardModels));
+}
+
+template<typename ModelType>
+DeterministicModelBisimulationDecomposition<ModelType>::ValueType DeterministicModelBisimulationDecomposition<ModelType>::getTransitionValue(
+    storm::storage::MatrixEntry<storm::storage::sparse::state_type, ValueType> const& matrixEntry, storm::storage::sparse::state_type state) const {
+    if constexpr (std::is_same_v<ModelType, storm::models::sparse::Ctmc<typename ModelType::ValueType>>) {
+        auto transitionValue = matrixEntry.getValue();
+        // TODO: enable when removing CTMC rate matrix
+        // transitionValue *= this->model.getExitRateVector().at(state);
+        return transitionValue;
+    } else {
+        STORM_LOG_ASSERT(this->model.isDiscreteTimeModel(), "Unhandled model type");
+        return matrixEntry.getValue();
+    }
 }
 
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<double>>;
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<double>>;
 
-#ifdef STORM_HAVE_CARL
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalNumber>>;
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalNumber>>;
 
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalFunction>>;
 template class DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalFunction>>;
-
-#endif
 }  // namespace storage
 }  // namespace storm

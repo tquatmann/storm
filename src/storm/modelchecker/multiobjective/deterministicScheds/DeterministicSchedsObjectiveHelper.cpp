@@ -39,7 +39,7 @@ storm::storage::BitVector evaluatePropositionalFormula(ModelType const& model, s
     auto checkResult = mc.check(formula);
     STORM_LOG_THROW(checkResult && checkResult->isExplicitQualitativeCheckResult(), storm::exceptions::UnexpectedException,
                     "Unexpected type of check result for subformula " << formula << ".");
-    return checkResult->asExplicitQualitativeCheckResult().getTruthValuesVector();
+    return checkResult->template asExplicitQualitativeCheckResult<typename ModelType::ValueType>().getTruthValuesVector();
 }
 
 template<typename ValueType>
@@ -339,7 +339,7 @@ void setLowerUpperTotalRewardBoundsToSolver(storm::solver::AbstractEquationSolve
                     .computeUpperBounds());
         }
     }
-    if (reqLower && !upperBound.has_value()) {
+    if (reqLower && !lowerBound.has_value()) {
         // For lower bounds we actually compute upper bounds for the negated rewards.
         // We therefore need tmpRewards in any way.
         tmpRewards.resize(rewards.size());
@@ -570,7 +570,6 @@ void DeterministicSchedsObjectiveHelper<ModelType>::computeLowerUpperBounds(Envi
         ValueType rewardValueForPosInfCase;
         if (getInfinityCase() == InfinityCase::HasPositiveInfinite) {
             rewardValueForPosInfCase = getThreshold();
-            ;
             // We need to substract a lower bound for the value at the initial state
             std::vector<ValueType> rewards2Negative;
             rewards2Negative.reserve(rewards2.size());

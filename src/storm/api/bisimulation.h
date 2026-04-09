@@ -8,8 +8,8 @@
 #include "storm/storage/bisimulation/DeterministicModelBisimulationDecomposition.h"
 #include "storm/storage/bisimulation/NondeterministicModelBisimulationDecomposition.h"
 
-#include "storm/storage/dd/BisimulationDecomposition.h"
 #include "storm/storage/dd/DdType.h"
+#include "storm/storage/dd/bisimulation/BisimulationDecomposition.h"
 
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/utility/macros.h"
@@ -24,7 +24,11 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
                                                                               bool useEpsilon = false, double epsilon = 0.0) {
     typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::Options options;
     if (!formulas.empty() && graphPreserving) {
-        options = typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+        if constexpr (storm::IsIntervalType<ModelType>) {
+            options = typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+        } else {
+            options = typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+        }
     }
     // If we cannot use formula-based decomposition because of
     // non-graph-preserving regions but there are reward models, we need to
@@ -78,7 +82,8 @@ std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMinimization(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true, bool useEpsilon = false, double epsilon = 0.0) {
+    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true, bool useEpsilon = false,
+    double epsilon = 0.0) {
     STORM_LOG_THROW(
         model->isOfType(storm::models::ModelType::Dtmc) || model->isOfType(storm::models::ModelType::Ctmc) || model->isOfType(storm::models::ModelType::Mdp),
         storm::exceptions::NotSupportedException, "Bisimulation minimization is currently only available for DTMCs, CTMCs and MDPs.");

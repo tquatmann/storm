@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git clone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
-          repository: moves-rwth/storm
+          repository: stormchecker/storm
       - name: Update carl-storm version
         run: |
           # Update STORM_CARL_GIT_TAG
@@ -29,6 +29,7 @@ jobs:
           # Update carl_tag
           sed -i -E 's/ARG carl_tag="[0-9]+\.[0-9]+"/ARG carl_tag="${{ inputs.carl_version }}"/' Dockerfile
           sed -i -E 's/ARG carl_tag="[0-9]+\.[0-9]+"/ARG carl_tag="${{ inputs.carl_version }}"/' .github/workflows/Dockerfile.archlinux
+          sed -i -E 's/ARG carl_tag="[0-9]+\.[0-9]+"/ARG carl_tag="${{ inputs.carl_version }}"/' .github/workflows/Dockerfile.alpine
           sed -i -E 's/ARG carl_tag="[0-9]+\.[0-9]+"/ARG carl_tag="${{ inputs.carl_version }}"/' .github/workflows/Dockerfile.release
       - name: Commit update
         run: |
@@ -38,7 +39,7 @@ jobs:
           git commit -am "Use carl-storm ${{ inputs.carl_version }}"
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.personal_access_token }}
           branch: ci/update-carl-storm
