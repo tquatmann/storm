@@ -162,7 +162,7 @@ void BisimulationDecomposition<ModelType>::Options::checkAndSetMeasureDrivenInit
         std::unique_ptr<storm::modelchecker::CheckResult> phiStatesCheckResult = checker.check(*leftSubformula);
         std::unique_ptr<storm::modelchecker::CheckResult> psiStatesCheckResult = checker.check(*rightSubformula);
 
-        using SolutionType = std::conditional_t<!std::is_same_v<ValueType, storm::Interval>, ValueType, double>;
+        using SolutionType = storm::IntervalBaseType<ValueType>;
         phiStates = phiStatesCheckResult->template asExplicitQualitativeCheckResult<SolutionType>().getTruthValuesVector();
         psiStates = psiStatesCheckResult->template asExplicitQualitativeCheckResult<SolutionType>().getTruthValuesVector();
     } else {
