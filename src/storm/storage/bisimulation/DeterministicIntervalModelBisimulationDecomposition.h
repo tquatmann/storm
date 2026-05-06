@@ -39,37 +39,66 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
                                                 bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) override;
 
-    virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
+    virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> subBlock, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
                                                     bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) override;
 
    private:
     void postProcessInitialPartition();
 
-    std::shared_ptr<storm::storage::geometry::Polytope<storm::RationalNumber>> create2DPolytope(storm::RationalNumber c1LowerBound,
-                                                                                                storm::RationalNumber c1UpperBound,
-                                                                                                storm::RationalNumber c2LowerBound,
-                                                                                                storm::RationalNumber c2UpperBound);
-
     // Retrieves whether the given predecessor of the splitters possibly needs refinement.
     bool possiblyNeedsRefinement(std::span<uint64_t const> block) const;
 
-    ValueType computeIntervalProjection(ValueType intervalToSplitter, ValueType intervalToOtherBlocks);
+    /*!
+     * Computes the feasible interval based on the intervals going to the splitter block C and all other blocks \Pi \setminus C.
+     * @param intervalToSplitter aggregated interval to C
+     * @param intervalToOtherBlocks aggregated interval \Pi \setminus C
+     * @return feasible interval to splitter block C
+     */
+    ValueType computeFeasibleIntervalBasedOnAggregatedIntervals(ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const;
 
     /*!
-     * Computes the delta between the distribution of a state and its candidate group distribution
+     * Takes the given interval and computes the intersection with [0, 1] with respect to the given precision.
+     * @param interval
+     * @return probabilistic interval I s.t. I = interval \cap [0, 1]
+     */
+    ValueType clampIntervalToProbabilisticInterval(ValueType interval) const;
+
+    /*!
+     * Returns the given distribution where each interval entry I gets clamped to a probabilistic interval I', i.e., I' = I \cap [0, 1].
+     * @param distribution
+     * @return distribution with clamped interval entries
+     */
+    Distribution<ValueType, sparse::state_type> getClampedDistribution(Distribution<ValueType, storm::storage::sparse::state_type> distribution) const;
+
+    /*!
+     * Computes the delta between the distribution of a state and its candidate group distribution.
      * @param state state of interest
      * @param stateDistribution distribution over the partition of the state
      * @param enhancedDistribution enhanced distribution over the partition based on its (candidate) group
      * @return delta
      */
-    double computeDeltaForState(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
-                                storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution);
+    storm::IntervalBaseType<ValueType> computeDeltaForState(
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution);
 
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> computeCandidateDistribution(
-        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& groupDistribution,
-        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution);
+    /*!
+     * Takes the two input distributions and constructs an enhanced version, i.e., for each entry 'block' it chooses:
+     * [ min(\inf firstDistribution(block), \inf secondDistribution(block)), max(\sup firstDistribution(block), \sup secondDistribution(block)) ]
+     * @param firstDistribution
+     * @param secondDistribution
+     * @return enhanced distribution
+     */
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> computeEnhancedDistribution(
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
+        storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution);
 
-    Distribution<ValueType, sparse::state_type> getClampedDistribution(Distribution<ValueType, storm::storage::sparse::state_type> distribution) const;
+    bool canMergeBlocksForDebug(std::span<uint64_t const> blockA, std::span<uint64_t const> blockB, double epsilon);
+
+    void debugFindMergeableFinalBlocks(double epsilon);
+
+    void validateEpsilonStability(double epsilon);
+
+    bool checkCurrentPartitionByExactFeasibleIntervals() const;
 
     // A vector that holds the probabilities of states going into the splitter. This is used by the method that
     // refines a block based on probabilities.
@@ -89,7 +118,6 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
 };
 
 }  // namespace storage
-
 }  // namespace storm
 
 #endif  // STORM_DETERMINISTICINTERVALMODELBISIMULATIONDECOMPOSITION_H

@@ -43,6 +43,7 @@ std::string Signature<ValueType>::toString() const {
 
 template class Signature<double>;
 template class Signature<storm::Interval>;
+template class Signature<storm::RationalInterval>;
 template class Signature<storm::RationalNumber>;
 template class Signature<storm::RationalFunction>;
 

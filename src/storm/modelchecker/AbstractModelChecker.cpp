@@ -497,6 +497,7 @@ template class AbstractModelChecker<storm::models::sparse::Ctmc<storm::Interval>
 
 template class AbstractModelChecker<storm::models::sparse::Mdp<storm::RationalInterval>>;
 template class AbstractModelChecker<storm::models::sparse::Dtmc<storm::RationalInterval>>;
+template class AbstractModelChecker<storm::models::sparse::Ctmc<storm::RationalInterval>>;
 
 // DD
 template class AbstractModelChecker<storm::models::symbolic::Model<storm::dd::DdType::CUDD, double>>;

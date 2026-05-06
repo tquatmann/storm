@@ -620,5 +620,9 @@ template class BisimulationDecomposition<storm::models::sparse::Mdp<storm::Ratio
 template class storm::storage::BisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>>;
 template class storm::storage::BisimulationDecomposition<storm::models::sparse::Ctmc<storm::Interval>>;
 template class storm::storage::BisimulationDecomposition<storm::models::sparse::Mdp<storm::Interval>>;
+
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalInterval>>;
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Ctmc<storm::RationalInterval>>;
+template class storm::storage::BisimulationDecomposition<storm::models::sparse::Mdp<storm::RationalInterval>>;
 }  // namespace storage
 }  // namespace storm

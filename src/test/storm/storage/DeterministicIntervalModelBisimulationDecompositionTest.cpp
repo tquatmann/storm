@@ -268,6 +268,71 @@ TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny04IDTMC_Paper)
     result->printModelInformationToStream(std::cout);
 }
 
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, CrowdsIDTMC_Perturbed_RationalInterval) {
+    std::shared_ptr<storm::models::sparse::Model<storm::RationalInterval>> modelPtr =
+        storm::parser::parseDirectEncodingModel<storm::RationalInterval>(STORM_TEST_RESOURCES_DIR "/idtmc/after_perturbation_0.000001_2026-05-05_16-11-37");
+    std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalInterval>> dtmc = modelPtr->as<storm::models::sparse::Dtmc<storm::RationalInterval>>();
+    ASSERT_EQ(storm::models::ModelType::Dtmc, modelPtr->getType());
+    EXPECT_TRUE(modelPtr->hasUncertainty());
+    typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalInterval>>::Options options;
+    // options.preserveFormula(*formulas[0].get());
+    options.setUsesEpsilon(true);
+    options.setEpsilon(0.001);
+    modelPtr->printModelInformationToStream(std::cout);
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::RationalInterval>> bisim(*dtmc, options);
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    std::shared_ptr<storm::models::sparse::Model<storm::RationalInterval>> result;
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    result->printModelInformationToStream(std::cout);
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, CrowdsIDTMC_Perturbed_DoubleInterval_Epsilon) {
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
+        storm::parser::parseDirectEncodingModel<storm::Interval>(STORM_TEST_RESOURCES_DIR "/idtmc/after_perturbation_0.000001_2026-05-05_16-11-37");
+    std::shared_ptr<storm::models::sparse::Dtmc<storm::Interval>> dtmc = modelPtr->as<storm::models::sparse::Dtmc<storm::Interval>>();
+    ASSERT_EQ(storm::models::ModelType::Dtmc, modelPtr->getType());
+    EXPECT_TRUE(modelPtr->hasUncertainty());
+    typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>>::Options options;
+    // options.preserveFormula(*formulas[0].get());
+    options.setUsesEpsilon(true);
+    options.setEpsilon(0.001);
+    modelPtr->printModelInformationToStream(std::cout);
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>> bisim(*dtmc, options);
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> result;
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    result->printModelInformationToStream(std::cout);
+}
+
+TEST(DeterministicIntervalModelBisimulationDecompositionTest, CrowdsIDTMC_Perturbed_DoubleInterval_Exact) {
+    storm::Interval intervalA = storm::Interval(1, carl::BoundType::WEAK, 1, carl::BoundType::WEAK);
+    storm::Interval intervalB = storm::Interval(storm::utility::zero<storm::IntervalBaseType<storm::Interval>>(), carl::BoundType::WEAK,
+                                                storm::utility::one<storm::IntervalBaseType<storm::Interval>>(), carl::BoundType::WEAK);
+
+    auto intersectionOfAB = intervalA.intersect(intervalB);
+
+    ASSERT_EQ(intersectionOfAB.lower(), 1);
+    ASSERT_EQ(intersectionOfAB.upper(), 1);
+
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
+        storm::parser::parseDirectEncodingModel<storm::Interval>(STORM_TEST_RESOURCES_DIR "/idtmc/after_perturbation_0.000001_2026-05-05_16-11-37");
+    std::shared_ptr<storm::models::sparse::Dtmc<storm::Interval>> dtmc = modelPtr->as<storm::models::sparse::Dtmc<storm::Interval>>();
+    ASSERT_EQ(storm::models::ModelType::Dtmc, modelPtr->getType());
+    EXPECT_TRUE(modelPtr->hasUncertainty());
+    typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>>::Options options;
+    // "P=? [F \"observe0Greater1\" ]"
+    options.preserveFormula(*storm::api::extractFormulasFromProperties(storm::api::parseProperties("P=? [F \"observe0Greater1\" ]")).at(0).get());
+    modelPtr->printModelInformationToStream(std::cout);
+    storm::storage::DeterministicIntervalModelBisimulationDecomposition<storm::models::sparse::Dtmc<storm::Interval>> bisim(*dtmc, options);
+    ASSERT_NO_THROW(bisim.computeBisimulationDecomposition());
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> result;
+    ASSERT_NO_THROW(result = bisim.getQuotient());
+    EXPECT_EQ(storm::models::ModelType::Dtmc, result->getType());
+    result->printModelInformationToStream(std::cout);
+}
+
 TEST(DeterministicIntervalModelBisimulationDecompositionTest, Tiny04IDTMC_Paper_PM_Epsilon) {
     std::string programFile = STORM_TEST_RESOURCES_DIR "/idtmc/tiny-04-paper.pm";
     storm::prism::Program program = storm::api::parseProgram(programFile);
