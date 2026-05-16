@@ -11,7 +11,7 @@ namespace modules {
  */
 class AbstractionSettings : public ModuleSettings {
    public:
-    enum class Method { Games, Bisimulation };
+    enum class Method { Games, Bisimulation, EpsilonStable };
 
     enum class PivotSelectionHeuristic { NearestMaximalDeviation, MostProbablePath, MaxWeightedDeviation };
 
@@ -183,6 +183,21 @@ class AbstractionSettings : public ModuleSettings {
      */
     ValidBlockMode getValidBlockMode() const;
 
+    /*!
+     * Retrieves the allowed epsilon value for epsilon-stable abstraction minimization.
+     */
+    double getEpsilonValue() const;
+
+    /*!
+     * Retrieves whether the allowed epsilon value for epsilon-stable abstraction minimization is set.
+     */
+    bool isEpsilonValueSet() const;
+
+    /*!
+     * Retrieves whether the abstraction method is set to epsilon-stable.
+     */
+    bool isEpsilonStableMethodSet() const;
+
     const static std::string moduleName;
 
    private:
@@ -207,6 +222,7 @@ class AbstractionSettings : public ModuleSettings {
     const static std::string fixPlayer1StrategyOptionName;
     const static std::string fixPlayer2StrategyOptionName;
     const static std::string validBlockModeOptionName;
+    const static std::string epsilonValueOptionName;
 };
 
 }  // namespace modules

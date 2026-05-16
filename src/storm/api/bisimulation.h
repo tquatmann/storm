@@ -1,17 +1,14 @@
 #pragma once
 
-#include <storm/storage/bisimulation/DeterministicIntervalModelBisimulationDecomposition.h>
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/models/sparse/Ctmc.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
-
-#include "storm/storage/bisimulation/DeterministicModelBisimulationDecomposition.h"
-#include "storm/storage/bisimulation/NondeterministicModelBisimulationDecomposition.h"
-
 #include "storm/storage/dd/DdType.h"
 #include "storm/storage/dd/bisimulation/BisimulationDecomposition.h"
-
-#include "storm/exceptions/NotSupportedException.h"
+#include "storm/storage/stateminimization/bisimulation/DeterministicIntervalModelBisimulationDecomposition.h"
+#include "storm/storage/stateminimization/bisimulation/DeterministicModelBisimulationDecomposition.h"
+#include "storm/storage/stateminimization/bisimulation/NondeterministicModelBisimulationDecomposition.h"
 #include "storm/utility/macros.h"
 
 namespace storm {
@@ -20,14 +17,13 @@ namespace api {
 template<typename ModelType>
 std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(std::shared_ptr<ModelType> model,
                                                                               std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-                                                                              storm::storage::BisimulationType type, bool graphPreserving = true,
-                                                                              bool useEpsilon = false, double epsilon = 0.0) {
-    typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::Options options;
+                                                                              storm::storage::BisimulationType type, bool graphPreserving = true) {
+    typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions options;
     if (!formulas.empty() && graphPreserving) {
         if constexpr (storm::IsIntervalType<ModelType>) {
-            options = typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+            options = typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
         } else {
-            options = typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+            options = typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
         }
     }
     // If we cannot use formula-based decomposition because of
@@ -39,20 +35,15 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
     }
     options.setType(type);
 
-    if (useEpsilon) {
-        options.setEpsilon(epsilon);
-        options.setUsesEpsilon(true);
-    }
-
     // TODO: Make a clean distinction between interval and standard models here.
     // TODO: Instantiate the corresponding implementation for bisimulation.
     if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
         storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
-        bisimulationDecomposition.computeBisimulationDecomposition();
+        bisimulationDecomposition.computeDecomposition();
         return bisimulationDecomposition.getQuotient();
     } else {
         storm::storage::DeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
-        bisimulationDecomposition.computeBisimulationDecomposition();
+        bisimulationDecomposition.computeDecomposition();
         return bisimulationDecomposition.getQuotient();
     }
 }
@@ -61,9 +52,9 @@ template<typename ModelType>
 std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization(std::shared_ptr<ModelType> model,
                                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
                                                                                  storm::storage::BisimulationType type, bool graphPreserving = true) {
-    typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::Options options;
+    typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions options;
     if (!formulas.empty() && graphPreserving) {
-        options = typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::Options(*model, formulas);
+        options = typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
     }
     // If we cannot use formula-based decomposition because of
     // non-graph-preserving regions but there are reward models, we need to
@@ -75,15 +66,14 @@ std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization
     options.setType(type);
 
     storm::storage::NondeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
-    bisimulationDecomposition.computeBisimulationDecomposition();
+    bisimulationDecomposition.computeDecomposition();
     return bisimulationDecomposition.getQuotient();
 }
 
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMinimization(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true, bool useEpsilon = false,
-    double epsilon = 0.0) {
+    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true) {
     STORM_LOG_THROW(
         model->isOfType(storm::models::ModelType::Dtmc) || model->isOfType(storm::models::ModelType::Ctmc) || model->isOfType(storm::models::ModelType::Mdp),
         storm::exceptions::NotSupportedException, "Bisimulation minimization is currently only available for DTMCs, CTMCs and MDPs.");
@@ -93,7 +83,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMini
 
     if (model->isOfType(storm::models::ModelType::Dtmc)) {
         return performDeterministicSparseBisimulationMinimization<storm::models::sparse::Dtmc<ValueType>>(
-            model->template as<storm::models::sparse::Dtmc<ValueType>>(), formulas, type, graphPreserving, useEpsilon, epsilon);
+            model->template as<storm::models::sparse::Dtmc<ValueType>>(), formulas, type, graphPreserving);
     } else if (model->isOfType(storm::models::ModelType::Ctmc)) {
         return performDeterministicSparseBisimulationMinimization<storm::models::sparse::Ctmc<ValueType>>(
             model->template as<storm::models::sparse::Ctmc<ValueType>>(), formulas, type, graphPreserving);

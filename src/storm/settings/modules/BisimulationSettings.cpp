@@ -1,12 +1,4 @@
 #include "storm/settings/modules/BisimulationSettings.h"
-#include "storm/settings/Argument.h"
-#include "storm/settings/ArgumentBuilder.h"
-#include "storm/settings/Option.h"
-#include "storm/settings/OptionBuilder.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/GeneralSettings.h"
-
-#include "storm/exceptions/InvalidSettingsException.h"
 
 namespace storm {
 namespace settings {
@@ -22,8 +14,6 @@ const std::string BisimulationSettings::reuseOptionName = "reuse";
 const std::string BisimulationSettings::initialPartitionOptionName = "init";
 const std::string BisimulationSettings::refinementModeOptionName = "refine";
 const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
-const std::string BisimulationSettings::epsilonOptionName = "epsilon";
-const std::string BisimulationSettings::deltaPerturbationOptionName = "deltaperturbation";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -91,20 +81,6 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("mode", "The mode to use.")
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(refinementModes))
                                          .setDefaultValueString("full")
-                                         .build())
-                        .build());
-
-    this->addOption(storm::settings::OptionBuilder(moduleName, epsilonOptionName, true, "Sets the epsilon for epsilon-bisimulation on interval DTMCs.")
-                        .setIsAdvanced()
-                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("epsilon", "The epsilon value to match states.")
-                                     .addValidatorDouble(ArgumentValidatorFactory::createDoubleGreaterValidator(0.0))
-                                     .build())
-                        .build());
-
-    this->addOption(storm::settings::OptionBuilder(moduleName, deltaPerturbationOptionName, true, "Sets the delta for perturbing the interval DTMC.")
-                        .setIsAdvanced()
-                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("deltaperturbation", "The delta value to perturb outgoing transitions.")
-                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleGreaterValidator(0.0))
                                          .build())
                         .build());
 }
@@ -194,22 +170,6 @@ bool BisimulationSettings::check() const {
     STORM_LOG_WARN_COND(storm::settings::getModule<storm::settings::modules::GeneralSettings>().isBisimulationSet() || !optionsSet,
                         "Bisimulation minimization is not selected, so setting options for bisimulation has no effect.");
     return true;
-}
-
-bool BisimulationSettings::usesEpsilonBisimulation() const {
-    return this->getOption(epsilonOptionName).getHasOptionBeenSet();
-}
-
-double BisimulationSettings::getEpsilonForIntervalBisimulation() const {
-    return this->getOption(epsilonOptionName).getArgumentByName("epsilon").getValueAsDouble();
-}
-
-bool BisimulationSettings::usesDeltaPerturbation() const {
-    return this->getOption(deltaPerturbationOptionName).getHasOptionBeenSet();
-}
-
-double BisimulationSettings::getDeltaPerturbation() const {
-    return this->getOption(deltaPerturbationOptionName).getArgumentByName("deltaperturbation").getValueAsDouble();
 }
 
 }  // namespace modules

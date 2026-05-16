@@ -1,26 +1,4 @@
-#include "storm/storage/bisimulation/DeterministicModelBisimulationDecomposition.h"
-
-#include <algorithm>
-#include <boost/iterator/zip_iterator.hpp>
-#include <chrono>
-#include <iomanip>
-#include <unordered_map>
-
-#include "storm/adapters/RationalFunctionAdapter.h"
-#include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
-
-#include "storm/models/sparse/Ctmc.h"
-#include "storm/models/sparse/Dtmc.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-
-#include "storm/exceptions/IllegalFunctionCallException.h"
-#include "storm/exceptions/InvalidArgumentException.h"
-#include "storm/utility/ConstantsComparator.h"
-#include "storm/utility/constants.h"
-#include "storm/utility/graph.h"
-
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/GeneralSettings.h"
+#include "storm/storage/stateminimization/bisimulation/DeterministicModelBisimulationDecomposition.h"
 
 namespace storm {
 namespace storage {
@@ -29,7 +7,7 @@ using namespace bisimulation;
 
 template<typename ModelType>
 DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimulationDecomposition(
-    ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options)
+    ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options)
     : BisimulationDecomposition<ModelType>(model, options),
       probabilitiesToCurrentSplitter(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
       probabilitiesToOtherBlocks(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
@@ -66,18 +44,6 @@ void DeterministicModelBisimulationDecomposition<ModelType>::postProcessInitialP
 }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::initializeMeasureDrivenPartition() {
-    BisimulationDecomposition<ModelType>::initializeMeasureDrivenPartition();
-    postProcessInitialPartition();
-}
-
-template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::initializeLabelBasedPartition() {
-    BisimulationDecomposition<ModelType>::initializeLabelBasedPartition();
-    postProcessInitialPartition();
-}
-
-template<typename ModelType>
 typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType const&
 DeterministicModelBisimulationDecomposition<ModelType>::getProbabilityToSplitter(storm::storage::sparse::state_type const& state) const {
     return probabilitiesToCurrentSplitter[state];
@@ -100,10 +66,10 @@ typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType Deter
 }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock,
-                                                                                            std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                                                            bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {
-    storm::storage::bisimulation::Partition::BlockSet blocksToSplit;
+void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
+    std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
+    stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
+    storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
     // std::cout << "Performing standard bisimulation!" << std::endl;
 
     // std::fill(probabilitiesToCurrentSplitter.begin(), probabilitiesToCurrentSplitter.end(), storm::utility::zero<ValueType>());
@@ -197,15 +163,7 @@ bool DeterministicModelBisimulationDecomposition<ModelType>::possiblyNeedsRefine
 // }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
-    std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
-    double epsilon) {
-    // TODO: Implement
-    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
-}
-
-template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
+void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPartition() {
     // In order to create the quotient model, we need to construct
     // (a) the new transition matrix,
     // (b) the new labeling,

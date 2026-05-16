@@ -1,7 +1,4 @@
-#include "Signature.h"
-
-#include "storm/adapters/IntervalAdapter.h"
-#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/storage/stateminimization/bisimulation/Signature.h"
 
 namespace storm {
 namespace storage {

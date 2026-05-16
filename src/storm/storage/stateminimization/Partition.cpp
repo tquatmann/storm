@@ -1,12 +1,9 @@
-#include "storm/storage/bisimulation/Partition.h"
-#include <ranges>
+#include "storm/storage/stateminimization/Partition.h"
 
-namespace storm::storage::bisimulation {
+namespace storm::storage::stateminimization {
 
 Partition::Partition(ElementIndex numElements)
-    : blockIndices(numElements, false),
-      elementToBlockIndex(numElements, 0),
-      blockEndCache(numElements, std::numeric_limits<BlockIndex>::max()) {
+    : blockIndices(numElements, false), elementToBlockIndex(numElements, 0), blockEndCache(numElements, std::numeric_limits<BlockIndex>::max()) {
     auto indexRange = std::ranges::iota_view<ElementIndex, ElementIndex>(0, numElements);
     blockContents.assign(indexRange.begin(), indexRange.end());
     blockIndices.set(0);
@@ -63,14 +60,18 @@ void Partition::invalidateCache(Partition::BlockIndex index) {
 }
 
 bool Partition::checkBlockValidity(Block const& block) const {
-    if (block.empty()) return false;
-    if (block.data() < blockContents.data() || block.data() + block.size() > blockContents.data() + blockContents.size()) return false;
+    if (block.empty())
+        return false;
+    if (block.data() < blockContents.data() || block.data() + block.size() > blockContents.data() + blockContents.size())
+        return false;
 
     auto const blockIndex = std::distance(blockContents.data(), block.data());
     auto const blockEndIndex = blockIndex + block.size();
 
-    if (!blockIndices.get(blockIndex) || (blockEndIndex < blockIndices.size() && !blockIndices.get(blockEndIndex))) return false;
-    if (elementToBlockIndex[block[0]] != blockIndex) return false;
+    if (!blockIndices.get(blockIndex) || (blockEndIndex < blockIndices.size() && !blockIndices.get(blockEndIndex)))
+        return false;
+    if (elementToBlockIndex[block[0]] != blockIndex)
+        return false;
 
     return !std::any_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
         return elementToBlockIndex[e] < blockIndex || elementToBlockIndex[e] > blockEndIndex;
@@ -88,7 +89,8 @@ std::ostream& operator<<(std::ostream& os, const Partition& partition) {
     partition.forEachBlock([&os](Partition::Block const& block) {
         os << "\t{";
         for (bool first = true; auto const e : block) {
-            if (!first) os << ", ";
+            if (!first)
+                os << ", ";
             first = false;
             os << e;
         }
@@ -98,4 +100,4 @@ std::ostream& operator<<(std::ostream& os, const Partition& partition) {
     return os;
 }
 
-}  // namespace storm::storage::bisimulation
+}  // namespace storm::storage::stateminimization

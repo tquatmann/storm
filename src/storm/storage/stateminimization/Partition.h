@@ -4,11 +4,12 @@
 #include <cstddef>
 #include <list>
 #include <memory>
+#include <ranges>
 
 #include "storm/storage/BitVector.h"
 #include "storm/utility/macros.h"
 
-namespace storm::storage::bisimulation {
+namespace storm::storage::stateminimization {
 
 /*!
  * Represents a partition of a set of consecutive indices.
@@ -317,4 +318,4 @@ class Partition {
 
 std::ostream& operator<<(std::ostream& os, const Partition& partition);
 
-}  // namespace storm::storage::bisimulation
+}  // namespace storm::storage::stateminimization

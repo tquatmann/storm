@@ -1,15 +1,4 @@
-#include "storm/storage/bisimulation/NondeterministicModelBisimulationDecomposition.h"
-
-#include "storm/models/sparse/Mdp.h"
-#include "storm/models/sparse/StandardRewardModel.h"
-
-#include "storm/utility/graph.h"
-
-#include "storm/exceptions/IllegalFunctionCallException.h"
-#include "storm/utility/macros.h"
-
-#include "storm/adapters/IntervalAdapter.h"
-#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/storage/stateminimization/bisimulation/NondeterministicModelBisimulationDecomposition.h"
 
 namespace storm {
 namespace storage {
@@ -18,7 +7,7 @@ using namespace bisimulation;
 
 template<typename ModelType>
 NondeterministicModelBisimulationDecomposition<ModelType>::NondeterministicModelBisimulationDecomposition(
-    ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options)
+    ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options)
     : BisimulationDecomposition<ModelType>(model, model.getTransitionMatrix().transpose(false), options),
       choiceToStateMapping(model.getNumberOfChoices()),
       quotientDistributions(model.getNumberOfChoices()),
@@ -72,7 +61,7 @@ void NondeterministicModelBisimulationDecomposition<ModelType>::updateOrderedQuo
 }
 
 template<typename ModelType>
-void NondeterministicModelBisimulationDecomposition<ModelType>::buildQuotient() {
+void NondeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPartition() {
     // TODO: implement
 }
 
@@ -137,16 +126,8 @@ bool NondeterministicModelBisimulationDecomposition<ModelType>::quotientDistribu
 
 template<typename ModelType>
 void NondeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
-    std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-    bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) {}
-
-template<typename ModelType>
-void NondeterministicModelBisimulationDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(
-    std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue, bisimulation::Partition::BlockSet& enqueuedBlocks,
-    double epsilon) {
-    // TODO: Implement
-    STORM_LOG_THROW(true, storm::exceptions::IllegalFunctionCallException, "Cannot compute epsilon-bisimulation on non-interval model!");
-}
+    std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
+    stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {}
 
 template class NondeterministicModelBisimulationDecomposition<storm::models::sparse::Mdp<double>>;
 

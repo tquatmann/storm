@@ -4,7 +4,12 @@
 
 #include "storm-config.h"
 #include "storm/api/transformation.h"
+#include "storm/exceptions/IllegalArgumentValueException.h"
+#include "storm/exceptions/InvalidSettingsException.h"
+#include "storm/settings/ArgumentBuilder.h"
+#include "storm/settings/OptionBuilder.h"
 #include "storm/settings/modules/ModuleSettings.h"
+#include "storm/utility/permutation.h"
 
 namespace storm {
 
@@ -58,6 +63,21 @@ class TransformationSettings : public ModuleSettings {
      */
     std::optional<uint64_t> getModelPermutationSeed() const;
 
+    /*!
+     * Retrieves whether the models outgoing transitions should be perturbed before working with it further.
+     */
+    bool isPerturbModelSet() const;
+
+    /*!
+     * Retrieves the amount of perturbation per state that should be applied.
+     */
+    double getDeltaPerturbationValue() const;
+
+    /*!
+     * Retrieves the probability of applying twice the given perturbation per state.
+     */
+    double getGammaPerturbationProbabilityValue() const;
+
     bool check() const override;
 
     void finalize() override;
@@ -72,6 +92,7 @@ class TransformationSettings : public ModuleSettings {
     static const std::string toNondetOptionName;
     static const std::string toDiscreteTimeOptionName;
     static const std::string permuteModelOptionName;
+    static const std::string perturbModelOptionName;
 };
 
 }  // namespace settings::modules

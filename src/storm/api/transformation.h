@@ -1,12 +1,13 @@
 #pragma once
 
+#include <random>
+
+#include "storm/exceptions/InvalidOperationException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/transformer/ContinuousToDiscreteTimeModelTransformer.h"
 #include "storm/transformer/NonMarkovianChainTransformer.h"
 #include "storm/transformer/StatePermuter.h"
 #include "storm/transformer/SymbolicToSparseTransformer.h"
-
-#include "storm/exceptions/InvalidOperationException.h"
-#include "storm/exceptions/NotSupportedException.h"
 #include "storm/utility/builder.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/permutation.h"
@@ -162,6 +163,99 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> permuteModelStates(std:
         permutation = storm::utility::permutation::createPermutation(order, model->getTransitionMatrix(), model->getInitialStates());
     }
     return storm::transformer::permuteStates(*model, permutation);
+}
+
+/*!
+ * Perturbs the outgoing transitions of the given model with '1 - gamma' probability up to 'delta' in L_1 distance, and with probability 'gamma' up to '2 *
+ * delta'. Inspired by the perturbation that Kiefer & Tang apply in their paper 'Approximate Bisimulation Minimization':
+ * https://doi.org/10.48550/arXiv.2110.00326
+ * @param model input model, must contain interval uncertainty.
+ * @param delta amount of perturbation per state given as L_1 distance over the outgoing distribution.
+ * @param gamma probability to perturb the outgoing transitions of a state up to '2 * delta'.
+ */
+template<typename ValueType>
+std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model,
+                                                                                 double delta, double gamma) {
+    if constexpr (!storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "No support for perturbation of model for non-interval models yet.");
+    }
+
+    using SolutionType = storm::IntervalBaseType<ValueType>;
+    auto& transMatrix = const_cast<storm::storage::SparseMatrix<ValueType>&>(model->getTransitionMatrix());
+
+    auto rowCount = transMatrix.getRowCount();
+
+    std::mt19937_64 rng(std::random_device{}());
+    std::uniform_real_distribution<double> pickBetween01(0.0, 1.0);
+    std::bernoulli_distribution pickErrorRate(gamma);
+
+    for (std::size_t s = 0; s < rowCount; ++s) {
+        auto begin = transMatrix.begin(s), end = transMatrix.end(s);
+        const auto outdeg = static_cast<std::size_t>(end - begin);
+        if (outdeg == 0)
+            continue;
+
+        // Restructure lower and upper bounds of transitions in contagious data structures.
+        std::vector<SolutionType> lowerBounds;
+        std::vector<SolutionType> upperBounds;
+        lowerBounds.reserve(outdeg);
+        upperBounds.reserve(outdeg);
+
+        for (auto it = begin; it != end; ++it) {
+            lowerBounds.push_back(it->getValue().lower());
+            upperBounds.push_back(it->getValue().upper());
+        }
+
+        // Choose the amount of perturbation with respect to the error rate.
+        double remainingL1 = pickErrorRate(rng) ? 2.0 * delta : delta;
+
+        // Cannot perturb transitions if there are less than two.
+        if (outdeg < 2) {
+            continue;
+        }
+
+        // Choose how often to try before admitting row is too tight.
+        int retries = 2000;
+        std::uniform_int_distribution<int> pickIndex(0, static_cast<int>(outdeg) - 1);
+
+        while (remainingL1 > 1e-15 && retries-- > 0) {
+            // Pick two different states.
+            int i = pickIndex(rng), j = pickIndex(rng);
+            if (i == j)
+                continue;
+
+            // Move mass theta from state j -> i on both lowerBounds and upperBounds.
+            // Add at i (both <= 1), subtract at j (both >= 0).
+            SolutionType capPlus = std::min(1.0 - upperBounds[i], 1.0 - lowerBounds[i]);
+            SolutionType capMinus = std::min(upperBounds[j], lowerBounds[j]);
+            SolutionType thetaMax = std::min(capPlus, capMinus);
+            if (thetaMax <= 0.0)
+                continue;
+
+            // Spend at most remaining L_1/2 (because this step costs 2 * theta).
+            double theta = std::min(thetaMax, remainingL1 / 2.0);
+            // Randomize within [0, theta].
+            theta *= pickBetween01(rng);
+
+            if (theta > 0.0) {
+                lowerBounds[i] += theta;
+                upperBounds[i] += theta;
+                lowerBounds[j] -= theta;
+                upperBounds[j] -= theta;
+                remainingL1 -= 2.0 * theta;
+            }
+        }
+
+        // Clamp tiny numeric drifts and write back to model.
+        auto it = begin;
+        for (std::size_t k = 0; k < outdeg; ++k, ++it) {
+            auto l = std::max(0.0, std::min(1.0, lowerBounds[k]));
+            auto u = std::max(l, std::min(1.0, upperBounds[k]));
+            it->setValue(ValueType(l, u));
+        }
+    }
+
+    return model;
 }
 
 }  // namespace api

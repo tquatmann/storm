@@ -145,6 +145,9 @@ struct ModelProcessingInformation {
     // If set, bisimulation will be applied.
     bool applyBisimulation;
 
+    // If set, abstraction will be applied.
+    bool applyAbstraction;
+
     // If set, a transformation to Jani will be enforced
     bool transformToJani;
 
@@ -206,12 +209,16 @@ inline ModelProcessingInformation getModelProcessingInformation(SymbolicInput co
     auto coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
     auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
     auto bisimulationSettings = storm::settings::getModule<storm::settings::modules::BisimulationSettings>();
+    auto abstractionSettings = storm::settings::getModule<storm::settings::modules::AbstractionSettings>();
 
     // Set the engine.
     mpi.engine = coreSettings.getEngine();
 
     // Set whether bisimulation is to be used.
     mpi.applyBisimulation = generalSettings.isBisimulationSet();
+
+    // Set whether abstraction is to be used.
+    mpi.applyAbstraction = abstractionSettings.isEpsilonStableMethodSet();
 
     // Set the value type used for numeric values
     if (generalSettings.isParametricSet()) {
@@ -682,104 +689,24 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 }
 
 template<typename ValueType>
-void applyDeltaPerturbation(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, double deltaPerturbation, bool usePointIntervals) {
-    if constexpr (!storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(true, storm::exceptions::InvalidArgumentException, "Cannot compute epsilon-perturbation on non-interval model!");
-        return;
-    } else {
-        using SolutionType = storm::IntervalBaseType<ValueType>;
-        auto& transMatrix = const_cast<storm::storage::SparseMatrix<ValueType>&>(model->getTransitionMatrix());
-
-        // this models the error rate of Kiefer and Tang (called delta)
-        double errorRate = 0.01;
-
-        auto rowCount = transMatrix.getRowCount();
-        auto columnCount = transMatrix.getColumnCount();
-        if (rowCount == 0 || deltaPerturbation <= 0.0)
-            return;
-
-        std::mt19937_64 rng(std::random_device{}());
-        std::uniform_real_distribution<double> pickBetween01(0.0, 1.0);
-        std::bernoulli_distribution pickErrorRate(errorRate);
-
-        auto sumVector = [](std::vector<SolutionType> const& v) {
-            SolutionType s = 0;
-            for (SolutionType x : v) {
-                s += x;
-            }
-            return s;
-        };
-
-        for (std::size_t s = 0; s < rowCount; ++s) {
-            auto begin = transMatrix.begin(s), end = transMatrix.end(s);
-            const auto outdeg = static_cast<std::size_t>(end - begin);
-            if (outdeg == 0)
-                continue;
-
-            // restructure lower and upper bounds of transitions in contagious data structures
-            std::vector<SolutionType> lowerBounds;
-            std::vector<SolutionType> upperBounds;
-            lowerBounds.reserve(outdeg);
-            upperBounds.reserve(outdeg);
-
-            for (auto it = begin; it != end; ++it) {
-                lowerBounds.push_back(it->getValue().lower());
-                upperBounds.push_back(it->getValue().upper());
-            }
-
-            // checking for basic feasibility
-            if (!(sumVector(lowerBounds) <= 1.0 + 1e-12 && 1.0 <= sumVector(upperBounds) + 1e-12))
-                continue;
-
-            // choose the amount of perturbation with respect to the error rate
-            double remainingL1 = pickErrorRate(rng) ? 2.0 * deltaPerturbation : deltaPerturbation;
-
-            // cannot perturb transitions if there are less than two
-            if (outdeg < 2) {
-                continue;
-            }
-
-            // choose how often to try before admitting row is too tight
-            int retries = 2000;
-            std::uniform_int_distribution<int> pickIndex(0, static_cast<int>(outdeg) - 1);
-
-            while (remainingL1 > 1e-15 && retries-- > 0) {
-                // pick two different states
-                int i = pickIndex(rng), j = pickIndex(rng);
-                if (i == j)
-                    continue;
-
-                // move mass theta from state j -> i on both lowerBounds and upperBounds.
-                // add at i (both <= 1), subtract at j (both >= 0)
-                SolutionType capPlus = std::min(1.0 - upperBounds[i], 1.0 - lowerBounds[i]);
-                SolutionType capMinus = std::min(upperBounds[j], lowerBounds[j]);
-                SolutionType thetaMax = std::min(capPlus, capMinus);
-                if (thetaMax <= 0.0)
-                    continue;
-
-                // spend at most remainingL1/2 (because this step costs 2*theta)
-                double theta = std::min(thetaMax, remainingL1 / 2.0);
-                // randomize within [0, theta]
-                theta *= pickBetween01(rng);
-
-                if (theta > 0.0) {
-                    lowerBounds[i] += theta;
-                    upperBounds[i] += theta;
-                    lowerBounds[j] -= theta;
-                    upperBounds[j] -= theta;
-                    remainingL1 -= 2.0 * theta;
-                }
-            }
-
-            // clamp tiny numeric drifts and write back to model
-            auto it = begin;
-            for (std::size_t k = 0; k < outdeg; ++k, ++it) {
-                auto l = std::max(0.0, std::min(1.0, lowerBounds[k]));
-                auto u = std::max(l, std::min(1.0, upperBounds[k]));
-                it->setValue(ValueType(l, u));
-            }
-        }
+std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelAbstraction(
+    std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
+    storm::settings::modules::AbstractionSettings const& abstractionSettings, bool graphPreserving = true) {
+    storm::storage::stateminimization::abstraction::AbstractionType abstractionType;
+    double epsilonValue;
+    if (abstractionSettings.getAbstractionRefinementMethod() != storm::settings::modules::AbstractionSettings::Method::EpsilonStable) {
+        abstractionType = storm::storage::stateminimization::abstraction::AbstractionType::EpsilonStable;
     }
+    STORM_LOG_THROW(abstractionType == storm::storage::stateminimization::abstraction::AbstractionType::EpsilonStable, storm::exceptions::NotSupportedException,
+                    "Only epsilon-stable abstraction minimization supported yet.");
+    STORM_LOG_THROW(abstractionSettings.isEpsilonValueSet(), storm::exceptions::InvalidArgumentException,
+                    "Epsilon value required to perform epsilon-stable abstraction minimization.");
+    epsilonValue = abstractionSettings.getEpsilonValue();
+
+    STORM_LOG_INFO("Performing abstraction minimization...");
+    auto quotient = storm::api::performAbstractionMinimization(model, createFormulasToRespect(input.properties), abstractionType, true, epsilonValue);
+
+    return quotient;
 }
 
 template<typename ValueType>
@@ -791,52 +718,19 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
         bisimType = storm::storage::BisimulationType::Weak;
     }
 
-    double epsilon = 0.0;
-    if (bisimulationSettings.usesEpsilonBisimulation()) {
-        epsilon = bisimulationSettings.getEpsilonForIntervalBisimulation();
-    }
-
-    auto filename = [] {
-        auto now = std::chrono::system_clock::now();
-        std::time_t t = std::chrono::system_clock::to_time_t(now);
-        std::tm tm;
-        localtime_r(&t, &tm);
-        std::ostringstream oss;
-        oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
-        return oss.str();
-    }();
+    // auto filename = [] {
+    //     auto now = std::chrono::system_clock::now();
+    //     std::time_t t = std::chrono::system_clock::to_time_t(now);
+    //     std::tm tm;
+    //     localtime_r(&t, &tm);
+    //     std::ostringstream oss;
+    //     oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    //     return oss.str();
+    // }();
     // storm::api::exportSparseModelAsDrn(model, "before_" + filename, input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
-    double deltaPerturbation = 0.0;
-    if (bisimulationSettings.usesDeltaPerturbation()) {
-        STORM_LOG_INFO("Performing delta perturbation...");
-        deltaPerturbation = bisimulationSettings.getDeltaPerturbation();
-
-        // export model before and after perturbation for experiments
-        // auto filename = []{ auto now= std::chrono::system_clock::now(); std::time_t t=std::chrono::system_clock::to_time_t(now); std::tm tm;
-        // localtime_r(&t,&tm); std::ostringstream oss; oss<<std::put_time(&tm,"%Y-%m-%d_%H-%M-%S"); return oss.str(); }();
-        // storm::api::exportSparseModelAsDrn(model, "before_perturbation" + filename,
-        //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(),
-        //                                    false);
-
-        applyDeltaPerturbation(model, deltaPerturbation, true);
-
-        // auto filename = [] {
-        //     auto now = std::chrono::system_clock::now();
-        //     std::time_t t = std::chrono::system_clock::to_time_t(now);
-        //     std::tm tm;
-        //     localtime_r(&t, &tm);
-        //     std::ostringstream oss;
-        //     oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
-        //     return oss.str();
-        // }();
-        // storm::api::exportSparseModelAsDrn(model, "after_perturbation_" + std::to_string(deltaPerturbation) + "_" + filename,
-        //                                   input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
-    }
-
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true,
-                                                                           bisimulationSettings.usesEpsilonBisimulation(), epsilon);
+    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true);
 
     // filename = [] {
     //     auto now = std::chrono::system_clock::now();
@@ -847,7 +741,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
     //     oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     //     return oss.str();
     // }();
-    // storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(deltaPerturbation) + "_" + filename,
+    // storm::api::exportSparseModelAsDrn(quotient, "after_bisimulation_" + std::to_string(delta) + "_" + filename,
     //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     return quotient;
@@ -859,10 +753,22 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     STORM_LOG_THROW(mpi.buildValueType == mpi.verificationValueType, storm::exceptions::NotSupportedException,
                     "Converting value types for sparse engine is not supported.");
     auto bisimulationSettings = storm::settings::getModule<storm::settings::modules::BisimulationSettings>();
+    auto abstractionSettings = storm::settings::getModule<storm::settings::modules::AbstractionSettings>();
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
+
+    if (transformationSettings.isPerturbModelSet()) {
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            auto delta = transformationSettings.getDeltaPerturbationValue();
+            auto gamma = transformationSettings.getGammaPerturbationProbabilityValue();
+            result.first = storm::api::perturbModelTransitions(result.first, delta, gamma);
+        } else {
+            STORM_LOG_THROW(storm::IsIntervalType<ValueType>, storm::exceptions::NotSupportedException,
+                            "No support for perturbation of model for non-interval models yet.");
+        }
+    }
 
     if (auto order = transformationSettings.getModelPermutation(); order.has_value()) {
         auto seed = transformationSettings.getModelPermutationSeed();
@@ -878,16 +784,14 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
         result.second = true;
     }
 
-    if (mpi.applyBisimulation) {
+    if (mpi.applyBisimulation && mpi.applyAbstraction) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot perform bisimulation and abstraction simultaneously.");
+    } else if (mpi.applyBisimulation) {
         result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
         result.second = true;
-        //
-        // if constexpr (storm::IsIntervalType<ValueType>) {
-        //     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Bisimulation not supported for interval models.");
-        // } else {
-        //     result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
-        //     result.second = true;
-        // }
+    } else if (mpi.applyAbstraction) {
+        result.first = preprocessSparseModelAbstraction(result.first, input, abstractionSettings);
+        result.second = true;
     }
 
     if (transformationSettings.isToDiscreteTimeModelSet()) {

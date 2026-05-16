@@ -1,8 +1,6 @@
 #include "storm/settings/modules/AbstractionSettings.h"
 
-#include "storm/settings/Argument.h"
 #include "storm/settings/ArgumentBuilder.h"
-#include "storm/settings/Option.h"
 #include "storm/settings/OptionBuilder.h"
 
 #include "storm/exceptions/IllegalArgumentValueException.h"
@@ -34,9 +32,10 @@ const std::string AbstractionSettings::injectRefinementPredicatesOptionName = "i
 const std::string AbstractionSettings::fixPlayer1StrategyOptionName = "fixpl1strat";
 const std::string AbstractionSettings::fixPlayer2StrategyOptionName = "fixpl2strat";
 const std::string AbstractionSettings::validBlockModeOptionName = "validmode";
+const std::string AbstractionSettings::epsilonValueOptionName = "epsilon";
 
 AbstractionSettings::AbstractionSettings() : ModuleSettings(moduleName) {
-    std::vector<std::string> methods = {"games", "bisimulation", "bisim"};
+    std::vector<std::string> methods = {"games", "bisimulation", "bisim", "epsilon-stable", "epsilon"};
     this->addOption(storm::settings::OptionBuilder(moduleName, methodOptionName, true, "Sets which abstraction-refinement method to use.")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createStringArgument("name", "The name of the method to use.")
@@ -214,6 +213,13 @@ AbstractionSettings::AbstractionSettings() : ModuleSettings(moduleName) {
                                          .setDefaultValueString("morepreds")
                                          .build())
                         .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, epsilonValueOptionName, true, "The epsilon allowed for epsilon-stable abstraction minimization.")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("value", "The epsilon value allowed.")
+                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorExcluding(0.0, 1.0))
+                                         .build())
+                        .build());
 }
 
 AbstractionSettings::Method AbstractionSettings::getAbstractionRefinementMethod() const {
@@ -222,6 +228,8 @@ AbstractionSettings::Method AbstractionSettings::getAbstractionRefinementMethod(
         return Method::Games;
     } else if (methodAsString == "bisimulation" || methodAsString == "bisim") {
         return Method::Bisimulation;
+    } else if (methodAsString == "epsilon-stable" || methodAsString == "epsilon") {
+        return Method::EpsilonStable;
     }
     STORM_LOG_THROW(false, storm::exceptions::IllegalArgumentValueException, "Unknown abstraction-refinement method '" << methodAsString << "'.");
 }
@@ -356,6 +364,22 @@ AbstractionSettings::ValidBlockMode AbstractionSettings::getValidBlockMode() con
         return ValidBlockMode::BlockEnumeration;
     }
     return ValidBlockMode::MorePredicates;
+}
+
+bool AbstractionSettings::isEpsilonStableMethodSet() const {
+    if (this->getOption(methodOptionName).getArgumentByName("name").getHasBeenSet()) {
+        std::string methodAsString = this->getOption(methodOptionName).getArgumentByName("name").getValueAsString();
+        return methodAsString == "epsilon" || methodAsString == "epsilon-stable";
+    }
+    return false;
+}
+
+bool AbstractionSettings::isEpsilonValueSet() const {
+    return this->getOption(epsilonValueOptionName).getArgumentByName("value").getHasBeenSet();
+}
+
+double AbstractionSettings::getEpsilonValue() const {
+    return this->getOption(epsilonValueOptionName).getArgumentByName("value").getValueAsDouble();
 }
 
 }  // namespace modules

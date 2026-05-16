@@ -1,10 +1,20 @@
-#ifndef STORM_STORAGE_BISIMULATION_DETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
-#define STORM_STORAGE_BISIMULATION_DETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_
+#pragma once
 
+#include <boost/iterator/zip_iterator.hpp>
+#include <chrono>
 #include <deque>
 #include <span>
-#include <storm/storage/bisimulation/Partition.h>
-#include "storm/storage/bisimulation/BisimulationDecomposition.h"
+#include <unordered_map>
+
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/exceptions/IllegalFunctionCallException.h"
+#include "storm/models/sparse/Ctmc.h"
+#include "storm/models/sparse/Dtmc.h"
+#include "storm/models/sparse/StandardRewardModel.h"
+#include "storm/storage/stateminimization/Partition.h"
+#include "storm/storage/stateminimization/bisimulation/BisimulationDecomposition.h"
+#include "storm/utility/constants.h"
+#include "storm/utility/graph.h"
 
 namespace storm {
 namespace storage {
@@ -25,23 +35,17 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
      * @param model The model to decompose.
      * @param options The options that customize the computed bisimulation.
      */
-    DeterministicModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::Options const& options =
-                                                                            typename BisimulationDecomposition<ModelType>::Options());
+    DeterministicModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options =
+                                                                            typename BisimulationDecomposition<ModelType>::BisimulationOptions());
 
    protected:
     virtual std::pair<storm::storage::BitVector, storm::storage::BitVector> getStatesWithProbability01() override;
 
-    virtual void initializeMeasureDrivenPartition() override;
+    virtual void buildQuotientFromPartition() override;
 
-    virtual void initializeLabelBasedPartition() override;
-
-    virtual void buildQuotient() override;
-
-    virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock, std::deque<typename bisimulation::Partition::Block>& splitterQueue,
-                                                bisimulation::Partition::BlockSet& enqueuedSplitterBlocks) override;
-
-    virtual void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block, std::deque<typename bisimulation::Partition::Block>& blocksQueue,
-                                                    bisimulation::Partition::BlockSet& enqueuedBlocks, double epsilon) override;
+    virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock,
+                                                std::deque<typename stateminimization::Partition::Block>& splitterQueue,
+                                                stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) override;
 
    private:
     // Post-processes the initial partition to properly initialize it.
@@ -129,7 +133,7 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
     //                                                                                       std::vector<uint_fast64_t> const& nonSilentBlockIndices);
 
     // Inserts the block into the list of predecessors if it is not already contained.
-    //void insertIntoPredecessorList(bisimulation::Block<BlockDataType>& predecessorBlock, std::list<bisimulation::Block<BlockDataType>*>& predecessorBlocks);
+    // void insertIntoPredecessorList(bisimulation::Block<BlockDataType>& predecessorBlock, std::list<bisimulation::Block<BlockDataType>*>& predecessorBlocks);
 
     ValueType getTransitionValue(storm::storage::MatrixEntry<storm::storage::sparse::state_type, ValueType> const& matrixEntry,
                                  [[maybe_unused]] storm::storage::sparse::state_type state) const;
@@ -152,5 +156,3 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
 };
 }  // namespace storage
 }  // namespace storm
-
-#endif /* STORM_STORAGE_BISIMULATION_DETERMINISTICMODELBISIMULATIONDECOMPOSITION_H_ */

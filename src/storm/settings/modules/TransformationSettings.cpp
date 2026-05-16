@@ -1,11 +1,4 @@
-#include "TransformationSettings.h"
-
-#include "storm/exceptions/IllegalArgumentValueException.h"
-#include "storm/exceptions/InvalidSettingsException.h"
-#include "storm/settings/ArgumentBuilder.h"
-#include "storm/settings/Option.h"
-#include "storm/settings/OptionBuilder.h"
-#include "storm/utility/permutation.h"
+#include "storm/settings/modules/TransformationSettings.h"
 
 namespace storm {
 namespace settings {
@@ -18,6 +11,7 @@ const std::string TransformationSettings::labelBehaviorOptionName = "ec-label-be
 const std::string TransformationSettings::toNondetOptionName = "to-nondet";
 const std::string TransformationSettings::toDiscreteTimeOptionName = "to-discrete";
 const std::string TransformationSettings::permuteModelOptionName = "permute";
+const std::string TransformationSettings::perturbModelOptionName = "perturb";
 
 TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, chainEliminationOptionName, false,
@@ -61,6 +55,19 @@ TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
                              .makeOptional()
                              .build())
             .build());
+
+    this->addOption(storm::settings::OptionBuilder(
+                        moduleName, perturbModelOptionName, false,
+                        "Perturbs the outgoing transitions for each state of the given model by the perturbation amount 'delta' with '1 - gamma' "
+                        "probability and '2 * delta' with probability 'gamma'.")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("delta", "The perturbation amount given as L_1 distance.")
+                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorExcluding(0.0, 0.5))
+                                         .build())
+                        .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("gamma", "The probability to perturb the model by two times delta.")
+                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorExcluding(0.0, 1.0))
+                                         .build())
+                        .build());
 }
 
 bool TransformationSettings::isChainEliminationSet() const {
@@ -114,6 +121,18 @@ bool TransformationSettings::check() const {
                         "Random seed is given for permutation order, but the order is not random. Seed will be ignored.");
 
     return true;
+}
+
+bool TransformationSettings::isPerturbModelSet() const {
+    return this->getOption(perturbModelOptionName).getHasOptionBeenSet();
+}
+
+double TransformationSettings::getDeltaPerturbationValue() const {
+    return this->getOption(perturbModelOptionName).getArgumentByName("delta").getValueAsDouble();
+}
+
+double TransformationSettings::getGammaPerturbationProbabilityValue() const {
+    return this->getOption(perturbModelOptionName).getArgumentByName("gamma").getValueAsDouble();
 }
 
 void TransformationSettings::finalize() {

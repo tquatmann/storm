@@ -1,14 +1,30 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <optional>
 #include <vector>
 
+#include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/exceptions/AbortException.h"
+#include "storm/exceptions/IllegalFunctionCallException.h"
+#include "storm/exceptions/InvalidOptionException.h"
 #include "storm/logic/Formula.h"
-#include "storm/storage/bisimulation/BisimulationType.h"
+#include "storm/logic/FragmentSpecification.h"
+#include "storm/modelchecker/propositional/SparsePropositionalModelChecker.h"
+#include "storm/models/sparse/Ctmc.h"
+#include "storm/models/sparse/Dtmc.h"
+#include "storm/models/sparse/Mdp.h"
+#include "storm/models/sparse/StandardRewardModel.h"
+#include "storm/settings/SettingsManager.h"
 #include "storm/storage/dd/DdType.h"
 #include "storm/storage/dd/bisimulation/PreservationInformation.h"
 #include "storm/storage/dd/bisimulation/QuotientFormat.h"
 #include "storm/storage/dd/bisimulation/SignatureMode.h"
+#include "storm/storage/stateminimization/bisimulation/BisimulationType.h"
+#include "storm/storage/stateminimization/bisimulation/Signature.h"
+#include "storm/utility/SignalHandler.h"
+#include "storm/utility/macros.h"
 
 namespace storm {
 namespace models {

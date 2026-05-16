@@ -1,17 +1,15 @@
 #pragma once
 
+#include <boost/variant.hpp>
 #include <memory>
 #include <vector>
 
-#include <boost/variant.hpp>
-
-#include "storm/storage/bisimulation/BisimulationType.h"
+#include "storm/models/symbolic/Model.h"
+#include "storm/models/symbolic/NondeterministicModel.h"
 #include "storm/storage/dd/Add.h"
 #include "storm/storage/dd/Bdd.h"
 #include "storm/storage/dd/DdType.h"
-
-#include "storm/models/symbolic/Model.h"
-#include "storm/models/symbolic/NondeterministicModel.h"
+#include "storm/storage/stateminimization/bisimulation/BisimulationType.h"
 
 namespace storm {
 namespace logic {

@@ -1,8 +1,12 @@
-#ifndef STORM_SETTINGS_MODULES_BISIMULATIONSETTINGS_H_
-#define STORM_SETTINGS_MODULES_BISIMULATIONSETTINGS_H_
+#pragma once
 
+#include "storm/exceptions/InvalidSettingsException.h"
+#include "storm/settings/Argument.h"
+#include "storm/settings/ArgumentBuilder.h"
+#include "storm/settings/OptionBuilder.h"
+#include "storm/settings/SettingsManager.h"
+#include "storm/settings/modules/GeneralSettings.h"
 #include "storm/settings/modules/ModuleSettings.h"
-
 #include "storm/storage/dd/bisimulation/QuotientFormat.h"
 #include "storm/storage/dd/bisimulation/SignatureMode.h"
 
@@ -96,26 +100,6 @@ class BisimulationSettings : public ModuleSettings {
      */
     RefinementMode getRefinementMode() const;
 
-    /*!
-     * Retrieves whether there is an epsilon allowed to match states.
-     */
-     bool usesEpsilonBisimulation() const;
-
-     /*!
-     * Retrieves the epsilon value allowed to match states.
-      */
-     double getEpsilonForIntervalBisimulation() const;
-
-     /*!
-     * Retrieves whether there is an delta given to perturb states.
-      */
-     bool usesDeltaPerturbation() const;
-
-     /*!
-     * Retrieves the delta value to perturb outgoing transitions.
-      */
-     double getDeltaPerturbation() const;
-
     virtual bool check() const override;
 
     // The name of the module.
@@ -133,11 +117,7 @@ class BisimulationSettings : public ModuleSettings {
     static const std::string refinementModeOptionName;
     static const std::string parallelismModeOptionName;
     static const std::string exactArithmeticDdOptionName;
-    static const std::string epsilonOptionName;
-    static const std::string deltaPerturbationOptionName;
 };
 }  // namespace modules
 }  // namespace settings
 }  // namespace storm
-
-#endif /* STORM_SETTINGS_MODULES_BISIMULATIONSETTINGS_H_ */

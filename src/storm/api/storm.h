@@ -1,5 +1,6 @@
 #pragma once
 
+#include "storm/api/abstraction.h"
 #include "storm/api/bisimulation.h"
 #include "storm/api/builder.h"
 #include "storm/api/export.h"
