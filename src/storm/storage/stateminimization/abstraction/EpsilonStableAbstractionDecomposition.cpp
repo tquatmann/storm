@@ -269,12 +269,11 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
         } else {
             // Compute the outgoing transitions of the block.
             std::map<storm::storage::sparse::state_type, ValueType> blockProbability;
-            auto blockStateIterator = block.begin();
-
             auto choiceRangeOfRepresentativeState = getChoiceRangeOfState(representativeState);
             auto numberOfChoicesInBlock = choiceRangeOfRepresentativeState.second - choiceRangeOfRepresentativeState.first;
             for (uint_fast64_t choiceOffset = 0; choiceOffset < numberOfChoicesInBlock; choiceOffset++) {
                 // Start block distribution for choice over final partition with the first state of the block.
+                auto blockStateIterator = block.begin();
                 auto currentBlockState = *blockStateIterator;
                 auto choiceRangeOfCurrentBlockState = getChoiceRangeOfState(currentBlockState);
                 auto blockChoiceDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
@@ -302,7 +301,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
                 // Now add them to the actual matrix.
                 auto blockDistributionIterator = blockChoiceDistribution.begin();
                 while (blockDistributionIterator != blockChoiceDistribution.end()) {
-                    builder.addNextValue(blockIndex, blockDistributionIterator->first, blockDistributionIterator->second);
+                    builder.addNextValue(currentRow, blockDistributionIterator->first, blockDistributionIterator->second);
                     blockDistributionIterator++;
                 }
 

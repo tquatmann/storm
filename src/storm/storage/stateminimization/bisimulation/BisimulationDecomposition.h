@@ -27,6 +27,9 @@ class Formula;
 
 namespace storage {
 
+// TODO: Do we even need this class?
+// TODO: As there is not much implementation still left here, we could just let the implementations of the bisimulation directly implement the BaseDecomposition
+// TODO: class.
 /*!
  * This class is the superclass of all decompositions of a sparse model into its bisimulation quotient.
  */
