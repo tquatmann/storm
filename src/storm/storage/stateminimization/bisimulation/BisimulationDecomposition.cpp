@@ -32,7 +32,7 @@ BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const&
 template<typename ModelType>
 BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const& model, storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                 BisimulationOptions const& options)
-    : BaseDecomposition<ModelType>(model, backwardTransitions), options(options), comparator(options.getTolerance()) {
+    : BaseDecomposition<ModelType>(model, backwardTransitions, options.getTolerance()), options(options) {
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || model.hasUniqueRewardModel(), storm::exceptions::IllegalFunctionCallException,
                     "Bisimulation currently only supports models with at most one reward model.");
     STORM_LOG_THROW(!options.getKeepRewards() || !model.hasRewardModel() || !model.getUniqueRewardModel().hasTransitionRewards(),
@@ -68,6 +68,24 @@ void BisimulationDecomposition<ModelType>::computeInitialPartition() {
     } else {
         this->initializeLabelBasedPartition();
     }
+
+    if (this->model.isNondeterministicModel()) {
+        this->splitInitialPartitionBasedOnActionSets();
+    }
+}
+
+template<typename ModelType>
+void BisimulationDecomposition<ModelType>::splitInitialPartitionBasedOnActionSets() {
+    std::vector<uint_fast64_t> actionIndices = this->model.getTransitionMatrix().getRowGroupIndices();
+    this->partition.forEachBlock([this, &actionIndices](auto const& block) {
+        this->partition.splitBlockByOrder(block, [&actionIndices](auto const& s, auto const& t) {
+            // Split by number of enabled actions.
+            // TODO: Do we store the action labels?
+            auto numberOfActionsS = (actionIndices[s + 1] - actionIndices[s]);
+            auto numberOfActionsT = (actionIndices[t + 1] - actionIndices[t]);
+            return numberOfActionsS < numberOfActionsT;
+        });
+    });
 }
 
 template<typename ModelType>
@@ -294,8 +312,6 @@ void BisimulationDecomposition<ModelType>::initializeLabelBasedPartition() {
         // TODO: Check if this is implemented correctly
         this->splitInitialPartitionBasedOnRewards();
     }
-
-    std::cout << "Number of blocks after initial partitioning by labels: " << this->partition.getNumberOfBlocks() << std::endl;
 }
 
 template<typename ModelType>

@@ -30,7 +30,7 @@ EpsilonStableAbstractionDecomposition<ModelType>::EpsilonStableAbstractionOption
 template<typename ModelType>
 EpsilonStableAbstractionDecomposition<ModelType>::EpsilonStableAbstractionDecomposition(
     const ModelType& model, const EpsilonStableAbstractionDecomposition::EpsilonStableAbstractionOptions& options)
-    : BaseDecomposition<ModelType>(model, model.getBackwardTransitions()),
+    : BaseDecomposition<ModelType>(model, model.getBackwardTransitions(), options.getTolerance()),
       options(options),
       originalChoiceDistributions(model.getTransitionMatrix().getRowCount()) {}
 
@@ -100,7 +100,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
                 auto candidateDistribution = this->computeEnhancedDistribution(g.getDistributionAtOffset(choiceOffset), distributionsOfS[choiceOffset]);
 
                 // Check if enhancement satisfies \varepsilon-criterion via our upper bound w.r.t. s itself
-                if (2 * computeDeltaForState(distributionsOfS[choiceOffset], candidateDistribution) > epsilon) {
+                if (this->comparator.isLess(epsilon, 2 * computeDeltaForState(distributionsOfS[choiceOffset], candidateDistribution))) {
                     // If we cannot satisfy our criterion for one choice/action, then the state does not fit in the current group 'g'.
                     fits = false;
                     break;
@@ -114,7 +114,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
 
                     // Compute 'delta' between the state distribution of 't' and the candidate distribution of the current group distribution including the
                     // interval extensions based on candidate state 't'.
-                    if (2 * computeDeltaForState(distributionsOfT[choiceOffset], candidateDistribution) > epsilon) {
+                    if (this->comparator.isLess(epsilon, 2 * computeDeltaForState(distributionsOfT[choiceOffset], candidateDistribution))) {
                         // If we cannot satisfy our criterion for one choice/action, then the state does not fit in the current group 'g'.
                         fits = false;
                         break;
@@ -188,6 +188,60 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
             }
         });
     }
+}
+
+template<typename ModelType>
+storm::storage::Distribution<typename ModelType::ValueType, storm::storage::sparse::state_type>
+EpsilonStableAbstractionDecomposition<ModelType>::computeEnhancedDistribution(
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution) {
+    auto enhancedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
+    std::set<storm::storage::sparse::state_type> keys;
+
+    for (auto const& entry : firstDistribution) {
+        keys.insert(entry.first);
+    }
+
+    for (auto const& entry : secondDistribution) {
+        keys.insert(entry.first);
+    }
+
+    for (auto key : keys) {
+        auto firstInterval = firstDistribution.getProbability(key);
+        auto secondInterval = secondDistribution.getProbability(key);
+
+        auto lower = this->comparator.isLess(firstInterval.lower(), secondInterval.lower()) ? firstInterval.lower() : secondInterval.lower();
+        auto upper = this->comparator.isLess(secondInterval.upper(), firstInterval.upper()) ? firstInterval.upper() : secondInterval.upper();
+
+        enhancedDistribution.addProbability(key, ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK));
+    }
+
+    return getClampedDistribution(enhancedDistribution);
+}
+
+template<typename ModelType>
+storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionDecomposition<ModelType>::computeDeltaForState(
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
+    storm::IntervalBaseType<ValueType> delta = 0.0;
+
+    auto enhancedDistributionIterator = enhancedDistribution.begin();
+    while (enhancedDistributionIterator != enhancedDistribution.end()) {
+        ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
+        ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
+
+        IntervalBaseType<ValueType> deltaOfLowerBound = intervalFromState.lower() - intervalFromEnhancedState.lower();
+        IntervalBaseType<ValueType> deltaOfUpperBound = intervalFromState.upper() - intervalFromEnhancedState.upper();
+        delta += (storm::utility::abs(deltaOfLowerBound)) + (storm::utility::abs(deltaOfUpperBound));
+
+        enhancedDistributionIterator++;
+    }
+
+    // std::cout << "state1 distr: " << stateDistribution << std::endl;
+    // std::cout << "state2 distr: " << enhancedDistribution << std::endl;
+    // std::cout << "resulting delta: " << delta << std::endl;
+
+    return delta;
 }
 
 template<typename ModelType>
@@ -355,56 +409,6 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
 
     // Finally construct the quotient model.
     this->quotient = std::make_shared<ModelType>(std::move(transitionMatrix), std::move(newLabeling), std::move(rewardModels));
-}
-
-template<typename ModelType>
-storm::storage::Distribution<typename ModelType::ValueType, storm::storage::sparse::state_type>
-EpsilonStableAbstractionDecomposition<ModelType>::computeEnhancedDistribution(
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution) {
-    auto enhancedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-    std::set<storm::storage::sparse::state_type> keys;
-
-    for (auto const& entry : firstDistribution) {
-        keys.insert(entry.first);
-    }
-
-    for (auto const& entry : secondDistribution) {
-        keys.insert(entry.first);
-    }
-
-    for (auto key : keys) {
-        auto firstInterval = firstDistribution.getProbability(key);
-        auto secondInterval = secondDistribution.getProbability(key);
-
-        auto lower = firstInterval.lower() < secondInterval.lower() ? firstInterval.lower() : secondInterval.lower();
-        auto upper = firstInterval.upper() > secondInterval.upper() ? firstInterval.upper() : secondInterval.upper();
-
-        enhancedDistribution.addProbability(key, ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK));
-    }
-
-    return getClampedDistribution(enhancedDistribution);
-}
-
-template<typename ModelType>
-storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionDecomposition<ModelType>::computeDeltaForState(
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
-    storm::IntervalBaseType<ValueType> delta = 0.0;
-
-    auto enhancedDistributionIterator = enhancedDistribution.begin();
-    while (enhancedDistributionIterator != enhancedDistribution.end()) {
-        ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
-        ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
-
-        IntervalBaseType<ValueType> deltaOfLowerBound = intervalFromState.lower() - intervalFromEnhancedState.lower();
-        IntervalBaseType<ValueType> deltaOfUpperBound = intervalFromState.upper() - intervalFromEnhancedState.upper();
-        delta += (storm::utility::abs(deltaOfLowerBound)) + (storm::utility::abs(deltaOfUpperBound));
-
-        enhancedDistributionIterator++;
-    }
-
-    return delta;
 }
 
 template<typename ModelType>
@@ -642,6 +646,7 @@ Distribution<typename ModelType::ValueType, sparse::state_type> EpsilonStableAbs
     return clampedDistribution;
 }
 
+// TODO: This code is duplicated, cf. IntervalModelBisimulationDecomposition.cpp:180
 template<typename ModelType>
 typename ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::clampIntervalToProbabilisticInterval(ValueType interval) const {
     auto lowerBound = interval.lower();
@@ -653,24 +658,21 @@ typename ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::
     if (!this->model.isExact()) {
         auto tolerance = this->options.getTolerance();
 
-        if (tolerance.isPointInterval()) {
-            if (lowerBound > one && lowerBound - one <= tolerance.lower()) {
-                lowerBound = one;
-            }
+        if (this->comparator.isLess(one, lowerBound)) {
+            lowerBound = one;
+        }
 
-            if (upperBound > one && upperBound - one <= tolerance.lower()) {
-                upperBound = one;
-            }
+        if (this->comparator.isLess(one, upperBound)) {
+            upperBound = one;
+        }
 
-            if (lowerBound > upperBound) {
-                STORM_LOG_ERROR("Applying tolerance led to an invalid interval!");
-            }
+        if (lowerBound > upperBound) {
+            STORM_LOG_ERROR("Applying tolerance led to an invalid interval!");
+        }
 
-            if (lowerBound > 1 || upperBound > 1) {
-                STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Computation led to an invalid interval!");
-            }
-        } else {
-            STORM_LOG_ERROR("Unable to apply interval tolerance to non-exact model, as tolerance is not a point-interval!");
+        if (lowerBound > 1) {
+            STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException,
+                            "Computation led to an invalid interval: [" << lowerBound << ", " << upperBound << "]!");
         }
     }
 

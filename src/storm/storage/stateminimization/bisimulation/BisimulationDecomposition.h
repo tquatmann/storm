@@ -169,6 +169,8 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
      */
     virtual void initialize();
 
+    void splitInitialPartitionBasedOnActionSets();
+
     /*!
      * Computes the set of states with probability 0/1 for satisfying phi until psi. This is used for the measure
      * driven initial partition.
@@ -198,9 +200,6 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
     void extractDecompositionBlocks();
 
     BisimulationOptions options;
-
-    // A comparator used for comparing the distances of constants.
-    storm::utility::ConstantsComparator<ValueType> comparator;
 };
 
 inline BisimulationType resolveBisimulationTypeChoice(BisimulationTypeChoice c) {

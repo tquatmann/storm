@@ -38,6 +38,16 @@ BaseDecomposition<ModelType>::BaseOptions::BaseOptions(const ModelType &model, c
 }
 
 template<typename ModelType>
+BaseDecomposition<ModelType>::BaseDecomposition(const ModelType &model, const storm::storage::SparseMatrix<ValueType> &backwardTransitions,
+                                                storm::IntervalBaseType<ValueType> tolerance)
+    : model(model),
+      backwardTransitions(backwardTransitions),
+      partition(model.getNumberOfStates()),
+      quotient(nullptr),
+      absorbingBlocks(),
+      comparator(tolerance) {}
+
+template<typename ModelType>
 void BaseDecomposition<ModelType>::BaseOptions::preserveSingleFormula(ModelType const &model, storm::logic::Formula const &formula) {
     // Retrieve information about formula.
     storm::logic::FormulaInformation info = formula.info();
@@ -157,10 +167,6 @@ void BaseDecomposition<ModelType>::BaseOptions::preserveFormula(storm::logic::Fo
     // Compute the relevant labels and expressions.
     this->addToRespectedAtomicPropositions(formula.getAtomicExpressionFormulas(), formula.getAtomicLabelFormulas());
 }
-
-template<typename ModelType>
-BaseDecomposition<ModelType>::BaseDecomposition(const ModelType &model, const storm::storage::SparseMatrix<ValueType> &backwardTransitions)
-    : model(model), backwardTransitions(backwardTransitions), partition(model.getNumberOfStates()), quotient(nullptr), absorbingBlocks() {}
 
 template<typename ModelType>
 void BaseDecomposition<ModelType>::computeDecomposition() {

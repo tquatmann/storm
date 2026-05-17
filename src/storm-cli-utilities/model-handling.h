@@ -767,6 +767,9 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
         if constexpr (storm::IsIntervalType<ValueType>) {
             auto delta = transformationSettings.getDeltaPerturbationValue();
             auto gamma = transformationSettings.getGammaPerturbationProbabilityValue();
+            STORM_PRINT_AND_LOG("Perturbing outgoing " << (model->isNondeterministicModel() ? "choice/action" : "state") << " transitions of model up to "
+                                                       << delta << " with probability " << (1.0 - gamma) << " and up to " << 2 * delta << " with probability "
+                                                       << gamma << ".\n");
             result.first = storm::api::perturbModelTransitions(result.first, delta, gamma);
         } else {
             STORM_LOG_THROW(storm::IsIntervalType<ValueType>, storm::exceptions::NotSupportedException,
@@ -797,6 +800,18 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
         result.first = preprocessSparseModelAbstraction(result.first, input, abstractionSettings);
         result.second = true;
     }
+
+    // auto filename = [] {
+    //     auto now = std::chrono::system_clock::now();
+    //     std::time_t t = std::chrono::system_clock::to_time_t(now);
+    //     std::tm tm;
+    //     localtime_r(&t, &tm);
+    //     std::ostringstream oss;
+    //     oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    //     return oss.str();
+    // }();
+    // storm::api::exportSparseModelAsDrn(result.first, "after_decomposition_" + filename,
+    //                                    input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     if (transformationSettings.isToDiscreteTimeModelSet()) {
         if constexpr (storm::IsIntervalType<ValueType>) {

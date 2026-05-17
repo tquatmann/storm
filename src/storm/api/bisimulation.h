@@ -6,8 +6,8 @@
 #include "storm/models/sparse/Mdp.h"
 #include "storm/storage/dd/DdType.h"
 #include "storm/storage/dd/bisimulation/BisimulationDecomposition.h"
-#include "storm/storage/stateminimization/bisimulation/DeterministicIntervalModelBisimulationDecomposition.h"
 #include "storm/storage/stateminimization/bisimulation/DeterministicModelBisimulationDecomposition.h"
+#include "storm/storage/stateminimization/bisimulation/IntervalModelBisimulationDecomposition.h"
 #include "storm/storage/stateminimization/bisimulation/NondeterministicModelBisimulationDecomposition.h"
 #include "storm/utility/macros.h"
 
@@ -21,7 +21,7 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
     typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions options;
     if (!formulas.empty() && graphPreserving) {
         if constexpr (storm::IsIntervalType<ModelType>) {
-            options = typename storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
+            options = typename storm::storage::IntervalModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
         } else {
             options = typename storm::storage::DeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
         }
@@ -38,7 +38,7 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
     // TODO: Make a clean distinction between interval and standard models here.
     // TODO: Instantiate the corresponding implementation for bisimulation.
     if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
-        storm::storage::DeterministicIntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
+        storm::storage::IntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
         bisimulationDecomposition.computeDecomposition();
         return bisimulationDecomposition.getQuotient();
     } else {
@@ -65,9 +65,15 @@ std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization
     }
     options.setType(type);
 
-    storm::storage::NondeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
-    bisimulationDecomposition.computeDecomposition();
-    return bisimulationDecomposition.getQuotient();
+    if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
+        storm::storage::IntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
+        bisimulationDecomposition.computeDecomposition();
+        return bisimulationDecomposition.getQuotient();
+    } else {
+        storm::storage::NondeterministicModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
+        bisimulationDecomposition.computeDecomposition();
+        return bisimulationDecomposition.getQuotient();
+    }
 }
 
 template<typename ValueType>

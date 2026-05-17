@@ -29,7 +29,7 @@ class BaseDecomposition {
     typedef typename ModelType::ValueType ValueType;
     typedef typename ModelType::RewardModelType RewardModelType;
 
-    BaseDecomposition(ModelType const& model, storm::storage::SparseMatrix<ValueType> const& backwardTransitions);
+    BaseDecomposition(ModelType const& model, storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::IntervalBaseType<ValueType> tolerance);
 
     // A class that offers the possibility to customize the decomposition.
     struct BaseOptions {
@@ -83,10 +83,11 @@ class BaseDecomposition {
             return optimalityType.value();
         }
 
-        ValueType getTolerance() const {
-            return storm::NumberTraits<ValueType>::IsExact
-                       ? storm::utility::zero<ValueType>()
-                       : storm::utility::convertNumber<ValueType>(storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+        storm::IntervalBaseType<ValueType> getTolerance() const {
+            return storm::NumberTraits<storm::IntervalBaseType<ValueType>>::IsExact
+                       ? storm::utility::zero<storm::IntervalBaseType<ValueType>>()
+                       : storm::utility::convertNumber<storm::IntervalBaseType<ValueType>>(
+                             storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
         }
 
         bool isBounded() const {
@@ -183,6 +184,9 @@ class BaseDecomposition {
 
     /// Map of representative states of absorbing blocks. A single entry represents: <first state of block, representative state>
     std::map<uint64_t, uint64_t> absorbingBlocks;
+
+    /// A comparator used for comparing the distances of constants.
+    storm::utility::ConstantsComparator<storm::IntervalBaseType<ValueType>> comparator;
 };
 
 }  // namespace storage

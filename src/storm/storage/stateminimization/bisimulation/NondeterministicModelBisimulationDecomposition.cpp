@@ -56,7 +56,7 @@ void NondeterministicModelBisimulationDecomposition<ModelType>::updateOrderedQuo
     std::sort(this->orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state],
               this->orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state + 1],
               [this](storm::storage::Distribution<ValueType> const* dist1, storm::storage::Distribution<ValueType> const* dist2) {
-                  return dist1->less(*dist2, this->comparator);
+                  return false;  // dist1->less(*dist2, this->comparator);
               });
 }
 
@@ -87,35 +87,35 @@ bool NondeterministicModelBisimulationDecomposition<ModelType>::printDistributio
 template<typename ModelType>
 bool NondeterministicModelBisimulationDecomposition<ModelType>::quotientDistributionsLess(storm::storage::sparse::state_type state1,
                                                                                           storm::storage::sparse::state_type state2) const {
-    STORM_LOG_TRACE("Comparing the quotient distributions of state " << state1 << " and " << state2 << ".");
-    std::vector<uint_fast64_t> nondeterministicChoiceIndices = this->model.getTransitionMatrix().getRowGroupIndices();
-
-    auto firstIt = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state1];
-    auto firstIte = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state1 + 1];
-    auto secondIt = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state2];
-    auto secondIte = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state2 + 1];
-
-    for (; firstIt != firstIte && secondIt != secondIte; ++firstIt, ++secondIt) {
-        // If the current distributions are in a less-than relationship, we can return a result.
-        if ((*firstIt)->less(**secondIt, this->comparator)) {
-            return true;
-        } else if ((*secondIt)->less(**firstIt, this->comparator)) {
-            return false;
-        }
-
-        // If the distributions matched, we need to advance both distribution iterators to the next distribution
-        // that is larger.
-        while (firstIt != firstIte && std::next(firstIt) != firstIte && !(*firstIt)->less(**std::next(firstIt), this->comparator)) {
-            ++firstIt;
-        }
-        while (secondIt != secondIte && std::next(secondIt) != secondIte && !(*secondIt)->less(**std::next(secondIt), this->comparator)) {
-            ++secondIt;
-        }
-    }
-
-    if (firstIt == firstIte && secondIt != secondIte) {
-        return true;
-    }
+    // STORM_LOG_TRACE("Comparing the quotient distributions of state " << state1 << " and " << state2 << ".");
+    // std::vector<uint_fast64_t> nondeterministicChoiceIndices = this->model.getTransitionMatrix().getRowGroupIndices();
+    //
+    // auto firstIt = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state1];
+    // auto firstIte = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state1 + 1];
+    // auto secondIt = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state2];
+    // auto secondIte = orderedQuotientDistributions.begin() + nondeterministicChoiceIndices[state2 + 1];
+    //
+    // for (; firstIt != firstIte && secondIt != secondIte; ++firstIt, ++secondIt) {
+    //     // If the current distributions are in a less-than relationship, we can return a result.
+    //     if ((*firstIt)->less(**secondIt, this->comparator)) {
+    //         return true;
+    //     } else if ((*secondIt)->less(**firstIt, this->comparator)) {
+    //         return false;
+    //     }
+    //
+    //     // If the distributions matched, we need to advance both distribution iterators to the next distribution
+    //     // that is larger.
+    //     while (firstIt != firstIte && std::next(firstIt) != firstIte && !(*firstIt)->less(**std::next(firstIt), this->comparator)) {
+    //         ++firstIt;
+    //     }
+    //     while (secondIt != secondIte && std::next(secondIt) != secondIte && !(*secondIt)->less(**std::next(secondIt), this->comparator)) {
+    //         ++secondIt;
+    //     }
+    // }
+    //
+    // if (firstIt == firstIte && secondIt != secondIte) {
+    //     return true;
+    // }
     return false;
 }
 

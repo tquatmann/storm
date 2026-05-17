@@ -217,7 +217,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
                 }
 
                 // Choose the amount of perturbation with respect to the error rate.
-                double remainingL1 = pickBernoulliForGamma(rng) ? 2.0 * delta : delta;
+                SolutionType remainingL1 = pickBernoulliForGamma(rng) ? 2.0 * delta : delta;
 
                 // Choose how often to try before admitting row is too tight.
                 int retries = 2000;
@@ -238,7 +238,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
                         continue;
 
                     // Spend at most remaining L_1/2 (because this step costs 2 * theta).
-                    SolutionType theta = std::min(thetaMax, remainingL1 / 2.0);
+                    SolutionType halfRemainingL1 = remainingL1 / SolutionType(2);
+                    SolutionType theta = std::min(thetaMax, halfRemainingL1);
                     // Randomize within [0, theta].
                     theta *= pickUniformBetween01(rng);
 
@@ -247,7 +248,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
                         upperBounds[i] += theta;
                         lowerBounds[j] -= theta;
                         upperBounds[j] -= theta;
-                        remainingL1 -= 2.0 * theta;
+                        remainingL1 = remainingL1 - (2.0 * theta);
                     }
                 }
 

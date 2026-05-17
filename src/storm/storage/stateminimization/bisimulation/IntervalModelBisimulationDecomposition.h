@@ -24,7 +24,7 @@ namespace storage {
 
 // TODO: Extend logic to support deterministic and nondeterministic models.
 template<typename ModelType>
-class DeterministicIntervalModelBisimulationDecomposition : public BisimulationDecomposition<ModelType> {
+class IntervalModelBisimulationDecomposition : public BisimulationDecomposition<ModelType> {
    public:
     typedef typename ModelType::ValueType ValueType;
     typedef typename ModelType::RewardModelType RewardModelType;
@@ -36,9 +36,8 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
      * @param model The model to decompose.
      * @param options The options that customize the computed bisimulation.
      */
-    DeterministicIntervalModelBisimulationDecomposition(ModelType const& model,
-                                                        typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options =
-                                                            typename BisimulationDecomposition<ModelType>::BisimulationOptions());
+    IntervalModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options =
+                                                                       typename BisimulationDecomposition<ModelType>::BisimulationOptions());
 
    protected:
     std::pair<storm::storage::BitVector, storm::storage::BitVector> getStatesWithProbability01() override;
@@ -88,6 +87,12 @@ class DeterministicIntervalModelBisimulationDecomposition : public BisimulationD
     /// This is an alternative solution to the marker1-logic that was part of the old implementation.
     /// Note that this bitvector also indicates whether a state is a direct predecessor of the splitter block or not.
     storm::storage::BitVector touchedProbabilitiesToSplitter;
+
+    /// A vector that maps each choice entry to its owner state.
+    std::vector<storm::storage::sparse::state_type> choiceToStateMapping;
+
+    /// The backward transitions of the model without merging the choice rows into state representation.
+    storm::storage::SparseMatrix<ValueType> backwardTransitionsWithChoices;
 };
 
 }  // namespace storage
