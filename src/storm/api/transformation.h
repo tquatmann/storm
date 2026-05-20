@@ -2,6 +2,7 @@
 
 #include <random>
 
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/exceptions/InvalidOperationException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/transformer/ContinuousToDiscreteTimeModelTransformer.h"
@@ -178,33 +179,83 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> permuteModelStates(std:
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model,
                                                                                  double delta, double gamma) {
-    if constexpr (!storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "No support for perturbation of model for non-interval models yet.");
-    } else {
-        using SolutionType = storm::IntervalBaseType<ValueType>;
-        auto const zero = storm::utility::zero<SolutionType>();
-        auto const one = storm::utility::one<SolutionType>();
+    using SolutionType = storm::IntervalBaseType<ValueType>;
+    auto const zero = storm::utility::zero<SolutionType>();
+    auto const one = storm::utility::one<SolutionType>();
 
-        std::mt19937_64 rng(std::random_device{}());
-        std::uniform_real_distribution<double> pickUniformBetween01(0.0, 1.0);
-        std::bernoulli_distribution pickBernoulliForGamma(gamma);
+    std::mt19937_64 rng(std::random_device{}());
+    std::uniform_real_distribution<double> pickUniformBetween01(0.0, 1.0);
+    std::bernoulli_distribution pickBernoulliForGamma(gamma);
 
-        auto numberOfPerturbedRows = 0;
-        auto stateChoiceIndices = model->getTransitionMatrix().getRowGroupIndices();
-        for (std::size_t s = 0; s < model->getNumberOfStates(); ++s) {
-            // Perturb every possible choice/action of a state.
-            auto numberOfChoices = stateChoiceIndices[s + 1] - stateChoiceIndices[s];
-            for (auto choiceOffset = 0; choiceOffset < numberOfChoices; choiceOffset++) {
-                auto currentChoice = stateChoiceIndices[s] + choiceOffset;
-                auto begin = model->getTransitionMatrix().begin(currentChoice), end = model->getTransitionMatrix().end(currentChoice);
-                const auto outDegreeOfCurrentChoice = static_cast<std::size_t>(end - begin);
+    auto numberOfPerturbedRows = 0;
+    auto stateChoiceIndices = model->getTransitionMatrix().getRowGroupIndices();
 
-                // Cannot perturb transitions if there are less than two.
-                if (outDegreeOfCurrentChoice < 2) {
-                    // Nothing to do here.
-                    continue;
+    for (std::size_t s = 0; s < model->getNumberOfStates(); ++s) {
+        // Perturb every possible choice/action of a state.
+        auto numberOfChoices = stateChoiceIndices[s + 1] - stateChoiceIndices[s];
+        for (auto choiceOffset = 0; choiceOffset < numberOfChoices; choiceOffset++) {
+            auto currentChoice = stateChoiceIndices[s] + choiceOffset;
+            auto begin = model->getTransitionMatrix().begin(currentChoice), end = model->getTransitionMatrix().end(currentChoice);
+            const auto outDegreeOfCurrentChoice = static_cast<std::size_t>(end - begin);
+
+            // Cannot perturb transitions if there are less than two.
+            if (outDegreeOfCurrentChoice < 2) {
+                // Nothing to do here.
+                continue;
+            }
+
+            // Choose the amount of perturbation with respect to the error rate.
+            SolutionType remainingL1 = pickBernoulliForGamma(rng) ? 2.0 * delta : delta;
+
+            // Choose how often to try before admitting row is too tight.
+            int retries = 2000;
+            std::uniform_int_distribution<int> pickIndex(0, static_cast<int>(outDegreeOfCurrentChoice) - 1);
+
+            if constexpr (!storm::IsIntervalType<ValueType>) {
+                // Restructure transitions in contagious data structures.
+                std::vector<SolutionType> probabilities;
+                probabilities.reserve(outDegreeOfCurrentChoice);
+
+                for (auto it = begin; it != end; ++it) {
+                    probabilities.push_back(it->getValue());
                 }
 
+                while (remainingL1 > 1e-15 && retries-- > 0) {
+                    // Pick two different target states.
+                    int i = pickIndex(rng), j = pickIndex(rng);
+                    if (i == j)
+                        continue;
+
+                    // Move mass theta from transition to target state 'j' to transition of target state 'i'.
+                    // Make sure that we do not shift more mass than P('s', 'currentChoice', 'j') provides and do not exceed the headroom that P('s',
+                    // 'currentChoice', 'i') offers.
+                    SolutionType headroomAtI = 1 - probabilities[i];
+                    SolutionType cap = std::min(probabilities[j], headroomAtI);
+                    if (cap <= zero)
+                        continue;
+
+                    // Spend at most remaining L_1/2 (because this step costs 2 * theta).
+                    SolutionType halfRemainingL1 = remainingL1 / SolutionType(2);
+                    SolutionType theta = std::min(cap, halfRemainingL1);
+
+                    // Randomize within [0, theta].
+                    theta *= pickUniformBetween01(rng);
+
+                    if (theta > zero) {
+                        probabilities[i] += theta;
+                        probabilities[j] -= theta;
+                        remainingL1 = remainingL1 - (2.0 * theta);
+                    }
+                }
+
+                auto it = begin;
+                for (std::size_t k = 0; k < outDegreeOfCurrentChoice; ++k, ++it) {
+                    auto p = std::max(zero, std::min(one, probabilities[k]));
+                    it->setValue(p);
+                }
+
+                numberOfPerturbedRows++;
+            } else {
                 // Restructure lower and upper bounds of transitions in contagious data structures.
                 std::vector<SolutionType> lowerBounds;
                 std::vector<SolutionType> upperBounds;
@@ -216,20 +267,13 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
                     upperBounds.push_back(it->getValue().upper());
                 }
 
-                // Choose the amount of perturbation with respect to the error rate.
-                SolutionType remainingL1 = pickBernoulliForGamma(rng) ? 2.0 * delta : delta;
-
-                // Choose how often to try before admitting row is too tight.
-                int retries = 2000;
-                std::uniform_int_distribution<int> pickIndex(0, static_cast<int>(outDegreeOfCurrentChoice) - 1);
-
                 while (remainingL1 > 1e-15 && retries-- > 0) {
                     // Pick two different states.
                     int i = pickIndex(rng), j = pickIndex(rng);
                     if (i == j)
                         continue;
 
-                    // Move mass theta from state j -> i on both lowerBounds and upperBounds.
+                    // Move mass theta from state (choice) j -> i on both lowerBounds and upperBounds.
                     // Add at i (both <= 1), subtract at j (both >= 0).
                     SolutionType capPlus = std::min(one - upperBounds[i], one - lowerBounds[i]);
                     SolutionType capMinus = std::min(upperBounds[j], lowerBounds[j]);
@@ -258,14 +302,70 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
                     auto l = std::max(zero, std::min(one, lowerBounds[k]));
                     auto u = std::max(l, std::min(one, upperBounds[k]));
                     it->setValue(ValueType(l, u));
-                    numberOfPerturbedRows++;
+                }
+
+                numberOfPerturbedRows++;
+            }
+        }
+    }
+
+    STORM_PRINT_AND_LOG("Perturbed " << numberOfPerturbedRows << " rows in transition matrix.\n");
+
+    return model;
+}
+
+template<typename ValueType>
+std::shared_ptr<storm::models::sparse::Model<storm::Interval>> transformToPointIntervalModel(
+    std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model) {
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot convert interval model to point-interval model.");
+    } else {
+        if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
+        }
+
+        using IntervalType = storm::Interval;
+        using RewardModelType = storm::models::sparse::StandardRewardModel<IntervalType>;
+
+        auto const& oldMatrix = model->getTransitionMatrix();
+        auto const& rowGroupIndices = oldMatrix.getRowGroupIndices();
+
+        storm::storage::SparseMatrixBuilder<IntervalType> builder(oldMatrix.getRowCount(), oldMatrix.getColumnCount(), oldMatrix.getNonzeroEntryCount(), true,
+                                                                  true, oldMatrix.getRowGroupCount());
+
+        for (std::size_t s = 0; s < model->getNumberOfStates(); s++) {
+            builder.newRowGroup(rowGroupIndices[s]);
+
+            for (auto row = rowGroupIndices[s]; row < rowGroupIndices[s + 1]; row++) {
+                for (auto const& entry : oldMatrix.getRow(row)) {
+                    ValueType p = storm::utility::convertNumber<ValueType>(entry.getValue());
+                    builder.addNextValue(row, entry.getColumn(), IntervalType(p, p));
                 }
             }
         }
 
-        STORM_PRINT_AND_LOG("Perturbed " << numberOfPerturbedRows << " rows in transition matrix.\n");
+        storm::storage::sparse::ModelComponents<IntervalType, RewardModelType> components(builder.build(),
+                                                                                          storm::models::sparse::StateLabeling(model->getStateLabeling()));
 
-        return model;
+        if (model->hasChoiceLabeling()) {
+            components.choiceLabeling = storm::models::sparse::ChoiceLabeling(model->getChoiceLabeling());
+        }
+
+        if (model->hasStateValuations()) {
+            components.stateValuations = model->getStateValuations();
+        }
+
+        if (model->hasChoiceOrigins()) {
+            components.choiceOrigins = model->getChoiceOrigins();
+        }
+
+        // TODO: Implement copying of RewardModel.
+
+        if (model->isOfType(storm::models::ModelType::Dtmc)) {
+            return std::make_shared<storm::models::sparse::Dtmc<IntervalType>>(std::move(components));
+        }
+
+        return std::make_shared<storm::models::sparse::Mdp<IntervalType>>(std::move(components));
     }
 }
 

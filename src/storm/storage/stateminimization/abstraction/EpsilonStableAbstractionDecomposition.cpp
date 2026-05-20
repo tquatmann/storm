@@ -223,25 +223,73 @@ template<typename ModelType>
 storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionDecomposition<ModelType>::computeDeltaForState(
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
-    storm::IntervalBaseType<ValueType> delta = 0.0;
+    auto delta = storm::utility::zero<IntervalBaseType<ValueType>>();
 
-    auto enhancedDistributionIterator = enhancedDistribution.begin();
-    while (enhancedDistributionIterator != enhancedDistribution.end()) {
-        ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
-        ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
+    for (auto const& enhancedEntry : enhancedDistribution) {
+        auto block = enhancedEntry.first;
 
-        IntervalBaseType<ValueType> deltaOfLowerBound = intervalFromState.lower() - intervalFromEnhancedState.lower();
-        IntervalBaseType<ValueType> deltaOfUpperBound = intervalFromState.upper() - intervalFromEnhancedState.upper();
-        delta += (storm::utility::abs(deltaOfLowerBound)) + (storm::utility::abs(deltaOfUpperBound));
+        auto stateFeasibleInterval = computeFeasibleIntervalForBlock(stateDistribution, block);
+        auto enhancedFeasibleInterval = computeFeasibleIntervalForBlock(enhancedDistribution, block);
 
-        enhancedDistributionIterator++;
+        IntervalBaseType<ValueType> lowerDeviation = stateFeasibleInterval.lower() - enhancedFeasibleInterval.lower();
+        IntervalBaseType<ValueType> upperDeviation = enhancedFeasibleInterval.upper() - stateFeasibleInterval.upper();
+
+        if (this->comparator.isLess(lowerDeviation, storm::utility::zero<IntervalBaseType<ValueType>>())) {
+            lowerDeviation = storm::utility::zero<IntervalBaseType<ValueType>>();
+        }
+
+        if (this->comparator.isLess(upperDeviation, storm::utility::zero<IntervalBaseType<ValueType>>())) {
+            upperDeviation = storm::utility::zero<IntervalBaseType<ValueType>>();
+        }
+
+        delta += lowerDeviation + upperDeviation;
     }
 
-    // std::cout << "state1 distr: " << stateDistribution << std::endl;
-    // std::cout << "state2 distr: " << enhancedDistribution << std::endl;
-    // std::cout << "resulting delta: " << delta << std::endl;
-
     return delta;
+}
+
+template<typename ModelType>
+typename ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::computeFeasibleIntervalForBlock(
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& distribution,
+    storm::storage::sparse::state_type blockRepresentative) const {
+    ValueType intervalToBlock = clampIntervalToProbabilisticInterval(distribution.getProbability(blockRepresentative));
+    auto const one = storm::utility::one<IntervalBaseType<ValueType>>();
+
+    ValueType intervalToOtherBlocks = storm::utility::zero<ValueType>();
+    for (auto const& entry : distribution) {
+        if (entry.first != blockRepresentative) {
+            intervalToOtherBlocks += entry.second;
+        }
+    }
+
+    // TODO: Compute this only once.
+    // TODO: Maybe let the user decide by a flag whether to use feasible intervals or not.
+    intervalToOtherBlocks = clampIntervalToProbabilisticInterval(intervalToOtherBlocks);
+
+    auto lowerFromOther = one - intervalToOtherBlocks.upper();
+    auto upperFromOther = one - intervalToOtherBlocks.lower();
+
+    IntervalBaseType<ValueType> lower;
+    if (this->comparator.isLess(intervalToBlock.lower(), lowerFromOther)) {
+        lower = lowerFromOther;
+    } else {
+        lower = intervalToBlock.lower();
+    }
+
+    IntervalBaseType<ValueType> upper;
+    if (this->comparator.isLess(intervalToBlock.upper(), upperFromOther)) {
+        upper = intervalToBlock.upper();
+    } else {
+        upper = upperFromOther;
+    }
+
+    // For non-exact computations, it might be that the lower bound is slightly larger than the upper bound due to imprecision.
+    // Thus, we make sure here to make them equal to avoid returning an empty interval.
+    if (this->comparator.isEqual(lower, upper)) {
+        upper = lower;
+    }
+
+    return ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK);
 }
 
 template<typename ModelType>

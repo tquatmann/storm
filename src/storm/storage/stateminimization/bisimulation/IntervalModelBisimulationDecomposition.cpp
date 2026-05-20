@@ -151,26 +151,29 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
 template<typename ModelType>
 ModelType::ValueType IntervalModelBisimulationDecomposition<ModelType>::computeFeasibleIntervalBasedOnAggregatedIntervals(
     ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const {
-    // Normalize intervals
-    ValueType normalizedIntervalToSplitter = clampIntervalToProbabilisticInterval(intervalToSplitter);
-    ValueType normalizedIntervalToOtherBlocks = clampIntervalToProbabilisticInterval(intervalToOtherBlocks);
+    // Clamp intervals.
+    ValueType clampedIntervalToSplitter = clampIntervalToProbabilisticInterval(intervalToSplitter);
+    ValueType clampedIntervalToOtherBlocks = clampIntervalToProbabilisticInterval(intervalToOtherBlocks);
 
-    // Compute feasible interval
+    // Compute feasible interval.
     storm::IntervalBaseType<ValueType> lowerBoundOfFeasibleInterval;
-    if (this->comparator.isLess(storm::utility::one<IntervalBaseType<ValueType>>() - normalizedIntervalToOtherBlocks.upper(),
-                                normalizedIntervalToSplitter.lower())) {
-        lowerBoundOfFeasibleInterval = normalizedIntervalToSplitter.lower();
+    if (this->comparator.isLess(storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.upper(), clampedIntervalToSplitter.lower())) {
+        lowerBoundOfFeasibleInterval = clampedIntervalToSplitter.lower();
     } else {
-        lowerBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - normalizedIntervalToOtherBlocks.upper();
+        lowerBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.upper();
     }
 
     storm::IntervalBaseType<ValueType> upperBoundOfFeasibleInterval;
-
-    if (this->comparator.isLess(normalizedIntervalToSplitter.upper(),
-                                storm::utility::one<IntervalBaseType<ValueType>>() - normalizedIntervalToOtherBlocks.lower())) {
-        upperBoundOfFeasibleInterval = normalizedIntervalToSplitter.upper();
+    if (this->comparator.isLess(clampedIntervalToSplitter.upper(), storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.lower())) {
+        upperBoundOfFeasibleInterval = clampedIntervalToSplitter.upper();
     } else {
-        upperBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - normalizedIntervalToOtherBlocks.lower();
+        upperBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.lower();
+    }
+
+    // For non-exact computations, it might be that the lower bound is slightly larger than the upper bound due to imprecision.
+    // Thus, we make sure here to make them equal to avoid returning an empty interval.
+    if (this->comparator.isEqual(lowerBoundOfFeasibleInterval, upperBoundOfFeasibleInterval)) {
+        upperBoundOfFeasibleInterval = lowerBoundOfFeasibleInterval;
     }
 
     return ValueType(lowerBoundOfFeasibleInterval, carl::BoundType::WEAK, upperBoundOfFeasibleInterval, carl::BoundType::WEAK);
@@ -191,6 +194,10 @@ typename ModelType::ValueType IntervalModelBisimulationDecomposition<ModelType>:
 
         if (this->comparator.isLess(one, upperBound)) {
             upperBound = one;
+        }
+
+        if (this->comparator.isEqual(lowerBound, upperBound)) {
+            upperBound = lowerBound;
         }
 
         if (lowerBound > upperBound) {
@@ -214,7 +221,6 @@ bool IntervalModelBisimulationDecomposition<ModelType>::possiblyNeedsRefinement(
 
 template<typename ModelType>
 void IntervalModelBisimulationDecomposition<ModelType>::buildQuotientFromPartition() {
-    // TODO: Generalize the quotient construction to nondeterministic models (cf. EpsilonStableAbstractionDecomposition.cpp).
     // In order to create the quotient model, we need to construct
     // (a) the new transition matrix,
     // (b) the new labeling,

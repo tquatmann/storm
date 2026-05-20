@@ -12,6 +12,7 @@ const std::string TransformationSettings::toNondetOptionName = "to-nondet";
 const std::string TransformationSettings::toDiscreteTimeOptionName = "to-discrete";
 const std::string TransformationSettings::permuteModelOptionName = "permute";
 const std::string TransformationSettings::perturbModelOptionName = "perturb";
+const std::string TransformationSettings::toPointIntervalModelOptionName = "to-point-interval";
 
 TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, chainEliminationOptionName, false,
@@ -68,6 +69,13 @@ TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
                                          .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorExcluding(0.0, 1.0))
                                          .build())
                         .build());
+
+    this->addOption(
+        storm::settings::OptionBuilder(
+            moduleName, toPointIntervalModelOptionName, false,
+            "If set, the deterministic model will be transformed into an interval model with point-intervals for each probability in the transition matrix.")
+            .setIsAdvanced()
+            .build());
 }
 
 bool TransformationSettings::isChainEliminationSet() const {
@@ -133,6 +141,10 @@ double TransformationSettings::getDeltaPerturbationValue() const {
 
 double TransformationSettings::getGammaPerturbationProbabilityValue() const {
     return this->getOption(perturbModelOptionName).getArgumentByName("gamma").getValueAsDouble();
+}
+
+bool TransformationSettings::isToPointIntervalModelSet() const {
+    return this->getOption(toPointIntervalModelOptionName).getHasOptionBeenSet();
 }
 
 void TransformationSettings::finalize() {

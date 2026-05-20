@@ -763,8 +763,24 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
 
-    if (transformationSettings.isPerturbModelSet()) {
+    if (transformationSettings.isToPointIntervalModelSet()) {
         if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot convert interval model to point-interval model.");
+        } else if constexpr (std::is_same_v<ValueType, double> || std::is_same_v<ValueType, storm::RationalNumber>) {
+            if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
+            } else {
+                STORM_PRINT_AND_LOG("Transforming model to interval model with point intervals.");
+                auto intervalModel = storm::api::transformToPointIntervalModel(model);
+                return {std::static_pointer_cast<storm::models::ModelBase>(intervalModel), true};
+            }
+        } else {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for doubles or rational numbers.");
+        }
+    }
+
+    if (transformationSettings.isPerturbModelSet()) {
+        if constexpr (std::is_same_v<IntervalBaseType<ValueType>, double> || std::is_same_v<IntervalBaseType<ValueType>, storm::RationalNumber>) {
             auto delta = transformationSettings.getDeltaPerturbationValue();
             auto gamma = transformationSettings.getGammaPerturbationProbabilityValue();
             STORM_PRINT_AND_LOG("Perturbing outgoing " << (model->isNondeterministicModel() ? "choice/action" : "state") << " transitions of model up to "
@@ -773,7 +789,7 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
             result.first = storm::api::perturbModelTransitions(result.first, delta, gamma);
         } else {
             STORM_LOG_THROW(storm::IsIntervalType<ValueType>, storm::exceptions::NotSupportedException,
-                            "No support for perturbation of model for non-interval models yet.");
+                            "We only support perturbing models with interval base type double or rational number yet.");
         }
     }
 

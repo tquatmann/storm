@@ -143,6 +143,9 @@ class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution);
 
+    ValueType computeFeasibleIntervalForBlock(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& distribution,
+                                              storm::storage::sparse::state_type blockRepresentative) const;
+
     bool canMergeBlocksForDebug(std::span<uint64_t const> blockA, std::span<uint64_t const> blockB, double epsilon);
 
     void debugFindMergeableFinalBlocks(double epsilon);

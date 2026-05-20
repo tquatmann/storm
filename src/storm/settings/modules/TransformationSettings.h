@@ -78,6 +78,8 @@ class TransformationSettings : public ModuleSettings {
      */
     double getGammaPerturbationProbabilityValue() const;
 
+    bool isToPointIntervalModelSet() const;
+
     bool check() const override;
 
     void finalize() override;
@@ -93,6 +95,7 @@ class TransformationSettings : public ModuleSettings {
     static const std::string toDiscreteTimeOptionName;
     static const std::string permuteModelOptionName;
     static const std::string perturbModelOptionName;
+    static const std::string toPointIntervalModelOptionName;
 };
 
 }  // namespace settings::modules
