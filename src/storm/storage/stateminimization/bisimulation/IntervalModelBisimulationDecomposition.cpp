@@ -25,22 +25,6 @@ IntervalModelBisimulationDecomposition<ModelType>::IntervalModelBisimulationDeco
 }
 
 template<typename ModelType>
-Distribution<typename ModelType::ValueType, sparse::state_type> IntervalModelBisimulationDecomposition<ModelType>::getClampedDistribution(
-    Distribution<ValueType, storm::storage::sparse::state_type> distribution) const {
-    auto clampedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-    clampedDistribution.reserve(distribution.size());
-
-    for (auto it = distribution.begin(); it != distribution.end(); ++it) {
-        auto key = it->first;
-        auto interval = it->second;
-
-        clampedDistribution.addProbability(key, clampIntervalToProbabilisticInterval(interval));
-    }
-
-    return clampedDistribution;
-}
-
-template<typename ModelType>
 void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(storm::storage::stateminimization::Partition::Block splitterBlock,
                                                                                        std::deque<typename stateminimization::Partition::Block>& splitterQueue,
                                                                                        stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
@@ -76,7 +60,6 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
 
     // Compute interval to all blocks except the splitter, i.e., I(s, \alpha, \Pi \setminus C) for IMDPs or I(s, \Pi \setminus C) for IDTMCs.
     for (auto predecessorChoice : touchedProbabilitiesToSplitter) {
-        // TODO: Compute the transition intervals for each choice/action.
         for (const auto& entry : this->model.getTransitionMatrix().getRow(predecessorChoice)) {
             auto targetState = entry.getColumn();
 
@@ -152,8 +135,8 @@ template<typename ModelType>
 ModelType::ValueType IntervalModelBisimulationDecomposition<ModelType>::computeFeasibleIntervalBasedOnAggregatedIntervals(
     ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const {
     // Clamp intervals.
-    ValueType clampedIntervalToSplitter = clampIntervalToProbabilisticInterval(intervalToSplitter);
-    ValueType clampedIntervalToOtherBlocks = clampIntervalToProbabilisticInterval(intervalToOtherBlocks);
+    ValueType clampedIntervalToSplitter = storm::utility::interval::makeIntervalProbabilistic(intervalToSplitter, this->comparator);
+    ValueType clampedIntervalToOtherBlocks = storm::utility::interval::makeIntervalProbabilistic(intervalToOtherBlocks, this->comparator);
 
     // Compute feasible interval.
     storm::IntervalBaseType<ValueType> lowerBoundOfFeasibleInterval;
@@ -180,41 +163,6 @@ ModelType::ValueType IntervalModelBisimulationDecomposition<ModelType>::computeF
 }
 
 template<typename ModelType>
-typename ModelType::ValueType IntervalModelBisimulationDecomposition<ModelType>::clampIntervalToProbabilisticInterval(ValueType interval) const {
-    auto lowerBound = interval.lower();
-    auto upperBound = interval.upper();
-
-    auto const zero = storm::utility::zero<IntervalBaseType<ValueType>>();
-    auto const one = storm::utility::one<IntervalBaseType<ValueType>>();
-
-    if (!this->model.isExact()) {
-        if (this->comparator.isLess(one, lowerBound)) {
-            lowerBound = one;
-        }
-
-        if (this->comparator.isLess(one, upperBound)) {
-            upperBound = one;
-        }
-
-        if (this->comparator.isEqual(lowerBound, upperBound)) {
-            upperBound = lowerBound;
-        }
-
-        if (lowerBound > upperBound) {
-            STORM_LOG_ERROR("Applying tolerance led to an invalid interval!");
-        }
-
-        if (lowerBound > 1) {
-            STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Computation led to an invalid interval!");
-        }
-    }
-
-    auto zeroOneInterval = ValueType(zero, carl::BoundType::WEAK, one, carl::BoundType::WEAK);
-
-    return ValueType(lowerBound, carl::BoundType::WEAK, upperBound, carl::BoundType::WEAK).intersect(zeroOneInterval);
-}
-
-template<typename ModelType>
 bool IntervalModelBisimulationDecomposition<ModelType>::possiblyNeedsRefinement(std::span<uint64_t const> block) const {
     return block.size() > 1 && !this->absorbingBlocks.contains(block.front());
 }
@@ -227,7 +175,6 @@ void IntervalModelBisimulationDecomposition<ModelType>::buildQuotientFromPartiti
     // (c) the new reward structures.
 
     // Prepare a matrix builder for (a).
-    // storm::storage::SparseMatrixBuilder<ValueType> builder(this->partition.getNumberOfBlocks(), this->partition.getNumberOfBlocks());
     storm::storage::SparseMatrixBuilder<ValueType> builder(0, this->partition.getNumberOfBlocks(), 0, false, true, this->partition.getNumberOfBlocks());
 
     // Prepare the new state labeling for (b).
@@ -307,7 +254,7 @@ void IntervalModelBisimulationDecomposition<ModelType>::buildQuotientFromPartiti
                     blockChoiceDistribution.addProbability(blocksMapping.at(this->partition.getBlockOfElement(e.getColumn()).front()), e.getValue());
                 }
 
-                blockChoiceDistribution = getClampedDistribution(blockChoiceDistribution);
+                blockChoiceDistribution = storm::utility::interval::makeDistributionProbabilistic(blockChoiceDistribution, this->comparator);
 
                 // Now add them to the actual matrix.
                 auto blockDistributionIterator = blockChoiceDistribution.begin();
@@ -369,6 +316,7 @@ void IntervalModelBisimulationDecomposition<ModelType>::buildQuotientFromPartiti
 }
 
 // TODO: Check this in an assert or during tests?
+// TODO: Need to adjust this first though.
 template<typename ModelType>
 bool IntervalModelBisimulationDecomposition<ModelType>::checkCurrentPartitionByExactFeasibleIntervals() const {
     auto computeFeasibleInterval = [&](storm::storage::sparse::state_type state, auto const& splitterBlock) {
@@ -383,7 +331,8 @@ bool IntervalModelBisimulationDecomposition<ModelType>::checkCurrentPartitionByE
             }
         }
 
-        return computeFeasibleIntervalBasedOnAggregatedIntervals(clampIntervalToProbabilisticInterval(toBlock), clampIntervalToProbabilisticInterval(toOther));
+        return computeFeasibleIntervalBasedOnAggregatedIntervals(storm::utility::interval::makeIntervalProbabilistic(toBlock),
+                                                                 storm::utility::interval::makeIntervalProbabilistic(toOther));
     };
 
     bool valid = true;

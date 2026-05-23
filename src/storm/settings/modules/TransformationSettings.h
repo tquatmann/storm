@@ -80,6 +80,8 @@ class TransformationSettings : public ModuleSettings {
 
     bool isToPointIntervalModelSet() const;
 
+    bool isUseRawTransitionIntervalsSet() const;
+
     bool check() const override;
 
     void finalize() override;
@@ -96,6 +98,7 @@ class TransformationSettings : public ModuleSettings {
     static const std::string permuteModelOptionName;
     static const std::string perturbModelOptionName;
     static const std::string toPointIntervalModelOptionName;
+    static const std::string useRawTransitionIntervalsOptionName;
 };
 
 }  // namespace settings::modules

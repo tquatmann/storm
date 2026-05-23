@@ -707,8 +707,10 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelAb
                     "Epsilon value required to perform epsilon-stable abstraction minimization.");
     epsilonValue = abstractionSettings.getEpsilonValue();
 
+    auto bisimQuotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties),
+                                                                                storm::storage::BisimulationType::Strong, true);
     STORM_LOG_INFO("Performing abstraction minimization...");
-    auto quotient = storm::api::performAbstractionMinimization(model, createFormulasToRespect(input.properties), abstractionType, true, epsilonValue);
+    auto quotient = storm::api::performAbstractionMinimization(bisimQuotient, createFormulasToRespect(input.properties), abstractionType, true, epsilonValue);
 
     return quotient;
 }
@@ -760,6 +762,7 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     auto abstractionSettings = storm::settings::getModule<storm::settings::modules::AbstractionSettings>();
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
+    auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
 
@@ -776,6 +779,13 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
             }
         } else {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for doubles or rational numbers.");
+        }
+    }
+
+    if (!transformationSettings.isUseRawTransitionIntervalsSet()) {
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_PRINT_AND_LOG("Transforming transition intervals to feasible intervals.\n");
+            result.first = storm::api::makeTransitionIntervalsFeasible(result.first, generalSettings.getPrecision());
         }
     }
 

@@ -189,7 +189,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPa
 
     // Now build (a) and (b) by traversing all blocks.
 
-    // TODO: create mapping from representative state to unique identifier
+    // Create mapping from representative state to unique identifier.
     std::map<uint64_t, uint64_t> blocksMapping;
 
     auto blockIndex = 0;

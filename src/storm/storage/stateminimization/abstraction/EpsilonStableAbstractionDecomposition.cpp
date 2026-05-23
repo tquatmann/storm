@@ -216,80 +216,28 @@ EpsilonStableAbstractionDecomposition<ModelType>::computeEnhancedDistribution(
         enhancedDistribution.addProbability(key, ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK));
     }
 
-    return getClampedDistribution(enhancedDistribution);
+    return storm::utility::interval::makeDistributionProbabilistic(enhancedDistribution, this->comparator);
 }
 
 template<typename ModelType>
 storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionDecomposition<ModelType>::computeDeltaForState(
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
-    auto delta = storm::utility::zero<IntervalBaseType<ValueType>>();
+    storm::IntervalBaseType<ValueType> delta = storm::utility::zero<IntervalBaseType<ValueType>>();
 
-    for (auto const& enhancedEntry : enhancedDistribution) {
-        auto block = enhancedEntry.first;
+    auto enhancedDistributionIterator = enhancedDistribution.begin();
+    while (enhancedDistributionIterator != enhancedDistribution.end()) {
+        ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
+        ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
 
-        auto stateFeasibleInterval = computeFeasibleIntervalForBlock(stateDistribution, block);
-        auto enhancedFeasibleInterval = computeFeasibleIntervalForBlock(enhancedDistribution, block);
+        IntervalBaseType<ValueType> deltaOfLowerBound = intervalFromState.lower() - intervalFromEnhancedState.lower();
+        IntervalBaseType<ValueType> deltaOfUpperBound = intervalFromState.upper() - intervalFromEnhancedState.upper();
+        delta += (storm::utility::abs(deltaOfLowerBound)) + (storm::utility::abs(deltaOfUpperBound));
 
-        IntervalBaseType<ValueType> lowerDeviation = stateFeasibleInterval.lower() - enhancedFeasibleInterval.lower();
-        IntervalBaseType<ValueType> upperDeviation = enhancedFeasibleInterval.upper() - stateFeasibleInterval.upper();
-
-        if (this->comparator.isLess(lowerDeviation, storm::utility::zero<IntervalBaseType<ValueType>>())) {
-            lowerDeviation = storm::utility::zero<IntervalBaseType<ValueType>>();
-        }
-
-        if (this->comparator.isLess(upperDeviation, storm::utility::zero<IntervalBaseType<ValueType>>())) {
-            upperDeviation = storm::utility::zero<IntervalBaseType<ValueType>>();
-        }
-
-        delta += lowerDeviation + upperDeviation;
+        enhancedDistributionIterator++;
     }
 
     return delta;
-}
-
-template<typename ModelType>
-typename ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::computeFeasibleIntervalForBlock(
-    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& distribution,
-    storm::storage::sparse::state_type blockRepresentative) const {
-    ValueType intervalToBlock = clampIntervalToProbabilisticInterval(distribution.getProbability(blockRepresentative));
-    auto const one = storm::utility::one<IntervalBaseType<ValueType>>();
-
-    ValueType intervalToOtherBlocks = storm::utility::zero<ValueType>();
-    for (auto const& entry : distribution) {
-        if (entry.first != blockRepresentative) {
-            intervalToOtherBlocks += entry.second;
-        }
-    }
-
-    // TODO: Compute this only once.
-    // TODO: Maybe let the user decide by a flag whether to use feasible intervals or not.
-    intervalToOtherBlocks = clampIntervalToProbabilisticInterval(intervalToOtherBlocks);
-
-    auto lowerFromOther = one - intervalToOtherBlocks.upper();
-    auto upperFromOther = one - intervalToOtherBlocks.lower();
-
-    IntervalBaseType<ValueType> lower;
-    if (this->comparator.isLess(intervalToBlock.lower(), lowerFromOther)) {
-        lower = lowerFromOther;
-    } else {
-        lower = intervalToBlock.lower();
-    }
-
-    IntervalBaseType<ValueType> upper;
-    if (this->comparator.isLess(intervalToBlock.upper(), upperFromOther)) {
-        upper = intervalToBlock.upper();
-    } else {
-        upper = upperFromOther;
-    }
-
-    // For non-exact computations, it might be that the lower bound is slightly larger than the upper bound due to imprecision.
-    // Thus, we make sure here to make them equal to avoid returning an empty interval.
-    if (this->comparator.isEqual(lower, upper)) {
-        upper = lower;
-    }
-
-    return ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK);
 }
 
 template<typename ModelType>
@@ -650,7 +598,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::recomputeChoiceDistributi
         distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
     }
 
-    originalChoiceDistributions[choice] = getClampedDistribution(std::move(distribution));
+    originalChoiceDistributions[choice] = storm::utility::interval::makeDistributionProbabilistic(std::move(distribution), this->comparator);
 }
 
 template<typename ModelType>
@@ -676,57 +624,6 @@ std::pair<std::uint_fast64_t, std::uint_fast64_t> EpsilonStableAbstractionDecomp
     storm::storage::sparse::state_type state) const {
     auto const& rowGroupIndices = this->model.getTransitionMatrix().getRowGroupIndices();
     return {rowGroupIndices[state], rowGroupIndices[state + 1]};
-}
-
-template<typename ModelType>
-Distribution<typename ModelType::ValueType, sparse::state_type> EpsilonStableAbstractionDecomposition<ModelType>::getClampedDistribution(
-    Distribution<ValueType, storm::storage::sparse::state_type> distribution) const {
-    auto clampedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-    clampedDistribution.reserve(distribution.size());
-
-    for (auto it = distribution.begin(); it != distribution.end(); ++it) {
-        auto key = it->first;
-        auto interval = it->second;
-
-        clampedDistribution.addProbability(key, clampIntervalToProbabilisticInterval(interval));
-    }
-
-    return clampedDistribution;
-}
-
-// TODO: This code is duplicated, cf. IntervalModelBisimulationDecomposition.cpp:180
-template<typename ModelType>
-typename ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::clampIntervalToProbabilisticInterval(ValueType interval) const {
-    auto lowerBound = interval.lower();
-    auto upperBound = interval.upper();
-
-    auto const zero = storm::utility::zero<IntervalBaseType<ValueType>>();
-    auto const one = storm::utility::one<IntervalBaseType<ValueType>>();
-
-    if (!this->model.isExact()) {
-        auto tolerance = this->options.getTolerance();
-
-        if (this->comparator.isLess(one, lowerBound)) {
-            lowerBound = one;
-        }
-
-        if (this->comparator.isLess(one, upperBound)) {
-            upperBound = one;
-        }
-
-        if (lowerBound > upperBound) {
-            STORM_LOG_ERROR("Applying tolerance led to an invalid interval!");
-        }
-
-        if (lowerBound > 1) {
-            STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException,
-                            "Computation led to an invalid interval: [" << lowerBound << ", " << upperBound << "]!");
-        }
-    }
-
-    auto zeroOneInterval = ValueType(zero, carl::BoundType::WEAK, one, carl::BoundType::WEAK);
-
-    return ValueType(lowerBound, carl::BoundType::WEAK, upperBound, carl::BoundType::WEAK).intersect(zeroOneInterval);
 }
 
 template class EpsilonStableAbstractionDecomposition<storm::models::sparse::Dtmc<storm::Interval>>;

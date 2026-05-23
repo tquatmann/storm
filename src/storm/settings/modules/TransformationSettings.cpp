@@ -13,6 +13,7 @@ const std::string TransformationSettings::toDiscreteTimeOptionName = "to-discret
 const std::string TransformationSettings::permuteModelOptionName = "permute";
 const std::string TransformationSettings::perturbModelOptionName = "perturb";
 const std::string TransformationSettings::toPointIntervalModelOptionName = "to-point-interval";
+const std::string TransformationSettings::useRawTransitionIntervalsOptionName = "use-raw-intervals";
 
 TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, chainEliminationOptionName, false,
@@ -76,6 +77,11 @@ TransformationSettings::TransformationSettings() : ModuleSettings(moduleName) {
             "If set, the deterministic model will be transformed into an interval model with point-intervals for each probability in the transition matrix.")
             .setIsAdvanced()
             .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, useRawTransitionIntervalsOptionName, false,
+                                                   "If set, the transition intervals of the model remain untouched.")
+                        .setIsAdvanced()
+                        .build());
 }
 
 bool TransformationSettings::isChainEliminationSet() const {
@@ -145,6 +151,10 @@ double TransformationSettings::getGammaPerturbationProbabilityValue() const {
 
 bool TransformationSettings::isToPointIntervalModelSet() const {
     return this->getOption(toPointIntervalModelOptionName).getHasOptionBeenSet();
+}
+
+bool TransformationSettings::isUseRawTransitionIntervalsSet() const {
+    return this->getOption(useRawTransitionIntervalsOptionName).getHasOptionBeenSet();
 }
 
 void TransformationSettings::finalize() {

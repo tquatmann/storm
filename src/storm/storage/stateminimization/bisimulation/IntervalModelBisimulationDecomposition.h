@@ -18,6 +18,7 @@
 #include "storm/storage/stateminimization/bisimulation/BisimulationDecomposition.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/graph.h"
+#include "storm/utility/interval.h"
 
 namespace storm {
 namespace storage {
@@ -58,20 +59,6 @@ class IntervalModelBisimulationDecomposition : public BisimulationDecomposition<
      * @return feasible interval to splitter block C
      */
     ValueType computeFeasibleIntervalBasedOnAggregatedIntervals(ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const;
-
-    /*!
-     * Takes the given interval and computes the intersection with [0, 1] with respect to the given precision.
-     * @param interval
-     * @return probabilistic interval I s.t. I = interval \cap [0, 1]
-     */
-    ValueType clampIntervalToProbabilisticInterval(ValueType interval) const;
-
-    /*!
-     * Returns the given distribution where each interval entry I gets clamped to a probabilistic interval I', i.e., I' = I \cap [0, 1].
-     * @param distribution
-     * @return distribution with clamped interval entries
-     */
-    Distribution<ValueType, sparse::state_type> getClampedDistribution(Distribution<ValueType, storm::storage::sparse::state_type> distribution) const;
 
     bool checkCurrentPartitionByExactFeasibleIntervals() const;
 

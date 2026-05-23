@@ -11,12 +11,12 @@
 #include "storm/settings/modules/CoreSettings.h"
 #include "storm/storage/Distribution.h"
 #include "storm/storage/stateminimization/BaseDecomposition.h"
+#include "storm/utility/interval.h"
 
 namespace storm {
 namespace storage {
 namespace abstraction {
 
-// TODO: Remove Deterministic template parameter.
 template<typename ModelType>
 class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType> {
    public:
@@ -143,9 +143,6 @@ class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
         storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution);
 
-    ValueType computeFeasibleIntervalForBlock(storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& distribution,
-                                              storm::storage::sparse::state_type blockRepresentative) const;
-
     bool canMergeBlocksForDebug(std::span<uint64_t const> blockA, std::span<uint64_t const> blockB, double epsilon);
 
     void debugFindMergeableFinalBlocks(double epsilon);
@@ -184,20 +181,6 @@ class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType
 
     void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> subBlock, std::deque<typename stateminimization::Partition::Block>& blocksQueue,
                                             stateminimization::Partition::BlockSet& enqueuedBlocks, double epsilon);
-
-    /*!
-     * Takes the given interval and computes the intersection with [0, 1] with respect to the given precision.
-     * @param interval
-     * @return probabilistic interval I s.t. I = interval \cap [0, 1]
-     */
-    ValueType clampIntervalToProbabilisticInterval(ValueType interval) const;
-
-    /*!
-     * Returns the given distribution where each interval entry I gets clamped to a probabilistic interval I', i.e., I' = I \cap [0, 1].
-     * @param distribution
-     * @return distribution with clamped interval entries
-     */
-    Distribution<ValueType, sparse::state_type> getClampedDistribution(Distribution<ValueType, storm::storage::sparse::state_type> distribution) const;
 
     EpsilonStableAbstractionOptions options;
 
