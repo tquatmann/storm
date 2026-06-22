@@ -171,6 +171,8 @@ class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType
 
     std::pair<std::uint_fast64_t, std::uint_fast64_t> getChoiceRangeOfState(storm::storage::sparse::state_type state) const;
 
+    ValueType computeFeasibleIntervalBasedOnAggregatedIntervals(ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const;
+
     /*!
      * Performs the epsilon-stable abstraction on the model and thereby merges suitable states which satisfy
      * the epsilon-stability criterion. If required, the quotient model is built and may be retrieved using

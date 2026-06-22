@@ -32,7 +32,12 @@ EpsilonStableAbstractionDecomposition<ModelType>::EpsilonStableAbstractionDecomp
     const ModelType& model, const EpsilonStableAbstractionDecomposition::EpsilonStableAbstractionOptions& options)
     : BaseDecomposition<ModelType>(model, model.getBackwardTransitions(), options.getTolerance()),
       options(options),
-      originalChoiceDistributions(model.getTransitionMatrix().getRowCount()) {}
+      originalChoiceDistributions(model.getTransitionMatrix().getRowCount()) {
+    // Fix the respected atomic propositions if they were not explicitly given.
+    if (!this->options.respectedAtomicPropositions) {
+        this->options.respectedAtomicPropositions = model.getStateLabeling().getLabels();
+    }
+}
 
 template<typename ModelType>
 void EpsilonStableAbstractionDecomposition<ModelType>::computeInitialPartition() {
@@ -81,6 +86,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
                                                                                           double epsilon) {
     // Cluster states of this block in groups.
     std::vector<EpsilonStableAbstractionDecomposition::StateGroup> groups;
+    std::unordered_set<storm::storage::sparse::state_type> dirtyPredecessors;  // Predecessors whose distribution we have to recompute.
 
     // TODO: Can we assume that choices/actions, that are labeled the same, are actually stored in the same order in the rowGrouping for each state?
     for (auto s : block) {
@@ -155,8 +161,6 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
         return;  // Nothing to split
 
     // Split block by grouping.
-    // TODO: We might be able to implement this more efficiently, e.g., by using a stateToGroup mapping that gets filled while assigning the states to their
-    // TODO: groups.
     bool wasSplit = this->partition.splitBlockByOrder(block, [&](auto a, auto b) {
         int groupOfA = -1, groupOfB = -1;
         for (int i = 0; i < groups.size(); ++i) {
@@ -170,7 +174,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
 
     if (wasSplit) {
         // Place blocks of predecessors into queue.
-        this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks](auto const& subBlock) {
+        this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks, &dirtyPredecessors](auto const& subBlock) {
             for (auto state : subBlock) {
                 for (auto& transition : this->backwardTransitions.getRow(state)) {
                     auto predecessorState = transition.getColumn();
@@ -183,10 +187,14 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
                     }
 
                     // Recompute distribution of predecessor state for further refinement.
-                    recomputeChoiceDistributionsOfState(predecessorState);
+                    dirtyPredecessors.insert(predecessorState);
                 }
             }
         });
+
+        for (auto predecessorState : dirtyPredecessors) {
+            recomputeChoiceDistributionsOfState(predecessorState);
+        }
     }
 }
 
@@ -223,21 +231,21 @@ template<typename ModelType>
 storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionDecomposition<ModelType>::computeDeltaForState(
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& stateDistribution,
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& enhancedDistribution) {
-    storm::IntervalBaseType<ValueType> delta = storm::utility::zero<IntervalBaseType<ValueType>>();
+    auto lowerDelta = storm::utility::zero<IntervalBaseType<ValueType>>();
+    auto upperDelta = storm::utility::zero<IntervalBaseType<ValueType>>();
 
     auto enhancedDistributionIterator = enhancedDistribution.begin();
     while (enhancedDistributionIterator != enhancedDistribution.end()) {
         ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
         ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
 
-        IntervalBaseType<ValueType> deltaOfLowerBound = intervalFromState.lower() - intervalFromEnhancedState.lower();
-        IntervalBaseType<ValueType> deltaOfUpperBound = intervalFromState.upper() - intervalFromEnhancedState.upper();
-        delta += (storm::utility::abs(deltaOfLowerBound)) + (storm::utility::abs(deltaOfUpperBound));
+        lowerDelta += intervalFromState.lower() - intervalFromEnhancedState.lower();
+        upperDelta += intervalFromEnhancedState.upper() - intervalFromState.upper();
 
         enhancedDistributionIterator++;
     }
 
-    return delta;
+    return storm::utility::max(lowerDelta, upperDelta);
 }
 
 template<typename ModelType>
@@ -592,10 +600,21 @@ void EpsilonStableAbstractionDecomposition<ModelType>::initializeChoiceDistribut
 
 template<typename ModelType>
 void EpsilonStableAbstractionDecomposition<ModelType>::recomputeChoiceDistribution(uint_fast64_t choice) {
+    storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> rawDistribution;
+    ValueType allTransitionIntervals = storm::utility::zero<ValueType>();
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> distribution;
+    // TODO: Compute the feasible choice distributions here.
 
     for (auto const& e : this->model.getTransitionMatrix().getRow(choice)) {
-        distribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
+        rawDistribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
+        allTransitionIntervals += e.getValue();
+    }
+
+    auto rawDistributionEntry = rawDistribution.begin();
+    while (rawDistributionEntry != rawDistribution.end()) {
+        distribution.addProbability(rawDistributionEntry->first, computeFeasibleIntervalBasedOnAggregatedIntervals(
+                                                                     rawDistributionEntry->second, allTransitionIntervals - rawDistributionEntry->second));
+        rawDistributionEntry++;
     }
 
     originalChoiceDistributions[choice] = storm::utility::interval::makeDistributionProbabilistic(std::move(distribution), this->comparator);
@@ -624,6 +643,37 @@ std::pair<std::uint_fast64_t, std::uint_fast64_t> EpsilonStableAbstractionDecomp
     storm::storage::sparse::state_type state) const {
     auto const& rowGroupIndices = this->model.getTransitionMatrix().getRowGroupIndices();
     return {rowGroupIndices[state], rowGroupIndices[state + 1]};
+}
+
+template<typename ModelType>
+ModelType::ValueType EpsilonStableAbstractionDecomposition<ModelType>::computeFeasibleIntervalBasedOnAggregatedIntervals(
+    ValueType intervalToSplitter, ValueType intervalToOtherBlocks) const {
+    // Clamp intervals.
+    ValueType clampedIntervalToSplitter = storm::utility::interval::makeIntervalProbabilistic(intervalToSplitter, this->comparator);
+    ValueType clampedIntervalToOtherBlocks = storm::utility::interval::makeIntervalProbabilistic(intervalToOtherBlocks, this->comparator);
+
+    // Compute feasible interval.
+    storm::IntervalBaseType<ValueType> lowerBoundOfFeasibleInterval;
+    if (this->comparator.isLess(storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.upper(), clampedIntervalToSplitter.lower())) {
+        lowerBoundOfFeasibleInterval = clampedIntervalToSplitter.lower();
+    } else {
+        lowerBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.upper();
+    }
+
+    storm::IntervalBaseType<ValueType> upperBoundOfFeasibleInterval;
+    if (this->comparator.isLess(clampedIntervalToSplitter.upper(), storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.lower())) {
+        upperBoundOfFeasibleInterval = clampedIntervalToSplitter.upper();
+    } else {
+        upperBoundOfFeasibleInterval = storm::utility::one<IntervalBaseType<ValueType>>() - clampedIntervalToOtherBlocks.lower();
+    }
+
+    // For non-exact computations, it might be that the lower bound is slightly larger than the upper bound due to imprecision.
+    // Thus, we make sure here to make them equal to avoid returning an empty interval.
+    if (this->comparator.isEqual(lowerBoundOfFeasibleInterval, upperBoundOfFeasibleInterval)) {
+        upperBoundOfFeasibleInterval = lowerBoundOfFeasibleInterval;
+    }
+
+    return ValueType(lowerBoundOfFeasibleInterval, carl::BoundType::WEAK, upperBoundOfFeasibleInterval, carl::BoundType::WEAK);
 }
 
 template class EpsilonStableAbstractionDecomposition<storm::models::sparse::Dtmc<storm::Interval>>;

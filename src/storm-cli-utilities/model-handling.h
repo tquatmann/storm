@@ -707,10 +707,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelAb
                     "Epsilon value required to perform epsilon-stable abstraction minimization.");
     epsilonValue = abstractionSettings.getEpsilonValue();
 
-    auto bisimQuotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties),
-                                                                                storm::storage::BisimulationType::Strong, true);
     STORM_LOG_INFO("Performing abstraction minimization...");
-    auto quotient = storm::api::performAbstractionMinimization(bisimQuotient, createFormulasToRespect(input.properties), abstractionType, true, epsilonValue);
+    auto quotient = storm::api::performAbstractionMinimization(model, createFormulasToRespect(input.properties), abstractionType, true, epsilonValue);
 
     return quotient;
 }

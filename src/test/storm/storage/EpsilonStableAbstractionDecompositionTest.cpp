@@ -9,6 +9,9 @@
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/api/storm.h"
 #include "storm/storage/stateminimization/bisimulation/IntervalModelBisimulationDecomposition.h"
+#include "storm/storage/umb/import/SparseModelFromUmb.h"
+#include "storm/storage/umb/import/UmbImport.h"
+#include "storm/storage/umb/model/UmbModel.h"
 #include "test/storm_gtest.h"
 
 namespace {
@@ -36,5 +39,28 @@ TEST(EpsilonStableAbstractionDecompositionTest, AircraftTinyImdpPointIntervals) 
     EXPECT_EQ(86ul, result->getNumberOfStates());
     EXPECT_EQ(798ul, result->getNumberOfTransitions());
     EXPECT_EQ(254, result->getNumberOfChoices());
+}
+
+TEST(EpsilonStableAbstractionDecompositionTest, UAV2DUmbImdpIntervals) {
+    storm::umb::ImportOptions importOptions;
+    importOptions.buildStateValuations = false;
+    auto umb = storm::umb::importUmb(std::filesystem::path{STORM_TEST_RESOURCES_DIR "/imdp/uav-2d.umb"}, importOptions);
+
+    std::shared_ptr<storm::models::sparse::Mdp<storm::Interval>> model =
+        storm::umb::sparseModelFromUmb<storm::Interval>(umb, importOptions)->as<storm::models::sparse::Mdp<storm::Interval>>();
+
+    typename storm::storage::abstraction::EpsilonStableAbstractionDecomposition<storm::models::sparse::Mdp<storm::Interval>>::EpsilonStableAbstractionOptions
+        options;
+    options.setEpsilon(0.001);
+
+    storm::storage::abstraction::EpsilonStableAbstractionDecomposition<storm::models::sparse::Mdp<storm::Interval>> abstractionDecomposition(*model, options);
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> result;
+    ASSERT_NO_THROW(abstractionDecomposition.computeDecomposition());
+    ASSERT_NO_THROW(result = abstractionDecomposition.getQuotient());
+
+    EXPECT_EQ(storm::models::ModelType::Mdp, result->getType());
+    EXPECT_EQ(190ul, result->getNumberOfStates());
+    EXPECT_EQ(78118ul, result->getNumberOfTransitions());
+    EXPECT_EQ(3679ul, result->getNumberOfChoices());
 }
 }  // namespace

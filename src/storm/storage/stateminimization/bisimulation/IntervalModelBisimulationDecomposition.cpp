@@ -93,6 +93,7 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
                 auto firstChoiceOfStateA = choiceIndices[a];
                 auto lastChoiceOfStateA = choiceIndices[a + 1];
                 auto firstChoiceOfStateB = choiceIndices[b];
+                auto lastChoiceOfStateB = choiceIndices[b + 1];
 
                 STORM_LOG_ASSERT(lastChoiceOfStateA - firstChoiceOfStateA == lastChoiceOfStateB - firstChoiceOfStateB,
                                  "States with different numbers of choices should have been split before interval refinement.");
