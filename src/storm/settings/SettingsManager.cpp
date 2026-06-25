@@ -30,6 +30,7 @@
 #include "storm/settings/modules/GurobiSettings.h"
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/settings/modules/IOSettings.h"
+#include "storm/settings/modules/LearningSettings.h"
 #include "storm/settings/modules/LongRunAverageSolverSettings.h"
 #include "storm/settings/modules/MinMaxEquationSolverSettings.h"
 #include "storm/settings/modules/ModelCheckerSettings.h"
@@ -710,6 +711,7 @@ void initializeAll(std::string const& name, std::string const& executableName) {
     storm::settings::addModule<storm::settings::modules::HintSettings>();
     storm::settings::addModule<storm::settings::modules::OviSolverSettings>();
     storm::settings::addModule<storm::settings::modules::ConditionalSettings>();
+    storm::settings::addModule<storm::settings::modules::LearningSettings>();
 }
 
 }  // namespace settings

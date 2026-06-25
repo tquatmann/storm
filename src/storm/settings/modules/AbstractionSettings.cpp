@@ -217,7 +217,7 @@ AbstractionSettings::AbstractionSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, epsilonValueOptionName, true, "The epsilon allowed for epsilon-stable abstraction minimization.")
                         .setIsAdvanced()
                         .addArgument(storm::settings::ArgumentBuilder::createDoubleArgument("value", "The epsilon value allowed.")
-                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorExcluding(0.0, 1.0))
+                                         .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorIncluding(0.0, 1.0))
                                          .build())
                         .build());
 }

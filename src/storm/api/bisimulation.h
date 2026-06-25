@@ -51,7 +51,8 @@ std::shared_ptr<ModelType> performDeterministicSparseBisimulationMinimization(st
 template<typename ModelType>
 std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization(std::shared_ptr<ModelType> model,
                                                                                  std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-                                                                                 storm::storage::BisimulationType type, bool graphPreserving = true) {
+                                                                                 storm::storage::BisimulationType type, bool graphPreserving = true,
+                                                                                 bool actionSensitive = false) {
     typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions options;
     if (!formulas.empty() && graphPreserving) {
         options = typename storm::storage::NondeterministicModelBisimulationDecomposition<ModelType>::BisimulationOptions(*model, formulas);
@@ -64,6 +65,7 @@ std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization
         options.setKeepRewards(true);
     }
     options.setType(type);
+    options.setActionSensitivity(actionSensitive);
 
     if constexpr (storm::IsIntervalType<typename ModelType::ValueType>) {
         storm::storage::IntervalModelBisimulationDecomposition<ModelType> bisimulationDecomposition(*model, options);
@@ -79,7 +81,7 @@ std::shared_ptr<ModelType> performNondeterministicSparseBisimulationMinimization
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMinimization(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
-    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true) {
+    storm::storage::BisimulationType type = storm::storage::BisimulationType::Strong, bool graphPreserving = true, bool actionSensitive = false) {
     STORM_LOG_THROW(
         model->isOfType(storm::models::ModelType::Dtmc) || model->isOfType(storm::models::ModelType::Ctmc) || model->isOfType(storm::models::ModelType::Mdp),
         storm::exceptions::NotSupportedException, "Bisimulation minimization is currently only available for DTMCs, CTMCs and MDPs.");
@@ -95,7 +97,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMini
             model->template as<storm::models::sparse::Ctmc<ValueType>>(), formulas, type, graphPreserving);
     } else {
         return performNondeterministicSparseBisimulationMinimization<storm::models::sparse::Mdp<ValueType>>(
-            model->template as<storm::models::sparse::Mdp<ValueType>>(), formulas, type, graphPreserving);
+            model->template as<storm::models::sparse::Mdp<ValueType>>(), formulas, type, graphPreserving, actionSensitive);
     }
 }
 

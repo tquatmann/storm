@@ -29,6 +29,7 @@
 #include "storm/settings/modules/DebugSettings.h"
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/settings/modules/IOSettings.h"
+#include "storm/settings/modules/LearningSettings.h"
 #include "storm/settings/modules/ModelCheckerSettings.h"
 #include "storm/settings/modules/MultiObjectiveSettings.h"
 #include "storm/settings/modules/ResourceSettings.h"
@@ -718,8 +719,13 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
     storm::settings::modules::BisimulationSettings const& bisimulationSettings, bool graphPreserving = true) {
     storm::storage::BisimulationType bisimType = storm::storage::BisimulationType::Strong;
+    bool actionSensitive = false;
     if (bisimulationSettings.isWeakBisimulationSet()) {
         bisimType = storm::storage::BisimulationType::Weak;
+    }
+
+    if (bisimulationSettings.isActionSensitive()) {
+        actionSensitive = true;
     }
 
     // auto filename = [] {
@@ -734,7 +740,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
     // storm::api::exportSparseModelAsDrn(model, "before_" + filename, input.model ? input.model.get().getParameterNames() : std::vector<std::string>(), false);
 
     STORM_LOG_INFO("Performing bisimulation minimization...");
-    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true);
+    auto quotient = storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), bisimType, true, actionSensitive);
 
     // filename = [] {
     //     auto now = std::chrono::system_clock::now();
@@ -761,8 +767,27 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
     auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
+    auto learningSettings = storm::settings::getModule<storm::settings::modules::LearningSettings>();
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
+
+    if (learningSettings.isLearnIMDPFromMDPSet()) {
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot convert interval model to point-interval model.");
+        } else if constexpr (std::is_same_v<ValueType, double> || std::is_same_v<ValueType, storm::RationalNumber>) {
+            if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
+            } else {
+                STORM_PRINT_AND_LOG("Learning IMDP from given MDP.");
+                auto delta = learningSettings.getDeltaValue();
+                auto numberOfSamples = learningSettings.getNumberOfSamples();
+                auto learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearson(result.first, delta, numberOfSamples);
+                return {std::static_pointer_cast<storm::models::ModelBase>(learnedIntervalModel), true};
+            }
+        } else {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for doubles or rational numbers.");
+        }
+    }
 
     if (transformationSettings.isToPointIntervalModelSet()) {
         if constexpr (storm::IsIntervalType<ValueType>) {

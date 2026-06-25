@@ -83,9 +83,18 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
             return this->type;
         }
 
+        void setActionSensitivity(bool actionSensitive) {
+            this->actionSensitive = actionSensitive;
+        }
+
+        bool isActionSensitive() const {
+            return this->actionSensitive;
+        }
+
        private:
         /// A flag that indicates whether a strong or a weak bisimulation is to be computed.
         BisimulationType type;
+        bool actionSensitive;
     };
 
     /*!

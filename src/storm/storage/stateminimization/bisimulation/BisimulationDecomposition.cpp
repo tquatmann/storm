@@ -72,6 +72,8 @@ void BisimulationDecomposition<ModelType>::computeInitialPartition() {
     if (this->model.isNondeterministicModel()) {
         this->splitInitialPartitionBasedOnActionSets();
     }
+
+    std::cout << "Size after initial partition: " << this->partition.getNumberOfBlocks() << std::endl;
 }
 
 template<typename ModelType>
@@ -311,6 +313,10 @@ void BisimulationDecomposition<ModelType>::initializeLabelBasedPartition() {
     if (this->options.getKeepRewards() && this->model.hasRewardModel()) {
         // TODO: Check if this is implemented correctly
         this->splitInitialPartitionBasedOnRewards();
+    }
+
+    if (this->options.isActionSensitive()) {
+        this->splitInitialPartitionBasedOnActionSets();
     }
 }
 

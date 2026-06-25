@@ -69,6 +69,26 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
         }
     }
 
+    auto getToSplitter = [&](auto choice) {
+        if (touchedProbabilitiesToSplitter.get(choice)) {
+            return probabilitiesToCurrentSplitter[choice];
+        }
+        return storm::utility::zero<ValueType>();
+    };
+
+    auto getToOther = [&](auto choice) {
+        if (touchedProbabilitiesToSplitter.get(choice)) {
+            return probabilitiesToOtherBlocks[choice];
+        }
+
+        // If this choice does not touch the splitter, then all mass goes to the complement.
+        ValueType result = storm::utility::zero<ValueType>();
+        for (auto const& entry : this->model.getTransitionMatrix().getRow(choice)) {
+            result += entry.getValue();
+        }
+        return result;
+    };
+
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not.
         auto [noPredecessors, predecessors] = this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this, &choiceIndices](auto const& state) {
@@ -89,7 +109,7 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
         }
 
         if (predecessors.size() > 0) {
-            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this, &choiceIndices](auto const& a, auto const& b) {
+            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this, &choiceIndices, &getToSplitter, &getToOther](auto const& a, auto const& b) {
                 auto firstChoiceOfStateA = choiceIndices[a];
                 auto lastChoiceOfStateA = choiceIndices[a + 1];
                 auto firstChoiceOfStateB = choiceIndices[b];
@@ -102,10 +122,10 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
                     auto currentChoiceOfStateA = firstChoiceOfStateA + choiceOffset;
                     auto currentChoiceOfStateB = firstChoiceOfStateB + choiceOffset;
 
-                    auto feasibleIntervalOfChoiceA = computeFeasibleIntervalBasedOnAggregatedIntervals(probabilitiesToCurrentSplitter[currentChoiceOfStateA],
-                                                                                                       probabilitiesToOtherBlocks[currentChoiceOfStateA]);
-                    auto feasibleIntervalOfChoiceB = computeFeasibleIntervalBasedOnAggregatedIntervals(probabilitiesToCurrentSplitter[currentChoiceOfStateB],
-                                                                                                       probabilitiesToOtherBlocks[currentChoiceOfStateB]);
+                    auto feasibleIntervalOfChoiceA =
+                        computeFeasibleIntervalBasedOnAggregatedIntervals(getToSplitter(currentChoiceOfStateA), getToOther(currentChoiceOfStateA));
+                    auto feasibleIntervalOfChoiceB =
+                        computeFeasibleIntervalBasedOnAggregatedIntervals(getToSplitter(currentChoiceOfStateB), getToOther(currentChoiceOfStateB));
 
                     if (!this->comparator.isEqual(feasibleIntervalOfChoiceA.lower(), feasibleIntervalOfChoiceB.lower())) {
                         return this->comparator.isLess(feasibleIntervalOfChoiceA.lower(), feasibleIntervalOfChoiceB.lower());

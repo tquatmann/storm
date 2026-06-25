@@ -46,6 +46,8 @@ void EpsilonStableAbstractionDecomposition<ModelType>::computeInitialPartition()
         this->splitInitialPartitionBasedOnActionSets();
     }
     this->initializeChoiceDistributions();
+
+    std::cout << "Size after initial partition: " << this->partition.getNumberOfBlocks() << std::endl;
 }
 
 template<typename ModelType>
@@ -86,7 +88,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
                                                                                           double epsilon) {
     // Cluster states of this block in groups.
     std::vector<EpsilonStableAbstractionDecomposition::StateGroup> groups;
-    std::unordered_set<storm::storage::sparse::state_type> dirtyPredecessors;  // Predecessors whose distribution we have to recompute.
+    std::unordered_set<storm::storage::sparse::state_type> affectedPredecessors;  // Predecessors whose distribution we have to recompute.
 
     // TODO: Can we assume that choices/actions, that are labeled the same, are actually stored in the same order in the rowGrouping for each state?
     for (auto s : block) {
@@ -174,7 +176,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
 
     if (wasSplit) {
         // Place blocks of predecessors into queue.
-        this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks, &dirtyPredecessors](auto const& subBlock) {
+        this->partition.forEachSubBlock(block, [this, &blocksQueue, &enqueuedBlocks, &affectedPredecessors](auto const& subBlock) {
             for (auto state : subBlock) {
                 for (auto& transition : this->backwardTransitions.getRow(state)) {
                     auto predecessorState = transition.getColumn();
@@ -187,12 +189,12 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
                     }
 
                     // Recompute distribution of predecessor state for further refinement.
-                    dirtyPredecessors.insert(predecessorState);
+                    affectedPredecessors.insert(predecessorState);
                 }
             }
         });
 
-        for (auto predecessorState : dirtyPredecessors) {
+        for (auto predecessorState : affectedPredecessors) {
             recomputeChoiceDistributionsOfState(predecessorState);
         }
     }
@@ -259,6 +261,9 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
     // (a) the new transition matrix,
     // (b) the new labeling,
     // (c) the new reward structures.
+
+    validateEpsilonStability(this->options.getEpsilon());
+    debugFindMergeableFinalBlocks(this->options.getEpsilon());
 
     // Prepare a matrix builder for (a).
     // storm::storage::SparseMatrixBuilder<ValueType> builder(this->partition.getNumberOfBlocks(), this->partition.getNumberOfBlocks());
@@ -452,32 +457,65 @@ void EpsilonStableAbstractionDecomposition<ModelType>::debugFindMergeableFinalBl
 template<typename ModelType>
 bool EpsilonStableAbstractionDecomposition<ModelType>::canMergeBlocksForDebug(std::span<uint64_t const> blockA, std::span<uint64_t const> blockB,
                                                                               double epsilon) {
-    std::vector<storm::storage::sparse::state_type> states;
-    states.insert(states.end(), blockA.begin(), blockA.end());
-    states.insert(states.end(), blockB.begin(), blockB.end());
+    using StateType = storm::storage::sparse::state_type;
+
+    std::vector<StateType> states;
+    states.reserve(blockA.size() + blockB.size());
+
+    for (auto s : blockA) {
+        states.push_back(static_cast<StateType>(s));
+    }
+
+    for (auto s : blockB) {
+        states.push_back(static_cast<StateType>(s));
+    }
 
     if (states.empty()) {
         return true;
     }
 
-    auto candidate = originalChoiceDistributions[states.front()];
+    // All states in a merge candidate must have the same number of choices.
+    auto referenceDistributions = getChoiceDistributionsOfState(states.front());
+    std::size_t const numberOfChoices = referenceDistributions.size();
 
-    for (std::size_t i = 1; i < states.size(); ++i) {
-        candidate = computeEnhancedDistribution(candidate, originalChoiceDistributions[states[i]]);
-    }
-
-    bool ok = true;
     for (auto s : states) {
-        auto delta = computeDeltaForState(originalChoiceDistributions[s], candidate);
+        auto distributions = getChoiceDistributionsOfState(s);
 
-        // std::cout << "merge-debug state " << s << ", delta = " << delta << ", 2delta = " << (2 * delta) << ", epsilon = " << epsilon << std::endl;
+        STORM_LOG_ASSERT(distributions.size() == numberOfChoices, "Tried to test epsilon-merge of states with different numbers of choices.");
 
-        if (2 * delta > epsilon) {
-            ok = false;
+        if (distributions.size() != numberOfChoices) {
+            return false;
         }
     }
 
-    return ok;
+    // Check epsilon-stability of the union block, choice by choice.
+    for (std::size_t choiceOffset = 0; choiceOffset < numberOfChoices; ++choiceOffset) {
+        // Build the enhanced distribution for this choice over all states.
+        auto enhancedDistribution = referenceDistributions[choiceOffset];
+
+        for (std::size_t i = 1; i < states.size(); ++i) {
+            auto distributions = getChoiceDistributionsOfState(states[i]);
+
+            enhancedDistribution = computeEnhancedDistribution(enhancedDistribution, distributions[choiceOffset]);
+        }
+
+        // Check every state against the enhanced distribution.
+        for (auto s : states) {
+            auto distributions = getChoiceDistributionsOfState(s);
+
+            auto delta = computeDeltaForState(distributions[choiceOffset], enhancedDistribution);
+
+            if (this->comparator.isLess(epsilon, 2 * delta)) {
+                // std::cout << "DEBUG cannot merge blocks " << blockA.front() << " and " << blockB.front() << ": state=" << s << ", choiceOffset=" <<
+                // choiceOffset
+                //           << ", delta=" << delta << ", 2delta=" << (2 * delta) << ", epsilon=" << epsilon << std::endl;
+
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 // TODO: Add methods like this in a STORM_ASSERT_LOG?
@@ -490,25 +528,32 @@ void EpsilonStableAbstractionDecomposition<ModelType>::validateEpsilonStability(
             return;
         }
 
-        auto candidate = originalChoiceDistributions[block.front()];
+        auto representativeDistributions = getChoiceDistributionsOfState(block.front());
 
-        for (auto it = std::next(block.begin()); it != block.end(); ++it) {
-            candidate = computeEnhancedDistribution(candidate, originalChoiceDistributions[*it]);
-        }
+        for (std::size_t choiceOffset = 0; choiceOffset < representativeDistributions.size(); ++choiceOffset) {
+            auto candidate = representativeDistributions[choiceOffset];
 
-        for (auto state : block) {
-            auto delta = computeDeltaForState(originalChoiceDistributions[state], candidate);
+            for (auto it = std::next(block.begin()); it != block.end(); ++it) {
+                auto distributions = getChoiceDistributionsOfState(*it);
+                candidate = computeEnhancedDistribution(candidate, distributions[choiceOffset]);
+            }
 
-            if (2 * delta > epsilon) {
-                valid = false;
-                std::cout << "EPSILON VALIDATION FAILED: block front=" << block.front() << ", state=" << state << ", delta=" << delta
-                          << ", 2delta=" << (2 * delta) << ", epsilon=" << epsilon << std::endl;
+            for (auto state : block) {
+                auto distributions = getChoiceDistributionsOfState(state);
+                auto delta = computeDeltaForState(distributions[choiceOffset], candidate);
+
+                if (this->comparator.isLess(epsilon, 2 * delta)) {
+                    valid = false;
+                    std::cout << "EPSILON VALIDATION FAILED:"
+                              << " block=" << block.front() << " state=" << state << " choiceOffset=" << choiceOffset << " 2delta=" << (2 * delta)
+                              << " epsilon=" << epsilon << std::endl;
+                }
             }
         }
     });
 
     if (valid) {
-        std::cout << "Epsilon validation passed for final partition." << std::endl;
+        std::cout << "Epsilon validation passed." << std::endl;
     }
 }
 

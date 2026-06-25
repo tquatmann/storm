@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <random>
 #include <utility>
 
 #include "storm/adapters/IntervalForward.h"

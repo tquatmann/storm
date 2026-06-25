@@ -14,6 +14,7 @@ const std::string BisimulationSettings::reuseOptionName = "reuse";
 const std::string BisimulationSettings::initialPartitionOptionName = "init";
 const std::string BisimulationSettings::refinementModeOptionName = "refine";
 const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
+const std::string BisimulationSettings::actionSensitiveOptionName = "action-sensitive";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -82,6 +83,11 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                                          .addValidatorString(ArgumentValidatorFactory::createMultipleChoiceValidator(refinementModes))
                                          .setDefaultValueString("full")
                                          .build())
+                        .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, actionSensitiveOptionName, false,
+                                                   "Sets whether the computation of the initial states take the sets of enabled actions into account.")
+                        .setIsAdvanced()
                         .build());
 }
 
@@ -163,6 +169,10 @@ BisimulationSettings::RefinementMode BisimulationSettings::getRefinementMode() c
         return RefinementMode::ChangedStates;
     }
     return RefinementMode::Full;
+}
+
+bool BisimulationSettings::isActionSensitive() const {
+    return this->getOption(actionSensitiveOptionName).getHasOptionBeenSet();
 }
 
 bool BisimulationSettings::check() const {
