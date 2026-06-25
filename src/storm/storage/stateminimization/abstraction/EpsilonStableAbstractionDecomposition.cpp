@@ -646,19 +646,25 @@ void EpsilonStableAbstractionDecomposition<ModelType>::initializeChoiceDistribut
 template<typename ModelType>
 void EpsilonStableAbstractionDecomposition<ModelType>::recomputeChoiceDistribution(uint_fast64_t choice) {
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> rawDistribution;
-    ValueType allTransitionIntervals = storm::utility::zero<ValueType>();
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> distribution;
-    // TODO: Compute the feasible choice distributions here.
 
+    // Compute the raw distribution first.
     for (auto const& e : this->model.getTransitionMatrix().getRow(choice)) {
         rawDistribution.addProbability(this->partition.getBlockOfElement(e.getColumn()).front(), e.getValue());
-        allTransitionIntervals += e.getValue();
     }
 
-    auto rawDistributionEntry = rawDistribution.begin();
+    auto rawDistributionEntry = rawDistribution.begin();  // e.g. for a block C.
     while (rawDistributionEntry != rawDistribution.end()) {
-        distribution.addProbability(rawDistributionEntry->first, computeFeasibleIntervalBasedOnAggregatedIntervals(
-                                                                     rawDistributionEntry->second, allTransitionIntervals - rawDistributionEntry->second));
+        // Compute the sum of all intervals to \Pi \setmínus C.
+        ValueType intervalToOtherBlocks = storm::utility::zero<ValueType>();
+        for (auto const& e : this->model.getTransitionMatrix().getRow(choice)) {
+            if (this->partition.getBlockOfElement(e.getColumn()).front() != rawDistributionEntry->first) {
+                intervalToOtherBlocks += e.getValue();
+            }
+        }
+        // Compute and store aggregated feasible interval to C.
+        distribution.addProbability(rawDistributionEntry->first,
+                                    computeFeasibleIntervalBasedOnAggregatedIntervals(rawDistributionEntry->second, intervalToOtherBlocks));
         rawDistributionEntry++;
     }
 
