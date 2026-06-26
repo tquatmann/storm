@@ -778,7 +778,7 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
             if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
             } else {
-                STORM_PRINT_AND_LOG("Learning IMDP from given MDP.");
+                STORM_PRINT_AND_LOG("Learning IMDP from given MDP.\n");
                 auto delta = learningSettings.getDeltaValue();
                 auto numberOfSamples = learningSettings.getNumberOfSamples();
                 auto learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearson(result.first, delta, numberOfSamples);

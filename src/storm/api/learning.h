@@ -6,6 +6,7 @@
 
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/models/sparse/Model.h"
+#include "storm/storage/BitVector.h"
 #include "storm/storage/Distribution.h"
 
 namespace storm {
@@ -17,12 +18,12 @@ storm::Interval getClopperPearsonInterval(std::uint_fast64_t k, std::uint_fast64
     ValueType upperBound;
 
     if (n < 1) {
-        STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Tried to obtain clopper-pearson interval for state-action pair with no samples.");
+        STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Tried to obtain Clopper-Pearson interval for state-action pair with no samples.");
     }
 
     if (k > n) {
         STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException,
-                        "Tried to obtain clopper-pearsin interval for state-action pair with more successes than samples. How?");
+                        "Tried to obtain Clopper-Pearson interval for state-action pair with more successes than samples. How?");
     }
 
     if (k > 0) {
@@ -44,11 +45,16 @@ template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPByClopperPearson(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, double delta, std::size_t numberOfSamples) {
     if constexpr (!storm::IsIntervalType<ValueType>) {
+        if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support learning an interval model for DTMCs and MDPs.");
+        }
+
         using IntervalType = storm::Interval;
         using RewardModelType = storm::models::sparse::StandardRewardModel<IntervalType>;
 
         std::unordered_map<std::size_t, std::uint_fast64_t> choiceSampleCount;
         std::unordered_map<std::size_t, std::unordered_map<storm::storage::sparse::state_type, std::uint_fast64_t>> choiceSuccessorSampleCount;
+        storm::storage::BitVector choiceHasSingleSuccessor(model->getNumberOfChoices(), false);
 
         std::mt19937_64 rng(std::random_device{}());
         std::uniform_real_distribution<double> uniformDistribution(0.0, 1.0);
@@ -70,6 +76,10 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
                     successorState++;
                 }
 
+                if (successorDistribution.size() == 1) {
+                    choiceHasSingleSuccessor.set(currentChoice, true);
+                }
+
                 // Draw samples from successor distribution.
                 while (choiceSampleCount[currentChoice] < numberOfSamples) {
                     auto sampledSuccessorState = successorDistribution.sampleFromDistribution(uniformDistribution(rng));
@@ -81,10 +91,7 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
             }
         }
 
-        if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
-        }
-
+        // Construct IMDP from the results of the sampling.
         auto const& oldMatrix = model->getTransitionMatrix();
 
         storm::storage::SparseMatrixBuilder<IntervalType> builder(oldMatrix.getRowCount(), oldMatrix.getColumnCount(), oldMatrix.getNonzeroEntryCount(), true,
@@ -100,13 +107,22 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
 
                 auto successorState = begin;
                 while (successorState != end) {
-                    // Compute Clopper-Pearson intervals.
-                    IntervalType estimatedInterval = storm::api::getClopperPearsonInterval<ValueType>(
-                        choiceSuccessorSampleCount[currentChoice][successorState->getColumn()], choiceSampleCount[currentChoice], delta);
+                    IntervalType estimatedInterval;
+
+                    // Small support optimization: if we know that the choice has only one possible successor, we can just set the interval [1, 1].
+                    if (choiceHasSingleSuccessor.get(currentChoice)) {
+                        estimatedInterval = IntervalType(storm::utility::one<ValueType>(), storm::utility::one<ValueType>());
+                    } else {  // Otherwise, we compute the Clopper-Pearson intervals.
+                        estimatedInterval = storm::api::getClopperPearsonInterval<ValueType>(
+                            choiceSuccessorSampleCount[currentChoice][successorState->getColumn()], choiceSampleCount[currentChoice], delta);
+                    }
 
                     builder.addNextValue(currentChoice, successorState->getColumn(), estimatedInterval);
 
                     successorState++;
+
+                    STORM_LOG_THROW((successorState == end) || !choiceHasSingleSuccessor.get(currentChoice), storm::exceptions::InvalidOperationException,
+                                    "Choice was supposed to only have one successor. How?");
                 }
             }
         }
