@@ -771,7 +771,8 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
 
-    if (learningSettings.isLearnIMDPFromMDPSet()) {
+    if (learningSettings.isLearnIMDPFromMDPSet() || learningSettings.isLearnIMDPFromMDPWithMaxWidthSet() ||
+        learningSettings.isLearnIMDPFromMDPWithMaxL1WidthSet()) {
         if constexpr (storm::IsIntervalType<ValueType>) {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot convert interval model to point-interval model.");
         } else if constexpr (std::is_same_v<ValueType, double> || std::is_same_v<ValueType, storm::RationalNumber>) {
@@ -779,9 +780,22 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
                 STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
             } else {
                 STORM_PRINT_AND_LOG("Learning IMDP from given MDP.\n");
-                auto delta = learningSettings.getDeltaValue();
-                auto numberOfSamples = learningSettings.getNumberOfSamples();
-                auto learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearson(result.first, delta, numberOfSamples);
+                std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnedIntervalModel;
+                if (learningSettings.isLearnIMDPFromMDPSet()) {
+                    auto delta = learningSettings.getDeltaValue();
+                    auto numberOfSamples = learningSettings.getNumberOfSamples();
+                    learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearson(result.first, delta, numberOfSamples);
+                } else if (learningSettings.isLearnIMDPFromMDPWithMaxWidthSet()) {
+                    auto delta = learningSettings.getWidthDeltaValue();
+                    auto maxWidth = learningSettings.getMaxWidth();
+                    auto maxNumberOfSamples = learningSettings.getMaxNumberOfSamples();
+                    learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearsonUntilWidth(result.first, delta, maxWidth, maxNumberOfSamples);
+                } else {
+                    auto delta = learningSettings.getL1WidthDeltaValue();
+                    auto maxL1Width = learningSettings.getMaxL1Width();
+                    auto maxNumberOfSamples = learningSettings.getL1WidthMaxNumberOfSamples();
+                    learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearsonUntilL1Width(result.first, delta, maxL1Width, maxNumberOfSamples);
+                }
                 return {std::static_pointer_cast<storm::models::ModelBase>(learnedIntervalModel), true};
             }
         } else {

@@ -160,19 +160,17 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilon
     }
 
     if (groups.size() <= 1)
-        return;  // Nothing to split
+        return;  // Nothing to split.
+
+    std::vector<uint_fast64_t> stateToGroup(this->model.getNumberOfStates());
+    for (uint_fast64_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+        for (auto state : groups[groupIndex].getStates()) {
+            stateToGroup[state] = groupIndex;
+        }
+    }
 
     // Split block by grouping.
-    bool wasSplit = this->partition.splitBlockByOrder(block, [&](auto a, auto b) {
-        int groupOfA = -1, groupOfB = -1;
-        for (int i = 0; i < groups.size(); ++i) {
-            if (std::find(groups[i].getStates().begin(), groups[i].getStates().end(), a) != groups[i].getStates().end())
-                groupOfA = i;
-            if (std::find(groups[i].getStates().begin(), groups[i].getStates().end(), b) != groups[i].getStates().end())
-                groupOfB = i;
-        }
-        return (groupOfA < groupOfB);
-    });
+    bool wasSplit = this->partition.splitBlockByOrder(block, [&stateToGroup](auto a, auto b) { return stateToGroup[a] < stateToGroup[b]; });
 
     if (wasSplit) {
         // Place blocks of predecessors into queue.
@@ -262,8 +260,8 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
     // (b) the new labeling,
     // (c) the new reward structures.
 
-    validateEpsilonStability(this->options.getEpsilon());
-    debugFindMergeableFinalBlocks(this->options.getEpsilon());
+    // validateEpsilonStability(this->options.getEpsilon());
+    // debugFindMergeableFinalBlocks(this->options.getEpsilon());
 
     // Prepare a matrix builder for (a).
     // storm::storage::SparseMatrixBuilder<ValueType> builder(this->partition.getNumberOfBlocks(), this->partition.getNumberOfBlocks());
