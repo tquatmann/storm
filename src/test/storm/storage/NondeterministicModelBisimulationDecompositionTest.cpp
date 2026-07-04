@@ -74,4 +74,3 @@ TEST(NondeterministicModelBisimulationDecomposition, MiniExample) {
     std::shared_ptr<storm::models::sparse::Model<double>> result;
     ASSERT_NO_THROW(result = bisim.getQuotient());
 }
-
