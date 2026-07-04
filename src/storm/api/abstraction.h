@@ -27,8 +27,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> performAbstractionMinim
 
         if (model->isOfType(storm::models::ModelType::Dtmc)) {
             auto options = typename storm::storage::abstraction::EpsilonStableAbstractionDecomposition<
-                storm::models::sparse::Dtmc<ValueType>>::EpsilonStableAbstractionOptions(*model->template as<storm::models::sparse::Dtmc<ValueType>>(), formulas,
-                                                                                         epsilon);
+                storm::models::sparse::Dtmc<ValueType>>::EpsilonStableAbstractionOptions(*model->template as<storm::models::sparse::Dtmc<ValueType>>(),
+                                                                                         formulas, epsilon);
 
             storm::storage::abstraction::EpsilonStableAbstractionDecomposition<storm::models::sparse::Dtmc<ValueType>> abstractionDecomposition(
                 *model->template as<storm::models::sparse::Dtmc<ValueType>>(), options);
