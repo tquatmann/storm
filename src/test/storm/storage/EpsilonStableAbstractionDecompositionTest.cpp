@@ -73,7 +73,7 @@ TEST(EpsilonStableAbstractionDecompositionTest, TestLearning) {
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
     std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
 
-    storm::api::learnIMDPFromMDPByClopperPearson<double>(mdp, 0.01, 10);
+    storm::api::learnIMDPFromMDPByClopperPearsonUntilMaxSamples<double>(mdp, 0.01, 10);
 }
 
 TEST(EpsilonStableAbstractionDecompositionTest, TestFirewire) {

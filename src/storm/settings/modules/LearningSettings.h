@@ -11,18 +11,13 @@ class LearningSettings : public ModuleSettings {
     LearningSettings();
 
     bool isLearnIMDPFromMDPSet();
-    bool isLearnIMDPFromMDPWithMaxWidthSet();
     bool isLearnIMDPFromMDPWithMaxL1WidthSet();
 
-    double getDeltaValue();
+    double getLambdaValue();
 
     uint_fast64_t getNumberOfSamples();
 
-    double getWidthDeltaValue();
-    double getMaxWidth();
-    uint_fast64_t getMaxNumberOfSamples();
-
-    double getL1WidthDeltaValue();
+    double getL1WidthLambdaValue();
     double getMaxL1Width();
     uint_fast64_t getL1WidthMaxNumberOfSamples();
 
@@ -35,7 +30,6 @@ class LearningSettings : public ModuleSettings {
    private:
     // Define the string names of the options as constants.
     static const std::string learnIMDPOptionName;
-    static const std::string learnIMDPUntilWidthOptionName;
     static const std::string learnIMDPUntilL1WidthOptionName;
 };
 

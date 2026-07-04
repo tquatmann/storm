@@ -203,25 +203,37 @@ storm::storage::Distribution<typename ModelType::ValueType, storm::storage::spar
 EpsilonStableAbstractionDecomposition<ModelType>::computeEnhancedDistribution(
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& firstDistribution,
     storm::storage::Distribution<ValueType, storm::storage::sparse::state_type> const& secondDistribution) {
+    auto const zero = storm::utility::zero<ValueType>();
     auto enhancedDistribution = storm::storage::Distribution<ValueType, storm::storage::sparse::state_type>();
-    std::set<storm::storage::sparse::state_type> keys;
+    enhancedDistribution.reserve(firstDistribution.size() + secondDistribution.size());
 
-    for (auto const& entry : firstDistribution) {
-        keys.insert(entry.first);
-    }
+    auto firstIterator = firstDistribution.begin();
+    auto secondIterator = secondDistribution.begin();
+    auto const firstEnd = firstDistribution.end();
+    auto const secondEnd = secondDistribution.end();
 
-    for (auto const& entry : secondDistribution) {
-        keys.insert(entry.first);
-    }
-
-    for (auto key : keys) {
-        auto firstInterval = firstDistribution.getProbability(key);
-        auto secondInterval = secondDistribution.getProbability(key);
-
+    auto addEnhancedInterval = [this, &enhancedDistribution](storm::storage::sparse::state_type key, ValueType const& firstInterval,
+                                                             ValueType const& secondInterval) {
+        // Computes the convex hull of both intervals.
         auto lower = this->comparator.isLess(firstInterval.lower(), secondInterval.lower()) ? firstInterval.lower() : secondInterval.lower();
         auto upper = this->comparator.isLess(secondInterval.upper(), firstInterval.upper()) ? firstInterval.upper() : secondInterval.upper();
 
         enhancedDistribution.addProbability(key, ValueType(lower, carl::BoundType::WEAK, upper, carl::BoundType::WEAK));
+    };
+
+    // Two pointer comparison approach, as the distributions are internally ordered by the block id.
+    while (firstIterator != firstEnd || secondIterator != secondEnd) {
+        if (secondIterator == secondEnd || (firstIterator != firstEnd && firstIterator->first < secondIterator->first)) {
+            addEnhancedInterval(firstIterator->first, firstIterator->second, zero);
+            ++firstIterator;
+        } else if (firstIterator == firstEnd || secondIterator->first < firstIterator->first) {
+            addEnhancedInterval(secondIterator->first, zero, secondIterator->second);
+            ++secondIterator;
+        } else {
+            addEnhancedInterval(firstIterator->first, firstIterator->second, secondIterator->second);
+            ++firstIterator;
+            ++secondIterator;
+        }
     }
 
     return storm::utility::interval::makeDistributionProbabilistic(enhancedDistribution, this->comparator);
@@ -234,16 +246,43 @@ storm::IntervalBaseType<typename ModelType::ValueType> EpsilonStableAbstractionD
     auto lowerDelta = storm::utility::zero<IntervalBaseType<ValueType>>();
     auto upperDelta = storm::utility::zero<IntervalBaseType<ValueType>>();
 
+    // Two pointer comparison approach, as the distributions are internally ordered by the block id.
+    auto stateDistributionIterator = stateDistribution.begin();
+    auto const stateDistributionEnd = stateDistribution.end();
     auto enhancedDistributionIterator = enhancedDistribution.begin();
+    // Iterate over the enhanced distribution.
     while (enhancedDistributionIterator != enhancedDistribution.end()) {
-        ValueType intervalFromState = stateDistribution.getProbability(enhancedDistributionIterator->first);
-        ValueType intervalFromEnhancedState = enhancedDistributionIterator->second;
+        // Progress the pointer of the state distribution as long as we either reach the current entry of the enhanced distribution or the end of the state
+        // distribution.
+        while (stateDistributionIterator != stateDistributionEnd && stateDistributionIterator->first < enhancedDistributionIterator->first) {
+            STORM_LOG_ASSERT(
+                this->comparator.isZero(stateDistributionIterator->second.lower()) && this->comparator.isZero(stateDistributionIterator->second.upper()),
+                "Enhanced distribution must contain every non-zero entry of the state distribution.");
+            ++stateDistributionIterator;
+        }
+
+        ValueType const& intervalFromEnhancedState = enhancedDistributionIterator->second;
+        bool const hasMatchingStateEntry =
+            stateDistributionIterator != stateDistributionEnd && stateDistributionIterator->first == enhancedDistributionIterator->first;
+        ValueType intervalFromState = hasMatchingStateEntry ? stateDistributionIterator->second : storm::utility::zero<ValueType>();
 
         lowerDelta += intervalFromState.lower() - intervalFromEnhancedState.lower();
         upperDelta += intervalFromEnhancedState.upper() - intervalFromState.upper();
 
+        if (hasMatchingStateEntry) {
+            ++stateDistributionIterator;
+        }
         enhancedDistributionIterator++;
     }
+
+#ifndef NDEBUG
+    while (stateDistributionIterator != stateDistributionEnd) {
+        STORM_LOG_ASSERT(
+            this->comparator.isZero(stateDistributionIterator->second.lower()) && this->comparator.isZero(stateDistributionIterator->second.upper()),
+            "Enhanced distribution must contain every non-zero entry of the state distribution.");
+        ++stateDistributionIterator;
+    }
+#endif
 
     return storm::utility::max(lowerDelta, upperDelta);
 }
