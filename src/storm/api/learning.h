@@ -113,12 +113,15 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
         // Construct IMDP from the results of the sampling.
         auto const& oldMatrix = model->getTransitionMatrix();
 
+        bool const isDeterministicModel = model->isOfType(storm::models::ModelType::Dtmc);
         storm::storage::SparseMatrixBuilder<IntervalType> builder(oldMatrix.getRowCount(), oldMatrix.getColumnCount(), oldMatrix.getNonzeroEntryCount(), true,
-                                                                  true, oldMatrix.getRowGroupCount());
+                                                                  !isDeterministicModel, isDeterministicModel ? 0 : oldMatrix.getRowGroupCount());
         ValueType maximumFeasibleL1Diameter = storm::utility::zero<ValueType>();
 
         for (std::size_t s = 0; s < model->getNumberOfStates(); ++s) {
-            builder.newRowGroup(stateChoiceIndices[s]);
+            if (!isDeterministicModel) {
+                builder.newRowGroup(stateChoiceIndices[s]);
+            }
 
             auto numberOfChoices = stateChoiceIndices[s + 1] - stateChoiceIndices[s];
             for (auto choiceOffset = 0; choiceOffset < numberOfChoices; choiceOffset++) {
@@ -180,7 +183,7 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
 
         // TODO: Implement copying of RewardModel.
 
-        if (model->isOfType(storm::models::ModelType::Dtmc)) {
+        if (isDeterministicModel) {
             return std::make_shared<storm::models::sparse::Dtmc<IntervalType>>(std::move(components));
         }
 
@@ -281,11 +284,14 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
 
         auto const& oldMatrix = model->getTransitionMatrix();
 
+        bool const isDeterministicModel = model->isOfType(storm::models::ModelType::Dtmc);
         storm::storage::SparseMatrixBuilder<IntervalType> builder(oldMatrix.getRowCount(), oldMatrix.getColumnCount(), oldMatrix.getNonzeroEntryCount(), true,
-                                                                  true, oldMatrix.getRowGroupCount());
+                                                                  !isDeterministicModel, isDeterministicModel ? 0 : oldMatrix.getRowGroupCount());
 
         for (std::size_t s = 0; s < model->getNumberOfStates(); ++s) {
-            builder.newRowGroup(stateChoiceIndices[s]);
+            if (!isDeterministicModel) {
+                builder.newRowGroup(stateChoiceIndices[s]);
+            }
 
             auto numberOfChoices = stateChoiceIndices[s + 1] - stateChoiceIndices[s];
             for (auto choiceOffset = 0; choiceOffset < numberOfChoices; choiceOffset++) {
@@ -330,7 +336,7 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnIMDPFromMDPB
             components.choiceOrigins = model->getChoiceOrigins();
         }
 
-        if (model->isOfType(storm::models::ModelType::Dtmc)) {
+        if (isDeterministicModel) {
             return std::make_shared<storm::models::sparse::Dtmc<IntervalType>>(std::move(components));
         }
 

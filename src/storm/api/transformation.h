@@ -432,11 +432,14 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> transformToPointI
         auto const& oldMatrix = model->getTransitionMatrix();
         auto const& rowGroupIndices = oldMatrix.getRowGroupIndices();
 
+        bool const isDeterministicModel = model->isOfType(storm::models::ModelType::Dtmc);
         storm::storage::SparseMatrixBuilder<IntervalType> builder(oldMatrix.getRowCount(), oldMatrix.getColumnCount(), oldMatrix.getNonzeroEntryCount(), true,
-                                                                  true, oldMatrix.getRowGroupCount());
+                                                                  !isDeterministicModel, isDeterministicModel ? 0 : oldMatrix.getRowGroupCount());
 
         for (std::size_t s = 0; s < model->getNumberOfStates(); s++) {
-            builder.newRowGroup(rowGroupIndices[s]);
+            if (!isDeterministicModel) {
+                builder.newRowGroup(rowGroupIndices[s]);
+            }
 
             for (auto row = rowGroupIndices[s]; row < rowGroupIndices[s + 1]; row++) {
                 for (auto const& entry : oldMatrix.getRow(row)) {
@@ -463,7 +466,7 @@ std::shared_ptr<storm::models::sparse::Model<storm::Interval>> transformToPointI
 
         // TODO: Implement copying of RewardModel.
 
-        if (model->isOfType(storm::models::ModelType::Dtmc)) {
+        if (isDeterministicModel) {
             return std::make_shared<storm::models::sparse::Dtmc<IntervalType>>(std::move(components));
         }
 
