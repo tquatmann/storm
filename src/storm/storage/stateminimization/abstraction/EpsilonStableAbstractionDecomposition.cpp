@@ -337,6 +337,18 @@ void EpsilonStableAbstractionDecomposition<ModelType>::buildQuotientFromPartitio
         blockIndex++;
     });
 
+    auto const& abstractionSettings = storm::settings::getModule<storm::settings::modules::AbstractionSettings>();
+    if (abstractionSettings.isExportQuotientMapSet()) {
+        std::ofstream stream(abstractionSettings.getExportQuotientMapFilename());
+        stream << "state,quotient_state\n";
+        this->partition.forEachBlock([&](auto const& block) {
+            auto const quotientState = blocksMapping.at(block.front());
+            for (auto const state : block) {
+                stream << state << ',' << quotientState << '\n';
+            }
+        });
+    }
+
     uint_fast64_t currentRow = 0;
     this->partition.forEachBlock([&](auto const& block) {
         builder.newRowGroup(currentRow);

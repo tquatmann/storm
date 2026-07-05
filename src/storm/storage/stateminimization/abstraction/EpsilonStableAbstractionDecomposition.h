@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <fstream>
 #include <random>
 #include <utility>
 
@@ -8,8 +9,7 @@
 #include "storm/exceptions/InvalidOptionException.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Mdp.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/CoreSettings.h"
+#include "storm/settings/modules/AbstractionSettings.h"
 #include "storm/storage/Distribution.h"
 #include "storm/storage/stateminimization/BaseDecomposition.h"
 #include "storm/utility/interval.h"

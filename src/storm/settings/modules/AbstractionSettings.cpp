@@ -33,6 +33,7 @@ const std::string AbstractionSettings::fixPlayer1StrategyOptionName = "fixpl1str
 const std::string AbstractionSettings::fixPlayer2StrategyOptionName = "fixpl2strat";
 const std::string AbstractionSettings::validBlockModeOptionName = "validmode";
 const std::string AbstractionSettings::epsilonValueOptionName = "epsilon";
+const std::string AbstractionSettings::exportQuotientMapOptionName = "export-quotient-map";
 
 AbstractionSettings::AbstractionSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> methods = {"games", "bisimulation", "bisim", "epsilon-stable", "epsilon"};
@@ -220,6 +221,12 @@ AbstractionSettings::AbstractionSettings() : ModuleSettings(moduleName) {
                                          .addValidatorDouble(ArgumentValidatorFactory::createDoubleRangeValidatorIncluding(0.0, 1.0))
                                          .build())
                         .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, exportQuotientMapOptionName, false,
+                                                   "Exports a CSV mapping from original states to quotient states for epsilon-stable abstraction.")
+                        .setIsAdvanced()
+                        .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The output CSV file.").build())
+                        .build());
 }
 
 AbstractionSettings::Method AbstractionSettings::getAbstractionRefinementMethod() const {
@@ -380,6 +387,14 @@ bool AbstractionSettings::isEpsilonValueSet() const {
 
 double AbstractionSettings::getEpsilonValue() const {
     return this->getOption(epsilonValueOptionName).getArgumentByName("value").getValueAsDouble();
+}
+
+bool AbstractionSettings::isExportQuotientMapSet() const {
+    return this->getOption(exportQuotientMapOptionName).getHasOptionBeenSet();
+}
+
+std::string AbstractionSettings::getExportQuotientMapFilename() const {
+    return this->getOption(exportQuotientMapOptionName).getArgumentByName("filename").getValueAsString();
 }
 
 }  // namespace modules

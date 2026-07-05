@@ -198,6 +198,16 @@ class AbstractionSettings : public ModuleSettings {
      */
     bool isEpsilonStableMethodSet() const;
 
+    /*!
+     * Retrieves whether the quotient state map should be exported.
+     */
+    bool isExportQuotientMapSet() const;
+
+    /*!
+     * Retrieves the filename to which the quotient state map should be exported.
+     */
+    std::string getExportQuotientMapFilename() const;
+
     const static std::string moduleName;
 
    private:
@@ -223,6 +233,7 @@ class AbstractionSettings : public ModuleSettings {
     const static std::string fixPlayer2StrategyOptionName;
     const static std::string validBlockModeOptionName;
     const static std::string epsilonValueOptionName;
+    const static std::string exportQuotientMapOptionName;
 };
 
 }  // namespace modules
