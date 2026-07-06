@@ -1,6 +1,6 @@
 #include <sstream>
 #include "storm/models/sparse/Dtmc.h"
-#include "storm/storage/bisimulation/Partition.h"
+#include "storm/storage/stateminimization/Partition.h"
 
 #include "test/storm_gtest.h"
 

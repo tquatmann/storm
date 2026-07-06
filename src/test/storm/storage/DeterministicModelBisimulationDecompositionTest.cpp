@@ -166,7 +166,7 @@ TEST(DeterministicModelBisimulationDecomposition, Cluster) {
     EXPECT_EQ(1731ul, result->getNumberOfStates());
     EXPECT_EQ(8619ul, result->getNumberOfTransitions());
 
-    typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<double>>::Options options;
+    typename storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<double>>::BisimulationOptions options;
     options.respectedAtomicPropositions = std::set<std::string>({"down"});
     storm::storage::DeterministicModelBisimulationDecomposition<storm::models::sparse::Ctmc<double>> bisim2(*ctmc, options);
     ASSERT_NO_THROW(bisim2.computeDecomposition());

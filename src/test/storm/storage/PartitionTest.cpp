@@ -1,5 +1,5 @@
 #include <sstream>
-#include "storm/storage/bisimulation/Partition.h"
+#include "storm/storage/stateminimization/Partition.h"
 
 #include "test/storm_gtest.h"
 
@@ -20,8 +20,8 @@ std::string blockToString(auto const& block) {
     return oss.str();
 }
 
-bool equalBlocks(storm::storage::bisimulation::Partition const& partition, std::initializer_list<uint64_t> const& expected,
-                 storm::storage::bisimulation::Partition::Block const& actual) {
+bool equalBlocks(storm::storage::stateminimization::Partition const& partition, std::initializer_list<uint64_t> const& expected,
+                 storm::storage::stateminimization::Partition::Block const& actual) {
     bool const expectedContainsActual =
         std::all_of(actual.begin(), actual.end(), [&expected](auto const& e) { return std::find(expected.begin(), expected.end(), e) != expected.end(); });
     EXPECT_TRUE(expectedContainsActual) << "Content missmatch: " << blockToString(expected) << " vs. " << blockToString(actual);
@@ -38,7 +38,7 @@ bool equalBlocks(storm::storage::bisimulation::Partition const& partition, std::
 }
 
 TEST(PartitionTest, Basic) {
-    storm::storage::bisimulation::Partition partition(10);
+    storm::storage::stateminimization::Partition partition(10);
 
     // Check initial partition
     EXPECT_EQ(10ul, partition.getNumberOfElements());
@@ -109,7 +109,7 @@ TEST(PartitionTest, Basic) {
     EXPECT_FALSE(partition.splitBlockByOrder(evenBlock, [](auto const& a, auto const& b) { return a % 2 < b % 2; }));
     EXPECT_FALSE(partition.isProperSuperBlock(evenBlock));
 
-    typename storm::storage::bisimulation::Partition::BlockSet blockSet;
+    typename storm::storage::stateminimization::Partition::BlockSet blockSet;
     blockSet.insert(evenBlock);
     blockSet.insert(oddBlock);
     EXPECT_EQ(blockSet.size(), 2);
