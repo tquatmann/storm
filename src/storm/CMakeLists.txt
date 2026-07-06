@@ -4,7 +4,7 @@
 ##
 #############################################################
 file(GLOB_RECURSE STORM_SOURCES ${PROJECT_SOURCE_DIR}/src/storm/*/*.cpp)
-file(GLOB_RECURSE STORM_HEADERS RELATIVE "${PROJECT_SOURCE_DIR}/src/storm" ${PROJECT_SOURCE_DIR}/src/storm/*.h )
+file(GLOB_RECURSE STORM_HEADERS RELATIVE "${PROJECT_SOURCE_DIR}/src/storm" ${PROJECT_SOURCE_DIR}/src/storm/*.h)
 
 # Additional include files like the storm-config.h
 file(GLOB_RECURSE STORM_BUILD_HEADERS ${PROJECT_BINARY_DIR}/include/storm-config.h)
@@ -15,9 +15,7 @@ file(GLOB_RECURSE STORM_BUILD_HEADERS ${PROJECT_BINARY_DIR}/include/storm-config
 ##
 ###############################################################################
 # Create libstorm.
-add_library(storm SHARED
-        storage/bisimulation/BucketKey.cpp
-        storage/bisimulation/BucketKey.h)
+add_library(storm SHARED)
 target_sources(storm PRIVATE ${STORM_SOURCES})
 target_sources(storm PUBLIC FILE_SET fs_storm_headers TYPE HEADERS BASE_DIRS "${PROJECT_SOURCE_DIR}/src" FILES ${STORM_HEADERS})
 target_sources(storm PUBLIC FILE_SET fs_storm_configured_headers TYPE HEADERS BASE_DIRS "${PROJECT_BINARY_DIR}/include" FILES ${STORM_BUILD_HEADERS})
@@ -36,6 +34,6 @@ install(TARGETS storm
         EXPORT storm_Targets
         RUNTIME DESTINATION ${STORM_BIN_INSTALL_DIR}
         LIBRARY DESTINATION ${STORM_LIB_INSTALL_DIR}
-        FRAMEWORK DESTINATION  ${STORM_LIB_INSTALL_DIR}
+        FRAMEWORK DESTINATION ${STORM_LIB_INSTALL_DIR}
         FILE_SET fs_storm_headers DESTINATION ${STORM_INCLUDE_INSTALL_DIR}
         FILE_SET fs_storm_configured_headers DESTINATION ${STORM_INCLUDE_INSTALL_DIR})
