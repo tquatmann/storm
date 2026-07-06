@@ -18,8 +18,8 @@
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/solver/OptimizationDirection.h"
-#include "storm/storage/bisimulation/BisimulationType.h"
 #include "storm/storage/prism/Program.h"
+#include "storm/storage/stateminimization/bisimulation/BisimulationType.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/prism.h"
 
