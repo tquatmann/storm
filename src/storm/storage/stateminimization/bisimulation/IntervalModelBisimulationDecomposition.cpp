@@ -63,7 +63,7 @@ void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSp
         for (const auto& entry : this->model.getTransitionMatrix().getRow(predecessorChoice)) {
             auto targetState = entry.getColumn();
 
-            if (!this->partition.contains(splitterBlock, targetState)) {
+            if (!this->partition.contains(targetState, splitterBlock)) {
                 probabilitiesToOtherBlocks[predecessorChoice] += entry.getValue();
             }
         }
@@ -345,7 +345,7 @@ bool IntervalModelBisimulationDecomposition<ModelType>::checkCurrentPartitionByE
         ValueType toOther = storm::utility::zero<ValueType>();
 
         for (auto const& entry : this->model.getTransitionMatrix().getRow(state)) {
-            if (this->partition.contains(splitterBlock, entry.getColumn())) {
+            if (this->partition.contains( entry.getColumn(), splitterBlock)) {
                 toBlock += entry.getValue();
             } else {
                 toOther += entry.getValue();

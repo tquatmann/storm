@@ -63,13 +63,26 @@ class Partition {
      * @note subsequent operations on this partition (e.g. split) may change the order of the elements in the block, but do not affect the contents.
      * This means that changing the partition while iterating over block contents, i.e., `for (auto e : block) { partition.split(...) ... }` is not safe.
      */
-    Block getBlockOfElement(ElementIndex element) const;
+    Block const& getBlockOfElement(ElementIndex element) const;
 
     /*!
-     * @return true iff the given block contains the given element.
+     * @return true iff the given element is contained in the given block
      * @note this has constant runtime, i.e., is preferrable over a linear search over the block
      */
-    bool contains(Block const& block, ElementIndex element) const;
+    bool contains(ElementIndex element, Block const& block) const;
+
+    /*!
+     * @return true iff all elements of the given subblock are contained in the given superblock
+     * @note this has constant runtime, i.e., is preferrable over a linear search over the block
+     */
+    bool isSubBlockOf(Block const& subblock, Block const& superblock) const;
+
+
+    /*!
+ * @return true iff the (smallest known) block of the given element coincides with the given block
+ */
+    bool isBlockOfElement(Block const& block, ElementIndex const& element) const;
+
 
     /*!
      * Checks if the given block is a valid block in the partition. Usefull for sanity checks.
@@ -89,7 +102,7 @@ class Partition {
     template<typename Func>
         requires std::invocable<Func, Block>
     void forEachBlock(Func const& f) const {
-        forEachBlockInIndexRange(0u, blockIndices.size(), f);
+        forEachSubBlock(Block(blockContents.begin(), blockContents.end()), f);
     }
 
     /*!
@@ -102,9 +115,12 @@ class Partition {
         requires std::invocable<Func, Block>
     void forEachSubBlock(Block const& superBlock, Func const& f) const {
         STORM_LOG_ASSERT(!superBlock.empty(), "Superblock is empty.");
-        auto const blockStart = getBlockIndex(superBlock);
-        auto const blockEnd = blockStart + superBlock.size();
-        forEachBlockInIndexRange(blockStart, blockEnd, f);
+        auto superBlockEnd = getBlockIndex(superBlock) + superBlock.size();
+        for (BlockIndex blockStart = getBlockIndex(superBlock); blockStart < superBlockEnd;) {
+            auto const& subBlock = getBlockOfElement(blockContents[blockStart]);
+            blockStart += subBlock.size();
+            f(subBlock);
+        };
     }
 
     template<typename Iterator, typename Compare>
@@ -141,7 +157,6 @@ class Partition {
         // Sort the contents of the block first
         STORM_LOG_ASSERT(!isProperSuperBlock(block), "Tried to split a block that consists of multiple sub-blocks.");
         auto const blockStart = getBlockIndex(block);
-        invalidateCache(blockStart);
 
         auto const blockEnd = blockStart + block.size();
         // small_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
@@ -168,16 +183,13 @@ class Partition {
         };
 
         // Now create new blocks whenever the order changes
-        for (auto newBlockIndex = getEndOfBlock(blockStart); newBlockIndex < blockEnd;) {
-            STORM_LOG_ASSERT(!blockIndices.get(newBlockIndex),
-                             "Partition in inconsistent state: Block index " << newBlockIndex << " already set as start index.");
-            blockIndices.set(newBlockIndex);
-            invalidateCache(newBlockIndex);
+        for (auto newBlockIndex = blockStart; newBlockIndex < blockEnd;) {
             auto const newBlockEnd = getEndOfBlock(newBlockIndex);
-            std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + newBlockEnd,
-                          [this, &newBlockIndex](ElementIndex const e) { elementToBlockIndex[e] = newBlockIndex; });
+            registerNewBlock(newBlockIndex, newBlockEnd);
             newBlockIndex = newBlockEnd;
+            ++numBlocks;
         }
+        --numBlocks; // the old superblock is no longer a block as counted by this partition
         STORM_LOG_ASSERT(isProperSuperBlock(block), "Partition in inconsistent state: Block was not split into multiple sub-blocks.");
         return true;  // there must have been a split because the case without a split is already caught above
     }
@@ -196,7 +208,6 @@ class Partition {
 
         // swap the block contents so that all elements e with f(e) == false come first
         auto const blockStart = getBlockIndex(block);
-        invalidateCache(blockStart);
         auto const blockEnd = blockStart + block.size();
         auto l = blockStart;
         auto r = blockEnd - 1;
@@ -234,12 +245,10 @@ class Partition {
         }
 
         // Perform a split
-        auto const newBlockIndex = l;
-        blockIndices.set(newBlockIndex);
-        invalidateCache(newBlockIndex);
-        std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + blockEnd,
-                      [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
-        return {getBlockFromIndexRange(blockStart, newBlockIndex), getBlockFromIndexRange(newBlockIndex, blockEnd)};
+        Block noBlock = registerNewBlock(blockStart, l);
+        Block yesBlock = registerNewBlock(l, blockEnd);
+        ++numBlocks; // We have split a single block into two blocks, so the total number increments by 1
+        return {noBlock, yesBlock};
     }
 
     /*!
@@ -257,9 +266,6 @@ class Partition {
 
         auto const blockStart = getBlockIndex(block);
         auto const blockEnd = blockStart + block.size();
-
-        // invalidateCache(noBlockStart);
-        // invalidateCache(yesBlockStart);
 
         // We split the block into a "no"-part and a "yes"-part
 
@@ -284,13 +290,10 @@ class Partition {
         }
 
         // Perform a split
-        blockIndices.set(yesBlockStart);
-        invalidateCache(yesBlockStart);
-        invalidateCache(blockStart);
-        std::for_each(blockContents.begin() + yesBlockStart, blockContents.begin() + blockEnd,
-                      [this, &yesBlockStart](ElementIndex const& e) { elementToBlockIndex[e] = yesBlockStart; });
-        return {getBlockFromIndexRange(blockStart, yesBlockStart), getBlockFromIndexRange(yesBlockStart, blockEnd)};
-
+        Block noBlock = registerNewBlock(blockStart, yesBlockStart);
+        Block yesBlock = registerNewBlock(yesBlockStart, blockEnd);
+        ++numBlocks; // We have split a single block into two blocks, so the total number increments by 1
+        return {noBlock, yesBlock};
     }
 
    private:
@@ -307,34 +310,27 @@ class Partition {
      */
     BlockIndex getBlockIndex(Block const& block) const;
 
-    /*!
-     * Creates a block from the given range of indices.
-     * @return a (super?)block that contains all states whose block index is in the range [start, end).
-     */
-    Block getBlockFromIndexRange(BlockIndex const start, BlockIndex const end) const;
 
     /*!
      * Creates a block from the given range of indices.
      * @return a (super?)block that contains all states whose block index is in the range [start, end).
      */
-    Block getBlockFromIndex(BlockIndex const index) const;
 
-    /*!
-     * Iterates over all blocks in the given range of block indices [start, end) and applies the given function to each block.
-     * @note we make this private since we do not want to expose the internal representation of the partition.
-     * @note: Splitting the currently processed block in the function *is* valid. However, the resulting sub-blocks are not processed recursively.
-     */
-    template<typename Func>
-        requires std::invocable<Func, Block>
-    void forEachBlockInIndexRange(BlockIndex const start, BlockIndex const end, Func const& f) const {
-        for (auto blockIndex = start; blockIndex < end;) {
-            auto block = getBlockFromIndex(blockIndex);
-            blockIndex += block.size();
-            f(block);
+    Block registerNewBlock(BlockIndex const start, BlockIndex const end) {
+        STORM_LOG_ASSERT(start < end && end <= blockContents.size(), "Invalid block range");
+        Block newBlock(blockContents.data() + start, end - start);
+        // Shrinking an existing block doesn't require iterating over all block contents
+        if (blocks[start].empty()) {
+            for (ElementIndex const e : newBlock) {
+                elementToBlockIndex[e] = start;
+            }
+        } else {
+            STORM_LOG_ASSERT(isSubBlockOf(newBlock, blocks[start]), "New block is not a sub-block of the existing block");
         }
+        blocks[start] = newBlock;
+        return newBlock;
     }
 
-    void invalidateCache(Partition::BlockIndex index);
 
     /// Stores for each block the elements in that block (cf. blockIndices)
     /// Stores where a new block begins in the blockContents vector.
@@ -342,15 +338,16 @@ class Partition {
     /// The k'th block starts at the k'th set bit. The BlockIndex of the k'th block is the position of that bit.
     /// If bit i is set, the corresponding block is given by { blockContents[j] | i ≤ j < blockIndices.getNextSetIndex(i+1) }
     std::vector<ElementIndex> blockContents;
-    storm::storage::BitVector blockIndices;
+    std::vector<BlockIndex> blockContentsInverse;
 
     /// Maps each element to the start index of its block.
     /// for all elements s, blockIndices.get(elementToBlockIndex[s]) is true and s is in { blockContents[j] | elementToBlockIndex[s] ≤ j <
     /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
     std::vector<BlockIndex> elementToBlockIndex;
-    std::vector<BlockIndex> blockContentsInverse;
+    std::vector<Block> blocks;
 
-    mutable std::vector<BlockIndex> blockEndCache;  // Caching block end indices
+    uint64_t numBlocks;
+
 };
 
 std::ostream& operator<<(std::ostream& os, const Partition& partition);
