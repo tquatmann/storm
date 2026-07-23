@@ -20,8 +20,7 @@
 #include "storm/storage/stateminimization/Partition.h"
 #include "storm/utility/constants.h"
 
-namespace storm {
-namespace storage {
+namespace storm::storage {
 
 template<typename ModelType>
 class BaseDecomposition {
@@ -179,7 +178,7 @@ class BaseDecomposition {
     /// The current partition.
     storm::storage::stateminimization::Partition partition;
 
-    /// The quotient, if it was build. Otherwise a null pointer.
+    /// The quotient, if it was build. Otherwise, a null pointer.
     std::shared_ptr<ModelType> quotient;
 
     /// Map of representative states of absorbing blocks. A single entry represents: <first state of block, representative state>
@@ -190,4 +189,3 @@ class BaseDecomposition {
 };
 
 }  // namespace storage
-}  // namespace storm

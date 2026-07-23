@@ -53,11 +53,11 @@ BisimulationDecomposition<ModelType>::BisimulationDecomposition(ModelType const&
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::refinePartition() {
     this->performPartitionRefinement();
-    // this->performSignatureRefinement();
 }
 
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::computeInitialPartition() {
+    // TODO: re-enable measureDriven
     if (false /*options.measureDrivenInitialPartition*/) {
         std::cout << "Initializing measure driven!" << std::endl;
         STORM_LOG_THROW(this->options.phiStates, storm::exceptions::InvalidOptionException,
@@ -97,163 +97,33 @@ bool BisimulationDecomposition<ModelType>::shouldBuildQuotient() const {
 
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::performPartitionRefinement() {
-    std::deque<typename stateminimization::Partition::Block> splitterQueue;
+    std::deque<typename stateminimization::Partition::Block> splitterQueue; // todo: not used
     stateminimization::Partition::BlockSet enqueuedSplitterBlocks;
 
     // Initially, add all current blocks to the queue.
     this->partition.forEachBlock([&](auto const& block) {
-        splitterQueue.push_back(block);
         enqueuedSplitterBlocks.insert(block);
     });
 
     // Then perform the actual splitting until there are no more splitters.
-    uint_fast64_t iterations = 0;
-    while (!splitterQueue.empty()) {
+    uint64_t iterations = 0;
+    while (!enqueuedSplitterBlocks.empty()) {
         ++iterations;
 
-        auto splitterBlock = splitterQueue.front();
-        splitterQueue.pop_front();
-        enqueuedSplitterBlocks.erase(splitterBlock);
+        auto splitterBlock = *enqueuedSplitterBlocks.begin();
+        // std::cout << "Iteration " << iterations << ", number of blocks in queue: " << enqueuedSplitterBlocks.size() << " with sizes ";
+        //  for (auto const& block : enqueuedSplitterBlocks) {
+        //      std::cout << block.size() << " ";
+        //  }
+        // std::cout << "Picked block with " << splitterBlock.size() << " states." << std::endl;
+        enqueuedSplitterBlocks.erase(enqueuedSplitterBlocks.begin());
+        if (this->partition.isProperSuperBlock(splitterBlock)) {
+            // If the splitter block is a proper super block, we can skip it as we already have checked all sub-blocks TODO: apparently this is not true, why?
+            // continue;
+        }
 
         refinePartitionBasedOnSplitter(splitterBlock, splitterQueue, enqueuedSplitterBlocks);
     }
-}
-
-template<typename ModelType>
-void BisimulationDecomposition<ModelType>::performSignatureRefinement() {
-    // Insert all blocks into the queue for refinement
-    std::deque<typename stateminimization::Partition::Block> blocksQueue;
-
-    storm::storage::stateminimization::Partition::BlockSet enqueuedSplitterBlocks;
-    // Initially, add all current blocks to the queue
-    this->partition.forEachBlock([&](auto const& block) {
-        // TODO: maybe one has to handle the absorbing blocks differently for weak bisimulation, i.e., that they are still enqueued here and handled
-        // differently while splitting based on the computed signatures
-        if (!this->absorbingBlocks.contains(block.front())) {
-            blocksQueue.push_back(block);
-            enqueuedSplitterBlocks.insert(block);
-        }
-    });
-
-    std::vector<size_t> stateToSignature(this->backwardTransitions.getColumnCount(), 0);
-    std::vector<storm::storage::sparse::state_type> statesWithInvalidSignature;
-
-    // Refine the partition as long as the queue is not empty
-    uint_fast64_t iterations = 0;
-    uint_fast64_t noSplitCounter = 0;
-    while (!blocksQueue.empty()) {
-        ++iterations;
-
-        auto blockToRefine = blocksQueue.back();
-        blocksQueue.pop_back();
-        enqueuedSplitterBlocks.erase(blockToRefine);
-
-        // Detect if splitting is necessary
-        size_t firstSignature = 0;
-        bool hasMultipleSignatures = false;
-        bool isFirstState = true;
-
-        // Map states to their signature
-        for (auto state : blockToRefine) {
-            // Only compute the state signature if it was invalidated
-            if (stateToSignature[state] == 0) {
-                auto signatureHash = computeStateSignatureHash(state);
-                stateToSignature[state] = signatureHash;
-            }
-
-            // Compare signatures
-            if (isFirstState) {
-                firstSignature = stateToSignature[state];
-                isFirstState = false;
-            } else if (stateToSignature[state] != firstSignature) {
-                hasMultipleSignatures = true;
-            }
-        }
-
-        // Skip splitting if all states have the same signature
-        if (!hasMultipleSignatures) {
-            noSplitCounter++;
-            continue;
-        }
-
-        auto oldFront = blockToRefine.front();
-        // split blocks according to their state signatures, if possible
-        auto wasSplit = this->partition.splitBlockByOrder(
-            blockToRefine, [&stateToSignature](auto const& a, auto const& b) { return stateToSignature.at(a) < stateToSignature.at(b); });
-
-        if (wasSplit) {
-            auto newFront = blockToRefine.front();
-            if (newFront != oldFront) {
-                std::cout << "[LOG] Block front changed: was " << oldFront << ", now " << newFront << std::endl;
-            }
-            this->partition.forEachSubBlock(blockToRefine, [this, &blocksQueue, &statesWithInvalidSignature, &enqueuedSplitterBlocks](auto const& block) {
-                // TODO: If representative state is already on queue, then don't add it
-                if (block.size() > 1 && !enqueuedSplitterBlocks.contains(block)) {
-                    blocksQueue.push_back(block);
-                    enqueuedSplitterBlocks.insert(block);
-                }
-
-                for (auto state : block) {
-                    for (auto& transition : this->backwardTransitions.getRow(state)) {
-                        auto predecessorState = transition.getColumn();
-                        auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
-
-                        // place target block on queue only if it is not already there
-                        if (predecessorBlock.size() > 1 && !enqueuedSplitterBlocks.contains(predecessorBlock)) {
-                            blocksQueue.push_back(predecessorBlock);
-                            enqueuedSplitterBlocks.insert(predecessorBlock);
-                        }
-
-                        // remember which states have an invalid signature now
-                        statesWithInvalidSignature.emplace_back(predecessorState);
-                    }
-                }
-            });
-        }
-
-        // invalidate signatures of affected states
-        for (auto currentState : statesWithInvalidSignature) {
-            stateToSignature[currentState] = 0;
-        }
-        statesWithInvalidSignature.clear();
-
-        if (!wasSplit) {
-            noSplitCounter++;
-        }
-
-        if (storm::utility::resources::isTerminate()) {
-            std::cout << "Performed " << iterations << " iterations of partition refinement before abort.\n";
-            STORM_LOG_THROW(false, storm::exceptions::AbortException, "Aborted in bisimulation computation.");
-            break;
-        }
-    }
-
-    std::cout << "Finished refinement after " << iterations << " iterations." << std::endl;
-    std::cout << "Attempt to split block failed " << noSplitCounter << " times." << std::endl;
-}
-
-template<typename ModelType>
-std::size_t BisimulationDecomposition<ModelType>::computeStateSignatureHash(storm::storage::sparse::state_type state) const {
-    // TODO: Interestingly, the boost hash function seems to create collisions, hence the quotient is not minimal per default.
-    // TODO: When using --exact, the quotient gets calculated correctly. Thus, Boost does not guarantee a sufficient
-    // TODO: precision for doubles
-    return computeStateSignature(state, this->partition).computeHash();
-    // TODO: Using --exact with the string based hash representation does not lead to a correct quotient -> investigate
-    // return std::hash<std::string>{}(computeStateSignature(state, partition).toString());
-}
-
-template<typename ModelType>
-storm::storage::bisimulation::Signature<typename ModelType::ValueType> BisimulationDecomposition<ModelType>::computeStateSignature(
-    storm::storage::sparse::state_type state, storm::storage::stateminimization::Partition const& currentPartition) const {
-    storm::storage::bisimulation::Signature<typename ModelType::ValueType> signature;
-
-    for (auto entry : this->model.getTransitionMatrix().getRow(state)) {
-        // std::cout << "Prob for state " << state << " to reach target state " << entry.getColumn() << ": " << entry.getValue() << std::endl;
-        auto targetBlock = this->partition.getBlockOfElement(entry.getColumn());  // column marks the id of the target state
-        signature.addBlockProbability(targetBlock.front(), entry.getValue());
-    }
-
-    return signature;
 }
 
 template<typename ModelType>

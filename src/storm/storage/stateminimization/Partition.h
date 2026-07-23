@@ -2,7 +2,6 @@
 
 #include <boost/sort/block_indirect_sort/block_indirect_sort.hpp>
 #include <cstddef>
-#include <list>
 #include <memory>
 #include <ranges>
 
@@ -24,40 +23,16 @@ class Partition {
     using Block = std::span<ElementIndex const>;
     struct BlockCompare {
         bool operator()(Block const& lhs, Block const& rhs) const {
-            if (lhs.data() < rhs.data()) {
+            if (lhs.size() < rhs.size()) {
                 return true;
             }
-            if (lhs.data() > rhs.data()) {
+            if (lhs.size() > rhs.size()) {
                 return false;
             }
-            return lhs.size() < rhs.size();
+            return lhs.data() < rhs.data();
         }
     };
-    // static constexpr auto BlockCompare = [](Block const& lhs, Block const& rhs) {
-    //     if (lhs.data() < rhs.data()) {
-    //         return true;
-    //     }
-    //     if (lhs.data() > rhs.data()) {
-    //         return false;
-    //     }
-    //     return lhs.size() < rhs.size();
-    // };
     using BlockSet = std::set<Block, BlockCompare>;
-
-    /*!
-     * Creates a partition with three blocks: one with all phi states, one with all psi states and one with
-     * all other states. The former two blocks are marked as being absorbing, because their outgoing
-     * transitions shall not be taken into account for future refinement.
-     *
-     * @param numberOfStates The number of states the partition holds.
-     * @param prob0States The states which have probability 0 of satisfying phi until psi.
-     * @param prob1States The states which have probability 1 of satisfying phi until psi.
-     * @param representativeProb1State If the set of prob1States is non-empty, this needs to be a state
-     * that is representative for this block in the sense that the state representing this block in the quotient
-     * model will receive exactly the atomic propositions of the representative state.
-     */
-    // Partition(std::size_t numberOfStates, storm::storage::BitVector const& prob0States, storm::storage::BitVector const& prob1States,
-    //           std::optional<storm::storage::sparse::state_type> representativeProb1State);
 
     Partition() = default;
     Partition(Partition const& other) = default;
@@ -134,6 +109,7 @@ class Partition {
 
     template<typename Iterator, typename Compare>
     void small_sort(Iterator begin, Iterator end, Compare comp) {
+        // STORM_LOG_ASSERT(false, "try other sorting"); TODO
         if (std::distance(begin, end) <= 32) {
             for (auto i = begin + 1; i != end; ++i) {
                 auto key = *i;
@@ -168,7 +144,13 @@ class Partition {
         invalidateCache(blockStart);
 
         auto const blockEnd = blockStart + block.size();
-        small_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
+        // small_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
+        std::sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
+
+        // update the inverse after sorting
+        for (ElementIndex i = blockStart; i < blockEnd; ++i) {
+            blockContentsInverse[blockContents[i]] = i;
+        }
 
         // Catch the special case where there is no split
         if (!less(blockContents[blockStart], blockContents[blockEnd - 1])) {
@@ -193,9 +175,10 @@ class Partition {
             invalidateCache(newBlockIndex);
             auto const newBlockEnd = getEndOfBlock(newBlockIndex);
             std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + newBlockEnd,
-                          [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
+                          [this, &newBlockIndex](ElementIndex const e) { elementToBlockIndex[e] = newBlockIndex; });
             newBlockIndex = newBlockEnd;
         }
+        STORM_LOG_ASSERT(isProperSuperBlock(block), "Partition in inconsistent state: Block was not split into multiple sub-blocks.");
         return true;  // there must have been a split because the case without a split is already caught above
     }
 
@@ -235,6 +218,8 @@ class Partition {
                 break;  // l > r holds now
             } else if (l < r) {
                 std::swap(blockContents[l], blockContents[r]);
+                blockContentsInverse[blockContents[l]] = l;
+                blockContentsInverse[blockContents[r]] = r;
                 ++l;
                 --r;
             }
@@ -255,6 +240,57 @@ class Partition {
         std::for_each(blockContents.begin() + newBlockIndex, blockContents.begin() + blockEnd,
                       [this, &newBlockIndex](ElementIndex const& e) { elementToBlockIndex[e] = newBlockIndex; });
         return {getBlockFromIndexRange(blockStart, newBlockIndex), getBlockFromIndexRange(newBlockIndex, blockEnd)};
+    }
+
+    /*!
+     * Splits the given block according to the given range of elements.
+     * Specifically, the elements in the block are swapped around, such that all elements that are not in the given range come first.
+     * Then, two sub-blocks are created accordingly. If the range is empty or contains all elements of the block, no splitting is performed.
+     * @param r the input range.
+     * @return a pair containing first the sub-block that is not in the range and then the sub-block in the range. One of them can be empty.
+     */
+    template<typename SplitRange>
+        requires std::ranges::input_range<SplitRange> && std::same_as<std::ranges::range_value_t<SplitRange>, ElementIndex>
+    std::pair<Block, Block> splitBlockByRange(Block const& block, SplitRange const& r) {
+        STORM_LOG_ASSERT(!isProperSuperBlock(block), "Tried to split a block that consists of multiple sub-blocks.");
+        STORM_LOG_ASSERT(!block.empty(), "Tried to split an empty block");
+
+        auto const blockStart = getBlockIndex(block);
+        auto const blockEnd = blockStart + block.size();
+
+        // invalidateCache(noBlockStart);
+        // invalidateCache(yesBlockStart);
+
+        // We split the block into a "no"-part and a "yes"-part
+
+        auto yesBlockStart = blockEnd;
+        for (auto const& element : r) {
+            auto const src = blockContentsInverse[element];
+            if (src < blockStart || src >= yesBlockStart) {
+                continue; // element is either not in the block or already occurred before (duplicate in r)
+            }
+            // swap the element to the end of the block, into the 'yes' part
+            --yesBlockStart;
+            std::swap(blockContents[src], blockContents[yesBlockStart]);
+            blockContentsInverse[blockContents[src]] = src;
+            blockContentsInverse[blockContents[yesBlockStart]] = yesBlockStart;
+        }
+
+        // Handle cases where there is no split
+        if (yesBlockStart == blockStart) {
+            return {Block{}, block};  // all elements are in the range
+        } else if (yesBlockStart == blockEnd) {
+            return {block, Block{}};  // no elements are in the range
+        }
+
+        // Perform a split
+        blockIndices.set(yesBlockStart);
+        invalidateCache(yesBlockStart);
+        invalidateCache(blockStart);
+        std::for_each(blockContents.begin() + yesBlockStart, blockContents.begin() + blockEnd,
+                      [this, &yesBlockStart](ElementIndex const& e) { elementToBlockIndex[e] = yesBlockStart; });
+        return {getBlockFromIndexRange(blockStart, yesBlockStart), getBlockFromIndexRange(yesBlockStart, blockEnd)};
+
     }
 
    private:
@@ -312,6 +348,7 @@ class Partition {
     /// for all elements s, blockIndices.get(elementToBlockIndex[s]) is true and s is in { blockContents[j] | elementToBlockIndex[s] ≤ j <
     /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
     std::vector<BlockIndex> elementToBlockIndex;
+    std::vector<BlockIndex> blockContentsInverse;
 
     mutable std::vector<BlockIndex> blockEndCache;  // Caching block end indices
 };

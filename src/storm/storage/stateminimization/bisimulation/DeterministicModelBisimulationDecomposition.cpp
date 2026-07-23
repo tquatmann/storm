@@ -8,10 +8,7 @@ using namespace bisimulation;
 template<typename ModelType>
 DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimulationDecomposition(
     ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options)
-    : BisimulationDecomposition<ModelType>(model, options),
-      probabilitiesToCurrentSplitter(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
-      probabilitiesToOtherBlocks(model.getNumberOfStates(), storm::utility::zero<ValueType>()),
-      touchedProbabilitiesToSplitter(model.getNumberOfStates(), false) {
+    : BisimulationDecomposition<ModelType>(model, options) {
     // Intentionally left empty.
 }
 
@@ -39,56 +36,26 @@ void DeterministicModelBisimulationDecomposition<ModelType>::initializeWeakDtmcB
 }
 
 template<typename ModelType>
-void DeterministicModelBisimulationDecomposition<ModelType>::postProcessInitialPartition() {
-    // TODO: implement
-}
-
-template<typename ModelType>
-typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType const&
-DeterministicModelBisimulationDecomposition<ModelType>::getProbabilityToSplitter(storm::storage::sparse::state_type const& state) const {
-    return probabilitiesToCurrentSplitter[state];
-}
-
-template<typename ModelType>
-bool DeterministicModelBisimulationDecomposition<ModelType>::isSilent(storm::storage::sparse::state_type const& state) const {
-    return this->comparator.isOne(silentProbabilities[state]);
-}
-
-template<typename ModelType>
-bool DeterministicModelBisimulationDecomposition<ModelType>::hasNonZeroSilentProbability(storm::storage::sparse::state_type const& state) const {
-    return !this->comparator.isZero(silentProbabilities[state]);
-}
-
-template<typename ModelType>
-typename DeterministicModelBisimulationDecomposition<ModelType>::ValueType DeterministicModelBisimulationDecomposition<ModelType>::getSilentProbability(
-    storm::storage::sparse::state_type const& state) const {
-    return silentProbabilities[state];
-}
-
-template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
     std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
     stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
-    storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
-    // std::cout << "Performing standard bisimulation!" << std::endl;
+    auto& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
 
-    // std::fill(probabilitiesToCurrentSplitter.begin(), probabilitiesToCurrentSplitter.end(), storm::utility::zero<ValueType>());
+    storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
+
     for (auto currentState : splitterBlock) {
         // Compute probability to enter splitter block for each predecessor
         for (const auto& predecessorEntry : this->backwardTransitions.getRow(currentState)) {
             auto predecessorState = predecessorEntry.getColumn();
             auto predecessorBlock = this->partition.getBlockOfElement(predecessorState);
-            auto transitionProbability = predecessorEntry.getValue();
+            auto const transitionProbability = predecessorEntry.getValue();
 
             if (!possiblyNeedsRefinement(predecessorBlock)) {
                 continue;
             }
-
-            if (touchedProbabilitiesToSplitter.get(predecessorState)) {
-                probabilitiesToCurrentSplitter[predecessorState] += transitionProbability;
-            } else {
-                probabilitiesToCurrentSplitter[predecessorState] = transitionProbability;
-                touchedProbabilitiesToSplitter.set(predecessorState, true);
+            auto insertRes = probabilitiesToSplitter.emplace(predecessorState, transitionProbability);
+            if (!insertRes.second) {
+                insertRes.first->second += transitionProbability;
             }
 
             // Remember which blocks contain predecessors to split them w.r.t. the splitter afterwards
@@ -96,71 +63,46 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
         }
     }
 
+    // std::cout << "Splitter block has size " << splitterBlock.size() << " with " << probabilitiesToSplitter.size() << " predecessor states and " << blocksToSplit.size() << " predecessor blocks. |Q|=" << enqueuedSplitterBlocks.size() << std::endl;
+
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not
-        auto [noPredecessors, predecessors] =
-            this->partition.splitBlockByPredicate(predecessorBlockToSplit, [this](auto const& state) { return touchedProbabilitiesToSplitter.get(state); });
+        auto [noPredecessors, predecessors] = true ?
+            this->partition.splitBlockByRange(predecessorBlockToSplit, probabilitiesToSplitter | std::views::keys ) :
+        this->partition.splitBlockByPredicate(predecessorBlockToSplit, [&probabilitiesToSplitter](auto const& state) { return probabilitiesToSplitter.contains(state); });
+        // std::cout << "\tsplitting a predecessor block with " << predecessors.size() << "/" <<  predecessorBlockToSplit.size() << "predecessor states. ";
 
-        if (noPredecessors.size() > 0) {
-            if (!enqueuedSplitterBlocks.contains(noPredecessors)) {
-                splitterQueue.push_back(noPredecessors);
+        STORM_LOG_ASSERT(!predecessors.empty(), "The predecessor block should contain at least one predecessor state.");
+        bool wasSplit = noPredecessors.size() > 0;
+
+        if (wasSplit) {
                 enqueuedSplitterBlocks.insert(noPredecessors);
-            }
         }
 
-        if (predecessors.size() > 0) {
-            bool wasSplit = this->partition.splitBlockByOrder(predecessors, [this](auto const& a, auto const& b) {
-                return this->comparator.isLess(probabilitiesToCurrentSplitter[a], probabilitiesToCurrentSplitter[b]);
-            });
+        // Attention: Do not short circuit, i.e., wasSplit = wasSplit || foo() might not execute foo()
+        wasSplit |= this->partition.splitBlockByOrder(predecessors, [this,&probabilitiesToSplitter](auto const& a, auto const& b) {
+            return this->comparator.isLess(probabilitiesToSplitter[a], probabilitiesToSplitter[b]);
+        });
 
             // Add all blocks that were split to splitter queue
             if (wasSplit) {
-                this->partition.forEachSubBlock(predecessors, [&splitterQueue, &enqueuedSplitterBlocks](auto const& block) {
-                    if (!enqueuedSplitterBlocks.contains(block)) {
-                        splitterQueue.push_back(block);
+                enqueuedSplitterBlocks.erase(predecessorBlockToSplit);
+                this->partition.forEachSubBlock(predecessors, [&enqueuedSplitterBlocks](auto const& block) {
                         enqueuedSplitterBlocks.insert(block);
-                    }
                 });
             }
-        }
+
+        // std::cout << std::endl;
     }
 
     // Reset the touched entries of the probabilitiesToCurrentSplitter vector
-    touchedProbabilitiesToSplitter.clear();
+    refinementCache.clear();
 }
-
-// template<typename ModelType>
-// void DeterministicModelBisimulationDecomposition<ModelType>::refinePredecessorBlockOfSplitterStrong()
-//     // TODO: implement
-// }
-//
-// template<typename ModelType>
-// void DeterministicModelBisimulationDecomposition<ModelType>::refinePredecessorBlocksOfSplitterStrong()
-//     // TODO: implement
-// }
 
 template<typename ModelType>
 bool DeterministicModelBisimulationDecomposition<ModelType>::possiblyNeedsRefinement(std::span<uint64_t const> block) const {
     return block.size() > 1 && !this->absorbingBlocks.contains(block.front());
 }
-
-//
-// template<typename ModelType>
-// void DeterministicModelBisimulationDecomposition<ModelType>::increaseProbabilityToSplitter(storm::storage::sparse::state_type predecessor,
-//                                                                                            bisimulation::Block<BlockDataType> const& predecessorBlock,
-//                                                                                            ValueType const& value) {
-//     STORM_LOG_TRACE("Increasing probability of " << predecessor << " to splitter by " << value << ".");
-//     storm::storage::sparse::state_type predecessorPosition = this->partition.getPosition(predecessor);
-//
-//     // If the position of the state is to the right of marker1, we have not seen it before.
-//     if (predecessorPosition >= predecessorBlock.data().marker1()) {
-//         // Then, we just set the value.
-//         probabilitiesToCurrentSplitter[predecessor] = value;
-//     } else {
-//         // If the state was seen as a predecessor before, we add the value to the existing value.
-//         probabilitiesToCurrentSplitter[predecessor] += value;
-//     }
-// }
 
 template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPartition() {

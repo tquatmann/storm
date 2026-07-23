@@ -6,6 +6,7 @@ Partition::Partition(ElementIndex numElements)
     : blockIndices(numElements, false), elementToBlockIndex(numElements, 0), blockEndCache(numElements, std::numeric_limits<BlockIndex>::max()) {
     auto indexRange = std::ranges::iota_view<ElementIndex, ElementIndex>(0, numElements);
     blockContents.assign(indexRange.begin(), indexRange.end());
+    blockContentsInverse = blockContents;
     blockIndices.set(0);
 }
 
@@ -73,8 +74,10 @@ bool Partition::checkBlockValidity(Block const& block) const {
     if (elementToBlockIndex[block[0]] != blockIndex)
         return false;
 
-    return !std::any_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
-        return elementToBlockIndex[e] < blockIndex || elementToBlockIndex[e] > blockEndIndex;
+    return std::all_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
+        // the given block might be a superblock, so e's block index does not need to coincide with blockIndex
+        bool const isValidBlockIndex = elementToBlockIndex[e] >= blockIndex && elementToBlockIndex[e] <= blockEndIndex;
+        return isValidBlockIndex  && blockContents[blockContentsInverse[e]] == e;
     });
 }
 
