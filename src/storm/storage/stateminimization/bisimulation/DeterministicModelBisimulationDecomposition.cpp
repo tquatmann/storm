@@ -38,9 +38,9 @@ void DeterministicModelBisimulationDecomposition<ModelType>::initializeWeakDtmcB
 template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
     std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
-    stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
+    stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) {
 
-    storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
+    storm::storage::stateminimization::Partition::OrderedBlockSet blocksToSplit;
 
     for (auto currentState : splitterBlock) {
         // Compute probability to enter splitter block for each predecessor

@@ -161,7 +161,7 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
      */
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock,
                                                 std::deque<typename stateminimization::Partition::Block>& splitterQueue,
-                                                stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) = 0;
+                                                stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) = 0;
 
     /*!
      * Initializes the initial partition based on all respected labels.

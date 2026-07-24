@@ -48,7 +48,7 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
 
     virtual void refinePartitionBasedOnSplitter(std::span<uint64_t const> splitterBlock,
                                                 std::deque<typename stateminimization::Partition::Block>& splitterQueue,
-                                                stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) override;
+                                                stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) override;
 
    private:
 

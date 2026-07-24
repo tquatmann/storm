@@ -183,7 +183,7 @@ class EpsilonStableAbstractionDecomposition : public BaseDecomposition<ModelType
     void performEpsilonStableAbstractionRefinement(double epsilon);
 
     void refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> subBlock, std::deque<typename stateminimization::Partition::Block>& blocksQueue,
-                                            stateminimization::Partition::BlockSet& enqueuedBlocks, double epsilon);
+                                            stateminimization::Partition::OrderedBlockSet& enqueuedBlocks, double epsilon);
 
     EpsilonStableAbstractionOptions options;
 

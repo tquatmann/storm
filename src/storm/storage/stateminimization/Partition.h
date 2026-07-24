@@ -32,7 +32,7 @@ class Partition {
             return lhs.data() < rhs.data();
         }
     };
-    using BlockSet = std::set<Block, BlockCompare>;
+    using OrderedBlockSet = std::set<Block, BlockCompare>;
 
     Partition() = default;
     Partition(Partition const& other) = default;

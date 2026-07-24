@@ -109,7 +109,7 @@ TEST(PartitionTest, Basic) {
     EXPECT_FALSE(partition.splitBlockByOrder(evenBlock, [](auto const& a, auto const& b) { return a % 2 < b % 2; }));
     EXPECT_FALSE(partition.isProperSuperBlock(evenBlock));
 
-    typename storm::storage::stateminimization::Partition::BlockSet blockSet;
+    typename storm::storage::stateminimization::Partition::OrderedBlockSet blockSet;
     blockSet.insert(evenBlock);
     blockSet.insert(oddBlock);
     EXPECT_EQ(blockSet.size(), 2);

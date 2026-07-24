@@ -27,8 +27,8 @@ IntervalModelBisimulationDecomposition<ModelType>::IntervalModelBisimulationDeco
 template<typename ModelType>
 void IntervalModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(storm::storage::stateminimization::Partition::Block splitterBlock,
                                                                                        std::deque<typename stateminimization::Partition::Block>& splitterQueue,
-                                                                                       stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
-    storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
+                                                                                       stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) {
+    storm::storage::stateminimization::Partition::OrderedBlockSet blocksToSplit;
     auto choiceIndices = this->model.getTransitionMatrix().getRowGroupIndices();
 
     for (auto currentState : splitterBlock) {

@@ -58,7 +58,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::refinePartition() {
 template<typename ModelType>
 void EpsilonStableAbstractionDecomposition<ModelType>::performEpsilonStableAbstractionRefinement(double epsilon) {
     std::deque<typename stateminimization::Partition::Block> blocksQueue;
-    storm::storage::stateminimization::Partition::BlockSet enqueuedBlocks;
+    storm::storage::stateminimization::Partition::OrderedBlockSet enqueuedBlocks;
 
     // Enqueue all non-absorbing blocks for refinement.
     this->partition.forEachBlock([&](auto const& block) {
@@ -84,7 +84,7 @@ void EpsilonStableAbstractionDecomposition<ModelType>::performEpsilonStableAbstr
 template<typename ModelType>
 void EpsilonStableAbstractionDecomposition<ModelType>::refineBlockBasedOnEpsilonSignature(std::span<uint64_t const> block,
                                                                                           std::deque<typename stateminimization::Partition::Block>& blocksQueue,
-                                                                                          stateminimization::Partition::BlockSet& enqueuedBlocks,
+                                                                                          stateminimization::Partition::OrderedBlockSet& enqueuedBlocks,
                                                                                           double epsilon) {
     // Cluster states of this block in groups.
     std::vector<EpsilonStableAbstractionDecomposition::StateGroup> groups;
