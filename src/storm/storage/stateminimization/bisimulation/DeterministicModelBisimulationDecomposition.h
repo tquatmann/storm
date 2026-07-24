@@ -5,6 +5,7 @@
 #include <deque>
 #include <span>
 #include <unordered_map>
+#include <map>
 
 #include <boost/container/flat_map.hpp>
 
@@ -52,11 +53,28 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
    private:
 
     struct RefinementCache {
-        boost::container::flat_map<uint64_t, ValueType> probabilitiesToSplitter;
+        std::vector<ValueType> probabilitiesToSplitter;
+        std::vector<uint64_t> splitterPredecessors; // states with a non-zero probability to a splitter
+
+        RefinementCache(uint64_t numStates) : probabilitiesToSplitter(numStates, storm::utility::zero<ValueType>()) {}
+
+        void addProbabilityToSplitter(uint64_t state, ValueType const& probability) {
+            STORM_LOG_ASSERT(!storm::utility::isZero(probability), "The probability to add to the splitter must not be zero.");
+            if (storm::utility::isZero(probabilitiesToSplitter[state])) {
+                splitterPredecessors.push_back(state);
+            }
+            probabilitiesToSplitter[state] += probability;
+        }
 
         void clear() {
-            probabilitiesToSplitter.clear();
+            for (auto const& state : splitterPredecessors) {
+                probabilitiesToSplitter[state] = storm::utility::zero<ValueType>();
+            }
+            splitterPredecessors.clear();
+            STORM_LOG_ASSERT(std::all_of(probabilitiesToSplitter.begin(), probabilitiesToSplitter.end(), [](ValueType const& p) { return storm::utility::isZero(p); }), "Expected all probabilities to be zero after clearing the cache.");
         }
+
+
     } refinementCache;
 
     /*!

@@ -8,7 +8,7 @@ using namespace bisimulation;
 template<typename ModelType>
 DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimulationDecomposition(
     ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options)
-    : BisimulationDecomposition<ModelType>(model, options) {
+    : BisimulationDecomposition<ModelType>(model, options), refinementCache(model.getNumberOfStates()) {
     // Intentionally left empty.
 }
 
@@ -39,7 +39,6 @@ template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
     std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
     stateminimization::Partition::BlockSet& enqueuedSplitterBlocks) {
-    auto& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
 
     storm::storage::stateminimization::Partition::BlockSet blocksToSplit;
 
@@ -53,10 +52,8 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
             if (!possiblyNeedsRefinement(predecessorBlock)) {
                 continue;
             }
-            auto insertRes = probabilitiesToSplitter.emplace(predecessorState, transitionProbability);
-            if (!insertRes.second) {
-                insertRes.first->second += transitionProbability;
-            }
+
+            refinementCache.addProbabilityToSplitter(predecessorState, transitionProbability);
 
             // Remember which blocks contain predecessors to split them w.r.t. the splitter afterwards
             blocksToSplit.insert(predecessorBlock);
@@ -65,11 +62,12 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
 
     // std::cout << "Splitter block has size " << splitterBlock.size() << " with " << probabilitiesToSplitter.size() << " predecessor states and " << blocksToSplit.size() << " predecessor blocks. |Q|=" << enqueuedSplitterBlocks.size() << std::endl;
 
+    auto const& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not
         auto [noPredecessors, predecessors] = true ?
-            this->partition.splitBlockByRange(predecessorBlockToSplit, probabilitiesToSplitter | std::views::keys ) :
-        this->partition.splitBlockByPredicate(predecessorBlockToSplit, [&probabilitiesToSplitter](auto const& state) { return probabilitiesToSplitter.contains(state); });
+            this->partition.splitBlockByRange(predecessorBlockToSplit, refinementCache.splitterPredecessors ) :
+        this->partition.splitBlockByPredicate(predecessorBlockToSplit, [&probabilitiesToSplitter](auto const& state) { return !storm::utility::isZero(probabilitiesToSplitter[state]); });
         // std::cout << "\tsplitting a predecessor block with " << predecessors.size() << "/" <<  predecessorBlockToSplit.size() << "predecessor states. ";
 
         STORM_LOG_ASSERT(!predecessors.empty(), "The predecessor block should contain at least one predecessor state.");
