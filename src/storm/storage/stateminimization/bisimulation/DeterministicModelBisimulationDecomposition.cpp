@@ -131,29 +131,30 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPa
     // Now build (a) and (b) by traversing all blocks.
 
     // Create mapping from representative state to unique identifier.
-    std::map<uint64_t, uint64_t> blocksMapping;
+    std::vector<uint64_t> blocksMapping(this->partition.getNumberOfElements(), std::numeric_limits<uint64_t>::max());
+    {
+        uint64_t blockIndex = 0;
+        this->partition.forEachBlock([&blocksMapping, &blockIndex](auto const& block) {
+            blocksMapping[block.front()] = blockIndex++;
+        });
+    }
 
-    auto blockIndex = 0;
-    this->partition.forEachBlock([&](auto const& block) {
-        blocksMapping.emplace(block.front(), blockIndex);
-        blockIndex++;
-    });
-
-    this->partition.forEachBlock([&](auto const& block) {
+    this->partition.forEachBlock([this, &blocksMapping, &builder, &atomicPropositions, &newLabeling, &stateRewards](auto const& block) {
         // Pick one representative state. For strong bisimulation it doesn't matter which state it is, because
         // they all behave equally.
         auto representativeState = block.front();
 
         // TODO: Handle weak bisimulation case (non-silent)
 
-        blockIndex = blocksMapping.at(representativeState);
+        auto const blockIndex = blocksMapping[representativeState];
+        STORM_LOG_ASSERT(blockIndex < this->partition.getNumberOfBlocks(), "Block index out of bounds.");
 
         // If the block is absorbing, we simply add a self-loop.
-        if (this->absorbingBlocks.contains(representativeState)) {
+        if (auto findIt = this->absorbingBlocks.find(representativeState); findIt != this->absorbingBlocks.end()) {
             builder.addNextValue(blockIndex, blockIndex, storm::utility::one<ValueType>());
 
             // If the block has a special representative state, we retrieve it now.
-            representativeState = this->absorbingBlocks.at(representativeState);
+            representativeState = findIt->second;
 
             // Add all of the selected atomic propositions that hold in the representative state to the state
             // representing the block.
