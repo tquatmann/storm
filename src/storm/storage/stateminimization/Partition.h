@@ -22,7 +22,6 @@ class Partition {
     using ElementIndex = uint64_t;
     using Block = std::span<ElementIndex const>;
 
-    // Sets of blocks
     struct BlockCompare {
         bool operator()(Block const& lhs, Block const& rhs) const {
             if (lhs.size() < rhs.size()) {
@@ -34,8 +33,15 @@ class Partition {
             return lhs.data() < rhs.data();
         }
     };
+    // Arbitrary set of blocks, ordered by their size (smallest first)
     using OrderedBlockSet = std::set<Block, BlockCompare>;
 
+    /*!
+     * Set of blocks that are no proper superblock.
+     * It is illegal to split a block that is currently in this set.
+     * Insertion and popping an arbitrary element has mostly constant time.
+     * However, the set requires Theta(numElements) space.
+     */
     class NonSuperBlockSet {
         public:
         NonSuperBlockSet(Partition const& partition) : partition(partition), blockIndices(partition.getNumberOfElements(), false) {}
@@ -45,6 +51,9 @@ class Partition {
         }
         bool empty() const {
             return containedBlockIndices.empty();
+        }
+        bool contains(Block const& block) const {
+            return blockIndices.get(partition.getBlockIndex(block));
         }
 
         void insert(Block const& block) {
