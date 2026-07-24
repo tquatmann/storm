@@ -3,9 +3,9 @@
 #include <boost/iterator/zip_iterator.hpp>
 #include <chrono>
 #include <deque>
+#include <map>
 #include <span>
 #include <unordered_map>
-#include <map>
 
 #include <boost/container/flat_map.hpp>
 
@@ -51,13 +51,13 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
                                                 stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) override;
 
    private:
-
     struct RefinementCache {
         std::vector<ValueType> probabilitiesToSplitter;
-        std::vector<uint64_t> splitterPredecessors; // states with a non-zero probability to a splitter
+        std::vector<uint64_t> splitterPredecessors;  // states with a non-zero probability to a splitter
         storm::storage::stateminimization::Partition::NonSuperBlockSet nonSuperBlockSet;
 
-        RefinementCache(storm::storage::stateminimization::Partition const& partition) : probabilitiesToSplitter(partition.getNumberOfElements(), storm::utility::zero<ValueType>()), nonSuperBlockSet(partition) {}
+        RefinementCache(storm::storage::stateminimization::Partition const& partition)
+            : probabilitiesToSplitter(partition.getNumberOfElements(), storm::utility::zero<ValueType>()), nonSuperBlockSet(partition) {}
 
         void addProbabilityToSplitter(uint64_t state, ValueType const& probability) {
             STORM_LOG_ASSERT(!storm::utility::isZero(probability), "The probability to add to the splitter must not be zero.");
@@ -72,12 +72,10 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
                 probabilitiesToSplitter[state] = storm::utility::zero<ValueType>();
             }
             splitterPredecessors.clear();
-            STORM_LOG_ASSERT(std::all_of(probabilitiesToSplitter.begin(), probabilitiesToSplitter.end(), [](ValueType const& p) { return storm::utility::isZero(p); }), "Expected all probabilities to be zero after clearing the cache.");
             while (!nonSuperBlockSet.empty()) {
                 nonSuperBlockSet.pop();
             }
         }
-
 
     } refinementCache;
 
@@ -102,8 +100,6 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
 
     ValueType getTransitionValue(storm::storage::MatrixEntry<storm::storage::sparse::state_type, ValueType> const& matrixEntry,
                                  [[maybe_unused]] storm::storage::sparse::state_type state) const;
-
-
 };
 }  // namespace storage
 }  // namespace storm

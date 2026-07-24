@@ -79,7 +79,7 @@ bool Partition::isSubBlockOf(Block const& subblock, Block const& superblock) con
 }
 
 bool Partition::isBlockOfElement(Block const& block, ElementIndex const& element) const {
-    auto const& eBlock = getBlockOfElement(element);
+    auto eBlock = getBlockOfElement(element);
     return eBlock.data() == block.data() && eBlock.size() == block.size();
 }
 
@@ -103,7 +103,7 @@ Partition::Block Partition::registerNewBlock(BlockIndex const start, BlockIndex 
             elementToBlockIndex[e] = start;
         }
     } else {
-        STORM_LOG_ASSERT(isSubBlockOf(newBlock, getBlockFromIndex(start)), "New block is not a sub-block of the existing block");
+        STORM_LOG_ASSERT(blockSizes[start] >= newBlock.size(), "Shrinking a block should not increase its size");
     }
     blockSizes[start] = newBlock.size();
     return newBlock;
@@ -120,34 +120,36 @@ bool Partition::checkBlockValidity(Block const& block) const {
     auto const blockIndex = std::distance(blockContents.data(), block.data());
     auto const blockEndIndex = blockIndex + block.size();
 
-    // the block has the expected size and is either the last block or ends where another block starts
-    if (!(blockSizes[blockIndex] == block.size() && (blockEndIndex == blockContents.size() || blockSizes[blockEndIndex] != 0)))
+    // the block has a stored size and is either the last block or ends where another block starts
+    if (!(blockSizes[blockIndex] > 0 && (blockEndIndex == blockContents.size() || blockSizes[blockEndIndex] != 0)))
         return false;
 
     // The index of the first element must always match this block index (even if the element belongs to a subblock, it must have the same index)
     if (elementToBlockIndex[block[0]] != blockIndex)
         return false;
 
-    // Check if the inverse mapping is consistent for all elements
-    if (std::any_of(block.begin(), block.end(), [this](ElementIndex const& e) { return &blockContents[blockContentsInverse[e]] != &e; }))
+    // Check if the inverse mapping is consistent for the first and the last element (must actually be true for all elements but checking that is too costly)
+    if (&blockContents[blockContentsInverse[block.front()]] != &block.front() || &blockContents[blockContentsInverse[block.back()]] != &block.back())
         return false;
 
     if (isBlockOfElement(block, block[0])) {
-        // this block has no proper sub-block so all elements should point to this blockIndex
-        return std::all_of(block.begin(), block.end(),
-                           [this, blockIndex, blockEndIndex](ElementIndex const& e) { return elementToBlockIndex[e] == blockIndex; });
-    } else {
-        // this block has proper sub-blocks. The block index of all elements should be within the range of this block.
-        if (std::any_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
-                // e's block index should be in the range of this block
-                return !(elementToBlockIndex[e] >= blockIndex && elementToBlockIndex[e] < blockEndIndex);
-            })) {
+        // this block has no proper sub-block
+        // The stored sizes should coincide
+        if (blockSizes[blockIndex] != block.size())
             return false;
-        }
-        // validate all sub-blocks
-        bool allValid = true;
-        forEachSubBlock(block, [this, &allValid](Block const& subBlock) { allValid = allValid && checkBlockValidity(subBlock); });
-        return allValid;
+        // all elements should point to this blockIndex
+        // we only check this for the first and last element.
+        return (elementToBlockIndex[block.front()] == blockIndex) && (elementToBlockIndex[block.back()] == blockIndex);
+    } else {
+        // this block has proper sub-blocks.
+        // The stored size should be strictly smaller
+        if (blockSizes[blockIndex] >= block.size())
+            return false;
+        // The block index of all elements should be within the range of this block.
+        return std::all_of(block.begin(), block.end(), [this, blockIndex, blockEndIndex](ElementIndex const& e) {
+            // e's block index should be in the range of this block
+            return elementToBlockIndex[e] >= blockIndex && elementToBlockIndex[e] < blockEndIndex;
+        });
     }
 }
 

@@ -39,7 +39,6 @@ template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBasedOnSplitter(
     std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
     stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) {
-
     auto& blocksToSplit = refinementCache.nonSuperBlockSet;
 
     for (auto currentState : splitterBlock) {
@@ -60,36 +59,38 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
         }
     }
 
-    // std::cout << "Splitter block has size " << splitterBlock.size() << " with " << probabilitiesToSplitter.size() << " predecessor states and " << blocksToSplit.size() << " predecessor blocks. |Q|=" << enqueuedSplitterBlocks.size() << std::endl;
+    // std::cout << "Splitter block has size " << splitterBlock.size() << " with " << probabilitiesToSplitter.size() << " predecessor states and " <<
+    // blocksToSplit.size() << " predecessor blocks. |Q|=" << enqueuedSplitterBlocks.size() << std::endl;
 
     auto const& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
     while (!blocksToSplit.empty()) {
         auto predecessorBlockToSplit = blocksToSplit.pop();
         // First split the block by whether it is a predecessor of the splitter block or not
-        auto [noPredecessors, predecessors] = refinementCache.splitterPredecessors.size() < predecessorBlockToSplit.size() ?
-            this->partition.splitBlockByRange(predecessorBlockToSplit, refinementCache.splitterPredecessors ) :
-        this->partition.splitBlockByPredicate(predecessorBlockToSplit, [&probabilitiesToSplitter](auto const& state) { return !storm::utility::isZero(probabilitiesToSplitter[state]); });
+        auto [noPredecessors, predecessors] =
+            refinementCache.splitterPredecessors.size() < predecessorBlockToSplit.size()
+                ? this->partition.splitBlockByRange(predecessorBlockToSplit, refinementCache.splitterPredecessors)
+                : this->partition.splitBlockByPredicate(
+                      predecessorBlockToSplit,
+                      [&probabilitiesToSplitter](auto const& state) { return !storm::utility::isZero(probabilitiesToSplitter[state]); });
         // std::cout << "\tsplitting a predecessor block with " << predecessors.size() << "/" <<  predecessorBlockToSplit.size() << "predecessor states. ";
 
         STORM_LOG_ASSERT(!predecessors.empty(), "The predecessor block should contain at least one predecessor state.");
         bool wasSplit = noPredecessors.size() > 0;
 
         if (wasSplit) {
-                enqueuedSplitterBlocks.insert(noPredecessors);
+            enqueuedSplitterBlocks.insert(noPredecessors);
         }
 
         // Attention: Do not short circuit, i.e., wasSplit = wasSplit || foo() might not execute foo()
-        wasSplit |= this->partition.splitBlockByOrder(predecessors, [this,&probabilitiesToSplitter](auto const& a, auto const& b) {
+        wasSplit |= this->partition.splitBlockByOrder(predecessors, [this, &probabilitiesToSplitter](auto const& a, auto const& b) {
             return this->comparator.isLess(probabilitiesToSplitter[a], probabilitiesToSplitter[b]);
         });
 
-            // Add all blocks that were split to splitter queue
-            if (wasSplit) {
-                enqueuedSplitterBlocks.erase(predecessorBlockToSplit);
-                this->partition.forEachSubBlock(predecessors, [&enqueuedSplitterBlocks](auto const& block) {
-                        enqueuedSplitterBlocks.insert(block);
-                });
-            }
+        // Add all blocks that were split to splitter queue
+        if (wasSplit) {
+            enqueuedSplitterBlocks.erase(predecessorBlockToSplit);
+            this->partition.forEachSubBlock(predecessors, [&enqueuedSplitterBlocks](auto const& block) { enqueuedSplitterBlocks.insert(block); });
+        }
 
         // std::cout << std::endl;
     }
@@ -105,16 +106,17 @@ bool DeterministicModelBisimulationDecomposition<ModelType>::possiblyNeedsRefine
 
 template<typename ModelType>
 void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPartition() {
+    uint64_t const numberOfQuotientStates = this->partition.getNumberOfBlocks();
     // In order to create the quotient model, we need to construct
     // (a) the new transition matrix,
     // (b) the new labeling,
     // (c) the new reward structures.
 
     // Prepare a matrix builder for (a).
-    storm::storage::SparseMatrixBuilder<ValueType> builder(this->partition.getNumberOfBlocks(), this->partition.getNumberOfBlocks());
+    storm::storage::SparseMatrixBuilder<ValueType> builder(numberOfQuotientStates, numberOfQuotientStates);
 
     // Prepare the new state labeling for (b).
-    storm::models::sparse::StateLabeling newLabeling(this->partition.getNumberOfBlocks());
+    storm::models::sparse::StateLabeling newLabeling(numberOfQuotientStates);
     std::set<std::string> atomicPropositionsSet = this->options.respectedAtomicPropositions.value();
     atomicPropositionsSet.insert("init");
     std::vector<std::string> atomicPropositions = std::vector<std::string>(atomicPropositionsSet.begin(), atomicPropositionsSet.end());
@@ -125,7 +127,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPa
     // If the model had state rewards, we need to build the state rewards for the quotient as well.
     std::optional<std::vector<ValueType>> stateRewards;
     if (this->options.getKeepRewards() && this->model.hasRewardModel()) {
-        stateRewards = std::vector<ValueType>(this->partition.getNumberOfBlocks());
+        stateRewards = std::vector<ValueType>(numberOfQuotientStates);
     }
 
     // Now build (a) and (b) by traversing all blocks.
@@ -134,12 +136,10 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPa
     std::vector<uint64_t> blocksMapping(this->partition.getNumberOfElements(), std::numeric_limits<uint64_t>::max());
     {
         uint64_t blockIndex = 0;
-        this->partition.forEachBlock([&blocksMapping, &blockIndex](auto const& block) {
-            blocksMapping[block.front()] = blockIndex++;
-        });
+        this->partition.forEachBlock([&blocksMapping, &blockIndex](auto const& block) { blocksMapping[block.front()] = blockIndex++; });
     }
 
-    this->partition.forEachBlock([this, &blocksMapping, &builder, &atomicPropositions, &newLabeling, &stateRewards](auto const& block) {
+    this->partition.forEachBlock([this, &blocksMapping, &builder, &atomicPropositions, &newLabeling, &stateRewards, numberOfQuotientStates](auto const& block) {
         // Pick one representative state. For strong bisimulation it doesn't matter which state it is, because
         // they all behave equally.
         auto representativeState = block.front();
@@ -147,7 +147,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::buildQuotientFromPa
         // TODO: Handle weak bisimulation case (non-silent)
 
         auto const blockIndex = blocksMapping[representativeState];
-        STORM_LOG_ASSERT(blockIndex < this->partition.getNumberOfBlocks(), "Block index out of bounds.");
+        STORM_LOG_ASSERT(blockIndex < numberOfQuotientStates, "Block index out of bounds.");
 
         // If the block is absorbing, we simply add a self-loop.
         if (auto findIt = this->absorbingBlocks.find(representativeState); findIt != this->absorbingBlocks.end()) {

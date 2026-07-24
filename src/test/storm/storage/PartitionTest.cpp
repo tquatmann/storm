@@ -1,4 +1,5 @@
 #include <sstream>
+#include <vector>
 #include "storm/storage/stateminimization/Partition.h"
 
 #include "test/storm_gtest.h"
@@ -121,4 +122,146 @@ TEST(PartitionTest, Basic) {
     blockSet.insert(partition.getBlockOfElement(1));  // inserts a sub-block of oddBlock
     EXPECT_EQ(blockSet.size(), 3);
 };
+
+TEST(PartitionTest, SplitByRange) {
+    storm::storage::stateminimization::Partition partition(10);
+
+    // Split into "not in range" and "in range" parts
+    auto [no, yes] = partition.splitBlockByRange(partition.getUniversalBlock(), std::vector<uint64_t>{1, 3, 5, 7, 9});
+    ASSERT_TRUE(partition.checkBlockValidity(no)) << "Block " << blockToString(no) << " is not valid.";
+    ASSERT_TRUE(partition.checkBlockValidity(yes)) << "Block " << blockToString(yes) << " is not valid.";
+    EXPECT_TRUE(equalBlocks(partition, {0, 2, 4, 6, 8}, no));
+    EXPECT_TRUE(equalBlocks(partition, {1, 3, 5, 7, 9}, yes));
+    EXPECT_EQ(2ul, partition.getNumberOfBlocks());
+
+    // Duplicates in the range as well as elements that are not part of the block being split (but are valid elements of the partition) must be handled
+    // gracefully
+    auto [notInRange, inRange] = partition.splitBlockByRange(no, std::vector<uint64_t>{0, 4, 4, 8, 1, 3});  // 1 and 3 do not belong to `no`
+    ASSERT_TRUE(partition.checkBlockValidity(notInRange)) << "Block " << blockToString(notInRange) << " is not valid.";
+    ASSERT_TRUE(partition.checkBlockValidity(inRange)) << "Block " << blockToString(inRange) << " is not valid.";
+    EXPECT_TRUE(equalBlocks(partition, {2, 6}, notInRange));
+    EXPECT_TRUE(equalBlocks(partition, {0, 4, 8}, inRange));
+    EXPECT_EQ(3ul, partition.getNumberOfBlocks());
+
+    // Splitting with an empty range has no effect
+    auto [allOfYes, emptyBlock] = partition.splitBlockByRange(yes, std::vector<uint64_t>{});
+    EXPECT_TRUE(emptyBlock.empty());
+    EXPECT_TRUE(equalBlocks(partition, {1, 3, 5, 7, 9}, allOfYes));
+    EXPECT_FALSE(partition.isProperSuperBlock(yes));
+
+    // Splitting with a range that contains all elements of the block has no effect
+    auto [emptyBlock2, allOfYes2] = partition.splitBlockByRange(yes, std::vector<uint64_t>{1, 3, 5, 7, 9});
+    EXPECT_TRUE(emptyBlock2.empty());
+    EXPECT_TRUE(equalBlocks(partition, {1, 3, 5, 7, 9}, allOfYes2));
+    EXPECT_FALSE(partition.isProperSuperBlock(yes));
+    EXPECT_EQ(3ul, partition.getNumberOfBlocks());
+}
+
+TEST(PartitionTest, UniversalBlockAndSubBlockRelation) {
+    storm::storage::stateminimization::Partition partition(8);
+    auto universal = partition.getUniversalBlock();
+    EXPECT_TRUE(equalBlocks(partition, {0, 1, 2, 3, 4, 5, 6, 7}, universal));
+    EXPECT_TRUE(partition.isSubBlockOf(universal, universal));  // a block is a sub-block of itself
+    EXPECT_TRUE(partition.isBlockOfElement(universal, 3));
+
+    auto [odd, even] = partition.splitBlockByPredicate(universal, [](auto const& e) { return e % 2 == 0; });
+
+    // getUniversalBlock always spans all elements, even though the partition now consists of multiple blocks
+    auto stillUniversal = partition.getUniversalBlock();
+    EXPECT_TRUE(equalBlocks(partition, {0, 1, 2, 3, 4, 5, 6, 7}, stillUniversal));
+    EXPECT_TRUE(partition.isProperSuperBlock(stillUniversal));
+
+    EXPECT_TRUE(partition.isSubBlockOf(odd, stillUniversal));
+    EXPECT_TRUE(partition.isSubBlockOf(even, stillUniversal));
+    EXPECT_FALSE(partition.isSubBlockOf(stillUniversal, odd));
+    EXPECT_FALSE(partition.isSubBlockOf(odd, even));
+
+    // `odd` is the finest currently known block for element 1, but the (now proper super-) universal block is not
+    EXPECT_TRUE(partition.isBlockOfElement(odd, 1));
+    EXPECT_FALSE(partition.isBlockOfElement(stillUniversal, 1));
+    EXPECT_FALSE(partition.isBlockOfElement(even, 1));
+}
+
+TEST(PartitionTest, SingletonBlockSplits) {
+    // A partition consisting of a single element: the sole block always starts at index 0.
+    {
+        storm::storage::stateminimization::Partition partition(1);
+        auto block = partition.getBlockOfElement(0);
+        EXPECT_FALSE(partition.splitBlockByOrder(block, [](auto const& a, auto const& b) { return a < b; }));
+
+        auto [emptyFalsePart, allTrue] = partition.splitBlockByPredicate(block, [](auto const&) { return true; });
+        EXPECT_TRUE(emptyFalsePart.empty());
+        EXPECT_TRUE(equalBlocks(partition, {0}, allTrue));
+
+        auto [allFalse, emptyTruePart] = partition.splitBlockByPredicate(block, [](auto const&) { return false; });
+        EXPECT_TRUE(emptyTruePart.empty());
+        EXPECT_TRUE(equalBlocks(partition, {0}, allFalse));
+
+        EXPECT_FALSE(partition.isProperSuperBlock(block));
+        ASSERT_TRUE(partition.checkBlockValidity(block));
+    }
+
+    // A singleton block resulting from splitting a larger partition, i.e., one that does not start at index 0
+    {
+        storm::storage::stateminimization::Partition partition(5);
+        auto [odd, even] = partition.splitBlockByPredicate(partition.getUniversalBlock(), [](auto const& e) { return e % 2 == 0; });
+        auto [rest, isolated] = partition.splitBlockByPredicate(even, [](auto const& e) { return e == 0; });
+        EXPECT_TRUE(equalBlocks(partition, {0}, isolated));
+
+        EXPECT_FALSE(partition.splitBlockByOrder(isolated, [](auto const& a, auto const& b) { return a < b; }));
+
+        auto [notInRange, inRange] = partition.splitBlockByRange(isolated, std::vector<uint64_t>{0});
+        EXPECT_TRUE(notInRange.empty());
+        EXPECT_TRUE(equalBlocks(partition, {0}, inRange));
+
+        auto [notInRange2, inRange2] = partition.splitBlockByRange(isolated, std::vector<uint64_t>{});
+        EXPECT_TRUE(inRange2.empty());
+        EXPECT_TRUE(equalBlocks(partition, {0}, notInRange2));
+
+        ASSERT_TRUE(partition.checkBlockValidity(isolated));
+    }
+}
+
+TEST(PartitionTest, NonSuperBlockSet) {
+    storm::storage::stateminimization::Partition partition(6);
+    storm::storage::stateminimization::Partition::NonSuperBlockSet nonSuperBlockSet(partition);
+
+    EXPECT_TRUE(nonSuperBlockSet.empty());
+    EXPECT_EQ(0ul, nonSuperBlockSet.size());
+
+    auto universalBlock = partition.getUniversalBlock();
+    nonSuperBlockSet.insert(universalBlock);
+    EXPECT_FALSE(nonSuperBlockSet.empty());
+    EXPECT_EQ(1ul, nonSuperBlockSet.size());
+    EXPECT_TRUE(nonSuperBlockSet.contains(universalBlock));
+
+    // Inserting the same (leaf) block again has no effect
+    nonSuperBlockSet.insert(partition.getBlockOfElement(3));
+    EXPECT_EQ(1ul, nonSuperBlockSet.size());
+
+    auto poppedBlock = nonSuperBlockSet.pop();
+    EXPECT_TRUE(equalBlocks(partition, {0, 1, 2, 3, 4, 5}, poppedBlock));
+    EXPECT_TRUE(nonSuperBlockSet.empty());
+
+    auto [odd, even] = partition.splitBlockByPredicate(poppedBlock, [](auto const& e) { return e % 2 == 0; });
+    nonSuperBlockSet.insert(odd);
+    nonSuperBlockSet.insert(even);
+    EXPECT_EQ(2ul, nonSuperBlockSet.size());
+    EXPECT_TRUE(nonSuperBlockSet.contains(odd));
+    EXPECT_TRUE(nonSuperBlockSet.contains(even));
+
+    // Popping removes an arbitrary (but existing) block from the set; here we don't rely on a particular order
+    auto b0 = nonSuperBlockSet.pop();
+    auto b1 = nonSuperBlockSet.pop();
+    EXPECT_TRUE(nonSuperBlockSet.empty());
+    if (partition.contains(1, b0)) {
+        EXPECT_TRUE(equalBlocks(partition, {1, 3, 5}, b0));
+        EXPECT_TRUE(equalBlocks(partition, {0, 2, 4}, b1));
+    } else {
+        EXPECT_TRUE(equalBlocks(partition, {0, 2, 4}, b0));
+        EXPECT_TRUE(equalBlocks(partition, {1, 3, 5}, b1));
+    }
+    EXPECT_FALSE(nonSuperBlockSet.contains(odd));
+    EXPECT_FALSE(nonSuperBlockSet.contains(even));
+}
 }  // namespace
