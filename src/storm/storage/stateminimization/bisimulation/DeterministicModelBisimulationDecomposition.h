@@ -55,8 +55,9 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
     struct RefinementCache {
         std::vector<ValueType> probabilitiesToSplitter;
         std::vector<uint64_t> splitterPredecessors; // states with a non-zero probability to a splitter
+        storm::storage::stateminimization::Partition::NonSuperBlockSet nonSuperBlockSet;
 
-        RefinementCache(uint64_t numStates) : probabilitiesToSplitter(numStates, storm::utility::zero<ValueType>()) {}
+        RefinementCache(storm::storage::stateminimization::Partition const& partition) : probabilitiesToSplitter(partition.getNumberOfElements(), storm::utility::zero<ValueType>()), nonSuperBlockSet(partition) {}
 
         void addProbabilityToSplitter(uint64_t state, ValueType const& probability) {
             STORM_LOG_ASSERT(!storm::utility::isZero(probability), "The probability to add to the splitter must not be zero.");
@@ -72,6 +73,9 @@ class DeterministicModelBisimulationDecomposition : public BisimulationDecomposi
             }
             splitterPredecessors.clear();
             STORM_LOG_ASSERT(std::all_of(probabilitiesToSplitter.begin(), probabilitiesToSplitter.end(), [](ValueType const& p) { return storm::utility::isZero(p); }), "Expected all probabilities to be zero after clearing the cache.");
+            while (!nonSuperBlockSet.empty()) {
+                nonSuperBlockSet.pop();
+            }
         }
 
 

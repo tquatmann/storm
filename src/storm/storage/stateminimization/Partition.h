@@ -21,6 +21,8 @@ class Partition {
     // Typedefs for readability
     using ElementIndex = uint64_t;
     using Block = std::span<ElementIndex const>;
+
+    // Sets of blocks
     struct BlockCompare {
         bool operator()(Block const& lhs, Block const& rhs) const {
             if (lhs.size() < rhs.size()) {
@@ -33,6 +35,43 @@ class Partition {
         }
     };
     using OrderedBlockSet = std::set<Block, BlockCompare>;
+
+    class NonSuperBlockSet {
+        public:
+        NonSuperBlockSet(Partition const& partition) : partition(partition), blockIndices(partition.getNumberOfElements(), false) {}
+
+        std::size_t size() const {
+            return containedBlockIndices.size();
+        }
+        bool empty() const {
+            return containedBlockIndices.empty();
+        }
+
+        void insert(Block const& block) {
+            STORM_LOG_ASSERT(!block.empty(), "Cannot insert empty block.");
+            STORM_LOG_ASSERT(!partition.isProperSuperBlock(block), "Cannot insert block that is a proper superblock.");
+            if (BlockIndex i = partition.getBlockIndex(block); !blockIndices.get(i)) {
+                blockIndices.set(i, true);
+                containedBlockIndices.push_back(i);
+            }
+        }
+
+        Block pop() {
+            STORM_LOG_ASSERT(!empty(), "Cannot pop from empty blockset.");
+            auto const i = containedBlockIndices.back();
+            blockIndices.set(i, false);
+            containedBlockIndices.pop_back();
+            return partition.getBlockFromIndex(i);
+        }
+
+
+
+    private:
+
+        Partition const& partition;
+        std::vector<uint64_t> containedBlockIndices;
+        storm::storage::BitVector blockIndices;
+    };
 
     Partition() = default;
     Partition(Partition const& other) = default;
@@ -56,6 +95,13 @@ class Partition {
      * Retrieves the number of elements.
      */
     std::size_t getNumberOfElements() const;
+
+    /*!
+     * @return the block that contains all elements, i.e., the universal block.
+     */
+Block getUniversalBlock() const {
+        return Block(blockContents.begin(), blockContents.end());
+    }
 
     /*!
      * @return the block that contains the given element.
@@ -102,7 +148,7 @@ class Partition {
     template<typename Func>
         requires std::invocable<Func, Block>
     void forEachBlock(Func const& f) const {
-        forEachSubBlock(Block(blockContents.begin(), blockContents.end()), f);
+        forEachSubBlock(getUniversalBlock(), f);
     }
 
     /*!

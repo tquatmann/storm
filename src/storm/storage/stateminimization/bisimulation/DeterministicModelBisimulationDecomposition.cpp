@@ -8,7 +8,7 @@ using namespace bisimulation;
 template<typename ModelType>
 DeterministicModelBisimulationDecomposition<ModelType>::DeterministicModelBisimulationDecomposition(
     ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options)
-    : BisimulationDecomposition<ModelType>(model, options), refinementCache(model.getNumberOfStates()) {
+    : BisimulationDecomposition<ModelType>(model, options), refinementCache(BisimulationDecomposition<ModelType>::partition) {
     // Intentionally left empty.
 }
 
@@ -40,7 +40,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
     std::span<uint64_t const> splitterBlock, std::deque<typename stateminimization::Partition::Block>& splitterQueue,
     stateminimization::Partition::OrderedBlockSet& enqueuedSplitterBlocks) {
 
-    storm::storage::stateminimization::Partition::OrderedBlockSet blocksToSplit;
+    auto& blocksToSplit = refinementCache.nonSuperBlockSet;
 
     for (auto currentState : splitterBlock) {
         // Compute probability to enter splitter block for each predecessor
@@ -63,7 +63,8 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
     // std::cout << "Splitter block has size " << splitterBlock.size() << " with " << probabilitiesToSplitter.size() << " predecessor states and " << blocksToSplit.size() << " predecessor blocks. |Q|=" << enqueuedSplitterBlocks.size() << std::endl;
 
     auto const& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
-    for (auto predecessorBlockToSplit : blocksToSplit) {
+    while (!blocksToSplit.empty()) {
+        auto predecessorBlockToSplit = blocksToSplit.pop();
         // First split the block by whether it is a predecessor of the splitter block or not
         auto [noPredecessors, predecessors] = refinementCache.splitterPredecessors.size() < predecessorBlockToSplit.size() ?
             this->partition.splitBlockByRange(predecessorBlockToSplit, refinementCache.splitterPredecessors ) :
