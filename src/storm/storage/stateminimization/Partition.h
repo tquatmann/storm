@@ -1,9 +1,8 @@
 #pragma once
 
-#include <boost/sort/block_indirect_sort/block_indirect_sort.hpp>
 #include <cstddef>
-#include <memory>
 #include <ranges>
+#include <span>
 
 #include "storm/storage/BitVector.h"
 #include "storm/utility/macros.h"
@@ -18,10 +17,17 @@ namespace storm::storage::stateminimization {
  */
 class Partition {
    public:
-    // Typedefs for readability
+    /// The type used to index the elements of the partition.
     using ElementIndex = uint64_t;
+
+    /// A contiguous range of elements that form a (possibly proper super-) block of the partition.
+    /// Note: Splitting a block changes the order of the contained elements.
     using Block = std::span<ElementIndex const>;
 
+    /*!
+     * Orders blocks by their size (ascending) and, for equally sized blocks, by their location in memory.
+     * Used to keep containers of blocks (e.g. OrderedBlockSet) ordered by size.
+     */
     struct BlockCompare {
         bool operator()(Block const& lhs, Block const& rhs) const {
             if (lhs.size() < rhs.size()) {
@@ -33,50 +39,53 @@ class Partition {
             return lhs.data() < rhs.data();
         }
     };
-    // Arbitrary set of blocks, ordered by their size (smallest first)
+
+    /*!
+     * A set of blocks, ordered by their size (smallest first).
+     */
     using OrderedBlockSet = std::set<Block, BlockCompare>;
 
     /*!
      * Set of blocks that are no proper superblock.
-     * It is illegal to split a block that is currently in this set.
-     * Insertion and popping an arbitrary element has mostly constant time.
+     * It is illegal to insert a block that currently is a proper superblock.
+     * Insertion and popping an arbitrary element has (amortized) constant time.
      * However, the set requires Theta(numElements) space.
      */
     class NonSuperBlockSet {
-        public:
-        NonSuperBlockSet(Partition const& partition) : partition(partition), blockIndices(partition.getNumberOfElements(), false) {}
+       public:
+        /*!
+         * Creates an empty set associated with the given partition.
+         */
+        explicit NonSuperBlockSet(Partition const& partition);
 
-        std::size_t size() const {
-            return containedBlockIndices.size();
-        }
-        bool empty() const {
-            return containedBlockIndices.empty();
-        }
-        bool contains(Block const& block) const {
-            return blockIndices.get(partition.getBlockIndex(block));
-        }
+        /*!
+         * @return the number of blocks currently contained in the set.
+         */
+        std::size_t size() const;
 
-        void insert(Block const& block) {
-            STORM_LOG_ASSERT(!block.empty(), "Cannot insert empty block.");
-            STORM_LOG_ASSERT(!partition.isProperSuperBlock(block), "Cannot insert block that is a proper superblock.");
-            if (BlockIndex i = partition.getBlockIndex(block); !blockIndices.get(i)) {
-                blockIndices.set(i, true);
-                containedBlockIndices.push_back(i);
-            }
-        }
+        /*!
+         * @return true iff the set does not contain any block.
+         */
+        bool empty() const;
 
-        Block pop() {
-            STORM_LOG_ASSERT(!empty(), "Cannot pop from empty blockset.");
-            auto const i = containedBlockIndices.back();
-            blockIndices.set(i, false);
-            containedBlockIndices.pop_back();
-            return partition.getBlockFromIndex(i);
-        }
+        /*!
+         * @return true iff the given block is currently contained in the set.
+         */
+        bool contains(Block const& block) const;
 
+        /*!
+         * Inserts the given block into the set. Does nothing if the block is already contained.
+         * @note the given block must not be a proper superblock.
+         */
+        void insert(Block const& block);
 
+        /*!
+         * Removes and returns an arbitrary block from the set.
+         * @note the set must not be empty.
+         */
+        Block pop();
 
-    private:
-
+       private:
         Partition const& partition;
         std::vector<uint64_t> containedBlockIndices;
         storm::storage::BitVector blockIndices;
@@ -108,9 +117,7 @@ class Partition {
     /*!
      * @return the block that contains all elements, i.e., the universal block.
      */
-Block getUniversalBlock() const {
-        return Block(blockContents.begin(), blockContents.end());
-    }
+    Block getUniversalBlock() const;
 
     /*!
      * @return the block that contains the given element.
@@ -121,27 +128,24 @@ Block getUniversalBlock() const {
     Block getBlockOfElement(ElementIndex element) const;
 
     /*!
-     * @return true iff the given element is contained in the given block
-     * @note this has constant runtime, i.e., is preferrable over a linear search over the block
+     * @return true iff the given element is contained in the given block.
+     * @note this has constant runtime, i.e., is preferable over a linear search over the block
      */
     bool contains(ElementIndex element, Block const& block) const;
 
     /*!
-     * @return true iff all elements of the given subblock are contained in the given superblock
-     * @note this has constant runtime, i.e., is preferrable over a linear search over the block
+     * @return true iff all elements of the given subblock are contained in the given superblock.
+     * @note this has constant runtime, i.e., is preferable over a linear search over the block
      */
     bool isSubBlockOf(Block const& subblock, Block const& superblock) const;
 
-
     /*!
- * @return true iff the (smallest known) block of the given element coincides with the given block
- */
+     * @return true iff the (smallest known) block of the given element coincides with the given block.
+     */
     bool isBlockOfElement(Block const& block, ElementIndex const& element) const;
 
-
     /*!
-     * Checks if the given block is a valid block in the partition. Usefull for sanity checks.
-     * Will print an error if any of the checks fail, but does not assert/throw
+     * Checks if the given block is a valid block in the partition. Useful for sanity checks (e.g. via assertions). Does not assert itself.
      */
     bool checkBlockValidity(Block const& block) const;
 
@@ -178,24 +182,6 @@ Block getUniversalBlock() const {
         };
     }
 
-    template<typename Iterator, typename Compare>
-    void small_sort(Iterator begin, Iterator end, Compare comp) {
-        // STORM_LOG_ASSERT(false, "try other sorting"); TODO
-        if (std::distance(begin, end) <= 32) {
-            for (auto i = begin + 1; i != end; ++i) {
-                auto key = *i;
-                auto j = i;
-                while (j > begin && comp(key, *(j - 1))) {
-                    *j = *(j - 1);
-                    --j;
-                }
-                *j = key;
-            }
-        } else {
-            boost::sort::block_indirect_sort(begin, end, comp);
-        }
-    }
-
     /*!
      * Splits the given block according to the given order.
      * Specifically, the elements in the block are sorted according to the given order and then the block is split into
@@ -214,7 +200,6 @@ Block getUniversalBlock() const {
         auto const blockStart = getBlockIndex(block);
 
         auto const blockEnd = blockStart + block.size();
-        // small_sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
         std::sort(blockContents.begin() + blockStart, blockContents.begin() + blockEnd, less);
 
         // update the inverse after sorting
@@ -244,8 +229,9 @@ Block getUniversalBlock() const {
             newBlockIndex = newBlockEnd;
             ++numBlocks;
         }
-        --numBlocks; // the old superblock is no longer a block as counted by this partition
+        --numBlocks;  // the old superblock is no longer a block as counted by this partition
         STORM_LOG_ASSERT(isProperSuperBlock(block), "Partition in inconsistent state: Block was not split into multiple sub-blocks.");
+        checkBlockValidity(block);
         return true;  // there must have been a split because the case without a split is already caught above
     }
 
@@ -302,7 +288,7 @@ Block getUniversalBlock() const {
         // Perform a split
         Block noBlock = registerNewBlock(blockStart, l);
         Block yesBlock = registerNewBlock(l, blockEnd);
-        ++numBlocks; // We have split a single block into two blocks, so the total number increments by 1
+        ++numBlocks;  // We have split a single block into two blocks, so the total number increments by 1
         return {noBlock, yesBlock};
     }
 
@@ -328,7 +314,7 @@ Block getUniversalBlock() const {
         for (auto const& element : r) {
             auto const src = blockContentsInverse[element];
             if (src < blockStart || src >= yesBlockStart) {
-                continue; // element is either not in the block or already occurred before (duplicate in r)
+                continue;  // element is either not in the block or already occurred before (duplicate in r)
             }
             // swap the element to the end of the block, into the 'yes' part
             --yesBlockStart;
@@ -347,67 +333,57 @@ Block getUniversalBlock() const {
         // Perform a split
         Block noBlock = registerNewBlock(blockStart, yesBlockStart);
         Block yesBlock = registerNewBlock(yesBlockStart, blockEnd);
-        ++numBlocks; // We have split a single block into two blocks, so the total number increments by 1
+        ++numBlocks;  // We have split a single block into two blocks, so the total number increments by 1
         return {noBlock, yesBlock};
     }
 
    private:
     /*!
-     * The index of a block in the partition.
+     * The (internal) index of a block in the partition.
      * @note we make this private since we do not want to expose the internal representation of the partition.
      */
     using BlockIndex = uint64_t;
 
     /*!
-     * @return the block indices of the given block.
-     * @note block indices are invalidated when the partition is modified (e.g. after calling split).
-     * We therefore do not want to expose them.
+     * @return the index at which the given block currently starts within blockContents.
+     * @note the meaning of a given index changes as the partition evolves: the block currently starting at that index may later become a proper
+     * superblock once it is split further. We therefore do not want to expose block indices.
      */
     BlockIndex getBlockIndex(Block const& block) const;
 
-    Block getBlockFromIndex(BlockIndex blockIndex) const {
-        STORM_LOG_ASSERT(blockIndex < blockContents.size(), "Block index out of bounds");
-        STORM_LOG_ASSERT(blockSizes[blockIndex] > 0, "Block index points to a non-existend block");
-        return Block(blockContents.data() + blockIndex, blockSizes[blockIndex]);
-    }
+    /*!
+     * @return the (currently smallest known) block that starts at the given index.
+     * @note blockIndex must be the start index of a currently valid block, cf. registerNewBlock.
+     */
+    Block getBlockFromIndex(BlockIndex blockIndex) const;
 
     /*!
-     * Creates a block from the given range of indices.
-     * @return a (super?)block that contains all states whose block index is in the range [start, end).
+     * Registers a (new) block spanning blockContents[start, end) and updates the internal bookkeeping accordingly.
+     * If start has not been used as a block's start index before, elementToBlockIndex is updated for all elements of the new block.
+     * Otherwise, the block at start is assumed to merely shrink (i.e. the new block must be a sub-block of the block that was previously registered at
+     * start), so elementToBlockIndex does not need to be touched.
+     * @note When splitting a block, all sub-blocks need to be registered to avoid putting the partition into an inconsistent state.
+     * @return the newly registered block.
      */
+    Block registerNewBlock(BlockIndex const start, BlockIndex const end);
 
-    Block registerNewBlock(BlockIndex const start, BlockIndex const end) {
-        STORM_LOG_ASSERT(start < end && end <= blockContents.size(), "Invalid block range");
-        Block newBlock(blockContents.data() + start, end - start);
-        // Shrinking an existing block doesn't require iterating over all block contents
-        if (blockSizes[start] == 0) {
-            for (ElementIndex const e : newBlock) {
-                elementToBlockIndex[e] = start;
-            }
-        } else {
-            STORM_LOG_ASSERT(isSubBlockOf(newBlock, getBlockFromIndex(start)), "New block is not a sub-block of the existing block");
-        }
-        blockSizes[start] = newBlock.size();
-        return newBlock;
-    }
-
-
-    /// Stores for each block the elements in that block (cf. blockIndices)
-    /// Stores where a new block begins in the blockContents vector.
-    /// The number of set bits equals the number of blocks. The first bit is always set.
-    /// The k'th block starts at the k'th set bit. The BlockIndex of the k'th block is the position of that bit.
-    /// If bit i is set, the corresponding block is given by { blockContents[j] | i ≤ j < blockIndices.getNextSetIndex(i+1) }
+    /// The elements of the partition. Each block occupies a contiguous range within this vector; a block is identified by the index at which it starts
+    /// and its size (cf. blockSizes).
     std::vector<ElementIndex> blockContents;
+
+    /// The inverse of blockContents, i.e. blockContents[blockContentsInverse[e]] == e for every element e. Used to quickly find the position of an element in
+    /// its block.
     std::vector<BlockIndex> blockContentsInverse;
 
-    /// Maps each element to the start index of its block.
-    /// for all elements s, blockIndices.get(elementToBlockIndex[s]) is true and s is in { blockContents[j] | elementToBlockIndex[s] ≤ j <
-    /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
+    /// Maps each element to the start index (within blockContents) of the finest currently known block containing it.
     std::vector<BlockIndex> elementToBlockIndex;
+
+    /// For every index i that currently is the start index of a block, blockSizes[i] holds that block's current size.
+    /// A value of 0 means that i has never been used as a block's start index.
     std::vector<std::size_t> blockSizes;
 
-    uint64_t numBlocks;
-
+    /// The current number of blocks in the partition, cf. getNumberOfBlocks.
+    uint64_t numBlocks = 0;
 };
 
 std::ostream& operator<<(std::ostream& os, const Partition& partition);
