@@ -492,7 +492,7 @@ class ValuationsStorage {
     template<typename... Types>
     static std::string typeNames() {
         std::ostringstream oss;
-        bool first = true;
+        [[maybe_unused]] bool first = true;
         ((oss << (first ? "" : ", ") << typeName<Types>(), first = false), ...);
         return oss.str();
     }
