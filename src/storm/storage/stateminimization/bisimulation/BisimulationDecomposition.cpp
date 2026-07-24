@@ -97,13 +97,11 @@ bool BisimulationDecomposition<ModelType>::shouldBuildQuotient() const {
 
 template<typename ModelType>
 void BisimulationDecomposition<ModelType>::performPartitionRefinement() {
-    std::deque<typename stateminimization::Partition::Block> splitterQueue; // todo: not used
+    std::deque<typename stateminimization::Partition::Block> splitterQueue;  // todo: not used
     stateminimization::Partition::OrderedBlockSet enqueuedSplitterBlocks;
 
     // Initially, add all current blocks to the queue.
-    this->partition.forEachBlock([&](auto const& block) {
-        enqueuedSplitterBlocks.insert(block);
-    });
+    this->partition.forEachBlock([&](auto const& block) { enqueuedSplitterBlocks.insert(block); });
 
     // Then perform the actual splitting until there are no more splitters.
     uint64_t iterations = 0;

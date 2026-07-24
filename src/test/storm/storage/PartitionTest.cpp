@@ -71,7 +71,7 @@ TEST(PartitionTest, Basic) {
     uint64_t seenSubBlocks = 0;  // very "smart" (aka lazy) encoding of the seen subsets
     partition.forEachSubBlock(oddBlock, [&partition, &seenSubBlocks](auto const& block) {
         ASSERT_TRUE(partition.checkBlockValidity(block)) << "Block " << blockToString(block) << " is not valid.";
-        if (partition.contains( 1, block)) {
+        if (partition.contains(1, block)) {
             EXPECT_TRUE(equalBlocks(partition, {1, 7}, block));
             seenSubBlocks += 1;
         } else if (partition.contains(3, block)) {

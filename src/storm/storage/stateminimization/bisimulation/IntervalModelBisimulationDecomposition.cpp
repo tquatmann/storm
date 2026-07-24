@@ -345,7 +345,7 @@ bool IntervalModelBisimulationDecomposition<ModelType>::checkCurrentPartitionByE
         ValueType toOther = storm::utility::zero<ValueType>();
 
         for (auto const& entry : this->model.getTransitionMatrix().getRow(state)) {
-            if (this->partition.contains( entry.getColumn(), splitterBlock)) {
+            if (this->partition.contains(entry.getColumn(), splitterBlock)) {
                 toBlock += entry.getValue();
             } else {
                 toOther += entry.getValue();

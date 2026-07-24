@@ -188,4 +188,4 @@ class BaseDecomposition {
     storm::utility::ConstantsComparator<storm::IntervalBaseType<ValueType>> comparator;
 };
 
-}  // namespace storage
+}  // namespace storm::storage
