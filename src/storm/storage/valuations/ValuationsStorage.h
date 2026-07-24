@@ -668,9 +668,9 @@ class ValuationsStorage {
 
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException,
                         "Variable " << varInfo.description.name << " is stored as " << varInfo.description.type.toString()
-                                     << ", which cannot be read as any of the requested C++ type(s) [" << typeNames<AllowedTypes...>()
-                                     << "]. Check that you are using the accessor matching the variable's declared storage type (e.g. "
-                                        "getDoubleValue instead of getRationalValue for a variable added via addDoubleVariable).");
+                                    << ", which cannot be read as any of the requested C++ type(s) [" << typeNames<AllowedTypes...>()
+                                    << "]. Check that you are using the accessor matching the variable's declared storage type (e.g. "
+                                       "getDoubleValue instead of getRationalValue for a variable added via addDoubleVariable).");
     }
 
     template<bool InitializeWithCurrent = false, bool AllowOptional = false, typename... AllowedTypes, ValuationWriteCallback Callback>
@@ -820,9 +820,9 @@ class ValuationsStorage {
         }
         STORM_LOG_THROW(false, storm::exceptions::UnexpectedException,
                         "Variable " << varInfo.description.name << " is stored as " << varInfo.description.type.toString()
-                                     << ", which cannot be written as any of the requested C++ type(s) [" << typeNames<AllowedTypes...>()
-                                     << "]. Check that you are using the accessor matching the variable's declared storage type (e.g. "
-                                        "writeDoubleValue instead of writeRationalValue for a variable added via addDoubleVariable).");
+                                    << ", which cannot be written as any of the requested C++ type(s) [" << typeNames<AllowedTypes...>()
+                                    << "]. Check that you are using the accessor matching the variable's declared storage type (e.g. "
+                                       "writeDoubleValue instead of writeRationalValue for a variable added via addDoubleVariable).");
     }
 };
 }  // namespace storm::storage::sparse
