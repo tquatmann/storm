@@ -65,7 +65,7 @@ void DeterministicModelBisimulationDecomposition<ModelType>::refinePartitionBase
     auto const& probabilitiesToSplitter = refinementCache.probabilitiesToSplitter;
     for (auto predecessorBlockToSplit : blocksToSplit) {
         // First split the block by whether it is a predecessor of the splitter block or not
-        auto [noPredecessors, predecessors] = true ?
+        auto [noPredecessors, predecessors] = refinementCache.splitterPredecessors.size() < predecessorBlockToSplit.size() ?
             this->partition.splitBlockByRange(predecessorBlockToSplit, refinementCache.splitterPredecessors ) :
         this->partition.splitBlockByPredicate(predecessorBlockToSplit, [&probabilitiesToSplitter](auto const& state) { return !storm::utility::isZero(probabilitiesToSplitter[state]); });
         // std::cout << "\tsplitting a predecessor block with " << predecessors.size() << "/" <<  predecessorBlockToSplit.size() << "predecessor states. ";
