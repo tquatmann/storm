@@ -7,8 +7,8 @@ Partition::Partition(ElementIndex numElements) : numBlocks(1) {
     blockContents.assign(indexRange.begin(), indexRange.end());
     blockContentsInverse = blockContents;
     elementToBlockIndex.assign(numElements, 0);
-    blocks.resize(numElements);
-    blocks[0] = Block(blockContents.data(), blockContents.size());
+    blockSizes.assign(numElements, 0);
+    blockSizes[0] = blockContents.size();
 }
 
 std::size_t Partition::getNumberOfBlocks() const {
@@ -26,9 +26,9 @@ std::size_t Partition::getNumberOfElements() const {
     return elementToBlockIndex.size();
 }
 
-Partition::Block const& Partition::getBlockOfElement(ElementIndex element) const {
+Partition::Block Partition::getBlockOfElement(ElementIndex element) const {
     STORM_LOG_ASSERT(element < elementToBlockIndex.size(), "Element index out of bounds");
-    return blocks[elementToBlockIndex[element]];
+    return getBlockFromIndex(elementToBlockIndex[element]);
 }
 
 

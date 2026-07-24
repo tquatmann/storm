@@ -63,7 +63,7 @@ class Partition {
      * @note subsequent operations on this partition (e.g. split) may change the order of the elements in the block, but do not affect the contents.
      * This means that changing the partition while iterating over block contents, i.e., `for (auto e : block) { partition.split(...) ... }` is not safe.
      */
-    Block const& getBlockOfElement(ElementIndex element) const;
+    Block getBlockOfElement(ElementIndex element) const;
 
     /*!
      * @return true iff the given element is contained in the given block
@@ -310,6 +310,11 @@ class Partition {
      */
     BlockIndex getBlockIndex(Block const& block) const;
 
+    Block getBlockFromIndex(BlockIndex blockIndex) const {
+        STORM_LOG_ASSERT(blockIndex < blockContents.size(), "Block index out of bounds");
+        STORM_LOG_ASSERT(blockSizes[blockIndex] > 0, "Block index points to a non-existend block");
+        return Block(blockContents.data() + blockIndex, blockSizes[blockIndex]);
+    }
 
     /*!
      * Creates a block from the given range of indices.
@@ -320,14 +325,14 @@ class Partition {
         STORM_LOG_ASSERT(start < end && end <= blockContents.size(), "Invalid block range");
         Block newBlock(blockContents.data() + start, end - start);
         // Shrinking an existing block doesn't require iterating over all block contents
-        if (blocks[start].empty()) {
+        if (blockSizes[start] == 0) {
             for (ElementIndex const e : newBlock) {
                 elementToBlockIndex[e] = start;
             }
         } else {
-            STORM_LOG_ASSERT(isSubBlockOf(newBlock, blocks[start]), "New block is not a sub-block of the existing block");
+            STORM_LOG_ASSERT(isSubBlockOf(newBlock, getBlockFromIndex(start)), "New block is not a sub-block of the existing block");
         }
-        blocks[start] = newBlock;
+        blockSizes[start] = newBlock.size();
         return newBlock;
     }
 
@@ -344,7 +349,7 @@ class Partition {
     /// for all elements s, blockIndices.get(elementToBlockIndex[s]) is true and s is in { blockContents[j] | elementToBlockIndex[s] ≤ j <
     /// blockIndices.getNextSetIndex(elementToBlockIndex[s]+1) }
     std::vector<BlockIndex> elementToBlockIndex;
-    std::vector<Block> blocks;
+    std::vector<std::size_t> blockSizes;
 
     uint64_t numBlocks;
 
