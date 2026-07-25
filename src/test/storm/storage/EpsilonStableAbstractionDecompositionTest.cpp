@@ -64,18 +64,6 @@ TEST(EpsilonStableAbstractionDecompositionTest, UAV2DUmbImdpIntervals) {
     EXPECT_EQ(3679ul, result->getNumberOfChoices());
 }
 
-TEST(EpsilonStableAbstractionDecompositionTest, TestLearning) {
-    std::string programFile = STORM_TEST_RESOURCES_DIR "/mdp/aircraft-tiny.prism";
-    storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, "");
-    std::string formulasAsString = "Pmax=? [!collision U \"goal\"]";
-    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
-        storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulasAsString, program));
-    std::shared_ptr<storm::models::sparse::Mdp<double>> mdp = storm::api::buildSparseModel<double>(program, formulas)->as<storm::models::sparse::Mdp<double>>();
-
-    storm::api::learnIMDPFromMDPByClopperPearsonUntilMaxSamples<double>(mdp, 0.01, 10);
-}
-
 TEST(EpsilonStableAbstractionDecompositionTest, TestFirewire) {
     storm::umb::ImportOptions importOptions;
     importOptions.buildStateValuations = false;

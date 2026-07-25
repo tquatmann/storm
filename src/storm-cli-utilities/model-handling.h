@@ -29,7 +29,6 @@
 #include "storm/settings/modules/DebugSettings.h"
 #include "storm/settings/modules/HintSettings.h"
 #include "storm/settings/modules/IOSettings.h"
-#include "storm/settings/modules/LearningSettings.h"
 #include "storm/settings/modules/ModelCheckerSettings.h"
 #include "storm/settings/modules/MultiObjectiveSettings.h"
 #include "storm/settings/modules/ResourceSettings.h"
@@ -767,35 +766,8 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
     auto generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
-    auto learningSettings = storm::settings::getModule<storm::settings::modules::LearningSettings>();
 
     std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
-
-    if (learningSettings.isLearnIMDPFromMDPSet() || learningSettings.isLearnIMDPFromMDPWithMaxL1WidthSet()) {
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot convert interval model to point-interval model.");
-        } else if constexpr (std::is_same_v<ValueType, double> || std::is_same_v<ValueType, storm::RationalNumber>) {
-            if (!model->isOfType(storm::models::ModelType::Dtmc) && !model->isOfType(storm::models::ModelType::Mdp)) {
-                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for DTMCs and MDPs.");
-            } else {
-                STORM_PRINT_AND_LOG("Learning IMDP from given MDP.\n");
-                std::shared_ptr<storm::models::sparse::Model<storm::Interval>> learnedIntervalModel;
-                if (learningSettings.isLearnIMDPFromMDPSet()) {
-                    auto lambda = learningSettings.getLambdaValue();
-                    auto numberOfSamples = learningSettings.getNumberOfSamples();
-                    learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearsonUntilMaxSamples(result.first, lambda, numberOfSamples);
-                } else {
-                    auto lambda = learningSettings.getL1WidthLambdaValue();
-                    auto maxL1Width = learningSettings.getMaxL1Width();
-                    auto maxNumberOfSamples = learningSettings.getL1WidthMaxNumberOfSamples();
-                    learnedIntervalModel = storm::api::learnIMDPFromMDPByClopperPearsonUntilL1Width(result.first, lambda, maxL1Width, maxNumberOfSamples);
-                }
-                return {std::static_pointer_cast<storm::models::ModelBase>(learnedIntervalModel), true};
-            }
-        } else {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "We only support converting to point-interval for doubles or rational numbers.");
-        }
-    }
 
     if (transformationSettings.isToPointIntervalModelSet()) {
         if constexpr (storm::IsIntervalType<ValueType>) {
