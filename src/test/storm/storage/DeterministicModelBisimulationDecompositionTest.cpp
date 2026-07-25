@@ -143,8 +143,6 @@ TEST(DeterministicModelBisimulationDecomposition, Crowds) {
 }
 
 TEST(DeterministicModelBisimulationDecomposition, Cluster) {
-    // TODO FIXME
-    GTEST_SKIP() << "CTMC bisimulation currently yields unstable results.";
 #ifndef STORM_HAVE_Z3
     GTEST_SKIP() << "Z3 not available.";
 #endif
