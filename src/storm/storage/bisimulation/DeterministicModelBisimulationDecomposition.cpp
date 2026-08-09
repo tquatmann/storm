@@ -724,7 +724,7 @@ DeterministicModelBisimulationDecomposition<ModelType>::ValueType DeterministicM
         // transitionValue *= this->model.getExitRateVector().at(state);
         return transitionValue;
     } else {
-        STORM_LOG_ASSERT(this->model.isDiscreteTimeModel(), "Unhandled model type");
+        STORM_LOG_ASSERT(this->model.isDiscreteTimeModel(), "Unhandled model type.");
         return matrixEntry.getValue();
     }
 }
