@@ -12,8 +12,9 @@ struct Options {
     BisimulationType bisimulationType = BisimulationType::Strong;
 
     std::optional<bool> preserveAllStateLabels;
-    std::optional<bool> preserveAllChoiceLabels;
     std::optional<bool> preserveAllRewards;
+    bool preserveAllChoiceLabels = false;
+    bool preserveChoiceOrigins = false;
 
     bool actionSensitive = false;
 

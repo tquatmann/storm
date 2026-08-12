@@ -25,15 +25,19 @@ class Quotient {
      * The index mappings between an input model and its bisimulation quotient, derived from a partition of the input model's states.
      */
     struct IndexMapping {
-        std::vector<uint64_t> toQuotientState;         // assigns to each input model state the corresponding quotient state
-        std::vector<uint64_t> toRepresentativeState;    // assigns to each quotient state the corresponding representative state in the input model
-        std::vector<uint64_t> toRepresentativeChoice;   // assigns to each quotient choice the corresponding representative choice in the input model
+        std::vector<uint64_t> toQuotientState;        // assigns to each input model state the corresponding quotient state
+        std::vector<uint64_t> toRepresentativeState;  // assigns to each quotient state the corresponding representative state in the input model
+        std::optional<std::vector<uint64_t>> toRepresentativeChoice;  // assigns to each quotient choice the corresponding representative choice in the input
+                                                                      // model. Only present for nondeterministic models.
+        // TODO needed if we deduplicate choices? std::optional<std::vector<uint64_t>> quotientStateToChoiceIndices;  // CSR-style mapping that specifies for
+        // each quotient state the range of choice indices. Only present for nondeterministic models.
     };
 
     /*!
      * Computes the index mappings between the given model and the quotient described by the given partition.
      */
-    static IndexMapping computeIndexMappings(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition const& partition);
+    static IndexMapping computeIndexMappings(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition const& partition,
+                                             std::optional<std::vector<uint64_t>> const& choiceClasses = {});
 
     /*!
      * Builds the quotient model from the given partition (represented by indexMapping), preserving the given labels/rewards.

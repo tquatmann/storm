@@ -27,13 +27,13 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
     sw.restart();
 
     // apply refinement using the initial partition, choiceClasses
-    storm::bisimulation::performPartitionRefinement(model, partition);
+    storm::bisimulation::performPartitionRefinement(model, partition, choiceClasses);
     STORM_LOG_STATISTICS("Refinement terminated with " << partition.getNumberOfBlocks() << " blocks computed after " << sw << " seconds.\n");
     sw.restart();
 
     // extract the quotient
     using ExactQuotient = storm::bisimulation::Quotient<storm::bisimulation::QuotientType::Exact, ValueType>;
-    auto const indexMapping = ExactQuotient::computeIndexMappings(model, partition);
+    auto const indexMapping = ExactQuotient::computeIndexMappings(model, partition, choiceClasses);
     auto quotientModel = ExactQuotient::buildFromPartition(model, options, preservationInformation, indexMapping);
     STORM_LOG_STATISTICS("Quotient extracted after " << sw << " seconds.\n");
 

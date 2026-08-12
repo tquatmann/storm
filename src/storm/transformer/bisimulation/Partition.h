@@ -194,6 +194,7 @@ class Partition {
      * Splits the given block according to the given order.
      * Specifically, the elements in the block are sorted according to the given order and then the block is split into
      * multiple blocks, divided at every position where the order changes.
+     * @param less must define a transitive order (required for well-defined sorting)
      * @return true iff the block was split, i.e. if the input block is now a proper super block.
      */
     template<typename SplittingOrder>
@@ -209,6 +210,8 @@ class Partition {
      * - i_0 = 0 and
      * - i_j > i_{j-1} is the smallest number such that condition(e_i_{j-1}, e_{i_j}) is true (or i_j = m+1 if no such number exists).
      * We then split the block into subblocks [e_i_{j-1}, ..., e_(i_j-1)]
+     * @param less must define a transitive order (required for well-defined sorting)
+     * @param splitCondition returns true for elements that should not be in the same block as explained above
      * @return true iff the block was split, i.e. if the input block is now a proper super block.
      */
     template<typename Order, typename Condition>

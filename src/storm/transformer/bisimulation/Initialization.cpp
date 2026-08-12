@@ -50,7 +50,7 @@ PreservationInformation Initialization<ValueType>::getPreservationInformation() 
         }
     }
     // if requested and available, preserve all choice labels
-    if (options.preserveAllChoiceLabels.value_or(false) && model.hasChoiceLabeling()) {
+    if (options.preserveAllChoiceLabels && model.hasChoiceLabeling()) {
         for (auto const& label : model.getChoiceLabeling().getLabels()) {
             information.preservedChoiceLabels.insert(label);
         }
@@ -77,12 +77,13 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
     for (auto const& label : preservationInformation.preservedStateLabels) {
         preservedStateAnnotations.booleans.push_back(std::cref(model.getStateLabeling().getStates(label)));
     }
-    if (model.hasChoiceLabeling()) {
-        for (auto const& label : preservationInformation.preservedChoiceLabels) {
-            preservedChoiceAnnotations.booleans.push_back(std::cref(model.getChoiceLabeling().getChoices(label)));
-        }
+    for (auto const& label : preservationInformation.preservedChoiceLabels) {
+        STORM_LOG_ASSERT(model.hasChoiceLabeling(), "Preserving choice labels is only possible if the model has a choice labeling.");
+        preservedChoiceAnnotations.booleans.push_back(std::cref(model.getChoiceLabeling().getChoices(label)));
     }
-    // todo: choice origins? add settings to control this.
+    if (model.hasChoiceOrigins() && options.preserveChoiceOrigins) {
+        preservedChoiceAnnotations.integers.emplace_back(model.getChoiceOrigins()->getIdentifiers());
+    }
     for (auto const& rewName : preservationInformation.preservedRewardModels) {
         auto const& rewardModel = model.getRewardModel(rewName);
         STORM_LOG_THROW(!rewardModel.hasTransitionRewards(), storm::exceptions::NotSupportedException,

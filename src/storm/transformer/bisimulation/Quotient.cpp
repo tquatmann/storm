@@ -24,37 +24,49 @@ namespace storm::bisimulation {
 
 template<QuotientType quotientType, typename ValueType>
 typename Quotient<quotientType, ValueType>::IndexMapping Quotient<quotientType, ValueType>::computeIndexMappings(
-    storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition const& partition) {
+    storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition const& partition,
+    std::optional<std::vector<uint64_t>> const& choiceClasses) {
     uint64_t const undef = std::numeric_limits<uint64_t>::max();
     IndexMapping indexMapping;
     indexMapping.toQuotientState.assign(model.getNumberOfStates(), undef);
     indexMapping.toRepresentativeState.reserve(partition.getNumberOfBlocks());
+    if (model.isNondeterministicModel()) {
+        indexMapping.toRepresentativeChoice.emplace();
+    }
     uint64_t quotientState = 0;
     partition.forEachBlock([&](auto const& block) {
         for (auto const s : block) {
             indexMapping.toQuotientState[s] = quotientState;
         }
         indexMapping.toRepresentativeState.push_back(block.front());
-        for (auto const representativeChoice : model.getTransitionMatrix().getRowGroupIndices(block.front())) {
-            indexMapping.toRepresentativeChoice.push_back(representativeChoice);
+        if (model.isNondeterministicModel()) {
+            // TODO: Deduplicate based on choiceClasses and signature?
+            for (auto const representativeChoice : model.getTransitionMatrix().getRowGroupIndices(block.front())) {
+                indexMapping.toRepresentativeChoice->push_back(representativeChoice);
+            }
         }
         ++quotientState;
     });
-    STORM_LOG_ASSERT(
-        std::none_of(indexMapping.toQuotientState.begin(), indexMapping.toQuotientState.end(), [&undef](auto const& s) { return s == undef; }),
-        "Not all states appear in a block of the partition.");
+    STORM_LOG_ASSERT(std::none_of(indexMapping.toQuotientState.begin(), indexMapping.toQuotientState.end(), [&undef](auto const& s) { return s == undef; }),
+                     "Not all states appear in a block of the partition.");
+    if (model.isNondeterministicModel()) {
+        indexMapping.toRepresentativeChoice->shrink_to_fit();
+    }
     return indexMapping;
 }
 
 template<QuotientType quotientType, typename ValueType>
 auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Options const& options,
-                                                            storm::bisimulation::PreservationInformation const& preservationInformation,
-                                                            IndexMapping const& indexMapping) -> std::shared_ptr<storm::models::sparse::Model<QuotientValueType>> {
+                                                           storm::bisimulation::PreservationInformation const& preservationInformation,
+                                                           IndexMapping const& indexMapping)
+    -> std::shared_ptr<storm::models::sparse::Model<QuotientValueType>> {
     STORM_LOG_THROW(options.bisimulationType == Options::BisimulationType::Strong, storm::exceptions::NotImplementedException,
                     "Weak bisimulation is not implemented.");
+    STORM_LOG_ASSERT(!model.isNondeterministicModel() || !indexMapping.toRepresentativeChoice.has_value(), "Empty choice mapping for nondeterministic model.");
     auto const& toQuotientState = indexMapping.toQuotientState;
     auto const& toRepresentativeState = indexMapping.toRepresentativeState;
-    auto const& toRepresentativeChoice = indexMapping.toRepresentativeChoice;
+    auto const& toRepresentativeChoice =
+        indexMapping.toRepresentativeChoice.has_value() ? indexMapping.toRepresentativeChoice.value() : indexMapping.toRepresentativeState;
 
     uint64_t const numberOfQuotientStates = toRepresentativeState.size();
     uint64_t const numberOfQuotientChoices = toRepresentativeChoice.size();
@@ -70,7 +82,7 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
     // Build the transition matrix
     {
         storm::storage::SparseMatrixBuilder<QuotientValueType> builder(numberOfQuotientChoices, numberOfQuotientStates, 0, true, isNondeterministic,
-                                                                        isNondeterministic ? numberOfQuotientStates : 0);
+                                                                       isNondeterministic ? numberOfQuotientStates : 0);
         for (uint64_t quotientState = 0, quotientChoice = 0; quotientState < numberOfQuotientStates; ++quotientState) {
             if (isNondeterministic) {
                 builder.newRowGroup(quotientChoice);
@@ -78,6 +90,7 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
             if (absorbingQuotientStates.get(quotientState)) {
                 builder.addNextValue(quotientChoice, quotientState, storm::utility::one<QuotientValueType>());
             } else {
+                // TODO: handle deduplication
                 for (auto const representativeChoice : model.getTransitionMatrix().getRowGroupIndices(toRepresentativeState[quotientState])) {
                     std::map<uint64_t, QuotientValueType> quotientRow;
                     for (auto const& entry : model.getTransitionMatrix().getRow(representativeChoice)) {
@@ -118,7 +131,8 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
     }
 
     // build choice labeling
-    {
+    if (!preservationInformation.preservedChoiceLabels.empty()) {
+        STORM_LOG_ASSERT(model.hasChoiceLabeling(), "Model has no choice labeling but bisimulation preserved some.");
         components.choiceLabeling.emplace(numberOfQuotientChoices);
         for (auto const& l : preservationInformation.preservedChoiceLabels) {
             auto const& in = model.getChoiceLabeling().getChoices(l);
@@ -130,6 +144,11 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
             }
             components.choiceLabeling->addLabel(l, std::move(out));
         }
+    }
+
+    // build choice origins
+    if (model.hasChoiceOrigins() && options.preserveChoiceOrigins) {
+        components.choiceOrigins = model.getChoiceOrigins()->selectChoices(toRepresentativeChoice);
     }
 
     // build reward models
