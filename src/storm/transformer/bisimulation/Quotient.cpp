@@ -62,7 +62,7 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
     -> std::shared_ptr<storm::models::sparse::Model<QuotientValueType>> {
     STORM_LOG_THROW(options.bisimulationType == Options::BisimulationType::Strong, storm::exceptions::NotImplementedException,
                     "Weak bisimulation is not implemented.");
-    STORM_LOG_ASSERT(!model.isNondeterministicModel() || !indexMapping.toRepresentativeChoice.has_value(), "Empty choice mapping for nondeterministic model.");
+    STORM_LOG_ASSERT(!model.isNondeterministicModel() || indexMapping.toRepresentativeChoice.has_value(), "Empty choice mapping for nondeterministic model.");
     auto const& toQuotientState = indexMapping.toQuotientState;
     auto const& toRepresentativeState = indexMapping.toRepresentativeState;
     auto const& toRepresentativeChoice =
