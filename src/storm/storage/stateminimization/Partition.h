@@ -311,7 +311,7 @@ class Partition {
         // We split the block into a "no"-part and a "yes"-part
 
         auto yesBlockStart = blockEnd;
-        for (auto const& element : r) {
+        for (auto const element : r) {
             auto const src = blockContentsInverse[element];
             if (src < blockStart || src >= yesBlockStart) {
                 continue;  // element is either not in the block or already occurred before (duplicate in r)

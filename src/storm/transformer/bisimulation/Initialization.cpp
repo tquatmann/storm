@@ -82,6 +82,7 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
             preservedChoiceAnnotations.booleans.push_back(std::cref(model.getChoiceLabeling().getChoices(label)));
         }
     }
+    // todo: choice origins? add settings to control this.
     for (auto const& rewName : preservationInformation.preservedRewardModels) {
         auto const& rewardModel = model.getRewardModel(rewName);
         STORM_LOG_THROW(!rewardModel.hasTransitionRewards(), storm::exceptions::NotSupportedException,
@@ -103,84 +104,125 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
                         "Bisimulation initialization is not implemented for model type '" << model.getType() << "'.");
     }
 }
+
 template<typename ValueType>
-bool Initialization<ValueType>::LocalSignatureComp::operator()(uint64_t a, uint64_t b) const {
-    // handle action sensitive case
-    if (!extraAnnotation.empty() && extraAnnotation[a] != extraAnnotation[b]) {
-        return extraAnnotation[a] < extraAnnotation[b];
-    }
-    for (auto const& v : annotations.booleans) {
-        if (bool v2 = v.get().get(b); v.get().get(a) != v2)
-            return v2;
-    }
-    for (auto const& v : annotations.integers) {
-        if (v[a] != v[b])
-            return v[a] < v[b];
-    }
-    for (auto const& v : annotations.values) {
-        if (v[a] != v[b])  // todo: add some floating point slack here?
-            return v[a] < v[b];
-    }
-    return false;
+bool Initialization<ValueType>::PreservedAnnotations::empty() const {
+    return booleans.empty() && integers.empty() && values.empty();
 }
 
 template<typename ValueType>
-std::vector<uint64_t> Initialization<ValueType>::getChoiceClasses() const {
-    auto const& transitionMatrix = model.getTransitionMatrix();
+void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& partition, std::vector<uint64_t> const& extraAnnotation) const {
+    uint64_t const numElements = partition.getNumberOfElements();
+    for (auto const& bv : booleans) {
+        auto const& b = bv.get();
+        STORM_LOG_ASSERT(numElements == b.size(), "Boolean annotation has wrong size.");
+        partition.forEachBlock([&b, &numElements, &partition](auto const& block) {
+            // No need to split singleton blocks.
+            if (block.size() > 1) {
+                // For large blocks, it's likely cheaper to iterate over the 'true' elements of b
+                if (block.size() * 64 > numElements) {
+                    partition.splitBlockByRange(block, b);
+                } else {
+                    partition.splitBlockByPredicate(block, [&b](uint64_t const e) { return b.get(e); });
+                }
+            }
+        });
+    }
 
-    std::vector<uint64_t> choiceClasses;
-    choiceClasses.reserve(model.getNumberOfChoices());
+    auto splitByOrder = [&numElements, &partition](auto const& v) {
+        STORM_LOG_ASSERT(numElements == v.size(), "Annotation has wrong size.");
+        partition.forEachBlock([&v, &partition](auto const& block) {
+            // No need to split singleton blocks
+            if (block.size() > 1) {
+                // TODO: tolerance in case of floats?
+                partition.splitBlockByOrder(block, [&v](auto const& a, auto const& b) { return v[a] < v[b]; });
+            }
+        });
+    };
 
-    // maintain a map from choice index to classes that distinguishes choices iff their preserved annotations are different.
+    for (auto const& v : integers) {
+        splitByOrder(v);
+    }
+    for (auto const& v : values) {
+        splitByOrder(v);
+    }
+    if (!extraAnnotation.empty()) {
+        splitByOrder(extraAnnotation);
+    }
+}
 
-    std::vector<uint64_t> localActionIndices;
-    if (options.actionSensitive && !transitionMatrix.hasTrivialRowGrouping()) {
-        localActionIndices.reserve(model.getNumberOfChoices());
+template<typename ValueType>
+std::optional<std::vector<uint64_t>> Initialization<ValueType>::getChoiceClasses() const {
+    // Terminate early if there aren't any choice classes.
+    if (preservedChoiceAnnotations.empty() && (!options.actionSensitive || !model.isNondeterministicModel())) {
+        return std::nullopt;
+    }
+    // Auxiliary vector, will later hold the resulting classes.
+    std::vector<uint64_t> auxVector;
+
+    // Create a partition of the choices
+    Partition choicePartition(model.getNumberOfChoices());
+    if (options.actionSensitive && model.isNondeterministicModel()) {
+        auxVector.reserve(model.getNumberOfChoices());
+        // fill the auxVector with the local choice indices and treat it as any other annotation.
         for (uint64_t state = 0; state < model.getNumberOfChoices(); ++state) {
             for (uint64_t act = 0; act < model.getTransitionMatrix().getRowGroupSize(state); ++act) {
-                localActionIndices.push_back(act);
+                auxVector.push_back(act);
             }
         }
+        preservedChoiceAnnotations.applySplit(choicePartition, auxVector);
+    } else {
+        preservedChoiceAnnotations.applySplit(choicePartition);
     }
-    LocalSignatureComp comp(preservedChoiceAnnotations, localActionIndices);
-    std::map<uint64_t, uint64_t, LocalSignatureComp> classes(comp);
-    for (uint64_t state = 0; state < model.getNumberOfStates(); ++state) {
-        for (auto const choice : transitionMatrix.getRowGroupIndices(state)) {
-            // if we find a new class of choice, add it to the map and increment the class counter.
-            auto const [it, inserted] = classes.try_emplace(choice, classes.size());
-            choiceClasses.push_back(it->second);
+
+    // Catch the case where all choices are equal so we don't have to deal with choice classes.
+    if (choicePartition.getNumberOfBlocks() == 1) {
+        return std::nullopt;
+    }
+
+    // Prepare the result
+    auxVector.resize(model.getNumberOfChoices());
+    uint64_t choiceClass = 0;
+    choicePartition.forEachBlock([&choiceClass, &auxVector](auto const& block) {
+        for (uint64_t const choice : block) {
+            auxVector[choice] = choiceClass;
         }
-    }
-    return choiceClasses;
+        ++choiceClass;
+    });
+    return std::optional<std::vector<uint64_t>>(std::move(auxVector));
 }
 
 template<typename ValueType>
-std::vector<uint64_t> Initialization<ValueType>::getStateClasses(std::vector<uint64_t> const& choiceClasses) const {
-    auto const& rowGroupIndices = model.getTransitionMatrix().getRowGroupIndices();
-    uint64_t const numStates = model.getNumberOfStates();
-
-    // We do this in two steps. First, we distinguish the states only by their (sorted) choice classes
-    std::vector<uint64_t> choiceBasedClasses;
-    {
-        choiceBasedClasses.reserve(model.getNumberOfStates());
-        std::map<std::vector<uint64_t>, uint64_t> cbClasses;
-        for (uint64_t state = 0; state < numStates; ++state) {
-            std::vector<uint64_t> orderedChoiceClasses(choiceClasses.begin() + rowGroupIndices[state], choiceClasses.begin() + rowGroupIndices[state + 1]);
-            std::sort(orderedChoiceClasses.begin(), orderedChoiceClasses.end());
-            auto const [it, inserted] = cbClasses.try_emplace(std::move(orderedChoiceClasses), cbClasses.size());
-            choiceBasedClasses.push_back(it->second);
+Partition Initialization<ValueType>::getInitialStatePartition(std::optional<std::vector<uint64_t>> const& choiceClasses) const {
+    Partition statePartition(model.getNumberOfStates());
+    if (choiceClasses && model.isNondeterministicModel()) {
+        auto const& groupIndices = model.getTransitionMatrix().getRowGroupIndices();
+        // We need to distinguish the states by the available choice classes
+        // We compute for each state the actionSignature, which is the set of available choice classes represented as ascending, deduplicated vector
+        using Signature = std::vector<uint64_t>;
+        std::vector<uint64_t> stateActionSignature;
+        stateActionSignature.reserve(model.getNumberOfStates());
+        std::map<Signature, uint64_t> actionSignatureToIndex;
+        for (uint64_t state = 0; state < model.getNumberOfStates(); ++state) {
+            // Compute signature
+            Signature actionSignature(choiceClasses->begin() + groupIndices[state], choiceClasses->begin() + groupIndices[state + 1]);
+            std::sort(actionSignature.begin(), actionSignature.end());
+            actionSignature.erase(std::unique(actionSignature.begin(), actionSignature.end()), actionSignature.end());
+            // Retrieve the index of the signature, potentially adding a new signature if it is not already known.
+            uint64_t const signatureIndex = actionSignatureToIndex.emplace(actionSignature, actionSignatureToIndex.size()).first->second;
+            // Store the signature index for this state.
+            stateActionSignature.push_back(signatureIndex);
         }
+        // split the partition based on preserved state annotations and the state action signatures.
+        preservedStateAnnotations.applySplit(statePartition, stateActionSignature);
+    } else if (choiceClasses && !model.isNondeterministicModel()) {
+        STORM_LOG_ASSERT(choiceClasses->size() == model.getNumberOfStates(), "Unexpected number of choice classes.");
+        // As there is exactly one choice per state, there is no need for computing the action signatures
+        preservedStateAnnotations.applySplit(statePartition, choiceClasses.value());
+    } else {
+        preservedStateAnnotations.applySplit(statePartition);
     }
-
-    std::vector<uint64_t> stateClasses;
-    stateClasses.reserve(numStates);
-    LocalSignatureComp comp(preservedStateAnnotations, choiceBasedClasses);
-    std::map<uint64_t, uint64_t, LocalSignatureComp> classes(comp);
-    for (uint64_t state = 0; state < model.getNumberOfStates(); ++state) {
-        auto const [it, inserted] = classes.try_emplace(state, classes.size());
-        stateClasses.push_back(it->second);
-    }
-    return stateClasses;
+    return statePartition;
 }
 
 template class Initialization<double>;

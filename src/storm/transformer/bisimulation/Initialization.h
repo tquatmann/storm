@@ -10,6 +10,7 @@
 #include "storm/models/sparse/ModelForward.h"
 #include "storm/storage/BitVector.h"
 #include "storm/transformer/bisimulation/Options.h"
+#include "storm/transformer/bisimulation/Partition.h"
 #include "storm/transformer/bisimulation/PreservationInformation.h"
 
 namespace storm::bisimulation {
@@ -22,9 +23,9 @@ class Initialization {
 
     PreservationInformation getPreservationInformation() const;
 
-    std::vector<uint64_t> getChoiceClasses() const;
+    std::optional<std::vector<uint64_t>> getChoiceClasses() const;
 
-    std::vector<uint64_t> getStateClasses(std::vector<uint64_t> const& choiceClasses) const;
+    Partition getInitialStatePartition(std::optional<std::vector<uint64_t>> const& choiceClasses = {}) const;
 
    private:
     storm::models::sparse::Model<ValueType> const& model;
@@ -38,23 +39,20 @@ class Initialization {
         std::vector<std::reference_wrapper<storm::storage::BitVector const>> booleans;
         std::vector<std::span<uint64_t const>> integers;
         std::vector<std::span<ValueType const>> values;
-    };
-    PreservedAnnotations preservedStateAnnotations;
-    PreservedAnnotations preservedChoiceAnnotations;
 
-    /*!
-     * Compares two elements (states or choices) by their preserved annotations, using extraAnnotation (e.g. a local choice index, or a state's ordered
-     * choice classes) as an additional, higher-priority criterion.
-     */
-    struct LocalSignatureComp {
-        LocalSignatureComp(PreservedAnnotations const& annotations, std::vector<uint64_t> const& extraAnnotation = {})
-            : annotations(annotations), extraAnnotation(extraAnnotation) {}
+        /*!
+         * @return true iff there are no preserved annotations
+         */
+        bool empty() const;
 
-        bool operator()(uint64_t a, uint64_t b) const;
-
-        PreservedAnnotations const& annotations;
-        std::vector<uint64_t> const& extraAnnotation;
-    };
+        /*!
+         * Splits all blocks in the partition with respect to the stored annotations.
+         * @post Each two elements in a block of the partition have the same annotations.
+         * @param partition The partition to be refined
+         * @param extraAnnotation if non-empty, the partition is also split according to this additional annotation
+         */
+        void applySplit(Partition& partition, std::vector<uint64_t> const& extraAnnotation = {}) const;
+    } preservedStateAnnotations, preservedChoiceAnnotations;
 };
 
 }  // namespace storm::bisimulation

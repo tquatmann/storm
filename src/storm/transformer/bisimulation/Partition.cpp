@@ -27,7 +27,7 @@ void Partition::NonSuperBlockSet::insert(Block const& block) {
 
 Partition::Block Partition::NonSuperBlockSet::pop() {
     STORM_LOG_ASSERT(!empty(), "Cannot pop from empty blockset.");
-    auto const i = containedBlockIndices.back();
+    BlockIndex const i = containedBlockIndices.back();
     blockIndices.set(i, false);
     containedBlockIndices.pop_back();
     return partition.getBlockFromIndex(i);
@@ -45,7 +45,7 @@ Partition::Partition(ElementIndex numElements) : numBlocks(1) {
 std::size_t Partition::getNumberOfBlocks() const {
     STORM_LOG_ASSERT(
         [this]() {
-            uint64_t blocksCount = 0;
+            std::size_t blocksCount = 0;
             forEachBlock([&blocksCount](const Block& block) { ++blocksCount; });
             return blocksCount;
         }() == numBlocks,
@@ -79,7 +79,7 @@ bool Partition::isSubBlockOf(Block const& subblock, Block const& superblock) con
 }
 
 bool Partition::isBlockOfElement(Block const& block, ElementIndex const& element) const {
-    auto eBlock = getBlockOfElement(element);
+    Block const eBlock = getBlockOfElement(element);
     return eBlock.data() == block.data() && eBlock.size() == block.size();
 }
 
@@ -117,8 +117,8 @@ bool Partition::checkBlockValidity(Block const& block) const {
     if (block.data() < blockContents.data() || block.data() + block.size() > blockContents.data() + blockContents.size())
         return false;
 
-    auto const blockIndex = std::distance(blockContents.data(), block.data());
-    auto const blockEndIndex = blockIndex + block.size();
+    BlockIndex const blockIndex = std::distance(blockContents.data(), block.data());
+    BlockIndex const blockEndIndex = blockIndex + block.size();
 
     // the block has a stored size and is either the last block or ends where another block starts
     if (!(blockSizes[blockIndex] > 0 && (blockEndIndex == blockContents.size() || blockSizes[blockEndIndex] != 0)))
@@ -163,7 +163,7 @@ std::ostream& operator<<(std::ostream& os, const Partition& partition) {
     os << "Partition (" << partition.getNumberOfBlocks() << " block(s), " << partition.getNumberOfElements() << " element(s)): {\n";
     partition.forEachBlock([&os](Partition::Block const& block) {
         os << "\t{";
-        for (bool first = true; auto const e : block) {
+        for (bool first = true; typename Partition::ElementIndex const e : block) {
             if (!first)
                 os << ", ";
             first = false;

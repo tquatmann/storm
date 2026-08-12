@@ -52,7 +52,7 @@ class Partition {
      */
     template<typename T>
     using OrderedBlockMap = std::map<Block, T, BlockCompare>;
-    
+
     /*!
      * Set of blocks that are no proper superblock.
      * It is illegal to insert a block that currently is a proper superblock.
@@ -199,6 +199,21 @@ class Partition {
     template<typename SplittingOrder>
         requires std::invocable<SplittingOrder, ElementIndex, ElementIndex>
     bool splitBlockByOrder(Block const& block, SplittingOrder const& less) {
+        return splitBlockByOrder(block, less, less);
+    }
+
+    /*!
+     * Splits the given block according to the given order and splitting condition.
+     * Specifically, the elements in the block are first sorted according to the given order resulting in a (sorted) block [e_0, e_1, e_2, ..., e_m].
+     * Then, indices i_0, i_1, ..., i_k are determined such that
+     * - i_0 = 0 and
+     * - i_j > i_{j-1} is the smallest number such that condition(e_i_{j-1}, e_{i_j}) is true (or i_j = m+1 if no such number exists).
+     * We then split the block into subblocks [e_i_{j-1}, ..., e_(i_j-1)]
+     * @return true iff the block was split, i.e. if the input block is now a proper super block.
+     */
+    template<typename Order, typename Condition>
+        requires std::invocable<Order, ElementIndex, ElementIndex> && std::invocable<Condition, ElementIndex, ElementIndex>
+    bool splitBlockByOrder(Block const& block, Order const& less, Condition const& splitCondition) {
         if (block.size() <= 1) {
             return false;  // nothing to do
         }
@@ -216,14 +231,14 @@ class Partition {
         }
 
         // Catch the special case where there is no split
-        if (!less(blockContents[blockStart], blockContents[blockEnd - 1])) {
+        if (!splitCondition(blockContents[blockStart], blockContents[blockEnd - 1])) {
             return false;  // nothing to do
         }
 
         // helper function to find the end index of a current block
-        auto getEndOfBlock = [this, less, blockEnd](BlockIndex const currIndex) {
+        auto getEndOfBlock = [this, splitCondition, blockEnd](BlockIndex const currIndex) {
             for (auto i = currIndex + 1; i < blockEnd; ++i) {
-                if (less(blockContents[currIndex], blockContents[i])) {
+                if (splitCondition(blockContents[currIndex], blockContents[i])) {
                     return i;
                 }
             }
@@ -319,7 +334,7 @@ class Partition {
         // We split the block into a "no"-part and a "yes"-part
 
         auto yesBlockStart = blockEnd;
-        for (auto const& element : r) {
+        for (ElementIndex const element : r) {
             auto const src = blockContentsInverse[element];
             if (src < blockStart || src >= yesBlockStart) {
                 continue;  // element is either not in the block or already occurred before (duplicate in r)
