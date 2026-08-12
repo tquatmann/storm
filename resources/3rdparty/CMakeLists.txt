@@ -25,8 +25,9 @@ ExternalProject_Add(
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
-        LOG_INSTALL ON
         LOG_DOWNLOAD ON
+        LOG_INSTALL ON
+        LOG_OUTPUT_ON_FAILURE ON
 )
 add_library(l3pp INTERFACE) # Not imported, we are in control of the sources.
 add_dependencies(l3pp l3pp_ext)
@@ -69,7 +70,7 @@ if(NOT STORM_DISABLE_LIBARCHIVE)
     else()
         SET(STORM_HAVE_LIBARCHIVE OFF)
         message (STATUS "Storm - LibArchive not found. Loading and exporting UMB models and compressed files will not be supported.")
-	endif()
+    endif()
 else()
     SET(STORM_HAVE_LIBARCHIVE OFF)
     message (STATUS "Storm - Not linking with LibArchive. Loading and exporting UMB models and compressed files will not be supported.")
@@ -95,11 +96,13 @@ if(NOT STORM_DISABLE_GMM)
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ""
             INSTALL_COMMAND ""
-            LOG_INSTALL ON
             LOG_DOWNLOAD ON
+            LOG_INSTALL ON
+            LOG_OUTPUT_ON_FAILURE ON
     )
     add_library(gmm INTERFACE) # Not imported, we are in control of the sources.
     add_dependencies(gmm gmm_src)
+    add_dependencies(storm_resources gmm)
     target_include_directories(gmm INTERFACE
             $<BUILD_INTERFACE:${STORM_3RDPARTY_BINARY_DIR}/gmm/include>
             $<INSTALL_INTERFACE:${STORM_RESOURCE_INCLUDE_INSTALL_DIR}>
@@ -138,6 +141,7 @@ ExternalProject_Add(
         INSTALL_COMMAND ""
         LOG_DOWNLOAD ON
         LOG_INSTALL ON
+        LOG_OUTPUT_ON_FAILURE ON
 )
 add_library(eigenstorm INTERFACE) # Not imported, we are in control of the sources.
 add_dependencies(eigenstorm eigen_src)
@@ -186,6 +190,7 @@ if(${Boost_VERSION} VERSION_LESS "1.75.0") # Debian 12 ships with Boost 1.74.0
             INSTALL_COMMAND ""
             LOG_DOWNLOAD ON
             LOG_INSTALL ON
+            LOG_OUTPUT_ON_FAILURE ON
     )
     add_library(boost_pfr INTERFACE) # Not imported, we are in control of the sources.
     add_dependencies(boost_pfr boost_pfr_src)
@@ -225,22 +230,21 @@ list(APPEND STORM_DEP_TARGETS exprTk)
 
 #############################################################
 ##
-##	Parallel Hashmap
+##	gtl (Greg's Template Library)
 ##
 #############################################################
 
-# Use the shipped version of Parallel Hashmap
-message(STATUS "Storm - Including Parallel Hashmap.")
-add_library(phmap INTERFACE) # Not imported, we are in control of the sources.
-# Note that include directory is parallel-hashmap/parallel_hashmap/
-target_include_directories(phmap INTERFACE
-        $<BUILD_INTERFACE:${STORM_3RDPARTY_SOURCE_DIR}/parallel-hashmap>
-        $<INSTALL_INTERFACE:${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/parallel_hashmap>)
-install(TARGETS phmap EXPORT storm_Targets)
-install(DIRECTORY ${STORM_3RDPARTY_SOURCE_DIR}/parallel-hashmap/parallel_hashmap
+# Use the shipped version of gtl
+message(STATUS "Storm - Including gtl.")
+add_library(gtl INTERFACE)
+target_include_directories(gtl INTERFACE
+        $<BUILD_INTERFACE:${STORM_3RDPARTY_SOURCE_DIR}/gtl>
+        $<INSTALL_INTERFACE:${STORM_RESOURCE_INCLUDE_INSTALL_DIR}/gtl>)
+install(TARGETS gtl EXPORT storm_Targets)
+install(DIRECTORY ${STORM_3RDPARTY_SOURCE_DIR}/gtl
         DESTINATION ${STORM_RESOURCE_INCLUDE_INSTALL_DIR}
-        FILES_MATCHING PATTERN "*.h" PATTERN ".git" EXCLUDE)
-list(APPEND STORM_DEP_TARGETS phmap)
+        FILES_MATCHING PATTERN "*.hpp" PATTERN ".git" EXCLUDE)
+list(APPEND STORM_DEP_TARGETS gtl)
 
 #############################################################
 ##
@@ -437,8 +441,8 @@ FETCHCONTENT_DECLARE(
 )
 
 # Configure carl
-SET(CARL_EXCLUDE_TESTS_FROM_ALL ON)  #carl without tests
-SET(CARL_THREAD_SAFE ON) #carl thread safe code
+SET(CARL_BUILD_TESTS OFF)
+SET(CARL_THREAD_SAFE ON)
 SET(CARL_USE_CLN_NUMBERS ${SHIPPED_CARL_USE_CLN_NUMBERS})
 SET(CARL_USE_GINAC ${SHIPPED_CARL_USE_GINAC})
 SET(CARL_EIGEN_GIT_TAG ${STORM_EIGEN_GIT_TAG})
@@ -521,7 +525,9 @@ if(STORM_LOAD_QVBS)
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ""
             INSTALL_COMMAND ""
+            LOG_DOWNLOAD ON
             LOG_INSTALL ON
+            LOG_OUTPUT_ON_FAILURE ON
     )
     add_dependencies(storm_resources download_qvbs)
     set(STORM_HAVE_QVBS ON)

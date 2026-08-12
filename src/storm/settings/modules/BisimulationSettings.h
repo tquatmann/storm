@@ -7,7 +7,10 @@
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/GeneralSettings.h"
 #include "storm/settings/modules/ModuleSettings.h"
+#include "storm/storage/dd/bisimulation/InitialPartitionMode.h"
 #include "storm/storage/dd/bisimulation/QuotientFormat.h"
+#include "storm/storage/dd/bisimulation/RefinementMode.h"
+#include "storm/storage/dd/bisimulation/ReuseMode.h"
 #include "storm/storage/dd/bisimulation/SignatureMode.h"
 
 namespace storm {
@@ -21,12 +24,6 @@ class BisimulationSettings : public ModuleSettings {
    public:
     // An enumeration of all available bisimulation types.
     enum class BisimulationType { Strong, Weak };
-
-    enum class ReuseMode { None, BlockNumbers };
-
-    enum class InitialPartitionMode { Regular, Finer };
-
-    enum class RefinementMode { Full, ChangedStates };
 
     /*!
      * Creates a new set of bisimulation settings.
@@ -88,17 +85,17 @@ class BisimulationSettings : public ModuleSettings {
     /*!
      * Retrieves the selected reuse mode.
      */
-    ReuseMode getReuseMode() const;
+    storm::dd::bisimulation::ReuseMode getReuseMode() const;
 
     /*!
      * Retrieves the initial partition mode.
      */
-    InitialPartitionMode getInitialPartitionMode() const;
+    storm::dd::bisimulation::InitialPartitionMode getInitialPartitionMode() const;
 
     /*!
      * Retrieves the refinement mode to use.
      */
-    RefinementMode getRefinementMode() const;
+    storm::dd::bisimulation::RefinementMode getRefinementMode() const;
 
     /*!
      * Retrieves whether the computation of the initial partition takes the sets of enabled actions into account.

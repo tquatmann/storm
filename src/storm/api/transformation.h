@@ -56,7 +56,7 @@ transformContinuousToDiscreteTimeSparseModel(std::shared_ptr<storm::models::spar
         return std::make_pair(transformer.transform(*model->template as<storm::models::sparse::MarkovAutomaton<ValueType>>(), timeRewardName), newFormulas);
     } else {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
-                        "Transformation of a " << model->getType() << " to a discrete time model is not supported");
+                        "Transformation of a " << model->getType() << " to a discrete time model is not supported.");
     }
     return std::make_pair(nullptr, newFormulas);
 }
@@ -315,7 +315,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> perturbModelTransitions
         }
     }
 
-    STORM_PRINT_AND_LOG("Perturbed " << numberOfPerturbedRows << " rows in transition matrix.\n");
+    STORM_LOG_INFO("Perturbed " << numberOfPerturbedRows << " rows in transition matrix.\n");
 
     return model;
 }
@@ -402,7 +402,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> makeTransitionIntervals
             }
         }
 
-        STORM_PRINT_AND_LOG("Computing feasible transition intervals affected " << numberOfAffectedRows << " rows in transition matrix.\n");
+        STORM_LOG_INFO("Computing feasible transition intervals affected " << numberOfAffectedRows << " rows in transition matrix.\n");
     } else {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Cannot compute feasible intervals on non-interval model.");
     }

@@ -2,11 +2,11 @@
 
 #include "storm-config.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#include <parallel_hashmap/phmap.h>
-#pragma GCC diagnostic pop
 #include <boost/optional.hpp>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+#include <gtl/phmap.hpp>
+#pragma clang diagnostic pop
 #include <set>
 
 #include "storm/storage/dd/Bdd.h"
@@ -36,8 +36,7 @@ class InternalSignatureRefiner<storm::dd::DdType::CUDD, ValueType> {
     InternalSignatureRefiner(storm::dd::DdManager<storm::dd::DdType::CUDD> const& manager, storm::expressions::Variable const& blockVariable,
                              std::set<storm::expressions::Variable> const& stateVariables,
                              storm::dd::Bdd<storm::dd::DdType::CUDD> const& nondeterminismVariables,
-                             storm::dd::Bdd<storm::dd::DdType::CUDD> const& nonBlockVariables,
-                             InternalSignatureRefinerOptions const& options = InternalSignatureRefinerOptions());
+                             storm::dd::Bdd<storm::dd::DdType::CUDD> const& nonBlockVariables, InternalSignatureRefinerOptions const& options);
 
     Partition<storm::dd::DdType::CUDD, ValueType> refine(Partition<storm::dd::DdType::CUDD, ValueType> const& oldPartition,
                                                          Signature<storm::dd::DdType::CUDD, ValueType> const& signature);
@@ -80,10 +79,10 @@ class InternalSignatureRefiner<storm::dd::DdType::CUDD, ValueType> {
     uint64_t numberOfRefinements;
 
     // The cache used to identify states with identical signature.
-    phmap::flat_hash_map<std::pair<DdNode const*, DdNode const*>, std::pair<DdNodePtr, DdNodePtr>, CuddPointerPairHash> signatureCache;
+    gtl::flat_hash_map<std::pair<DdNode const*, DdNode const*>, std::pair<DdNodePtr, DdNodePtr>, CuddPointerPairHash> signatureCache;
 
     // The cache used to identify which old block numbers have already been reused.
-    phmap::flat_hash_map<DdNode const*, ReuseWrapper> reuseBlocksCache;
+    gtl::flat_hash_map<DdNode const*, ReuseWrapper> reuseBlocksCache;
 #endif
 };
 

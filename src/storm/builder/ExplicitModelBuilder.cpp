@@ -12,8 +12,6 @@
 #include "storm/generator/JaniNextStateGenerator.h"
 #include "storm/generator/PrismNextStateGenerator.h"
 #include "storm/models/sparse/StandardRewardModel.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/BuildSettings.h"
 #include "storm/storage/expressions/ExpressionManager.h"
 #include "storm/storage/jani/Model.h"
 #include "storm/utility/SignalHandler.h"
@@ -40,13 +38,9 @@ uint64_t ExplicitStateLookup<StateType>::size() const {
 }
 
 template<typename ValueType, typename RewardModelType, typename StateType>
-ExplicitModelBuilder<ValueType, RewardModelType, StateType>::Options::Options() {
-    auto const& buildSettings = storm::settings::getModule<storm::settings::modules::BuildSettings>();
-    explorationOrder = buildSettings.getExplorationOrder();
-    fixDeadlocks = !buildSettings.isDontFixDeadlocksSet();
-    if (buildSettings.isExplorationStateLimitSet()) {
-        explorationStateLimit = buildSettings.getExplorationStateLimit();
-    }
+ExplicitModelBuilder<ValueType, RewardModelType, StateType>::Options::Options()
+    : explorationOrder(ExplorationOrder::Bfs), fixDeadlocks(true), explorationStateLimit(std::nullopt) {
+    // Intentionally left empty.
 }
 
 template<typename ValueType, typename RewardModelType, typename StateType>
@@ -134,7 +128,7 @@ void ExplicitModelBuilder<ValueType, RewardModelType, StateType>::buildMatrices(
     StateAndChoiceInformationBuilder& stateAndChoiceInformationBuilder) {
     // Initialize building state valuations (if necessary)
     if (stateAndChoiceInformationBuilder.isBuildStateValuations()) {
-        stateAndChoiceInformationBuilder.stateValuationsBuilder() = generator->initializeStateValuationsBuilder();
+        stateAndChoiceInformationBuilder.initializeStateValuations(generator->initializeStateValuations());
     }
 
     // Create a callback for the next-state generator to enable it to request the index of states.
@@ -181,7 +175,7 @@ void ExplicitModelBuilder<ValueType, RewardModelType, StateType>::buildMatrices(
 
         generator->load(currentState);
         if (stateAndChoiceInformationBuilder.isBuildStateValuations()) {
-            generator->addStateValuation(currentIndex, stateAndChoiceInformationBuilder.stateValuationsBuilder());
+            generator->addStateValuation(currentIndex, stateAndChoiceInformationBuilder.stateValuations());
         }
 
         storm::generator::StateBehavior<ValueType, StateType> behavior;
@@ -396,7 +390,7 @@ storm::storage::sparse::ModelComponents<ValueType, RewardModelType> ExplicitMode
     }
     // If requested, build the state valuations and choice origins
     if (stateAndChoiceInformationBuilder.isBuildStateValuations()) {
-        modelComponents.stateValuations = stateAndChoiceInformationBuilder.stateValuationsBuilder().build();
+        modelComponents.stateValuations = std::move(stateAndChoiceInformationBuilder.stateValuations());
     }
     if (stateAndChoiceInformationBuilder.isBuildChoiceOrigins()) {
         auto originData = stateAndChoiceInformationBuilder.buildDataOfChoiceOrigins(numChoices);

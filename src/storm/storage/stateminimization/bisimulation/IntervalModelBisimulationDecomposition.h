@@ -37,8 +37,7 @@ class IntervalModelBisimulationDecomposition : public BisimulationDecomposition<
      * @param model The model to decompose.
      * @param options The options that customize the computed bisimulation.
      */
-    IntervalModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options =
-                                                                       typename BisimulationDecomposition<ModelType>::BisimulationOptions());
+    IntervalModelBisimulationDecomposition(ModelType const& model, typename BisimulationDecomposition<ModelType>::BisimulationOptions const& options);
 
    protected:
     std::pair<storm::storage::BitVector, storm::storage::BitVector> getStatesWithProbability01() override;

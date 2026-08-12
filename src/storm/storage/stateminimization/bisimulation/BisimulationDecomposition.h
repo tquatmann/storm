@@ -3,12 +3,10 @@
 #include <deque>
 #include <random>
 
+#include "storm/adapters/IntervalForward.h"
 #include "storm/exceptions/AbortException.h"
 #include "storm/exceptions/InvalidOptionException.h"
 #include "storm/models/sparse/Model.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/BisimulationSettings.h"
-#include "storm/settings/modules/GeneralSettings.h"
 #include "storm/solver/OptimizationDirection.h"
 #include "storm/storage/Decomposition.h"
 #include "storm/storage/StateBlock.h"
@@ -17,6 +15,7 @@
 #include "storm/storage/stateminimization/bisimulation/BisimulationType.h"
 #include "storm/storage/stateminimization/bisimulation/Signature.h"
 #include "storm/utility/ConstantsComparator.h"
+#include "storm/utility/NumberTraits.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/constants.h"
 
@@ -41,9 +40,6 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
 
     // A class that offers the possibility to customize the bisimulation.
     struct BisimulationOptions : public BaseDecomposition<ModelType>::BaseOptions {
-        // Creates an object representing the default values for all options.
-        BisimulationOptions();
-
         /*!
          * Creates an object representing the options necessary to obtain the quotient while still preserving
          * the given formula.
@@ -51,8 +47,9 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
          * @param model The model for which the quotient model shall be computed. This needs to be given in order to
          * derive a suitable initial partition.
          * @param formula The formula that is to be preserved.
+         * @param tolerance The tolerance used for comparing constants (irrelevant if ValueType is exact).
          */
-        BisimulationOptions(ModelType const& model, storm::logic::Formula const& formula);
+        BisimulationOptions(ModelType const& model, storm::logic::Formula const& formula, storm::IntervalBaseType<ValueType> const& tolerance);
 
         /*!
          * Creates an object representing the options necessary to obtain the smallest quotient while still
@@ -61,8 +58,18 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
          * @param model The model for which the quotient model shall be computed. This needs to be given in order to
          * derive a suitable initial partition.
          * @param formulas The formulas that need to be preserved.
+         * @param tolerance The tolerance used for comparing constants (irrelevant if ValueType is exact).
          */
-        BisimulationOptions(ModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+        BisimulationOptions(ModelType const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+                            storm::IntervalBaseType<ValueType> const& tolerance);
+
+        /*!
+         * Creates an object representing the options necessary to obtain the quotient that respects all atomic
+         * propositions of the model (rather than those relevant to some formula).
+         *
+         * @param tolerance The tolerance used for comparing constants (irrelevant if ValueType is exact).
+         */
+        static BisimulationOptions preservingAllLabels(storm::IntervalBaseType<ValueType> const& tolerance);
 
         /**
          * Sets the bisimulation type. If the bisimulation type is set to weak,
@@ -91,10 +98,29 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
             return this->actionSensitive;
         }
 
+        // Hides BaseOptions::getTolerance(): bisimulation options take an explicit tolerance instead of falling back
+        // to the global precision setting.
+        storm::IntervalBaseType<ValueType> getTolerance() const {
+            return storm::NumberTraits<storm::IntervalBaseType<ValueType>>::IsExact ? storm::utility::zero<storm::IntervalBaseType<ValueType>>() : tolerance;
+        }
+
+        void setTolerance(storm::IntervalBaseType<ValueType> value) {
+            tolerance = value;
+        }
+
        private:
+        /*!
+         * Creates an object representing the default values for all options except the tolerance, which must
+         * always be supplied deliberately by the caller.
+         */
+        explicit BisimulationOptions(storm::IntervalBaseType<ValueType> const& tolerance);
+
         /// A flag that indicates whether a strong or a weak bisimulation is to be computed.
-        BisimulationType type;
-        bool actionSensitive;
+        BisimulationType type = BisimulationType::Strong;
+        bool actionSensitive = false;
+
+        /// The tolerance used for comparing constants (irrelevant if ValueType is exact).
+        storm::IntervalBaseType<ValueType> tolerance;
     };
 
     /*!
@@ -210,22 +236,6 @@ class BisimulationDecomposition : public BaseDecomposition<ModelType> {
 
     BisimulationOptions options;
 };
-
-inline BisimulationType resolveBisimulationTypeChoice(BisimulationTypeChoice c) {
-    switch (c) {
-        case BisimulationTypeChoice::Strong:
-            return BisimulationType::Strong;
-        case BisimulationTypeChoice::Weak:
-            return BisimulationType::Weak;
-        case BisimulationTypeChoice::FromSettings:
-            if (storm::settings::getModule<storm::settings::modules::BisimulationSettings>().isWeakBisimulationSet()) {
-                return BisimulationType::Weak;
-            } else {
-                return BisimulationType::Strong;
-            }
-    }
-    return BisimulationType::Strong;
-}
 
 }  // namespace storage
 }  // namespace storm

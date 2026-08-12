@@ -6,20 +6,29 @@ namespace storage {
 using namespace bisimulation;
 
 template<typename ModelType>
-BisimulationDecomposition<ModelType>::BisimulationOptions::BisimulationOptions(ModelType const& model, storm::logic::Formula const& formula)
-    : BaseDecomposition<ModelType>::BaseOptions(model, formula) {
+BisimulationDecomposition<ModelType>::BisimulationOptions::BisimulationOptions(ModelType const& model, storm::logic::Formula const& formula,
+                                                                               storm::IntervalBaseType<ValueType> const& tolerance)
+    : BaseDecomposition<ModelType>::BaseOptions(model, formula), tolerance(tolerance) {
     // Intentionally left empty.
 }
 
 template<typename ModelType>
 BisimulationDecomposition<ModelType>::BisimulationOptions::BisimulationOptions(ModelType const& model,
-                                                                               std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas)
-    : BaseDecomposition<ModelType>::BaseOptions(model, formulas) {
+                                                                               std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+                                                                               storm::IntervalBaseType<ValueType> const& tolerance)
+    : BaseDecomposition<ModelType>::BaseOptions(model, formulas), tolerance(tolerance) {
     // Intentionally left empty.
 }
 
 template<typename ModelType>
-BisimulationDecomposition<ModelType>::BisimulationOptions::BisimulationOptions() : BaseDecomposition<ModelType>::BaseOptions(), type(BisimulationType::Strong) {
+typename BisimulationDecomposition<ModelType>::BisimulationOptions BisimulationDecomposition<ModelType>::BisimulationOptions::preservingAllLabels(
+    storm::IntervalBaseType<ValueType> const& tolerance) {
+    return BisimulationOptions(tolerance);
+}
+
+template<typename ModelType>
+BisimulationDecomposition<ModelType>::BisimulationOptions::BisimulationOptions(storm::IntervalBaseType<ValueType> const& tolerance)
+    : BaseDecomposition<ModelType>::BaseOptions(), tolerance(tolerance) {
     // Intentionally left empty.
 }
 

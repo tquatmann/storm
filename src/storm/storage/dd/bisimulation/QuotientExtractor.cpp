@@ -1,9 +1,9 @@
 #include "storm/storage/dd/bisimulation/QuotientExtractor.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#include <parallel_hashmap/phmap.h>
-#pragma GCC diagnostic pop
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomma"
+#include <gtl/phmap.hpp>
+#pragma clang diagnostic pop
 #include <numeric>
 
 #include "storm/adapters/RationalFunctionAdapter.h"
@@ -19,8 +19,6 @@
 #include "storm/models/symbolic/MarkovAutomaton.h"
 #include "storm/models/symbolic/Mdp.h"
 #include "storm/models/symbolic/StandardRewardModel.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/BisimulationSettings.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/storage/dd/DdManager.h"
@@ -160,7 +158,7 @@ class InternalRepresentativeComputer<storm::dd::DdType::CUDD> : public InternalR
     }
 
     ::DdManager* ddman;
-    phmap::flat_hash_map<DdNode const*, bool> visitedNodes;
+    gtl::flat_hash_map<DdNode const*, bool> visitedNodes;
 #endif
 };
 
@@ -254,7 +252,7 @@ class InternalRepresentativeComputer<storm::dd::DdType::Sylvan> : public Interna
         }
     }
 
-    phmap::flat_hash_map<BDD, bool> visitedNodes;
+    gtl::flat_hash_map<BDD, bool> visitedNodes;
 #endif
 };
 
@@ -717,7 +715,7 @@ class InternalSparseQuotientExtractor<storm::dd::DdType::CUDD, ValueType> : publ
     ::DdManager* ddman;
 
     // A mapping from blocks (stored in terms of a DD node) to the offset of the corresponding block.
-    phmap::flat_hash_map<DdNode const*, uint64_t> blockToOffset;
+    gtl::flat_hash_map<DdNode const*, uint64_t> blockToOffset;
 #endif
 };
 
@@ -960,16 +958,17 @@ class InternalSparseQuotientExtractor<storm::dd::DdType::Sylvan, ValueType, Expo
     }
 
     // A mapping from blocks (stored in terms of a DD node) to the offset of the corresponding block.
-    phmap::flat_hash_map<BDD, uint64_t> blockToOffset;
+    gtl::flat_hash_map<BDD, uint64_t> blockToOffset;
 #endif
 };
 
 template<storm::dd::DdType DdType, typename ValueType, typename ExportValueType>
-QuotientExtractor<DdType, ValueType, ExportValueType>::QuotientExtractor(storm::dd::bisimulation::QuotientFormat const& quotientFormat)
-    : useRepresentatives(false), quotientFormat(quotientFormat) {
-    auto const& settings = storm::settings::getModule<storm::settings::modules::BisimulationSettings>();
-    this->useRepresentatives = settings.isUseRepresentativesSet();
-    this->useOriginalVariables = settings.isUseOriginalVariablesSet();
+QuotientExtractor<DdType, ValueType, ExportValueType>::QuotientExtractor(storm::dd::bisimulation::QuotientFormat const& quotientFormat,
+                                                                         BisimulationOptions const& bisimulationOptions)
+    : useRepresentatives(bisimulationOptions.useRepresentatives),
+      useOriginalVariables(bisimulationOptions.useOriginalVariables),
+      quotientFormat(quotientFormat) {
+    // Intentionally left empty.
 }
 
 template<storm::dd::DdType DdType, typename ValueType, typename ExportValueType>

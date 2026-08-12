@@ -1,12 +1,14 @@
-#ifndef STORM_UTILITY_PARAMETERLIFTING_H
-#define STORM_UTILITY_PARAMETERLIFTING_H
+#pragma once
 
+#include <cstdint>
+#include <set>
 #include <vector>
 
 #include "storm-pars/modelchecker/region/RegionCheckEngine.h"
 #include "storm-pars/utility/parametric.h"
 #include "storm/logic/Formula.h"
 #include "storm/logic/FragmentSpecification.h"
+#include "storm/logic/RewardOperatorFormula.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -162,5 +164,3 @@ static bool validateParameterLiftingSound(storm::models::sparse::Model<ValueType
 }  // namespace parameterlifting
 }  // namespace utility
 }  // namespace storm
-
-#endif /* STORM_UTILITY_PARAMETERLIFTING_H */

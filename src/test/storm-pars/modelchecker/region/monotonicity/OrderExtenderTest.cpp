@@ -4,13 +4,18 @@
 #include <memory>
 #include <vector>
 
-#include "storm-pars/api/storm-pars.h"
+#include "storm-pars/api/region.h"
+#include "storm-pars/modelchecker/region/monotonicity/MonotonicityResult.h"
+#include "storm-pars/modelchecker/region/monotonicity/Order.h"
+#include "storm-pars/modelchecker/region/monotonicity/OrderExtender.h"
 #include "storm-pars/transformer/SparseParametricDtmcSimplifier.h"
-#include "storm-parsers/api/storm-parsers.h"
+#include "storm-parsers/api/model_descriptions.h"
+#include "storm-parsers/api/properties.h"
 #include "storm-parsers/parser/AutoParser.h"
 #include "storm-parsers/parser/PrismParser.h"
+#include "storm/api/bisimulation.h"
 #include "storm/api/builder.h"
-#include "storm/api/storm.h"
+#include "storm/api/properties.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
@@ -33,7 +38,7 @@ TEST_F(OrderExtenderTest, Brp_with_bisimulation_on_model) {
 
     // Program and formula
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -44,9 +49,6 @@ TEST_F(OrderExtenderTest, Brp_with_bisimulation_on_model) {
 
     // Apply bisimulation
     storm::storage::BisimulationType bisimType = storm::storage::BisimulationType::Strong;
-    if (storm::settings::getModule<storm::settings::modules::BisimulationSettings>().isWeakBisimulationSet()) {
-        bisimType = storm::storage::BisimulationType::Weak;
-    }
 
     model = storm::api::performBisimulationMinimization<storm::RationalFunction>(model, formulas, bisimType)
                 ->as<storm::models::sparse::Dtmc<storm::RationalFunction>>();
@@ -85,7 +87,7 @@ TEST_F(OrderExtenderTest, Brp_without_bisimulation_on_model) {
 
     // Program and formula
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -116,7 +118,7 @@ TEST_F(OrderExtenderTest, Brp_with_bisimulation_on_matrix) {
 
     // Program and formula
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -127,9 +129,6 @@ TEST_F(OrderExtenderTest, Brp_with_bisimulation_on_matrix) {
 
     // Apply bisimulation
     storm::storage::BisimulationType bisimType = storm::storage::BisimulationType::Strong;
-    if (storm::settings::getModule<storm::settings::modules::BisimulationSettings>().isWeakBisimulationSet()) {
-        bisimType = storm::storage::BisimulationType::Weak;
-    }
 
     model = storm::api::performBisimulationMinimization<storm::RationalFunction>(model, formulas, bisimType)
                 ->as<storm::models::sparse::Dtmc<storm::RationalFunction>>();
@@ -173,7 +172,7 @@ TEST_F(OrderExtenderTest, Brp_without_bisimulation_on_matrix) {
 
     // Program and formula
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -213,7 +212,7 @@ TEST_F(OrderExtenderTest, simple1_on_model) {
 
     // model
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -251,7 +250,7 @@ TEST_F(OrderExtenderTest, simple1_on_matrix) {
 
     // model
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -305,7 +304,7 @@ TEST_F(OrderExtenderTest, casestudy1_on_model) {
 
     // model
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -343,7 +342,7 @@ TEST_F(OrderExtenderTest, casestudy1_on_matrix) {
 
     // model
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -397,7 +396,7 @@ TEST_F(OrderExtenderTest, casestudy2_on_matrix) {
 
     // model
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =

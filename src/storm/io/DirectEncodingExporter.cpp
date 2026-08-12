@@ -77,7 +77,7 @@ void explicitExportSparseModel(std::ostream& os, std::shared_ptr<storm::models::
     } else if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
         os << "parametric";
     } else {
-        STORM_LOG_ASSERT(false, "Unhandled value type");
+        STORM_LOG_ASSERT(false, "Unhandled value type.");
     }
     os << '\n';
     os << "@parameters\n";
@@ -166,7 +166,7 @@ void explicitExportSparseModel(std::ostream& os, std::shared_ptr<storm::models::
         os << '\n';
         // Write state valuations as comments
         if (sparseModel->hasStateValuations()) {
-            os << "//" << sparseModel->getStateValuations().getStateInfo(group) << '\n';
+            os << "//" << sparseModel->getStateValuations().toString(group) << '\n';
         }
 
         // Write probabilities

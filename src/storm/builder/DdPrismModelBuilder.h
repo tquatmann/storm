@@ -1,5 +1,4 @@
-#ifndef STORM_BUILDER_DDPRISMMODELBUILDER_H_
-#define STORM_BUILDER_DDPRISMMODELBUILDER_H_
+#pragma once
 
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
@@ -99,6 +98,10 @@ class DdPrismModelBuilder {
         // An optional set of expression or labels that characterizes (a subset of) the terminal states of the model.
         // If this is set, the outgoing transitions of these states are replaced with a self-loop.
         storm::builder::TerminalStates terminalStates;
+
+        // A flag that indicates whether deadlock states should be fixed by inserting a self-loop. If not set,
+        // an error is raised whenever a deadlock state is encountered.
+        bool fixDeadlocks = true;
     };
 
     /*!
@@ -303,5 +306,3 @@ class DdPrismModelBuilder {
 
 }  // namespace builder
 }  // namespace storm
-
-#endif /* STORM_BUILDER_DDPRISMMODELBUILDER_H_ */

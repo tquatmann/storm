@@ -1,6 +1,7 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
+#include "storm-pars/api/region.h"
 #include "storm-pars/modelchecker/region/monotonicity/AssumptionChecker.h"
 #include "storm-pars/modelchecker/region/monotonicity/AssumptionMaker.h"
 #include "storm-pars/modelchecker/region/monotonicity/LocalMonotonicityResult.h"
@@ -9,11 +10,12 @@
 #include "storm-pars/modelchecker/region/monotonicity/Order.h"
 #include "storm-pars/modelchecker/region/monotonicity/OrderExtender.h"
 #include "storm-pars/transformer/SparseParametricDtmcSimplifier.h"
-#include "storm-parsers/api/storm-parsers.h"
+#include "storm-parsers/api/model_descriptions.h"
+#include "storm-parsers/api/properties.h"
 #include "storm-parsers/parser/AutoParser.h"
 #include "storm-parsers/parser/PrismParser.h"
 #include "storm/api/builder.h"
-#include "storm/api/storm.h"
+#include "storm/api/properties.h"
 #include "storm/logic/Formulas.h"
 #include "storm/modelchecker/prctl/SparseDtmcPrctlModelChecker.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -36,7 +38,7 @@ TEST_F(AssumptionMakerTest, Brp_without_bisimulation) {
 
     // Program and formula
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -87,7 +89,7 @@ TEST_F(AssumptionMakerTest, Simple1) {
     std::string constantsAsString = "";
 
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
@@ -140,7 +142,7 @@ TEST_F(AssumptionMakerTest, Casestudy1) {
     std::string constantsAsString = "";
 
     storm::prism::Program program = storm::api::parseProgram(programFile);
-    program = storm::utility::prism::preprocess(program, constantsAsString);
+    program = program.preprocess(constantsAsString);
     std::vector<std::shared_ptr<const storm::logic::Formula>> formulas =
         storm::api::extractFormulasFromProperties(storm::api::parsePropertiesForPrismProgram(formulaAsString, program));
     std::shared_ptr<storm::models::sparse::Dtmc<storm::RationalFunction>> model =
