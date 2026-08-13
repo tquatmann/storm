@@ -41,6 +41,9 @@ PreservationInformation Initialization<ValueType>::getPreservationInformation() 
     // if requested or if there are no formulas given (and the user hasn't explicitly set something else), also add all state labels and rewards
     if (options.preserveAllStateLabels.value_or(formulas.empty())) {
         for (auto const& label : model.getStateLabeling().getLabels()) {
+            if (label == "init") {
+                continue;  // "init" must not be preserved
+            }
             information.preservedStateLabels.insert(label);
         }
     }
