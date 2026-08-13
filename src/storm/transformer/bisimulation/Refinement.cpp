@@ -195,17 +195,14 @@ struct StateSignature {
 
 template<typename ValueType>
 struct SignatureRefinementCache {
-    std::vector<StateSignature<ValueType>> stateSignatures;                 // the signature of each state
-    storm::bisimulation::Partition::OrderedBlockSet stableCandidateBlocks;  // Blocks that might be considered stable w.r.t. the current partition
-    std::vector<std::set<uint64_t>> reachablePivotBlocks;                   // used to store which sub-blocks of the pivot can be reached for each state
-    std::vector<uint64_t> pivotPredecessorStates;                           // states with a non-zero probability to the pivot block
-    Partition::NonSuperBlockSet pivotPredecessorBlocks;                     // blocks with a non-zero probability to the pivot block
+    std::vector<StateSignature<ValueType>> stateSignatures;  // The signature of each state, updated on demand.
+    Partition::OrderedBlockSet enforceUnstableBlocks;  // Blocks that are always considered unstable, i.e. for which we always add the predecessors to the queue
+    std::vector<std::set<uint64_t>> reachablePivotBlocks;  // Used to store which sub-blocks of the pivot block can be reached for each state
+    std::vector<uint64_t> pivotPredecessorStates;          // States with a non-zero probability to the pivot block
+    Partition::NonSuperBlockSet pivotPredecessorBlocks;    // Blocks with a non-zero probability to the pivot block (for at least one contained state)
 
     explicit SignatureRefinementCache(storm::bisimulation::Partition const& partition)
-        : stateSignatures(partition.getNumberOfElements()),
-          stableCandidateBlocks(),
-          reachablePivotBlocks(partition.getNumberOfElements()),
-          pivotPredecessorBlocks(partition) {}
+        : stateSignatures(partition.getNumberOfElements()), reachablePivotBlocks(partition.getNumberOfElements()), pivotPredecessorBlocks(partition) {}
 
     void addReachablePivotBlock(uint64_t const state, uint64_t const localSubBlockIndex) {
         auto& blocks = reachablePivotBlocks[state];
@@ -235,16 +232,20 @@ void refinePartitionBasedOnSignature(RefinementContext<ValueType>& context, stor
         cache.stateSignatures[state] = StateSignature<ValueType>(state, context);
     }
     // Then perform the signature-based split
-    bool const pivotStable = !context.partition.splitBlockByOrder(
+    bool const pivotHasBeenSplit = context.partition.splitBlockByOrder(
         pivotBlock, [&cache](uint64_t const state1, uint64_t const state2) { return cache.stateSignatures[state1] < cache.stateSignatures[state2]; });
 
-    if (pivotStable && cache.stableCandidateBlocks.contains(pivotBlock)) {
-        // When the current pivot block is stable, we can continue with the next pivot
-        cache.stableCandidateBlocks.erase(pivotBlock);
+    if (auto findIt = cache.enforceUnstableBlocks.find(pivotBlock); findIt != cache.enforceUnstableBlocks.end()) {
+        // We must assume that the block is not stable because it is the result of a recent split
+        cache.enforceUnstableBlocks.erase(findIt);
+    } else if (!pivotHasBeenSplit) {
+        // When the current pivot block is stable, there is no need to look into its predecessors. We can continue with the next pivot.
         return;
     }
-    // When the pivot block has been split, all the predecessor blocks need to checked again.
-    // While we could just add all those predecessors to the queue, we try to split them first based on simple, graph-based criteria so that (expensive)
+
+    // When the pivot block is not stable, it means it has been split and the predecessor blocks have not been checked since that split.
+    // Therefore, all the predecessor blocks need to checked again.
+    // While we could just add all those predecessors to the queue, we instead try to split them first based on simple, graph-based criteria so that (expensive)
     // signature refinement is hopefully only applied to smaller blocks. Specifically, we split predecessor blocks based on which set of sub-blocks of the pivot
     // they can reach.
 
@@ -280,23 +281,36 @@ void refinePartitionBasedOnSignature(RefinementContext<ValueType>& context, stor
         STORM_LOG_ASSERT(!predecessors.empty(), "The predecessor block should contain at least one predecessor state.");
 
         // Now apply the splitting based on which sub-blocks of the pivot block can be reached.
-        // Attention: Do not short circuit, i.e., wasSplit = wasSplit || foo() might not execute foo()
-        context.partition.splitBlockByOrder(predecessors, [&cache](uint64_t const state1, uint64_t const state2) {
-            return cache.reachablePivotBlocks[state1] < cache.reachablePivotBlocks[state2];
-        });
+        // If we did not actually split the pivot block, this operation would have no effect.
+        if (pivotHasBeenSplit) {
+            context.partition.splitBlockByOrder(predecessors, [&cache](uint64_t const state1, uint64_t const state2) {
+                return cache.reachablePivotBlocks[state1] < cache.reachablePivotBlocks[state2];
+            });
+        } else {
+            STORM_LOG_ASSERT(std::all_of(predecessors.begin(), predecessors.end(),
+                                         [&cache](uint64_t const& state) {
+                                             return cache.reachablePivotBlocks[state].size() == 1 && *cache.reachablePivotBlocks[state].begin() == 0;
+                                         }),
+                             "Expected all predecessor states to reach the pivot block.");
+        }
 
         if (context.partition.isProperSuperBlock(predecessorBlock)) {
-            // Erase the super block from the queue and the stable candidates (it might or might not be in there)
+            // Erase the super block from the queue and the enforced unstable blocks (it might or might not be in there)
             context.queue.erase(predecessorBlock);
-            cache.stableCandidateBlocks.erase(predecessorBlock);
-            // Add all sub-blocks to the queue
-            context.partition.forEachSubBlock(predecessorBlock, [&context](auto const& block) { context.queue.insert(block); });
+            cache.enforceUnstableBlocks.erase(predecessorBlock);
+            // Add all sub-blocks to the queue. As we made a split, we must look at the predecessors of predecessorBlock so we enforce that it is unstable.
+            context.partition.forEachSubBlock(predecessorBlock, [&context, &cache](auto const& block) {
+                context.queue.insert(block);
+                cache.enforceUnstableBlocks.insert(block);
+            });
         } else {
-            // The simple, graph-based splitting was not effective. We must add the entire predecessorBlock to the queue
-            cache.stableCandidateBlocks.insert(predecessorBlock);
+            // The simple, graph-based splitting was not effective. We must add the entire predecessorBlock to the queue. We do not have to
+            // enforce the block to be unstable
             context.queue.insert(predecessorBlock);
         }
     }
+    // Reset the touched reachable-subblocks
+    cache.clearPivotPredecessorData();
 }
 
 }  // namespace detail
