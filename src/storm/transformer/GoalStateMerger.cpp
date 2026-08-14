@@ -112,7 +112,6 @@ typename GoalStateMerger<ValueType>::ReturnType GoalStateMerger<ValueType>::merg
     if (originalModel.hasChoiceLabeling()) {
         modelComponents.choiceLabeling.emplace(newChoiceCount);
         for (auto const& label : originalModel.getChoiceLabeling().getLabels()) {
-            storm::storage::BitVector const& oldStatesWithLabel = originalModel.getStates(label);
             storm::storage::BitVector choiceLabes = originalModel.getChoiceLabeling().getChoices(label) % result.first.keptChoices;
             choiceLabes.resize(newChoiceCount, false);  // no label for the choice at target/sink states
             modelComponents.choiceLabeling->addLabel(label, std::move(choiceLabes));
