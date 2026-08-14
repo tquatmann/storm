@@ -88,8 +88,7 @@ class StateMapping {
 
 template<typename ValueType>
 struct SplitterRefinementContext {
-    SplitterRefinementContext(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                              storm::IntervalBaseType<ValueType> const tolerance)
+    SplitterRefinementContext(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition, ValueType const tolerance)
         : model(model), partition(partition), backwardTransitions(model.getBackwardTransitions()), tolerance(tolerance), cache(partition) {}
 
     storm::models::sparse::Model<ValueType> const& model;
@@ -174,22 +173,14 @@ void refinePartitionBasedOnSplitter(SplitterRefinementContext<ValueType>& contex
 
 template<typename ValueType>
 struct SignatureRefinementContext {
-    SignatureRefinementContext(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
-                               storm::bisimulation::Partition& partition, storm::IntervalBaseType<ValueType> tolerance)
-        : model(model),
-          choiceClasses(choiceClasses),
-          partition(partition),
-          signatures(model, choiceClasses, partition),
-          backwardTransitions(model.getBackwardTransitions()),
-          tolerance(tolerance),
-          cache(partition) {}
+    SignatureRefinementContext(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
+                               Signatures<ValueType>& signatures)
+        : model(model), partition(partition), signatures(signatures), backwardTransitions(model.getBackwardTransitions()), cache(partition) {}
 
     storm::models::sparse::Model<ValueType> const& model;
-    std::optional<std::vector<uint64_t>> const& choiceClasses;
     storm::bisimulation::Partition& partition;
-    storm::bisimulation::Signatures<ValueType> signatures;
+    storm::bisimulation::Signatures<ValueType>& signatures;
     storm::storage::SparseMatrix<ValueType> const backwardTransitions;
-    ValueType const tolerance;
     storm::bisimulation::Partition::OrderedBlockMap<bool>
         queue;  // stores an extra flag for each element in the queue. The flag indicates whether we enforce exploring the predecessors of the block
 
@@ -288,54 +279,63 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType>& cont
 }  // namespace detail
 
 template<typename ValueType>
-void performPartitionRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                std::optional<std::vector<uint64_t>> const& choiceClasses) {
-    auto const tolerance = storm::utility::convertNumber<storm::IntervalBaseType<ValueType>>(1e-6);  // todo
+void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
+                                    ValueType const tolerance) {
+    STORM_LOG_ASSERT(!model.isNondeterministicModel(), "Splitter-based refinement is only supported for deterministic models.");
+    detail::SplitterRefinementContext<ValueType> context(model, partition, tolerance);
+    // Initially, add all current blocks to the queue.
+    partition.forEachBlock([&context](auto const& block) { context.queue.insert(block); });
 
-    // Perform signature-based or splitter-based refinement based on input
-    if (model.isNondeterministicModel()) {
-        detail::SignatureRefinementContext<ValueType> context(model, choiceClasses, partition, tolerance);
-        // Initially, add all current blocks to the queue. No need to enforce exploring predecessors.
-        partition.forEachBlock([&context](auto const& block) { context.queue.emplace(block, false); });
-
-        while (!context.queue.empty()) {
-            // take the smallest block from the queue
-            auto const [pivotBlock, enforcePredecessorExploration] = *context.queue.begin();
-            context.queue.erase(context.queue.begin());
-            STORM_LOG_ASSERT(!partition.isProperSuperBlock(pivotBlock), "Broken invariant: the queue should not contain blocks that have been split.");
-            // Split the pivotBlock based on its signature and split the predecessor blocks based on a simple, graph-based criterion
-            detail::refinePartitionBasedOnSignature(context, pivotBlock, enforcePredecessorExploration);
-        }
-    } else {
-        STORM_LOG_ASSERT(!choiceClasses.has_value(), "Choice classes should only be given for nondeterministic models.");
-        detail::SplitterRefinementContext<ValueType> context(model, partition, tolerance);
-        // Initially, add all current blocks to the queue.
-        partition.forEachBlock([&context](auto const& block) { context.queue.insert(block); });
-
-        // Perform the splitting until there are no more splitters.
-        while (!context.queue.empty()) {
-            // take the smallest block from the queue
-            auto const splitterBlock = *context.queue.begin();
-            context.queue.erase(context.queue.begin());
-            STORM_LOG_ASSERT(!partition.isProperSuperBlock(splitterBlock), "Broken invariant: the queue should not contain blocks that have been split.");
-            // Split the predecessor blocks and add them to the queue
-            refinePartitionBasedOnSplitter(context, splitterBlock);
-        }
+    // Perform the splitting until there are no more splitters.
+    while (!context.queue.empty()) {
+        // take the smallest block from the queue
+        auto const splitterBlock = *context.queue.begin();
+        context.queue.erase(context.queue.begin());
+        STORM_LOG_ASSERT(!partition.isProperSuperBlock(splitterBlock), "Broken invariant: the queue should not contain blocks that have been split.");
+        // Split the predecessor blocks and add them to the queue
+        detail::refinePartitionBasedOnSplitter(context, splitterBlock);
     }
 }
 
-template void performPartitionRefinement<double>(storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
-                                                 std::optional<std::vector<uint64_t>> const& choiceClasses);
-template void performPartitionRefinement<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                storm::bisimulation::Partition& partition,
-                                                                std::optional<std::vector<uint64_t>> const& choiceClasses);
-template void performPartitionRefinement<storm::RationalFunction>(storm::models::sparse::Model<storm::RationalFunction> const& model,
-                                                                  storm::bisimulation::Partition& partition,
-                                                                  std::optional<std::vector<uint64_t>> const& choiceClasses);
-template void performPartitionRefinement<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model, storm::bisimulation::Partition& partition,
-                                                          std::optional<std::vector<uint64_t>> const& choiceClasses);
-template void performPartitionRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
-                                                                  storm::bisimulation::Partition& partition,
-                                                                  std::optional<std::vector<uint64_t>> const& choiceClasses);
+template<typename ValueType>
+void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
+                                     Signatures<ValueType>& signatures) {
+    detail::SignatureRefinementContext<ValueType> context(model, partition, signatures);
+    // Initially, add all current blocks to the queue. No need to enforce exploring predecessors.
+    partition.forEachBlock([&context](auto const& block) { context.queue.emplace(block, false); });
+
+    while (!context.queue.empty()) {
+        // take the smallest block from the queue
+        auto const [pivotBlock, enforcePredecessorExploration] = *context.queue.begin();
+        context.queue.erase(context.queue.begin());
+        STORM_LOG_ASSERT(!partition.isProperSuperBlock(pivotBlock), "Broken invariant: the queue should not contain blocks that have been split.");
+        // Split the pivotBlock based on its signature and split the predecessor blocks based on a simple, graph-based criterion
+        detail::refinePartitionBasedOnSignature(context, pivotBlock, enforcePredecessorExploration);
+    }
+}
+
+template void performSplitterBasedRefinement<double>(storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
+                                                     double const tolerance);
+template void performSplitterBasedRefinement<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
+                                                                    storm::bisimulation::Partition& partition, storm::RationalNumber const tolerance);
+template void performSplitterBasedRefinement<storm::RationalFunction>(storm::models::sparse::Model<storm::RationalFunction> const& model,
+                                                                      storm::bisimulation::Partition& partition, storm::RationalFunction const tolerance);
+template void performSplitterBasedRefinement<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model,
+                                                              storm::bisimulation::Partition& partition, storm::Interval const tolerance);
+template void performSplitterBasedRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
+                                                                      storm::bisimulation::Partition& partition, storm::RationalInterval const tolerance);
+
+template void performSignatureBasedRefinement<double>(storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
+                                                      Signatures<double>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
+                                                                     storm::bisimulation::Partition& partition, Signatures<storm::RationalNumber>& signatures);
+template void performSignatureBasedRefinement<storm::RationalFunction>(storm::models::sparse::Model<storm::RationalFunction> const& model,
+                                                                       storm::bisimulation::Partition& partition,
+                                                                       Signatures<storm::RationalFunction>& signatures);
+template void performSignatureBasedRefinement<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model,
+                                                               storm::bisimulation::Partition& partition, Signatures<storm::Interval>& signatures);
+template void performSignatureBasedRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
+                                                                       storm::bisimulation::Partition& partition,
+                                                                       Signatures<storm::RationalInterval>& signatures);
 
 }  // namespace storm::bisimulation
