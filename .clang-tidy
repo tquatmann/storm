@@ -9,7 +9,13 @@ Checks: >-
   bugprone-unused-return-value,
   bugprone-use-after-move,
   bugprone-virtual-near-miss,
-  readability-braces-around-statements
+  misc-unused-using-decls,
+  modernize-deprecated-headers,
+  modernize-make-unique,
+  modernize-use-nullptr,
+  readability-braces-around-statements,
+  readability-redundant-smartptr-get,
+  readability-static-accessed-through-instance
 # Candidate checks that are not (yet) enabled:
 # bugprone-branch-clone,
 # bugprone-copy-constructor-init,
@@ -23,13 +29,9 @@ Checks: >-
 # misc-misplaced-const,
 # misc-static-assert,
 # misc-throw-by-value-catch-by-reference,
-# misc-unused-using-decls,
-# modernize-deprecated-headers,
 # modernize-make-shared,
-# modernize-make-unique,
 # modernize-return-braced-init-list,
 # modernize-use-default-member-init,
-# modernize-use-nullptr,
 # modernize-use-using,
 # performance-for-range-copy,
 # performance-implicit-conversion-in-loop,
@@ -40,10 +42,8 @@ Checks: >-
 # readability-else-after-return,
 # readability-non-const-parameter,
 # readability-redundant-member-init,
-# readability-redundant-smartptr-get,
 # readability-redundant-string-cstr,
 # readability-simplify-boolean-expr,
-# readability-static-accessed-through-instance
 
 # Only report diagnostics in src/ but not third-party or system headers.
 # The regex also matches storm-*
