@@ -531,7 +531,7 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
     // Get the result for the complete model (including maybestates)
     std::vector<ConstantType> result = resultsForNonMaybeStates;
     auto maybeStateResIt = x.begin();
-    for (auto maybeState : maybeStates) {
+    for (uint64_t maybeState : maybeStates) {
         result[maybeState] = *maybeStateResIt;
         ++maybeStateResIt;
     }
@@ -558,7 +558,7 @@ void SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robus
         helper::SparseDeterministicVisitingTimesHelper<ConstantType> visitingTimesHelper(instantiatedModel.getTransitionMatrix());
         auto const visitingTimes = visitingTimesHelper.computeExpectedVisitingTimes(env, this->parametricModel->getInitialStates());
         uint64_t rowIndex = 0;
-        for (auto state : maybeStates) {
+        for (uint64_t state : maybeStates) {
             weighting[rowIndex++] = visitingTimes[state];
         }
     }
