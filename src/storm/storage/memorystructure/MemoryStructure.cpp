@@ -131,7 +131,8 @@ MemoryStructure MemoryStructure::product(MemoryStructure const& rhs) const {
         resultInitialMemoryStates.push_back(*lhsStateIt * rhsNumStates + *rhsStateIt);
     }
 
-    return MemoryStructure(std::move(resultTransitions), std::move(resultLabeling), std::move(resultInitialMemoryStates));
+    return MemoryStructure(std::move(resultTransitions), std::move(resultLabeling), std::move(resultInitialMemoryStates),
+                           this->onlyInitialStatesRelevant && rhs.onlyInitialStatesRelevant);
 }
 
 template<typename ValueType, typename RewardModelType>

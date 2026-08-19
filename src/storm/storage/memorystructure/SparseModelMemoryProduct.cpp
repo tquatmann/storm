@@ -386,9 +386,16 @@ storm::models::sparse::StateLabeling SparseModelMemoryProduct<ValueType, RewardM
 
     storm::storage::BitVector initialStates(numResStates, false);
     auto memoryInitIt = memory.getInitialMemoryStates().begin();
-    for (auto modelInit : model.getInitialStates()) {
-        initialStates.set(getResultState(modelInit, *memoryInitIt), true);
-        ++memoryInitIt;
+    if (memory.isOnlyInitialStatesRelevantSet()) {
+        for (uint64_t modelInit : model.getInitialStates()) {
+            initialStates.set(getResultState(modelInit, *memoryInitIt), true);
+            ++memoryInitIt;
+        }
+    } else {
+        for (uint_fast64_t modelState = 0; modelState < model.getNumberOfStates(); ++modelState) {
+            initialStates.set(getResultState(modelState, *memoryInitIt), true);
+            ++memoryInitIt;
+        }
     }
     resultLabeling.addLabel("init", std::move(initialStates));
 
