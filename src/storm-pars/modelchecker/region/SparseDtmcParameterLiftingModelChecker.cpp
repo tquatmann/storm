@@ -418,8 +418,6 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
             transformer::IntervalEndComponentPreserver endComponentPreserver;
             auto const& result = endComponentPreserver.eliminateMECs(liftedMatrix, liftedVector);
             if (result) {
-                // std::cout << liftedMatrix << std::endl;
-                // std::cout << *result << std::endl;
                 liftedMatrix = *result;
                 nonTrivialEndComponents = true;
             }
@@ -536,7 +534,7 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
         ++maybeStateResIt;
     }
 
-    STORM_LOG_INFO(dirForParameters << " " << region.region << ": " << result[this->getUniqueInitialState()] << std::endl);
+    STORM_LOG_INFO(dirForParameters << " " << region.region << ": " << result[this->getUniqueInitialState()]);
 
     this->updateKnownValueBoundInRegion(region, dirForParameters, result);
     return result;
