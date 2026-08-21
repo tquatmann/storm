@@ -1,5 +1,7 @@
 #include "storm-pars/transformer/SparseParametricMdpSimplifier.h"
 
+#include <optional>
+
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UnexpectedException.h"
@@ -159,7 +161,7 @@ bool SparseParametricMdpSimplifier<SparseModelType>::simplifyForBoundedUntilProb
     // obtain the simplified formula for the simplified model
     auto labelFormula = std::make_shared<storm::logic::AtomicLabelFormula const>(targetLabel);
     auto boundedUntilFormula =
-        std::make_shared<storm::logic::BoundedUntilFormula const>(storm::logic::Formula::getTrueFormula(), labelFormula, boost::none,
+        std::make_shared<storm::logic::BoundedUntilFormula const>(storm::logic::Formula::getTrueFormula(), labelFormula, std::nullopt,
                                                                   storm::logic::TimeBound(formula.getSubformula().asBoundedUntilFormula().isUpperBoundStrict(),
                                                                                           formula.getSubformula().asBoundedUntilFormula().getUpperBound()),
                                                                   storm::logic::TimeBoundReference(storm::logic::TimeBoundType::Steps));

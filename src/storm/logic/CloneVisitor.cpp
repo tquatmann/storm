@@ -1,5 +1,6 @@
 #include "storm/logic/CloneVisitor.h"
 #include <boost/any.hpp>
+#include <optional>
 
 #include "storm/logic/Formulas.h"
 
@@ -36,7 +37,7 @@ boost::any CloneVisitor::visit(BooleanLiteralFormula const& f, boost::any const&
 }
 
 boost::any CloneVisitor::visit(BoundedUntilFormula const& f, boost::any const& data) const {
-    std::vector<boost::optional<TimeBound>> lowerBounds, upperBounds;
+    std::vector<std::optional<TimeBound>> lowerBounds, upperBounds;
     std::vector<TimeBoundReference> timeBoundReferences;
     for (uint64_t i = 0; i < f.getDimension(); ++i) {
         if (f.hasLowerBound(i)) {

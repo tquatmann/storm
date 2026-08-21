@@ -1,5 +1,6 @@
 #include "storm/logic/ExtractMaximalStateFormulasVisitor.h"
 #include <boost/any.hpp>
+#include <optional>
 
 #include "storm/logic/Formulas.h"
 
@@ -54,7 +55,7 @@ boost::any ExtractMaximalStateFormulasVisitor::visit(BoundedUntilFormula const& 
     }
 
     // Copy bound information
-    std::vector<boost::optional<TimeBound>> lowerBounds, upperBounds;
+    std::vector<std::optional<TimeBound>> lowerBounds, upperBounds;
     std::vector<TimeBoundReference> timeBoundReferences;
     for (uint64_t i = 0; i < f.getDimension(); ++i) {
         if (f.hasLowerBound(i)) {
