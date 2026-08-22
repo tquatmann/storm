@@ -12,51 +12,41 @@
 namespace storm::bisimulation {
 
 template<typename ValueType, SignatureMode Mode>
-bool StateSignature<ValueType, Mode>::ChoiceSignature::operator<(ChoiceSignature const& other) const {
+std::strong_ordering StateSignature<ValueType, Mode>::ChoiceSignature::operator<=>(ChoiceSignature const& other) const {
     // It must hold that c_1 < c_2 < c_3 and c_1 ≈ c_3 implies c_1 ≈ c_2 ≈ c_3, where ≈ is the used "equality" for the Mode.
     // Since in all cases ≈ only holds if choiceClass and distr support coincide, we check those first
-    if (choiceClass != other.choiceClass) {
-        return choiceClass < other.choiceClass;
+    if (auto const cmp = choiceClass <=> other.choiceClass; cmp != 0) {
+        return cmp;
     }
-    if (distr.size() != other.distr.size()) {
-        return distr.size() < other.distr.size();
+    if (auto const cmp = distr.size() <=> other.distr.size(); cmp != 0) {
+        return cmp;
     }
     auto it2 = other.distr.begin();
     for (auto const& entry : distr) {
-        if (entry.first.size() != it2->first.size()) {
-            return entry.first.size() < it2->first.size();
+        if (auto const cmp = entry.first.size() <=> it2->first.size(); cmp != 0) {
+            return cmp;
         }
-        if (entry.first.data() != it2->first.data()) {
-            return entry.first.data() < it2->first.data();
+        if (auto const cmp = entry.first.data() <=> it2->first.data(); cmp != 0) {
+            return cmp;
         }
         ++it2;
     }
-    // At this point only the distribution values could potentially differ
+    // At this point only the distribution values could potentially differ.
     // In approximative mode, it is important that these are checked last so that similar distributions will also be close in the sorted choiceSignatures.
+    // ValueType (e.g. RationalFunction, Interval) does not necessarily support <=>, so we fall back to </!= here.
     it2 = other.distr.begin();
     for (auto const& entry : distr) {
         if (entry.second != it2->second) {
-            return entry.second < it2->second;
-        }
-    }
-    return false;  // equal choice signatures, i.e., not less
-}
-
-template<typename ValueType, SignatureMode Mode>
-bool StateSignature<ValueType, Mode>::ChoiceSignature::equal(ChoiceSignature const& other) const
-    requires(Mode == SignatureMode::Exact)
-{
-    if (choiceClass != other.choiceClass || distr.size() != other.distr.size()) {
-        return false;
-    }
-    auto it2 = other.distr.begin();
-    for (auto const& entry : distr) {
-        if (entry.first.data() != it2->first.data() || entry.first.size() != it2->first.size() || entry.second != it2->second) {
-            return false;
+            return entry.second < it2->second ? std::strong_ordering::less : std::strong_ordering::greater;
         }
         ++it2;
     }
-    return true;
+    return std::strong_ordering::equal;
+}
+
+template<typename ValueType, SignatureMode Mode>
+bool StateSignature<ValueType, Mode>::ChoiceSignature::operator==(ChoiceSignature const& other) const {
+    return (*this <=> other) == std::strong_ordering::equal;
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -142,17 +132,14 @@ template<typename ValueType, SignatureMode Mode>
 bool Signatures<ValueType, Mode>::SplitOrder::operator()(uint64_t const state1, uint64_t const state2) const {
     SignatureType const& sig1 = signatures[state1];
     SignatureType const& sig2 = signatures[state2];
-    // Do not compare the originating choice index (i.e. only compare the map keys)
-    if (sig1.choices.size() != sig2.choices.size()) {
-        return sig1.choices.size() < sig2.choices.size();
+    // Do not compare the originating choice index (i.e. only compare the set of keys of the respective choices maps)
+    if (auto const cmp = sig1.choices.size() <=> sig2.choices.size(); cmp != 0) {
+        return cmp < 0;
     }
     auto it2 = sig2.choices.begin();
     for (auto const& [choice, _] : sig1.choices) {
-        if (choice < it2->first) {
-            return true;
-        }
-        if (it2->first < choice) {
-            return false;
+        if (auto const cmp = choice <=> it2->first; cmp != 0) {
+            return cmp < 0;
         }
         ++it2;
     }
@@ -173,7 +160,7 @@ bool Signatures<ValueType, Mode>::SplitCondition::operator()(uint64_t const stat
     auto it2 = sig2.choices.begin();
     for (auto const& [choice, _] : sig1.choices) {
         if constexpr (Mode == SignatureMode::Exact) {
-            if (!choice.equal(it2->first)) {
+            if (choice != it2->first) {
                 return true;
             }
         } else {

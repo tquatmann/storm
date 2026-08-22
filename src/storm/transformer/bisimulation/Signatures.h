@@ -1,5 +1,6 @@
 #pragma once
 
+#include <compare>
 #include <cstdint>
 #include <optional>
 #include <set>
@@ -25,9 +26,8 @@ struct StateSignature {
     struct ChoiceSignature {
         uint64_t const choiceClass;                            // The class of this choice according to the provided choice classes.
         typename Partition::OrderedBlockMap<ValueType> distr;  // The accumulated transition values for each block.
-        bool operator<(ChoiceSignature const& other) const;
-        bool equal(ChoiceSignature const& other) const
-            requires(Mode == SignatureMode::Exact);
+        std::strong_ordering operator<=>(ChoiceSignature const& other) const;
+        bool operator==(ChoiceSignature const& other) const;
         bool approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
             requires(Mode == SignatureMode::Approximative);
     };
