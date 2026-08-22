@@ -2,7 +2,7 @@
 
 #include "storm/models/sparse/Model.h"
 #include "storm/transformer/bisimulation/Partition.h"
-#include "storm/transformer/bisimulation/Signature.h"
+#include "storm/transformer/bisimulation/Signatures.h"
 
 namespace storm::bisimulation {
 
@@ -17,8 +17,8 @@ void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> cons
  * Performs signature-based partition refinement.
  * @note only applicable to nondeterministic models.
  */
-template<typename ValueType>
+template<typename ValueType, typename StateSignature>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                     Signatures<ValueType>& signatures);
+                                     Signatures<StateSignature>& signatures);
 
 }  // namespace storm::bisimulation

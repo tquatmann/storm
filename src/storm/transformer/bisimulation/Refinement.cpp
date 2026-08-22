@@ -9,7 +9,7 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/transformer/bisimulation/Partition.h"
-#include "storm/transformer/bisimulation/Signature.h"
+#include "storm/transformer/bisimulation/Signatures.h"
 #include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
@@ -171,15 +171,15 @@ void refinePartitionBasedOnSplitter(SplitterRefinementContext<ValueType>& contex
     predecessorToSplitterProbabilities.clear();
 }
 
-template<typename ValueType>
+template<typename ValueType, typename StateSignature>
 struct SignatureRefinementContext {
     SignatureRefinementContext(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                               Signatures<ValueType>& signatures)
+                               Signatures<StateSignature>& signatures)
         : model(model), partition(partition), signatures(signatures), backwardTransitions(model.getBackwardTransitions()), cache(partition) {}
 
     storm::models::sparse::Model<ValueType> const& model;
     storm::bisimulation::Partition& partition;
-    storm::bisimulation::Signatures<ValueType>& signatures;
+    storm::bisimulation::Signatures<StateSignature>& signatures;
     storm::storage::SparseMatrix<ValueType> const backwardTransitions;
     storm::bisimulation::Partition::OrderedBlockMap<bool>
         queue;  // stores an extra flag for each element in the queue. The flag indicates whether we enforce exploring the predecessors of the block
@@ -191,8 +191,8 @@ struct SignatureRefinementContext {
     } cache;
 };
 
-template<typename ValueType>
-void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType>& context, storm::bisimulation::Partition::Block const pivotBlock,
+template<typename ValueType, typename StateSignature>
+void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, StateSignature>& context, storm::bisimulation::Partition::Block const pivotBlock,
                                      bool const enforcePredecessorExploration) {
     // Split the pivot block B into B=B_1 cup B_2 cup ... cup B_n using signature refinement
     // First update the state signatures
@@ -200,9 +200,13 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType>& cont
         context.signatures.updateStateSignature(state);
     }
     // Then perform the signature-based split
-    bool const pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, [&context](uint64_t const state1, uint64_t const state2) {
-        return context.signatures.getStateSignature(state1) < context.signatures.getStateSignature(state2);
-    });
+    bool pivotHasBeenSplit = false;
+    if constexpr (StateSignature::IsExact) {
+        pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getExactSplitOrder());
+    } else {
+        assert(false);
+        // TODO: pivotHasBeenSplit = ...;
+    }
 
     if (!pivotHasBeenSplit && !enforcePredecessorExploration) {
         // When the current pivot block is stable, there is no need to look into its predecessors. We can continue with the next pivot.
@@ -297,10 +301,10 @@ void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> cons
     }
 }
 
-template<typename ValueType>
+template<typename ValueType, typename StateSignature>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                     Signatures<ValueType>& signatures) {
-    detail::SignatureRefinementContext<ValueType> context(model, partition, signatures);
+                                     Signatures<StateSignature>& signatures) {
+    detail::SignatureRefinementContext<ValueType, StateSignature> context(model, partition, signatures);
     // Initially, add all current blocks to the queue. No need to enforce exploring predecessors.
     partition.forEachBlock([&context](auto const& block) { context.queue.emplace(block, false); });
 
@@ -325,17 +329,20 @@ template void performSplitterBasedRefinement<storm::Interval>(storm::models::spa
 template void performSplitterBasedRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
                                                                       storm::bisimulation::Partition& partition, storm::RationalInterval const tolerance);
 
-template void performSignatureBasedRefinement<double>(storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
-                                                      Signatures<double>& signatures);
-template void performSignatureBasedRefinement<storm::RationalNumber>(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                     storm::bisimulation::Partition& partition, Signatures<storm::RationalNumber>& signatures);
-template void performSignatureBasedRefinement<storm::RationalFunction>(storm::models::sparse::Model<storm::RationalFunction> const& model,
-                                                                       storm::bisimulation::Partition& partition,
-                                                                       Signatures<storm::RationalFunction>& signatures);
-template void performSignatureBasedRefinement<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model,
-                                                               storm::bisimulation::Partition& partition, Signatures<storm::Interval>& signatures);
-template void performSignatureBasedRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
-                                                                       storm::bisimulation::Partition& partition,
-                                                                       Signatures<storm::RationalInterval>& signatures);
+template void performSignatureBasedRefinement<double, ExactStateSignature<double>>(storm::models::sparse::Model<double> const& model,
+                                                                                   storm::bisimulation::Partition& partition,
+                                                                                   Signatures<ExactStateSignature<double>>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber, ExactStateSignature<storm::RationalNumber>>(
+    storm::models::sparse::Model<storm::RationalNumber> const& model, storm::bisimulation::Partition& partition,
+    Signatures<ExactStateSignature<storm::RationalNumber>>& signatures);
+template void performSignatureBasedRefinement<storm::RationalFunction, ExactStateSignature<storm::RationalFunction>>(
+    storm::models::sparse::Model<storm::RationalFunction> const& model, storm::bisimulation::Partition& partition,
+    Signatures<ExactStateSignature<storm::RationalFunction>>& signatures);
+template void performSignatureBasedRefinement<storm::Interval, ExactStateSignature<storm::Interval>>(
+    storm::models::sparse::Model<storm::Interval> const& model, storm::bisimulation::Partition& partition,
+    Signatures<ExactStateSignature<storm::Interval>>& signatures);
+template void performSignatureBasedRefinement<storm::RationalInterval, ExactStateSignature<storm::RationalInterval>>(
+    storm::models::sparse::Model<storm::RationalInterval> const& model, storm::bisimulation::Partition& partition,
+    Signatures<ExactStateSignature<storm::RationalInterval>>& signatures);
 
 }  // namespace storm::bisimulation

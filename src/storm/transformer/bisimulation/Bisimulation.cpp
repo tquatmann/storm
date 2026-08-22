@@ -11,7 +11,7 @@
 #include "storm/transformer/bisimulation/Partition.h"
 #include "storm/transformer/bisimulation/Quotient.h"
 #include "storm/transformer/bisimulation/Refinement.h"
-#include "storm/transformer/bisimulation/Signature.h"
+#include "storm/transformer/bisimulation/Signatures.h"
 #include "storm/utility/Stopwatch.h"
 #include "storm/utility/constants.h"
 
@@ -32,7 +32,7 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
 
     // apply refinement using the initial partition, choiceClasses
     if (model.isNondeterministicModel()) {
-        storm::bisimulation::Signatures<ValueType> signatures(model, choiceClasses, partition);
+        storm::bisimulation::Signatures<storm::bisimulation::ExactStateSignature<ValueType>> signatures(model, choiceClasses, partition);
         storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
         STORM_LOG_STATISTICS(sw << " seconds for signature refinement (" << partition.getNumberOfBlocks() << " blocks).");
     } else {
