@@ -73,9 +73,6 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
     bool const isNondeterministic = model.isNondeterministicModel();
     STORM_LOG_ASSERT(isNondeterministic || numberOfQuotientStates == numberOfQuotientChoices, "Unexpected choice count.");
 
-    // marks the quotient states that are absorbing
-    storm::storage::BitVector absorbingQuotientStates(numberOfQuotientStates, false);
-
     // Now build the model components one after the other
     storm::storage::sparse::ModelComponents<QuotientValueType> components;
 
@@ -87,22 +84,18 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
             if (isNondeterministic) {
                 builder.newRowGroup(quotientChoice);
             }
-            if (absorbingQuotientStates.get(quotientState)) {
-                builder.addNextValue(quotientChoice, quotientState, storm::utility::one<QuotientValueType>());
-            } else {
-                // TODO: handle deduplication
-                for (auto const representativeChoice : model.getTransitionMatrix().getRowGroupIndices(toRepresentativeState[quotientState])) {
-                    std::map<uint64_t, QuotientValueType> quotientRow;
-                    for (auto const& entry : model.getTransitionMatrix().getRow(representativeChoice)) {
-                        if (auto const ret = quotientRow.emplace(toQuotientState[entry.getColumn()], entry.getValue()); !ret.second) {
-                            ret.first->second += entry.getValue();
-                        }
+            // TODO: handle deduplication
+            for (auto const representativeChoice : model.getTransitionMatrix().getRowGroupIndices(toRepresentativeState[quotientState])) {
+                std::map<uint64_t, QuotientValueType> quotientRow;
+                for (auto const& entry : model.getTransitionMatrix().getRow(representativeChoice)) {
+                    if (auto const ret = quotientRow.emplace(toQuotientState[entry.getColumn()], entry.getValue()); !ret.second) {
+                        ret.first->second += entry.getValue();
                     }
-                    for (auto const& [column, value] : quotientRow) {
-                        builder.addNextValue(quotientChoice, column, value);
-                    }
-                    ++quotientChoice;
                 }
+                for (auto const& [column, value] : quotientRow) {
+                    builder.addNextValue(quotientChoice, column, value);
+                }
+                ++quotientChoice;
             }
         }
         components.transitionMatrix = builder.build();
@@ -192,6 +185,7 @@ auto Quotient<quotientType, ValueType>::buildFromPartition(storm::models::sparse
                 STORM_LOG_ASSERT(components.transitionMatrix.getRowGroupSize(quotientState) == 1, "Unexpected number of choices for Markovian state.");
                 // TODO: At this point, we ignore potential floating point inaccuracies and just pick the rate of some representative state.
                 // We could at least pick a middle value from the interval of all exit rates.
+                // Update: The initial partition should have already taken care of only grouping states with approximately(?) the same exit rate.
                 components.exitRates.value()[quotientState] = ma->getExitRate(representativeState);
             }
         }

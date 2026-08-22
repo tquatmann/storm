@@ -32,9 +32,13 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
 
     // apply refinement using the initial partition, choiceClasses
     if (model.isNondeterministicModel()) {
-        storm::bisimulation::Signatures<storm::bisimulation::ExactStateSignature<ValueType>> signatures(model, choiceClasses, partition);
-        storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
-        STORM_LOG_STATISTICS(sw << " seconds for signature refinement (" << partition.getNumberOfBlocks() << " blocks).");
+        if constexpr (!storm::IsIntervalType<ValueType> && !std::is_same_v<ValueType, storm::RationalFunction>) {
+            storm::bisimulation::Signatures<ValueType, SignatureMode::Exact> signatures(model, choiceClasses, partition);
+            // storm::bisimulation::Signatures<ValueType, SignatureMode::Approximative> signatures(
+            //     model, choiceClasses, partition, storm::utility::convertNumber<ValueType>(options.floatTolerance.value_or(0.0)));
+            storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
+            STORM_LOG_STATISTICS(sw << " seconds for signature refinement (" << partition.getNumberOfBlocks() << " blocks).");
+        }
     } else {
         ValueType const tolerance = storm::NumberTraits<ValueType>::IsExact ? storm::utility::zero<ValueType>()
                                                                             : storm::utility::convertNumber<ValueType>(options.floatTolerance.value_or(0.0));

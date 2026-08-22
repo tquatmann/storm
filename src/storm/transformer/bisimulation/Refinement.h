@@ -17,8 +17,8 @@ void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> cons
  * Performs signature-based partition refinement.
  * @note only applicable to nondeterministic models.
  */
-template<typename ValueType, typename StateSignature>
+template<typename ValueType, SignatureMode Mode>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                     Signatures<StateSignature>& signatures);
+                                     Signatures<ValueType, Mode>& signatures);
 
 }  // namespace storm::bisimulation
