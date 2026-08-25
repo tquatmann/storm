@@ -1,10 +1,13 @@
-#include "storm-dft/modelchecker/DFTModelChecker.h"
+#include "DFTModelChecker.h"
 
-#include "storm-dft/api/storm-dft.h"
+#include "storm-dft/api/transformation.h"
 #include "storm-dft/builder/ExplicitDFTModelBuilder.h"
 #include "storm-dft/settings/modules/DftIOSettings.h"
 #include "storm-dft/utility/SymmetryFinder.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/api/bisimulation.h"
+#include "storm/api/export.h"
+#include "storm/api/verification.h"
 #include "storm/builder/ParallelCompositionBuilder.h"
 #include "storm/exceptions/InvalidModelException.h"
 #include "storm/modelchecker/results/ExplicitQualitativeCheckResult.h"
@@ -175,7 +178,7 @@ std::shared_ptr<storm::models::sparse::Ctmc<ValueType>> DFTModelChecker<ValueTyp
             case storm::dft::storage::elements::DFTElementType::OR:
                 STORM_LOG_TRACE("top modularisation called OR");
                 dfts = dft.topModularisation();
-                STORM_LOG_TRACE("Modularsation into " << dfts.size() << " submodules.");
+                STORM_LOG_TRACE("Modularisation into " << dfts.size() << " submodules.");
                 isAnd = false;
                 break;
             case storm::dft::storage::elements::DFTElementType::VOT:
@@ -396,7 +399,6 @@ typename DFTModelChecker<ValueType>::dft_results DFTModelChecker<ValueType>::che
         return results;
     } else {
         // Build a single Markov Automaton
-        auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
         STORM_LOG_DEBUG("Building Model...");
         storm::dft::builder::ExplicitDFTModelBuilder<ValueType> builder(dft, symmetries);
         builder.buildModel(0, 0.0);
@@ -497,7 +499,7 @@ bool DFTModelChecker<double>::isApproximationSufficient(double lowerBound, doubl
 }
 
 template<typename ValueType>
-void DFTModelChecker<ValueType>::printTimings(std::ostream& os) {
+void DFTModelChecker<ValueType>::printTimings(std::ostream& os) const {
     os << "Times:\n";
     os << "Exploration:\t" << explorationTimer << '\n';
     os << "Building:\t" << buildingTimer << '\n';
@@ -507,7 +509,7 @@ void DFTModelChecker<ValueType>::printTimings(std::ostream& os) {
 }
 
 template<typename ValueType>
-void DFTModelChecker<ValueType>::printResults(dft_results const& results, std::ostream& os) {
+void DFTModelChecker<ValueType>::printResults(dft_results const& results, std::ostream& os) const {
     bool first = true;
     os << "Result: [";
     for (auto result : results) {

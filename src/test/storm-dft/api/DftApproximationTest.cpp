@@ -1,8 +1,12 @@
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
-#include "storm-dft/api/storm-dft.h"
-#include "storm-parsers/api/storm-parsers.h"
+#include "storm-dft/api/analysis.h"
+#include "storm-dft/api/io.h"
+#include "storm-dft/api/transformation.h"
+#include "storm-parsers/api/properties.h"
+#include "storm/api/properties.h"
+#include "storm/storage/jani/Property.h"
 
 namespace {
 
@@ -51,7 +55,7 @@ class DftApproximationTest : public ::testing::Test {
         return config;
     }
 
-    std::pair<double, double> analyzeMTTF(std::string const& file, double errorBound) {
+    std::pair<double, double> analyzeMTTF(std::string const& file, double errorBound) const {
         std::shared_ptr<storm::dft::storage::DFT<double>> dft =
             storm::dft::api::prepareForMarkovAnalysis<double>(*storm::dft::api::loadDFTGalileoFile<double>(file));
         EXPECT_TRUE(storm::dft::api::isWellFormed(*dft).first);
@@ -62,7 +66,7 @@ class DftApproximationTest : public ::testing::Test {
         return boost::get<storm::dft::modelchecker::DFTModelChecker<double>::approximation_result>(results[0]);
     }
 
-    std::pair<double, double> analyzeTimebound(std::string const& file, double timeBound, double errorBound) {
+    std::pair<double, double> analyzeTimebound(std::string const& file, double timeBound, double errorBound) const {
         std::shared_ptr<storm::dft::storage::DFT<double>> dft =
             storm::dft::api::prepareForMarkovAnalysis<double>(*storm::dft::api::loadDFTGalileoFile<double>(file));
         EXPECT_TRUE(storm::dft::api::isWellFormed(*dft).first);

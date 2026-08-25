@@ -1,12 +1,12 @@
 #pragma once
 
-#include "storm/api/storm.h"
-#include "storm/logic/Formula.h"
-#include "storm/modelchecker/results/CheckResult.h"
-#include "storm/utility/Stopwatch.h"
+#include <boost/variant.hpp>
 
 #include "storm-dft/storage/DFT.h"
 #include "storm-dft/utility/RelevantEvents.h"
+#include "storm/logic/Formula.h"
+#include "storm/transformer/NonMarkovianChainTransformer.h"
+#include "storm/utility/Stopwatch.h"
 
 namespace storm::dft {
 namespace modelchecker {
@@ -48,7 +48,7 @@ class DFTModelChecker {
      * @param allowDCForRelevant Whether to allow Don't Care propagation for relevant events
      * @param approximationError Error allowed for approximation. Value 0 indicates no approximation.
      * @param approximationHeuristic Heuristic used for state space exploration.
-     * @param eliminateChains If true, chains of non-Markovian states are elimianted from the resulting MA
+     * @param eliminateChains If true, chains of non-Markovian states are eliminated from the resulting MA
      * @param labelBehavior Behavior of labels of eliminated states
      * @return Model checking results for the given properties..
      */
@@ -64,7 +64,7 @@ class DFTModelChecker {
      *
      * @param os Output stream to write to.
      */
-    void printTimings(std::ostream& os = std::cout);
+    void printTimings(std::ostream& os = std::cout) const;
 
     /*!
      * Print result to stream.
@@ -72,7 +72,7 @@ class DFTModelChecker {
      * @param results List of results.
      * @param os Output stream to write to.
      */
-    void printResults(dft_results const& results, std::ostream& os = std::cout);
+    void printResults(dft_results const& results, std::ostream& os = std::cout) const;
 
    private:
     bool printInfo;
@@ -95,7 +95,7 @@ class DFTModelChecker {
      * @param allowDCForRelevant Whether to allow Don't Care propagation for relevant events
      * @param approximationError Error allowed for approximation. Value 0 indicates no approximation.
      * @param approximationHeuristic Heuristic used for approximation.
-     * @param eliminateChains If true, chains of non-Markovian states are elimianted from the resulting MA
+     * @param eliminateChains If true, chains of non-Markovian states are eliminated from the resulting MA
      * @param labelBehavior Behavior of labels of eliminated states
      * @return Model checking results (or in case of approximation two results for lower and upper bound)
      */
@@ -131,7 +131,7 @@ class DFTModelChecker {
      * @param allowDCForRelevant Whether to allow Don't Care propagation for relevant events
      * @param approximationError Error allowed for approximation. Value 0 indicates no approximation.
      * @param approximationHeuristic Heuristic used for approximation.
-     * @param eliminateChains If true, chains of non-Markovian states are elimianted from the resulting MA
+     * @param eliminateChains If true, chains of non-Markovian states are eliminated from the resulting MA
      * @param labelBehavior Behavior of labels of eliminated states
      *
      * @return Model checking result
