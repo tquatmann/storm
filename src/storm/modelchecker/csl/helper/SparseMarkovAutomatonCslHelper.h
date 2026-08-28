@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "storm/modelchecker/prctl/helper/MDPModelCheckingHelperReturnType.h"
 #include "storm/solver/MinMaxLinearEquationSolver.h"
 #include "storm/solver/OptimizationDirection.h"
@@ -23,14 +25,16 @@ class SparseMarkovAutomatonCslHelper {
                                                                    storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                    std::vector<ValueType> const& exitRateVector,
                                                                    storm::storage::BitVector const& markovianStates, storm::storage::BitVector const& phiStates,
-                                                                   storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair);
+                                                                   storm::storage::BitVector const& psiStates,
+                                                                   std::pair<double, std::optional<double>> const& boundsPair);
 
     template<typename ValueType, typename std::enable_if<!storm::NumberTraits<ValueType>::SupportsExponential, int>::type = 0>
     static std::vector<ValueType> computeBoundedUntilProbabilities(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,
                                                                    storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                                    std::vector<ValueType> const& exitRateVector,
                                                                    storm::storage::BitVector const& markovianStates, storm::storage::BitVector const& phiStates,
-                                                                   storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair);
+                                                                   storm::storage::BitVector const& psiStates,
+                                                                   std::pair<double, std::optional<double>> const& boundsPair);
 
     template<typename ValueType>
     static MDPSparseModelCheckingHelperReturnType<ValueType> computeUntilProbabilities(Environment const& env, OptimizationDirection dir,

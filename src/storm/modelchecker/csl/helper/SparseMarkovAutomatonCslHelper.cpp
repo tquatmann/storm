@@ -7,6 +7,7 @@
 #include "storm/environment/solver/TimeBoundedSolverEnvironment.h"
 #include "storm/environment/solver/TopologicalSolverEnvironment.h"
 #include "storm/exceptions/InvalidOperationException.h"
+#include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/UncheckedRequirementException.h"
 #include "storm/modelchecker/prctl/helper/SparseMdpPrctlHelper.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -69,7 +70,7 @@ class UnifPlusHelper {
 
     std::vector<ValueType> computeBoundedUntilProbabilities(storm::Environment const& env, OptimizationDirection dir,
                                                             storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates,
-                                                            ValueType const& upperTimeBound,
+                                                            std::optional<ValueType> const& upperTimeBound,
                                                             boost::optional<storm::storage::BitVector> const& relevantStates = boost::none) {
         // Since there is no lower time bound, we can treat the psiStates as if they are absorbing.
 
@@ -80,8 +81,8 @@ class UnifPlusHelper {
         storm::storage::BitVector markovianStatesModMaybeStates = markovianMaybeStates % maybeStates;
         storm::storage::BitVector probabilisticStatesModMaybeStates = probabilisticMaybeStates % maybeStates;
         // Catch the case where this query can be solved by solving the untimed variant instead.
-        // This is the case if there is no Markovian maybe state (e.g. if the initial state is already a psi state) of if the time bound is infinity.
-        if (markovianMaybeStates.empty() || storm::utility::isInfinity(upperTimeBound)) {
+        // This is the case if there is no Markovian maybe state (e.g. if the initial state is already a psi state) or if there is no time bound.
+        if (markovianMaybeStates.empty() || !upperTimeBound) {
             return SparseMarkovAutomatonCslHelper::computeUntilProbabilities<ValueType>(env, dir, transitionMatrix, transitionMatrix.transpose(true), phiStates,
                                                                                         psiStates, false, false)
                 .values;
@@ -162,10 +163,11 @@ class UnifPlusHelper {
         bool abortedInnerIterations = false;
         while (!converged) {
             // Maximal step size
-            uint64_t N = storm::utility::ceil(lambda * upperTimeBound * std::exp(2) - storm::utility::log(kappa * epsilon));
+            uint64_t N = storm::utility::ceil(lambda * *upperTimeBound * std::exp(2) - storm::utility::log(kappa * epsilon));
             // Compute poisson distribution.
             // The division by 8 is similar to what is done for CTMCs (probably to reduce numerical impacts?)
-            auto foxGlynnResult = storm::utility::numerical::foxGlynn(lambda * upperTimeBound, epsilon * kappa / storm::utility::convertNumber<ValueType>(8.0));
+            auto foxGlynnResult =
+                storm::utility::numerical::foxGlynn(lambda * *upperTimeBound, epsilon * kappa / storm::utility::convertNumber<ValueType>(8.0));
             // Scale the weights so they sum to one.
             // storm::utility::vector::scaleVectorInPlace(foxGlynnResult.weights, storm::utility::one<ValueType>() / foxGlynnResult.totalWeight);
 
@@ -632,14 +634,17 @@ template<typename ValueType>
 std::vector<ValueType> computeBoundedUntilProbabilitiesImca(Environment const& env, OptimizationDirection dir,
                                                             storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                             std::vector<ValueType> const& exitRateVector, storm::storage::BitVector const& markovianStates,
-                                                            storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair) {
+                                                            storm::storage::BitVector const& psiStates,
+                                                            std::pair<double, std::optional<double>> const& boundsPair) {
     STORM_LOG_TRACE("Using IMCA's technique to compute bounded until probabilities.");
 
     uint64_t numberOfStates = transitionMatrix.getRowGroupCount();
 
     // 'Unpack' the bounds to make them more easily accessible.
+    STORM_LOG_THROW(boundsPair.second.has_value(), storm::exceptions::NotSupportedException,
+                    "IMCA's technique requires an upper time bound, but the given property has none.");
     double lowerBound = boundsPair.first;
-    double upperBound = boundsPair.second;
+    double upperBound = *boundsPair.second;
 
     // (1) Compute the accuracy we need to achieve the required error bound.
     ValueType maxExitRate = 0;
@@ -702,7 +707,7 @@ template<typename ValueType, typename std::enable_if<storm::NumberTraits<ValueTy
 std::vector<ValueType> SparseMarkovAutomatonCslHelper::computeBoundedUntilProbabilities(
     Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     std::vector<ValueType> const& exitRateVector, storm::storage::BitVector const& markovianStates, storm::storage::BitVector const& phiStates,
-    storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair) {
+    storm::storage::BitVector const& psiStates, std::pair<double, std::optional<double>> const& boundsPair) {
     STORM_LOG_THROW(!env.solver().isForceExact(), storm::exceptions::InvalidOperationException,
                     "Exact computations not possible for bounded until probabilities.");
 
@@ -738,7 +743,7 @@ std::vector<ValueType> SparseMarkovAutomatonCslHelper::computeBoundedUntilProbab
                                                                                         storm::storage::SparseMatrix<ValueType> const&,
                                                                                         std::vector<ValueType> const&, storm::storage::BitVector const&,
                                                                                         storm::storage::BitVector const&, storm::storage::BitVector const&,
-                                                                                        std::pair<double, double> const&) {
+                                                                                        std::pair<double, std::optional<double>> const&) {
     STORM_LOG_THROW(false, storm::exceptions::InvalidOperationException, "Computing bounded until probabilities is unsupported for this value type.");
 }
 
@@ -803,7 +808,7 @@ MDPSparseModelCheckingHelperReturnType<ValueType> SparseMarkovAutomatonCslHelper
 template std::vector<double> SparseMarkovAutomatonCslHelper::computeBoundedUntilProbabilities(
     Environment const& env, storm::solver::SolveGoal<double>&& goal, storm::storage::SparseMatrix<double> const& transitionMatrix,
     std::vector<double> const& exitRateVector, storm::storage::BitVector const& markovianStates, storm::storage::BitVector const& phiStates,
-    storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair);
+    storm::storage::BitVector const& psiStates, std::pair<double, std::optional<double>> const& boundsPair);
 
 template MDPSparseModelCheckingHelperReturnType<double> SparseMarkovAutomatonCslHelper::computeUntilProbabilities(
     Environment const& env, OptimizationDirection dir, storm::storage::SparseMatrix<double> const& transitionMatrix,
@@ -829,7 +834,7 @@ template MDPSparseModelCheckingHelperReturnType<double> SparseMarkovAutomatonCsl
 template std::vector<storm::RationalNumber> SparseMarkovAutomatonCslHelper::computeBoundedUntilProbabilities(
     Environment const& env, storm::solver::SolveGoal<storm::RationalNumber>&& goal, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
     std::vector<storm::RationalNumber> const& exitRateVector, storm::storage::BitVector const& markovianStates, storm::storage::BitVector const& phiStates,
-    storm::storage::BitVector const& psiStates, std::pair<double, double> const& boundsPair);
+    storm::storage::BitVector const& psiStates, std::pair<double, std::optional<double>> const& boundsPair);
 
 template MDPSparseModelCheckingHelperReturnType<storm::RationalNumber> SparseMarkovAutomatonCslHelper::computeUntilProbabilities(
     Environment const& env, OptimizationDirection dir, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
