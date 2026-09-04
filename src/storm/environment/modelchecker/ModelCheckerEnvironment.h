@@ -32,10 +32,21 @@ class ModelCheckerEnvironment {
     void setLtl2daTool(std::string const& value);
     void unsetLtl2daTool();
 
+    bool isFilterRewZeroSet() const;
+    void setFilterRewZero(bool value);
+
+    bool isExportCdfSet() const;
+    void setExportCdf(bool value);
+    std::string const& getExportCdfDirectory() const;
+    void setExportCdfDirectory(std::string const& value);
+
    private:
     SubEnvironment<ConditionalModelCheckerEnvironment> conditionalModelCheckerEnvironment;
     SubEnvironment<MultiObjectiveModelCheckerEnvironment> multiObjectiveModelCheckerEnvironment;
     boost::optional<std::string> ltl2daTool;
     SteadyStateDistributionAlgorithm steadyStateDistributionAlgorithm;
+    bool filterRewZero;
+    bool exportCdfEnabled;
+    std::string exportCdfDirectory;
 };
 }  // namespace storm
