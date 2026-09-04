@@ -134,7 +134,7 @@ std::shared_ptr<SparseModelType> eliminateNeutralEndComponents(SparseModelType c
     if (rewardModelName) {
         std::vector<typename SparseModelType::ValueType> newActionRewards(ecEliminatorResult.matrix.getRowCount());
         storm::utility::vector::selectVectorValues(newActionRewards, ecEliminatorResult.newToOldRowMapping, actionRewards);
-        rewardModels.insert(std::make_pair(*rewardModelName, typename SparseModelType::RewardModelType(std::nullopt, std::move(actionRewards))));
+        rewardModels.insert(std::make_pair(*rewardModelName, typename SparseModelType::RewardModelType(std::nullopt, std::move(newActionRewards))));
     }
 
     // the new labeling
