@@ -54,7 +54,7 @@ std::shared_ptr<SparseModelType> eliminateConstantDeterministicStates(SparseMode
                     break;
                 }
             }
-            if (state && preserveParametricTransitions) {
+            if (preserveParametricTransitions) {
                 for (auto const& entry : backwardsSparseMatrix.getRowGroup(state)) {
                     if (!storm::utility::isConstant(entry.getValue())) {
                         selectedStates.set(state, false);
