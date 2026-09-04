@@ -1,6 +1,7 @@
 #include "storm/modelchecker/prctl/helper/SparseDtmcPrctlHelper.h"
 
 #include "storm/adapters/RationalFunctionAdapter.h"
+#include "storm/environment/modelchecker/ModelCheckerEnvironment.h"
 #include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/exceptions/IllegalArgumentException.h"
 #include "storm/exceptions/InvalidPropertyException.h"
@@ -15,8 +16,6 @@
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/settings/SettingsManager.h"
 #include "storm/settings/modules/GeneralSettings.h"
-#include "storm/settings/modules/IOSettings.h"
-#include "storm/settings/modules/ModelCheckerSettings.h"
 #include "storm/solver/LinearEquationSolver.h"
 #include "storm/solver/multiplier/Multiplier.h"
 #include "storm/storage/StronglyConnectedComponentDecomposition.h"
@@ -73,7 +72,7 @@ std::map<storm::storage::sparse::state_type, SolutionType> SparseDtmcPrctlHelper
         storm::solver::GeneralLinearEquationSolverFactory<ValueType> linearEquationSolverFactory;
         rewardUnfolding.setEquationSystemFormatForEpochModel(linearEquationSolverFactory.getEquationProblemFormat(preciseEnv));
 
-        storm::utility::ProgressMeasurement progress("epochs");
+        storm::utility::ProgressMeasurement progress("epochs", env.solver().getShowProgressDelay());
         progress.setMaxCount(epochOrder.size());
         progress.startNewMeasurement(0);
         uint64_t numCheckedEpochs = 0;
@@ -84,8 +83,7 @@ std::map<storm::storage::sparse::state_type, SolutionType> SparseDtmcPrctlHelper
             swCheck.start();
             rewardUnfolding.setSolutionForCurrentEpoch(epochModel.analyzeSingleObjective(preciseEnv, x, b, linEqSolver, lowerBound, upperBound));
             swCheck.stop();
-            if (storm::settings::getModule<storm::settings::modules::IOSettings>().isExportCdfSet() &&
-                !rewardUnfolding.getEpochManager().hasBottomDimension(epoch)) {
+            if (env.modelchecker().isExportCdfSet() && !rewardUnfolding.getEpochManager().hasBottomDimension(epoch)) {
                 std::vector<ValueType> cdfEntry;
                 for (uint64_t i = 0; i < rewardUnfolding.getEpochManager().getDimensionCount(); ++i) {
                     uint64_t offset = rewardUnfolding.getDimension(i).boundType == helper::rewardbounded::DimensionBoundType::LowerBound ? 1 : 0;
@@ -109,14 +107,13 @@ std::map<storm::storage::sparse::state_type, SolutionType> SparseDtmcPrctlHelper
 
         swAll.stop();
 
-        if (storm::settings::getModule<storm::settings::modules::IOSettings>().isExportCdfSet()) {
+        if (env.modelchecker().isExportCdfSet()) {
             std::vector<std::string> headers;
             for (uint64_t i = 0; i < rewardUnfolding.getEpochManager().getDimensionCount(); ++i) {
                 headers.push_back(rewardUnfolding.getDimension(i).formula->toString());
             }
             headers.push_back("Result");
-            storm::io::exportDataToCSVFile<ValueType, std::string, std::string>(
-                storm::settings::getModule<storm::settings::modules::IOSettings>().getExportCdfDirectory() + "cdf.csv", cdfData, headers);
+            storm::io::exportDataToCSVFile<ValueType, std::string, std::string>(env.modelchecker().getExportCdfDirectory() + "cdf.csv", cdfData, headers);
         }
 
         STORM_LOG_STATISTICS("---------------------------------\n");
@@ -141,10 +138,12 @@ std::vector<SolutionType> computeRobustValuesForMaybeStates(Environment const& e
 
     // Set up the solver.
     storm::solver::GeneralMinMaxLinearEquationSolverFactory<ValueType, SolutionType> minMaxLinearEquationSolverFactory;
+    // The goal is consumed by the solver configuration, so capture what is needed first.
+    auto const uncertaintyResolutionMode = goal.getUncertaintyResolutionMode();
     std::unique_ptr<storm::solver::MinMaxLinearEquationSolver<ValueType, SolutionType>> solver = storm::solver::configureMinMaxLinearEquationSolver(
         env, std::move(goal), minMaxLinearEquationSolverFactory, std::move(submatrix),
         convert(OptimizationDirection::Maximize));  // default to maximize for IDTMCs; does not affect the result
-    solver->setUncertaintyResolutionMode(goal.getUncertaintyResolutionMode());
+    solver->setUncertaintyResolutionMode(uncertaintyResolutionMode);
     solver->setHasUniqueSolution(computeReward);  // As we check for graph-preservation, in case of rewards on IDTMCs, we have a unique solution
     solver->setHasNoEndComponents(false);
 
@@ -184,7 +183,7 @@ std::vector<SolutionType> SparseDtmcPrctlHelper<ValueType, RewardModelType, Solu
         std::vector<SolutionType> const& resultsForNonMaybeStates = hint.template asExplicitModelCheckerHint<SolutionType>().getResultHint();
         statesWithProbability1 = storm::storage::BitVector(maybeStates.size(), false);
         storm::storage::BitVector nonMaybeStates = ~maybeStates;
-        for (auto state : nonMaybeStates) {
+        for (uint64_t state : nonMaybeStates) {
             if (storm::utility::isOne(resultsForNonMaybeStates[state])) {
                 statesWithProbability1.set(state, true);
                 result[state] = storm::utility::one<SolutionType>();
@@ -328,7 +327,7 @@ std::vector<SolutionType> SparseDtmcPrctlHelper<ValueType, RewardModelType, Solu
             // Set initial states
             size_t i = 0;
             ValueType initDist = storm::utility::one<ValueType>() / storm::utility::convertNumber<ValueType>(initialStates.getNumberOfSetBits());
-            for (auto state : relevantStates) {
+            for (uint64_t state : relevantStates) {
                 if (initialStates.get(state)) {
                     b[i] = initDist;
                 }
@@ -585,7 +584,7 @@ std::vector<SolutionType> SparseDtmcPrctlHelper<ValueType, RewardModelType, Solu
 
     // Determine which states have reward zero
     storm::storage::BitVector rew0States;
-    if (storm::settings::getModule<storm::settings::modules::ModelCheckerSettings>().isFilterRewZeroSet()) {
+    if (env.modelchecker().isFilterRewZeroSet()) {
         rew0States = storm::utility::graph::performProb1(backwardTransitions, zeroRewardStatesGetter(), targetStates);
     } else {
         rew0States = targetStates;
@@ -779,7 +778,7 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeBaierTra
             }
 
             // Then, create the transitions of the 'normal' states.
-            for (auto state : statesWithProbabilityGreater0) {
+            for (uint64_t state : statesWithProbabilityGreater0) {
                 ValueType zeroProbability = storm::utility::zero<ValueType>();
                 for (auto const& successorEntry : transitionMatrix.getRow(state)) {
                     if (statesWithProbabilityGreater0.get(successorEntry.getColumn())) {
@@ -803,7 +802,7 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeBaierTra
             result.transitionMatrix = builder.build(addDeadlockState ? (deadlockState + 1) : deadlockState);
             storm::storage::BitVector newTargetStates = targetStates % result.beforeStates;
             newTargetStates.resize(result.transitionMatrix.get().getRowCount());
-            for (auto state : targetStates % statesWithProbabilityGreater0) {
+            for (uint64_t state : targetStates % statesWithProbabilityGreater0) {
                 newTargetStates.set(normalStatesOffset + state, true);
             }
             result.targetStates = std::move(newTargetStates);
@@ -814,7 +813,7 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeBaierTra
                 storm::utility::vector::selectVectorValues(newStateRewards, result.beforeStates, stateRewards.get());
 
                 newStateRewards.reserve(result.transitionMatrix.get().getRowCount());
-                for (auto state : statesWithProbabilityGreater0) {
+                for (uint64_t state : statesWithProbabilityGreater0) {
                     newStateRewards.push_back(stateRewards.get()[state]);
                 }
                 // Add a zero reward to the deadlock state.

@@ -3,16 +3,13 @@
 #include <sstream>
 
 #include "storm-dft/adapters/SFTBDDPropertyFormulaAdapter.h"
-#include "storm-dft/api/storm-dft.h"
 #include "storm-dft/builder/DFTBuilder.h"
 #include "storm-dft/modelchecker/DFTModelChecker.h"
 #include "storm-dft/modelchecker/SFTBDDChecker.h"
 #include "storm-dft/utility/DftModularizer.h"
-#include "storm/environment/Environment.h"
-
 #include "storm-parsers/api/properties.h"
 #include "storm/api/properties.h"
-#include "storm/exceptions/InvalidModelException.h"
+#include "storm/storage/jani/Property.h"
 
 namespace storm::dft {
 namespace modelchecker {
@@ -99,7 +96,7 @@ std::shared_ptr<storm::dft::storage::DFT<ValueType>> DftModularizationChecker<Va
         if (it != samplePoints.end()) {
             // Replace element by BE
             builder.addBasicElementSamples(element->name(), it->second);
-        } else if (dynamicElements.find(id) == dynamicElements.end()) {
+        } else if (!dynamicElements.contains(id)) {
             // Element is not part of a dynamic module -> keep
             builder.cloneElement(element);
             // Remember dependency conflict
@@ -114,7 +111,7 @@ std::shared_ptr<storm::dft::storage::DFT<ValueType>> DftModularizationChecker<Va
     // Update dependency conflicts
     for (size_t id : newDft->getDependencies()) {
         // Set dependencies not in conflict
-        if (depInConflict.find(newDft->getElement(id)->name()) == depInConflict.end()) {
+        if (!depInConflict.contains(newDft->getElement(id)->name())) {
             newDft->setDependencyNotInConflict(id);
         }
     }

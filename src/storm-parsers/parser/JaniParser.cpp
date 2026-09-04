@@ -33,6 +33,7 @@
 #include <boost/lexical_cast.hpp>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <sstream>
 
 #include "storm/io/file.h"
@@ -313,17 +314,17 @@ storm::logic::RewardAccumulation JaniParser<ValueType>::parseRewardAccumulation(
     return storm::logic::RewardAccumulation(accSteps, accTime, accExit);
 }
 
-void insertLowerUpperTimeBounds(std::vector<boost::optional<storm::logic::TimeBound>>& lowerBounds,
-                                std::vector<boost::optional<storm::logic::TimeBound>>& upperBounds, storm::jani::PropertyInterval const& pi) {
+void insertLowerUpperTimeBounds(std::vector<std::optional<storm::logic::TimeBound>>& lowerBounds,
+                                std::vector<std::optional<storm::logic::TimeBound>>& upperBounds, storm::jani::PropertyInterval const& pi) {
     if (pi.hasLowerBound()) {
         lowerBounds.push_back(storm::logic::TimeBound(pi.lowerBoundStrict, pi.lowerBound));
     } else {
-        lowerBounds.push_back(boost::none);
+        lowerBounds.push_back(std::nullopt);
     }
     if (pi.hasUpperBound()) {
         upperBounds.push_back(storm::logic::TimeBound(pi.upperBoundStrict, pi.upperBound));
     } else {
-        upperBounds.push_back(boost::none);
+        upperBounds.push_back(std::nullopt);
     }
 }
 
@@ -516,7 +517,7 @@ std::shared_ptr<storm::logic::Formula const> JaniParser<ValueType>::parseFormula
                 args[0] = storm::logic::BooleanLiteralFormula::getTrueFormula();
             }
 
-            std::vector<boost::optional<storm::logic::TimeBound>> lowerBounds, upperBounds;
+            std::vector<std::optional<storm::logic::TimeBound>> lowerBounds, upperBounds;
             std::vector<storm::logic::TimeBoundReference> tbReferences;
             if (propertyStructure.count("step-bounds") > 0) {
                 STORM_LOG_WARN_COND(model.getJaniVersion() == 1, "Jani model not compliant: Contains step-bounds in " << scope.description << ".");

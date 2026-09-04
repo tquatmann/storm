@@ -45,7 +45,7 @@ std::shared_ptr<SparseModelType> eliminateConstantDeterministicStates(SparseMode
 
     // Find the states that are to be eliminated
     storm::storage::BitVector selectedStates = consideredStates;
-    for (auto state : consideredStates) {
+    for (uint64_t state : consideredStates) {
         if (sparseMatrix.getRowGroupSize(state) == 1 &&
             (!rewardModelName.has_value() || storm::utility::isConstant(actionRewards[sparseMatrix.getRowGroupIndices()[state]]))) {
             for (auto const& entry : sparseMatrix.getRowGroup(state)) {
@@ -72,7 +72,7 @@ std::shared_ptr<SparseModelType> eliminateConstantDeterministicStates(SparseMode
     storm::storage::FlexibleSparseMatrix<typename SparseModelType::ValueType> flexibleBackwardTransitions(backwardsSparseMatrix, true);
     storm::solver::stateelimination::NondeterministicModelStateEliminator<typename SparseModelType::ValueType> stateEliminator(
         flexibleMatrix, flexibleBackwardTransitions, actionRewards);
-    for (auto state : selectedStates) {
+    for (uint64_t state : selectedStates) {
         stateEliminator.eliminateState(state, true);
     }
     selectedStates.complement();

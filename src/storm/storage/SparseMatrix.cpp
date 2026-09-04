@@ -13,6 +13,7 @@
 #include "storm/storage/BitVector.h"
 #include "storm/storage/sparse/StateType.h"
 #include "storm/utility/ConstantsComparator.h"
+#include "storm/utility/NumberTraits.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/permutation.h"
@@ -829,7 +830,7 @@ void SparseMatrix<ValueType>::makeRowGroupingTrivial() {
 template<typename ValueType>
 storm::storage::BitVector SparseMatrix<ValueType>::getRowFilter(storm::storage::BitVector const& groupConstraint) const {
     storm::storage::BitVector res(this->getRowCount(), false);
-    for (auto group : groupConstraint) {
+    for (uint64_t group : groupConstraint) {
         res.setMultiple(getRowGroupIndices()[group], getRowGroupSize(group));
     }
     return res;
@@ -839,7 +840,7 @@ template<typename ValueType>
 storm::storage::BitVector SparseMatrix<ValueType>::getRowFilter(storm::storage::BitVector const& groupConstraint,
                                                                 storm::storage::BitVector const& columnConstraint) const {
     storm::storage::BitVector result(this->getRowCount(), false);
-    for (auto group : groupConstraint) {
+    for (uint64_t group : groupConstraint) {
         for (auto row : this->getRowGroupIndices(group)) {
             bool choiceSatisfiesColumnConstraint = true;
             for (auto const& entry : this->getRow(row)) {
@@ -883,7 +884,7 @@ template<typename ValueType>
 void SparseMatrix<ValueType>::makeRowsAbsorbing(storm::storage::BitVector const& rows, bool dropZeroEntries) {
     // First transform ALL rows without dropping zero entries, then drop zero entries once
     // This prevents iteration over the whole matrix every time an entry is set to zero.
-    for (auto row : rows) {
+    for (uint64_t row : rows) {
         makeRowDirac(row, row, false);
     }
     if (dropZeroEntries) {
@@ -896,13 +897,13 @@ void SparseMatrix<ValueType>::makeRowGroupsAbsorbing(storm::storage::BitVector c
     // First transform ALL rows without dropping zero entries, then drop zero entries once.
     // This prevents iteration over the whole matrix every time an entry is set to zero.
     if (!this->hasTrivialRowGrouping()) {
-        for (auto rowGroup : rowGroupConstraint) {
+        for (uint64_t rowGroup : rowGroupConstraint) {
             for (index_type row = this->getRowGroupIndices()[rowGroup]; row < this->getRowGroupIndices()[rowGroup + 1]; ++row) {
                 makeRowDirac(row, rowGroup, false);
             }
         }
     } else {
-        for (auto rowGroup : rowGroupConstraint) {
+        for (uint64_t rowGroup : rowGroupConstraint) {
             makeRowDirac(rowGroup, rowGroup, false);
         }
     }
@@ -1098,7 +1099,7 @@ std::vector<ValueType> SparseMatrix<ValueType>::getConstrainedRowSumVector(storm
                                                                            storm::storage::BitVector const& columnConstraint) const {
     std::vector<ValueType> result(rowConstraint.getNumberOfSetBits());
     index_type currentRowCount = 0;
-    for (auto row : rowConstraint) {
+    for (uint64_t row : rowConstraint) {
         result[currentRowCount++] = getConstrainedRowSum(row, columnConstraint);
     }
     return result;
@@ -1110,13 +1111,13 @@ std::vector<ValueType> SparseMatrix<ValueType>::getConstrainedRowGroupSumVector(
     std::vector<ValueType> result;
     result.reserve(this->getNumRowsInRowGroups(rowGroupConstraint));
     if (!this->hasTrivialRowGrouping()) {
-        for (auto rowGroup : rowGroupConstraint) {
+        for (uint64_t rowGroup : rowGroupConstraint) {
             for (index_type row = this->getRowGroupIndices()[rowGroup]; row < this->getRowGroupIndices()[rowGroup + 1]; ++row) {
                 result.push_back(getConstrainedRowSum(row, columnConstraint));
             }
         }
     } else {
-        for (auto rowGroup : rowGroupConstraint) {
+        for (uint64_t rowGroup : rowGroupConstraint) {
             result.push_back(getConstrainedRowSum(rowGroup, columnConstraint));
         }
     }
@@ -1185,7 +1186,7 @@ SparseMatrix<ValueType> SparseMatrix<ValueType>::getSubmatrix(storm::storage::Bi
     index_type subEntries = 0;
     index_type subRows = 0;
     index_type rowGroupCount = 0;
-    for (auto index : rowGroupConstraint) {
+    for (uint64_t index : rowGroupConstraint) {
         subRows += rowGroupIndices[index + 1] - rowGroupIndices[index];
         for (index_type i = rowGroupIndices[index]; i < rowGroupIndices[index + 1]; ++i) {
             bool foundDiagonalElement = false;
@@ -1215,7 +1216,7 @@ SparseMatrix<ValueType> SparseMatrix<ValueType>::getSubmatrix(storm::storage::Bi
     rowGroupCount = 0;
     index_type rowCount = 0;
     subEntries = 0;
-    for (auto index : rowGroupConstraint) {
+    for (uint64_t index : rowGroupConstraint) {
         if (!this->hasTrivialRowGrouping()) {
             matrixBuilder.newRowGroup(rowCount);
         }
@@ -1251,7 +1252,7 @@ SparseMatrix<ValueType> SparseMatrix<ValueType>::restrictRows(storm::storage::Bi
 
     // Count the number of entries of the resulting matrix
     index_type entryCount = 0;
-    for (auto row : rowsToKeep) {
+    for (uint64_t row : rowsToKeep) {
         entryCount += this->getRow(row).getNumberOfEntries();
     }
 
@@ -1294,13 +1295,13 @@ template<typename ValueType>
 SparseMatrix<ValueType> SparseMatrix<ValueType>::filterEntries(storm::storage::BitVector const& rowFilter) const {
     // Count the number of entries in the resulting matrix.
     index_type entryCount = 0;
-    for (auto row : rowFilter) {
+    for (uint64_t row : rowFilter) {
         entryCount += getRow(row).getNumberOfEntries();
     }
 
     // Build the resulting matrix.
     SparseMatrixBuilder<ValueType> builder(getRowCount(), getColumnCount(), entryCount);
-    for (auto row : rowFilter) {
+    for (uint64_t row : rowFilter) {
         for (auto const& entry : getRow(row)) {
             builder.addNextValue(row, entry.getColumn(), entry.getValue());
         }
@@ -2263,6 +2264,9 @@ template<typename ValueType>
 bool SparseMatrix<ValueType>::isProbabilistic(ValueType const& tolerance, storm::OptionalRef<std::string> reason) const {
     using BaseType =
         std::conditional_t<std::is_same_v<ValueType, storm::RationalFunction>, storm::RationalFunctionCoefficient, storm::IntervalBaseType<ValueType>>;
+    if constexpr (storm::NumberTraits<ValueType>::IsExact) {
+        STORM_LOG_ASSERT(tolerance == storm::utility::zero<ValueType>(), "Exact value type requires zero tolerance for isProbabilistic.");
+    }
     auto toBaseType = [](ValueType const& value) {
         if constexpr (std::is_same_v<ValueType, BaseType>) {
             return value;

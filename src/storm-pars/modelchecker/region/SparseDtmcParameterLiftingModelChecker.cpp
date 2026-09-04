@@ -362,10 +362,10 @@ void SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robus
 
 template<typename SparseModelType, typename ConstantType, bool Robust>
 storm::modelchecker::SparseInstantiationModelChecker<SparseModelType, ConstantType>&
-SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationCheckerSAT(bool quantitative) {
+SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationCheckerSAT(Environment const& env, bool quantitative) {
     if (!instantiationCheckerSAT) {
         instantiationCheckerSAT =
-            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(*this->parametricModel);
+            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(env, *this->parametricModel);
         instantiationCheckerSAT->specifyFormula(quantitative ? *this->currentCheckTaskNoBound
                                                              : this->currentCheckTask->template convertValueType<ParametricType>());
         instantiationCheckerSAT->setInstantiationsAreGraphPreserving(true);
@@ -375,10 +375,10 @@ SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::g
 
 template<typename SparseModelType, typename ConstantType, bool Robust>
 storm::modelchecker::SparseInstantiationModelChecker<SparseModelType, ConstantType>&
-SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationCheckerVIO(bool quantitative) {
+SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationCheckerVIO(Environment const& env, bool quantitative) {
     if (!instantiationCheckerVIO) {
         instantiationCheckerVIO =
-            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(*this->parametricModel);
+            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(env, *this->parametricModel);
         instantiationCheckerVIO->specifyFormula(quantitative ? *this->currentCheckTaskNoBound
                                                              : this->currentCheckTask->template convertValueType<ParametricType>());
         instantiationCheckerVIO->setInstantiationsAreGraphPreserving(true);
@@ -388,10 +388,10 @@ SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::g
 
 template<typename SparseModelType, typename ConstantType, bool Robust>
 storm::modelchecker::SparseInstantiationModelChecker<SparseModelType, ConstantType>&
-SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationChecker(bool quantitative) {
+SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robust>::getInstantiationChecker(Environment const& env, bool quantitative) {
     if (!instantiationChecker) {
         instantiationChecker =
-            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(*this->parametricModel);
+            std::make_unique<storm::modelchecker::SparseDtmcInstantiationModelChecker<SparseModelType, ConstantType>>(env, *this->parametricModel);
         instantiationChecker->specifyFormula(quantitative ? *this->currentCheckTaskNoBound
                                                           : this->currentCheckTask->template convertValueType<ParametricType>());
         instantiationChecker->setInstantiationsAreGraphPreserving(true);
@@ -418,8 +418,6 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
             transformer::IntervalEndComponentPreserver endComponentPreserver;
             auto const& result = endComponentPreserver.eliminateMECs(liftedMatrix, liftedVector);
             if (result) {
-                // std::cout << liftedMatrix << std::endl;
-                // std::cout << *result << std::endl;
                 liftedMatrix = *result;
                 nonTrivialEndComponents = true;
             }
@@ -442,8 +440,9 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
         solver->setHasNoEndComponents();
         // Uncertainty is not robust (=adversarial)
         solver->setUncertaintyResolutionMode(UncertaintyResolutionMode::Cooperative);
-        if (lowerResultBound)
+        if (lowerResultBound) {
             solver->setLowerBound(lowerResultBound.value());
+        }
         if (upperResultBound) {
             solver->setUpperBound(upperResultBound.value());
         } else if (solvingRequiresUpperRewardBounds) {
@@ -530,12 +529,12 @@ std::vector<ConstantType> SparseDtmcParameterLiftingModelChecker<SparseModelType
     // Get the result for the complete model (including maybestates)
     std::vector<ConstantType> result = resultsForNonMaybeStates;
     auto maybeStateResIt = x.begin();
-    for (auto maybeState : maybeStates) {
+    for (uint64_t maybeState : maybeStates) {
         result[maybeState] = *maybeStateResIt;
         ++maybeStateResIt;
     }
 
-    STORM_LOG_INFO(dirForParameters << " " << region.region << ": " << result[this->getUniqueInitialState()] << std::endl);
+    STORM_LOG_INFO(dirForParameters << " " << region.region << ": " << result[this->getUniqueInitialState()]);
 
     this->updateKnownValueBoundInRegion(region, dirForParameters, result);
     return result;
@@ -557,7 +556,7 @@ void SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robus
         helper::SparseDeterministicVisitingTimesHelper<ConstantType> visitingTimesHelper(instantiatedModel.getTransitionMatrix());
         auto const visitingTimes = visitingTimesHelper.computeExpectedVisitingTimes(env, this->parametricModel->getInitialStates());
         uint64_t rowIndex = 0;
-        for (auto state : maybeStates) {
+        for (uint64_t state : maybeStates) {
             weighting[rowIndex++] = visitingTimes[state];
         }
     }
@@ -766,7 +765,7 @@ void SparseDtmcParameterLiftingModelChecker<SparseModelType, ConstantType, Robus
         }
         case RegionSplitEstimateKind::Derivative: {
             storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<ParametricType>, ConstantType> instantiationModelChecker(
-                *this->parametricModel);
+                env, *this->parametricModel);
             instantiationModelChecker.specifyFormula(*this->currentCheckTaskNoBound);
 
             auto const center = region.getCenterPoint();

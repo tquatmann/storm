@@ -635,7 +635,7 @@ void DdPrismModelBuilder<Type, ValueType>::Options::preserveFormula(storm::logic
         if (!labelsToBuild) {
             labelsToBuild = std::set<std::string>();
         }
-        labelsToBuild.get().insert(formula.get()->getLabel());
+        labelsToBuild.get().insert(formula->getLabel());
     }
 }
 

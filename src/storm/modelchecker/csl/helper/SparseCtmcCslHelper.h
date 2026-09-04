@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "storm/storage/BitVector.h"
 
 #include "storm/logic/OperatorFormula.h"
@@ -24,7 +26,7 @@ class SparseCtmcCslHelper {
                                                                    storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                    storm::storage::BitVector const& phiStates, storm::storage::BitVector const& psiStates,
                                                                    std::vector<ValueType> const& exitRates, bool qualitative, ValueType lowerBound,
-                                                                   ValueType upperBound);
+                                                                   std::optional<ValueType> const& upperBound);
 
     template<typename ValueType>
     static std::vector<ValueType> computeUntilProbabilities(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,

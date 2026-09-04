@@ -4,12 +4,9 @@
 #include <iostream>
 #include <random>
 
-#include "storm/environment/solver/GmmxxSolverEnvironment.h"
 #include "storm/environment/solver/SolverEnvironment.h"
 #include "storm/modelchecker/results/CheckResult.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
-#include "storm/settings/SettingsManager.h"
-#include "storm/settings/modules/GeneralSettings.h"
 #include "storm/utility/SignalHandler.h"
 #include "storm/utility/constants.h"
 
@@ -25,10 +22,8 @@ template<typename FunctionType, typename ConstantType>
 ConstantType GradientDescentInstantiationSearcher<FunctionType, ConstantType>::doStep(
     VariableType<FunctionType> steppingParameter, std::map<VariableType<FunctionType>, CoefficientType<FunctionType>>& position,
     const std::map<VariableType<FunctionType>, ConstantType>& gradient, uint64_t stepNum) {
-    const ConstantType precisionAsConstant =
-        utility::convertNumber<ConstantType>(storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
-    const CoefficientType<FunctionType> precision =
-        storm::utility::convertNumber<CoefficientType<FunctionType>>(storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+    const ConstantType precisionAsConstant = utility::convertNumber<ConstantType>(this->env.modelTolerance());
+    const CoefficientType<FunctionType> precision = storm::utility::convertNumber<CoefficientType<FunctionType>>(this->env.modelTolerance());
     CoefficientType<FunctionType> const oldPos = position[steppingParameter];
     ConstantType const oldPosAsConstant = utility::convertNumber<ConstantType>(position[steppingParameter]);
 
@@ -249,8 +244,7 @@ ConstantType GradientDescentInstantiationSearcher<FunctionType, ConstantType>::s
         }
 
         ConstantType oldValue = currentValue;
-        CoefficientType<FunctionType> const precision = storm::utility::convertNumber<CoefficientType<FunctionType>>(
-            storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision());
+        CoefficientType<FunctionType> const precision = storm::utility::convertNumber<CoefficientType<FunctionType>>(this->env.modelTolerance());
 
         // If nesterov is enabled, we need to compute the gradient on the predicted position
         std::map<VariableType<FunctionType>, CoefficientType<FunctionType>> nesterovPredictedPosition(position);
@@ -389,17 +383,8 @@ GradientDescentInstantiationSearcher<FunctionType, ConstantType>::gradientDescen
     STORM_LOG_ASSERT(this->synthesisTask->isBoundSet(), "Task does not involve a bound.");
 
     std::map<VariableType<FunctionType>, CoefficientType<FunctionType>> bestInstantiation;
-    ConstantType bestValue;
-    switch (this->synthesisTask->getBound().comparisonType) {
-        case logic::ComparisonType::Greater:
-        case logic::ComparisonType::GreaterEqual:
-            bestValue = -utility::infinity<ConstantType>();
-            break;
-        case logic::ComparisonType::Less:
-        case logic::ComparisonType::LessEqual:
-            bestValue = utility::infinity<ConstantType>();
-            break;
-    }
+    // No value has been found yet; the first one we see is the best one so far, whichever direction we optimize in.
+    std::optional<ConstantType> bestValue;
 
     std::random_device device;
     std::default_random_engine engine(device());
@@ -437,23 +422,25 @@ GradientDescentInstantiationSearcher<FunctionType, ConstantType>::gradientDescen
         ConstantType prob = stochasticGradientDescent(point);
         stochasticWatch.stop();
 
-        bool isFoundPointBetter = false;
-        switch (this->synthesisTask->getBound().comparisonType) {
-            case logic::ComparisonType::Greater:
-            case logic::ComparisonType::GreaterEqual:
-                isFoundPointBetter = prob > bestValue;
-                break;
-            case logic::ComparisonType::Less:
-            case logic::ComparisonType::LessEqual:
-                isFoundPointBetter = prob < bestValue;
-                break;
+        bool isFoundPointBetter = !bestValue;
+        if (bestValue) {
+            switch (this->synthesisTask->getBound().comparisonType) {
+                case logic::ComparisonType::Greater:
+                case logic::ComparisonType::GreaterEqual:
+                    isFoundPointBetter = prob > *bestValue;
+                    break;
+                case logic::ComparisonType::Less:
+                case logic::ComparisonType::LessEqual:
+                    isFoundPointBetter = prob < *bestValue;
+                    break;
+            }
         }
         if (isFoundPointBetter) {
             bestInstantiation = point;
             bestValue = prob;
         }
 
-        if (synthesisTask->getBound().isSatisfied(bestValue)) {
+        if (synthesisTask->getBound().isSatisfied(*bestValue)) {
             STORM_LOG_PROGRESS("Aborting because the bound is satisfied\n");
             break;
         } else if (storm::utility::resources::isTerminate()) {
@@ -461,10 +448,10 @@ GradientDescentInstantiationSearcher<FunctionType, ConstantType>::gradientDescen
         } else {
             if (constraintMethod == GradientDescentConstraintMethod::BARRIER_LOGARITHMIC) {
                 logarithmicBarrierTerm = logarithmicBarrierTerm / 10;
-                STORM_LOG_PROGRESS("Smaller term\n" << bestValue << "\n" << logarithmicBarrierTerm << "\n");
+                STORM_LOG_PROGRESS("Smaller term\n" << *bestValue << "\n" << logarithmicBarrierTerm << "\n");
                 continue;
             }
-            STORM_LOG_PROGRESS("Sorry, couldn't satisfy the bound (yet). Best found value so far: " << bestValue << "\n");
+            STORM_LOG_PROGRESS("Sorry, couldn't satisfy the bound (yet). Best found value so far: " << *bestValue << "\n");
             continue;
         }
     }
@@ -479,7 +466,8 @@ GradientDescentInstantiationSearcher<FunctionType, ConstantType>::gradientDescen
         }
     }
 
-    return std::make_pair(bestInstantiation, bestValue);
+    STORM_LOG_ASSERT(bestValue.has_value(), "Expected at least one evaluated instantiation.");
+    return std::make_pair(bestInstantiation, *bestValue);
 }
 
 template<typename FunctionType, typename ConstantType>

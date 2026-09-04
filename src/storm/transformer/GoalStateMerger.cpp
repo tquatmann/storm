@@ -400,7 +400,7 @@ std::pair<typename GoalStateMerger<ValueType>::ReturnType, uint64_t> GoalStateMe
     uint64_t transitionCount(0), stateCount(0);
     bool targetStateRequired = !originalModel.getInitialStates().isDisjointFrom(targetStates);
     bool sinkStateRequired = !originalModel.getInitialStates().isDisjointFrom(sinkStates);
-    for (auto state : maybeStates) {
+    for (uint64_t state : maybeStates) {
         result.oldToNewStateIndexMapping[state] = stateCount;
 
         auto const& endOfRowGroup = origMatrix.getRowGroupIndices()[state + 1];
@@ -470,7 +470,7 @@ storm::storage::SparseMatrix<ValueType> GoalStateMerger<ValueType>::buildTransit
                                                            origMatrix.hasTrivialRowGrouping() ? 0 : stateCount);
 
     uint64_t currRow = 0;
-    for (auto state : maybeStates) {
+    for (uint64_t state : maybeStates) {
         if (!origMatrix.hasTrivialRowGrouping()) {
             builder.newRowGroup(currRow);
         }

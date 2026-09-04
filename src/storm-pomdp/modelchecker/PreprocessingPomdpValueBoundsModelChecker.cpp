@@ -140,12 +140,14 @@ std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> Preproce
     std::vector<ValueType> pomdpSchedulerResult = std::move(resultPtr->template asExplicitQuantitativeCheckResult<ValueType>().getValueVector());
 
     // Take the optimal value in ANY of the unfolded states for a POMDP state as the resulting state value
-    std::vector<ValueType> res(pomdp.getNumberOfStates(), info.minimize() ? storm::utility::infinity<ValueType>() : -storm::utility::infinity<ValueType>());
+    std::vector<ValueType> res(pomdp.getNumberOfStates(), storm::utility::zero<ValueType>());
+    storm::storage::BitVector hasValue(pomdp.getNumberOfStates(), false);
     for (uint64_t memPomdpState = 0; memPomdpState < pomdpSchedulerResult.size(); ++memPomdpState) {
         uint64_t modelState = memPomdpState / memoryBound;
-        if ((info.minimize() && pomdpSchedulerResult[memPomdpState] < res[modelState]) ||
+        if (!hasValue.get(modelState) || (info.minimize() && pomdpSchedulerResult[memPomdpState] < res[modelState]) ||
             (!info.minimize() && pomdpSchedulerResult[memPomdpState] > res[modelState])) {
             res[modelState] = pomdpSchedulerResult[memPomdpState];
+            hasValue.set(modelState);
         }
     }
     return std::make_pair(res, pomdpScheduler);
