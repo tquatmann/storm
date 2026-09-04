@@ -126,8 +126,8 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMini
     if (type == storm::storage::BisimulationType::Weak) {
         std::cout << "Hack for using the new bisim impl" << std::endl;
         storm::bisimulation::Options options;
-        options.floatTolerance = tolerance;
-        std::cout << "Tolerance is " << options.floatTolerance.value_or(0.0) << std::endl;
+        options.tolerance = tolerance.value_or(0.0);
+        std::cout << "Tolerance is " << options.tolerance << std::endl;
         return storm::bisimulation::applyBisimulationMinimization(*model, options, formulas).quotient;
     }
 

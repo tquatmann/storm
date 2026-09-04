@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/utility/constants.h"
 
 namespace storm::bisimulation {
 
@@ -18,8 +19,7 @@ struct Options {
 
     bool actionSensitive = false;
 
-    std::optional<storm::RationalNumber> intervalApproximationEpsilon;
-    std::optional<double> floatTolerance;
+    storm::RationalNumber tolerance = storm::utility::zero<RationalNumber>();
 };
 
 }  // namespace storm::bisimulation

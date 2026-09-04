@@ -6,7 +6,7 @@
 #include "storm/adapters/IntervalForward.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/exceptions/NotSupportedException.h"
+#include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/transformer/bisimulation/Partition.h"
 #include "storm/transformer/bisimulation/Signatures.h"
@@ -279,7 +279,12 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
 template<typename ValueType>
 void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
                                     ValueType const tolerance) {
-    STORM_LOG_ASSERT(!model.isNondeterministicModel(), "Splitter-based refinement is only supported for deterministic models.");
+    static_assert(!storm::IsIntervalType<ValueType>, "Interval types are not supported for splitter-based refinement.");
+    // Refinement for interval models requires limiting signatures to feasible intervals. This is rather difficult in a splitter-based setting.
+    STORM_LOG_THROW(!model.isNondeterministicModel(), storm::exceptions::InvalidArgumentException,
+                    "Splitter-based refinement is only supported for deterministic models.");
+    STORM_LOG_THROW((storm::utility::isZero(tolerance) || !std::is_same_v<ValueType, storm::RationalFunction>), storm::exceptions::InvalidArgumentException,
+                    "Splitter-based refinement with non-zero tolerance does not apply to parametric models.");
     detail::SplitterRefinementContext<ValueType> context(model, partition, tolerance);
     // Initially, add all current blocks to the queue.
     partition.forEachBlock([&context](auto const& block) { context.queue.insert(block); });
@@ -298,6 +303,7 @@ void performSplitterBasedRefinement(storm::models::sparse::Model<ValueType> cons
 template<typename ValueType, SignatureMode SignatureMode>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
                                      Signatures<ValueType, SignatureMode>& signatures) {
+    static_assert(!storm::IsIntervalType<ValueType>, "Interval types are not yet supported for signature-based refinement.");
     detail::SignatureRefinementContext<ValueType, SignatureMode> context(model, partition, signatures);
     // Initially, add all current blocks to the queue. No need to enforce exploring predecessors.
     partition.forEachBlock([&context](auto const& block) { context.queue.emplace(block, false); });
@@ -318,10 +324,6 @@ template void performSplitterBasedRefinement<storm::RationalNumber>(storm::model
                                                                     storm::bisimulation::Partition& partition, storm::RationalNumber const tolerance);
 template void performSplitterBasedRefinement<storm::RationalFunction>(storm::models::sparse::Model<storm::RationalFunction> const& model,
                                                                       storm::bisimulation::Partition& partition, storm::RationalFunction const tolerance);
-template void performSplitterBasedRefinement<storm::Interval>(storm::models::sparse::Model<storm::Interval> const& model,
-                                                              storm::bisimulation::Partition& partition, storm::Interval const tolerance);
-template void performSplitterBasedRefinement<storm::RationalInterval>(storm::models::sparse::Model<storm::RationalInterval> const& model,
-                                                                      storm::bisimulation::Partition& partition, storm::RationalInterval const tolerance);
 
 template void performSignatureBasedRefinement<double, SignatureMode::Exact>(storm::models::sparse::Model<double> const& model,
                                                                             storm::bisimulation::Partition& partition,

@@ -2,12 +2,14 @@
 
 #include <compare>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <set>
 #include <vector>
 
 #include "storm/models/sparse/ModelForward.h"
 #include "storm/transformer/bisimulation/Partition.h"
+#include "storm/transformer/bisimulation/QuotientData.h"
 
 namespace storm::bisimulation {
 
@@ -26,12 +28,13 @@ struct StateSignature {
     struct ChoiceSignature {
         uint64_t const choiceClass;                            // The class of this choice according to the provided choice classes.
         typename Partition::OrderedBlockMap<ValueType> distr;  // The accumulated transition values for each block.
-        std::strong_ordering operator<=>(ChoiceSignature const& other) const;
-        bool operator==(ChoiceSignature const& other) const;
+        std::strong_ordering compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const;
+        bool operator==(ChoiceSignature const& other) const
+            requires(Mode == SignatureMode::Exact);
         bool approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
             requires(Mode == SignatureMode::Approximative);
     };
-    std::map<ChoiceSignature, uint64_t> choices;  // Maps each choice to the choiceIndex it originated from
+    std::vector<ChoiceSignature> choices;  // Maps each choice to the choiceIndex it originated from
 };
 
 /*!
@@ -40,7 +43,8 @@ struct StateSignature {
 template<typename ValueType, SignatureMode Mode>
 class Signatures {
    public:
-    using SignatureType = StateSignature<ValueType, Mode>;
+    using StateSignature = StateSignature<ValueType, Mode>;
+    using ChoiceSignature = typename StateSignature::ChoiceSignature;
 
     Signatures(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
                storm::bisimulation::Partition const& partition)
@@ -57,7 +61,8 @@ class Signatures {
     void updateStateSignature(uint64_t const stateIndex);
 
     struct SplitOrder {
-        std::vector<SignatureType> const& signatures;
+        std::vector<StateSignature> const& signatures;
+        ValueType const tolerance;  // only meaningful for approximate signatures
         bool operator()(uint64_t const state1, uint64_t const state2) const;
     };
     /*!
@@ -67,7 +72,7 @@ class Signatures {
     SplitOrder getSplitOrder() const;
 
     struct SplitCondition {
-        std::vector<SignatureType> const& signatures;
+        std::vector<StateSignature> const& signatures;
         ValueType const tolerance;  // only meaningful for approximate signatures
         bool operator()(uint64_t const state1, uint64_t const state2) const;
     };
@@ -78,13 +83,33 @@ class Signatures {
      */
     SplitCondition getSplitCondition() const;
 
+    /*!
+     * Fills in the choice mappings of the given (already state-mapped) quotient data: for every quotient state, the choices of its representative state
+     * are deduplicated (exactly or up to tolerance, depending on Mode) into the quotient choices, and every original model choice is mapped to the
+     * quotient choice that represents it.
+     * @note only applicable to nondeterministic models.
+     */
+    void extendQuotientData(QuotientData<ValueType>& quotientData) const;
+
    private:
+    struct ChoiceOrder {
+        ValueType const tolerance;  // only meaningful for approximate signatures
+        bool operator()(ChoiceSignature const& choice1, ChoiceSignature const& choice2) const;
+    };
+
+    /*!
+     * Merges the choices of the given state by their signature: choices whose signature compares equal (Exact mode) or approximately equal within
+     * tolerance (Approximative mode) are merged into the same group. Used by both updateStateSignature (which only keeps one representative choice index
+     * per group) and moveToQuotientData (which needs every original choice index per group).
+     */
+    std::map<ChoiceSignature, std::vector<uint64_t>, ChoiceOrder> mergeEquivalentChoices(uint64_t const stateIndex) const;
+
     storm::models::sparse::Model<ValueType> const& model;
     Partition const& partition;
     std::optional<std::vector<uint64_t>> const& choiceClasses;
     ValueType const tolerance;  // only meaningful for approximate signatures
 
-    std::vector<SignatureType> stateSignatureCache;
+    std::vector<StateSignature> stateSignatureCache;
 };
 
 }  // namespace storm::bisimulation
