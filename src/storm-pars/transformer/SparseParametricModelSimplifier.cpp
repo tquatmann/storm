@@ -193,15 +193,9 @@ bool SparseParametricModelSimplifier<SparseModelType>::simplify(storm::logic::Fo
                 !boundedUntilFormula.isMultiDimensional() && !boundedUntilFormula.getTimeBoundReference().isRewardBound()) {
                 // Since we have a discrete-time model, we may assume a step bound.
                 // Similar to (unbounded) until above, we can also drop the left subformula.
-                boost::optional<storm::logic::TimeBound> lowerBound, upperBound;
-                if (boundedUntilFormula.hasLowerBound()) {
-                    lowerBound.emplace(boundedUntilFormula.isLowerBoundStrict(), boundedUntilFormula.getLowerBound());
-                }
-                if (boundedUntilFormula.hasUpperBound()) {
-                    upperBound.emplace(boundedUntilFormula.isUpperBoundStrict(), boundedUntilFormula.getUpperBound());
-                }
                 auto newBoundedUntilFormula = std::make_shared<storm::logic::BoundedUntilFormula const>(
-                    storm::logic::Formula::getTrueFormula(), boundedUntilFormula.getRightSubformula().asSharedPointer(), lowerBound, upperBound,
+                    storm::logic::Formula::getTrueFormula(), boundedUntilFormula.getRightSubformula().asSharedPointer(),
+                    boundedUntilFormula.getLowerBoundAsOptionalTimeBound(), boundedUntilFormula.getUpperBoundAsOptionalTimeBound(),
                     storm::logic::TimeBoundReference(storm::logic::TimeBoundType::Steps));
                 simplifiedFormula =
                     std::make_shared<storm::logic::ProbabilityOperatorFormula const>(newBoundedUntilFormula, operatorFormula.getOperatorInformation());
