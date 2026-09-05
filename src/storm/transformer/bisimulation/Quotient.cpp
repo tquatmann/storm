@@ -31,8 +31,7 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     STORM_LOG_ASSERT(useSignature || !isNondeterministic, "Signature data is required for nondeterministic models.");
     auto const& toQuotientState = quotientData.toQuotientState;
     auto const& toRepresentativeState = quotientData.toRepresentativeState;
-    auto const& toRepresentativeChoice =
-        useSignature ? quotientData.signatureData->toRepresentativeChoice : quotientData.toRepresentativeState;
+    auto const& toRepresentativeChoice = useSignature ? quotientData.signatureData->toRepresentativeChoice : quotientData.toRepresentativeState;
 
     uint64_t const numberOfQuotientStates = toRepresentativeState.size();
     uint64_t const numberOfQuotientChoices = toRepresentativeChoice.size();
@@ -44,7 +43,8 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     // Build the transition matrix
     {
         // Helper function to get the distribution over successor quotient states for a given quotient choice.
-        auto getQuotientRow = [&model, &useSignature, &quotientData, &toRepresentativeChoice, &toQuotientState](uint64_t const quotientChoice) -> std::map<uint64_t, ValueType> {
+        auto getQuotientRow = [&model, &useSignature, &quotientData, &toRepresentativeChoice,
+                               &toQuotientState](uint64_t const quotientChoice) -> std::map<uint64_t, ValueType> {
             if (useSignature) {
                 return quotientData.signatureData->quotientChoiceDistributions[quotientChoice];
             } else {
@@ -54,7 +54,7 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
                         ret.first->second += entry.getValue();
                     }
                 }
-            return quotientRow;
+                return quotientRow;
             }
         };
 

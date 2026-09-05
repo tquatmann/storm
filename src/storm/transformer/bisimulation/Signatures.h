@@ -26,7 +26,7 @@ struct StateSignature {
     using ValueType = ValueType_;
 
     struct ChoiceSignature {
-        uint64_t const choiceClass;                            // The class of this choice according to the provided choice classes.
+        uint64_t choiceClass;                                  // The class of this choice according to the provided choice classes.
         typename Partition::OrderedBlockMap<ValueType> distr;  // The accumulated transition values for each block.
         std::strong_ordering compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const;
         bool operator==(ChoiceSignature const& other) const
@@ -34,7 +34,33 @@ struct StateSignature {
         bool approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
             requires(Mode == SignatureMode::Approximative);
     };
-    std::vector<ChoiceSignature> choices;  // Maps each choice to the choiceIndex it originated from
+
+    /*!
+     * Find the given choice signature in the list.
+     * Returns an (iterator,bool)-pair. The bool is true iff the given choice signature is contained.
+     * The iterator is either (exact/approximately) equal to the given signature, or the position where it would be inserted.
+     * @return
+     */
+    auto find(ChoiceSignature const& signature, ValueType const tolerance) const {
+        auto it =
+            std::lower_bound(choices.begin(), choices.end(), signature, [this, &tolerance](ChoiceSignature const& choice1, ChoiceSignature const& choice2) {
+                return choice1.compare(choice2, tolerance) == std::strong_ordering::less;
+            });
+        if constexpr (Mode == SignatureMode::Exact) {
+            return std::make_pair(it, it != choices.end() && *it == signature);
+        } else {
+            // For approximate signatures, we need to check if the signature is approximately equal to any neighbouring signature.
+            if (it != choices.end() && it->approxEqual(signature, tolerance)) {
+                return std::make_pair(it, true);
+            }
+            if (it != choices.begin() && std::prev(it)->approxEqual(signature, tolerance)) {
+                return std::make_pair(std::prev(it), true);
+            }
+            return std::make_pair(it, false);
+        }
+    }
+
+    std::vector<ChoiceSignature> choices;  // Sorted
 };
 
 /*!
@@ -92,17 +118,11 @@ class Signatures {
     void extendQuotientData(QuotientData<ValueType>& quotientData) const;
 
    private:
-    struct ChoiceOrder {
-        ValueType const tolerance;  // only meaningful for approximate signatures
-        bool operator()(ChoiceSignature const& choice1, ChoiceSignature const& choice2) const;
-    };
-
     /*!
-     * Merges the choices of the given state by their signature: choices whose signature compares equal (Exact mode) or approximately equal within
-     * tolerance (Approximative mode) are merged into the same group. Used by both updateStateSignature (which only keeps one representative choice index
-     * per group) and moveToQuotientData (which needs every original choice index per group).
+     * Gets the signature of the given choice index.
+     * The underlying distribution maps blocks to (exact) aggregated probability.
      */
-    std::map<ChoiceSignature, std::vector<uint64_t>, ChoiceOrder> mergeEquivalentChoices(uint64_t const stateIndex) const;
+    ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
 
     storm::models::sparse::Model<ValueType> const& model;
     Partition const& partition;

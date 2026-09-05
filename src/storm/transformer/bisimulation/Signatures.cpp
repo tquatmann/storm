@@ -102,60 +102,29 @@ Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> 
     : model(model), partition(partition), choiceClasses(choiceClasses), tolerance(tolerance), stateSignatureCache(model.getNumberOfStates()) {}
 
 template<typename ValueType, SignatureMode Mode>
-bool Signatures<ValueType, Mode>::ChoiceOrder::operator()(ChoiceSignature const& choice1, ChoiceSignature const& choice2) const {
-    return choice1.compare(choice2, tolerance) == std::strong_ordering::less;
-}
-
-template<typename ValueType, SignatureMode Mode>
-auto Signatures<ValueType, Mode>::mergeEquivalentChoices(uint64_t const stateIndex) const -> std::map<ChoiceSignature, std::vector<uint64_t>, ChoiceOrder> {
-    // Retrieves the mapping of blocks to (exact) aggregated probability
-    using BlockDistributionType = typename Partition::OrderedBlockMap<ValueType>;
-    auto getBlockDistribution = [this](uint64_t const choiceIndex) {
-        BlockDistributionType distr;
-        for (auto const& entry : model.getTransitionMatrix().getRow(choiceIndex)) {
-            if (!storm::utility::isZero(entry.getValue())) {
-                auto const emplace_res = distr.emplace(partition.getBlockOfElement(entry.getColumn()), entry.getValue());
-                if (!emplace_res.second) {
-                    emplace_res.first->second += entry.getValue();
-                }
-            }
-        }
-        return distr;
-    };
-
-    std::map<ChoiceSignature, std::vector<uint64_t>, ChoiceOrder> groups(ChoiceOrder{.tolerance = tolerance});
-    for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(stateIndex)) {
-        ChoiceSignature choiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = getBlockDistribution(choiceIndex)};
-        auto [it, inserted] = groups.try_emplace(std::move(choiceSignature));
-        if (!inserted) {
-            it->second.push_back(choiceIndex);
-        } else if constexpr (Mode == SignatureMode::Exact) {
-            it->second.push_back(choiceIndex);
-        } else {
-            // Check if this distribution is approximately equal to one of the neighboring groups.
-            // If yes, merge this choice into that group instead of keeping a separate one.
-            if (it != groups.begin() && std::prev(it)->first.approxEqual(it->first, tolerance)) {
-                std::prev(it)->second.push_back(choiceIndex);
-                groups.erase(it);
-            } else if (std::next(it) != groups.end() && std::next(it)->first.approxEqual(it->first, tolerance)) {
-                std::next(it)->second.push_back(choiceIndex);
-                groups.erase(it);
-            } else {
-                it->second.push_back(choiceIndex);
+auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex) const -> ChoiceSignature {
+    typename Partition::OrderedBlockMap<ValueType> distr;
+    for (auto const& entry : model.getTransitionMatrix().getRow(choiceIndex)) {
+        if (!storm::utility::isZero(entry.getValue())) {
+            auto const emplace_res = distr.emplace(partition.getBlockOfElement(entry.getColumn()), entry.getValue());
+            if (!emplace_res.second) {
+                emplace_res.first->second += entry.getValue();
             }
         }
     }
-    return groups;
+    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = std::move(distr)};
 }
 
 template<typename ValueType, SignatureMode Mode>
 void Signatures<ValueType, Mode>::updateStateSignature(uint64_t const stateIndex) {
-    auto const mergedChoices = mergeEquivalentChoices(stateIndex);
     auto& choices = stateSignatureCache[stateIndex].choices;
     choices.clear();
-    choices.reserve(mergedChoices.size());
-    for (auto const& [signature, choiceIndices] : mergedChoices) {
-        choices.push_back(signature);  // todo: check where we need the second entry ?
+    for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(stateIndex)) {
+        auto choiceSignature = getChoiceSignature(choiceIndex);
+        auto [it, found] = stateSignatureCache[stateIndex].find(choiceSignature, tolerance);
+        if (!found) {
+            choices.insert(it, std::move(choiceSignature));
+        }
     }
 }
 
@@ -220,51 +189,46 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
         auto const representativeState = quotientData.toRepresentativeState[quotientState];
         uint64_t const firstQuotientChoiceIndex = signatureData.toRepresentativeChoice.size();
         signatureData.quotientChoiceGroupIndices.push_back(firstQuotientChoiceIndex);
+        auto const& representativeSignature = stateSignatureCache[representativeState];
 
-        // Merge the equivalent choices of the representative state; each resulting group of equivalent choices becomes exactly one quotient choice.
-        auto const mergedRepresentativeChoices = mergeEquivalentChoices(representativeState);
-        for (auto const& [signature, choiceIndices] : mergedRepresentativeChoices) {
-            // Establish mappings between quotient choice and represented choice(s)
-            uint64_t const quotientChoiceIndex = signatureData.toRepresentativeChoice.size();
-            signatureData.toRepresentativeChoice.push_back(choiceIndices.front());
-            for (uint64_t const choiceIndex : choiceIndices) {
+        std::vector<uint64_t> choiceSignatureToQuotientChoiceIndex(representativeSignature.choices.size(), std::numeric_limits<uint64_t>::max());
+        for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(representativeState)) {
+            auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), tolerance);
+            STORM_LOG_ASSERT(found, "Expected to find the signature of representative state");
+            uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
+            if (choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] == std::numeric_limits<uint64_t>::max()) {
+                // We see this representative choice for the first time. Establish some mappings
+                uint64_t const quotientChoiceIndex = signatureData.toRepresentativeChoice.size();
+                choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] = quotientChoiceIndex;
+                signatureData.toRepresentativeChoice.push_back(choiceIndex);
+                signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
+                // Fill distribution from signature
+                auto& distr = signatureData.quotientChoiceDistributions.emplace_back();
+                for (auto const& [successorBlock, value] : it->distr) {
+                    distr.emplace(quotientData.toQuotientState[successorBlock.front()], value);
+                }
+            } else {
+                // We have already seen this representative choice before.
+                uint64_t const quotientChoiceIndex = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
                 signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
             }
-            // Fill distribution from signature
-            auto& distr = signatureData.quotientChoiceDistributions.emplace_back();
-            for (auto const& [successorBlock, value] : signature.distr) {
-                distr.emplace(quotientData.toQuotientState[successorBlock.front()], value);
-            }
         }
-
         // Handle choice mappings for other blocks
         for (auto const state : partition.getBlockOfElement(representativeState)) {
             if (state == representativeState) {
                 continue;
             }
-            // All other states of the block must (by the invariant maintained during refinement) have the same number of distinct choices, in the same
-        // (sorted) order.
-            auto const mergedChoicesOfState = mergeEquivalentChoices(state);
-            STORM_LOG_ASSERT(mergedChoicesOfState.size() == mergedRepresentativeChoices.size(),
-                             "Expected states within the same block to have the same number of distinct (merged) choices.");
-            STORM_LOG_ASSERT(([this, &mergedChoicesOfState, &mergedRepresentativeChoices]() {
-                                 auto representativeIt = mergedChoicesOfState.begin();
-                                 for (auto const& [signature, _] : mergedRepresentativeChoices) {
-                                     if (signature.compare(representativeIt->first, tolerance) != 0) {
-                                         return false;
-                                     }
-                                     ++representativeIt;
-                                 }
-                                 return true;
-                             }()),
-                             "Expected states within the same block to have the same (merged) choice signatures.");
-            // Align mergeChoicesOfState with mergedRepresentativeChoices to obtain the quotient choice of each of the original choices.
-            uint64_t quotientChoiceIndex = firstQuotientChoiceIndex;
-            for (auto const& [_, choiceIndices] : mergedChoicesOfState) {
-                for (uint64_t const choiceIndex : choiceIndices) {
-                    signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
-                }
-                ++quotientChoiceIndex;
+            for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(state)) {
+                auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), tolerance);
+                // TODO: This can fail right now because the tolerance could be accumulated twice: once when comparing to a representative choice at the same
+                // state and once when comparing that representative choice to a choice of another state. An easy fix would be to just use 2*tolerance in a
+                // second find() call. Note that silently doubling the allowed tolerance is an inherent problem that we should make transparent.
+                STORM_LOG_ASSERT(found, "Expected to find the signature of representative state");
+                uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
+                STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
+                                 "Expected to have already seen this representative choice");
+                uint64_t const quotientChoiceIndex = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
+                signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
             }
         }
     }
