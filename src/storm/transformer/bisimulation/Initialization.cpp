@@ -119,8 +119,10 @@ bool Initialization<ValueType>::PreservedAnnotations::empty() const {
 }
 
 template<typename ValueType>
-void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& partition, std::vector<uint64_t> const& extraAnnotation) const {
+void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& partition, ValueType const& tolerance, std::vector<uint64_t> const& extraAnnotation) const {
     uint64_t const numElements = partition.getNumberOfElements();
+
+    // Split according to Boolean annotations
     for (auto const& bv : booleans) {
         auto const& b = bv.get();
         STORM_LOG_ASSERT(numElements == b.size(), "Boolean annotation has wrong size.");
@@ -137,25 +139,36 @@ void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& part
         });
     }
 
-    auto splitByOrder = [&numElements, &partition](auto const& v) {
+    // Helper for the remaining numeric annotations
+    auto splitByNumeric = [&numElements, &partition, &tolerance](auto const& v) {
         STORM_LOG_ASSERT(numElements == v.size(), "Annotation has wrong size.");
-        partition.forEachBlock([&v, &partition](auto const& block) {
-            // No need to split singleton blocks
+        auto const less = [&v](auto const& a, auto const& b) { return v[a] < v[b]; };
+        if constexpr (std::is_same_v<ValueType, typename std::remove_cvref_t<decltype(v)>::value_type>) {
+            if (!storm::utility::isZero(tolerance)) {
+                auto const lessTol = [&v, &tolerance](auto const& a, auto const& b) { return v[a] + tolerance < v[b]; };
+                partition.forEachBlock([&partition, &less, &lessTol](auto const& block) {
+                    if (block.size() > 1) {  // No need to split singleton blocks
+                        partition.splitBlockByOrder(block, less, lessTol);
+                    }
+                });
+                return;
+            }
+        }
+        partition.forEachBlock([&partition, &less](auto const& block) {
             if (block.size() > 1) {
-                // TODO: tolerance in case of floats?
-                partition.splitBlockByOrder(block, [&v](auto const& a, auto const& b) { return v[a] < v[b]; });
+                partition.splitBlockByOrder(block, less);
             }
         });
     };
 
     for (auto const& v : integers) {
-        splitByOrder(v);
+        splitByNumeric(v);
     }
     for (auto const& v : values) {
-        splitByOrder(v);
+        splitByNumeric(v);
     }
     if (!extraAnnotation.empty()) {
-        splitByOrder(extraAnnotation);
+        splitByNumeric(extraAnnotation);
     }
 }
 
@@ -178,10 +191,10 @@ std::optional<std::vector<uint64_t>> Initialization<ValueType>::getChoiceClasses
                 auxVector.push_back(act);
             }
         }
-        preservedChoiceAnnotations.applySplit(choicePartition, auxVector);
-    } else {
-        preservedChoiceAnnotations.applySplit(choicePartition);
     }
+    // Split the partition based on preserved choice annotations.
+    preservedChoiceAnnotations.applySplit(choicePartition, storm::utility::convertNumber<ValueType>(options.tolerance), auxVector);
+
 
     // Catch the case where all choices are equal so we don't have to deal with choice classes.
     if (choicePartition.getNumberOfBlocks() == 1) {
@@ -202,6 +215,7 @@ std::optional<std::vector<uint64_t>> Initialization<ValueType>::getChoiceClasses
 
 template<typename ValueType>
 Partition Initialization<ValueType>::getInitialStatePartition(std::optional<std::vector<uint64_t>> const& choiceClasses) const {
+    ValueType const tolerance = storm::utility::convertNumber<ValueType>(options.tolerance);
     Partition statePartition(model.getNumberOfStates());
     if (choiceClasses && model.isNondeterministicModel()) {
         auto const& groupIndices = model.getTransitionMatrix().getRowGroupIndices();
@@ -222,13 +236,13 @@ Partition Initialization<ValueType>::getInitialStatePartition(std::optional<std:
             stateActionSignature.push_back(signatureIndex);
         }
         // split the partition based on preserved state annotations and the state action signatures.
-        preservedStateAnnotations.applySplit(statePartition, stateActionSignature);
+        preservedStateAnnotations.applySplit(statePartition, tolerance, stateActionSignature);
     } else if (choiceClasses && !model.isNondeterministicModel()) {
         STORM_LOG_ASSERT(choiceClasses->size() == model.getNumberOfStates(), "Unexpected number of choice classes.");
         // As there is exactly one choice per state, there is no need for computing the action signatures
-        preservedStateAnnotations.applySplit(statePartition, choiceClasses.value());
+        preservedStateAnnotations.applySplit(statePartition, tolerance, choiceClasses.value());
     } else {
-        preservedStateAnnotations.applySplit(statePartition);
+        preservedStateAnnotations.applySplit(statePartition, tolerance);
     }
     return statePartition;
 }

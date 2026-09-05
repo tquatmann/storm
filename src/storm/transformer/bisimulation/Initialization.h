@@ -49,9 +49,10 @@ class Initialization {
          * Splits all blocks in the partition with respect to the stored annotations.
          * @post Each two elements in a block of the partition have the same annotations.
          * @param partition The partition to be refined
-         * @param extraAnnotation if non-empty, the partition is also split according to this additional annotation
+         * @param tolerance When splitting by ValueType annotations, two values are considered equal if they differ by at most this tolerance.
+         * @param extraAnnotation If non-empty, the partition is also split according to this additional annotation
          */
-        void applySplit(Partition& partition, std::vector<uint64_t> const& extraAnnotation = {}) const;
+        void applySplit(Partition& partition, ValueType const& tolerance, std::vector<uint64_t> const& extraAnnotation = {}) const;
     } preservedStateAnnotations, preservedChoiceAnnotations;
 };
 
