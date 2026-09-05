@@ -1,5 +1,7 @@
 #include "storm/transformer/bisimulation/Signatures.h"
 
+#include <algorithm>
+
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
@@ -10,6 +12,34 @@
 #include "storm/utility/macros.h"
 
 namespace storm::bisimulation {
+
+template<typename ValueType>
+ChoiceSignatureCache<ValueType>::ChoiceSignatureCache(storm::bisimulation::Partition const& partition)
+    : values(partition.getNumberOfElements(), storm::utility::zero<ValueType>()) {}
+
+template<typename ValueType>
+void ChoiceSignatureCache<ValueType>::addValue(Partition::Block const& b, ValueType const& value) {
+    auto& current = values[b.front()];
+    if (storm::utility::isZero(current)) {
+        support.push_back(b);
+    }
+    current += value;
+}
+
+template<typename ValueType>
+std::span<std::pair<Partition::Block, ValueType>> ChoiceSignatureCache<ValueType>::extract(std::pair<Partition::Block, ValueType>* dest) {
+    std::sort(support.begin(), support.end(), Partition::BlockCompare());
+    auto* const begin = dest;
+    for (auto const& b : support) {
+        auto& value = values[b.front()];
+        *dest = std::make_pair(b, std::move(value));
+        ++dest;
+        value = storm::utility::zero<ValueType>();
+    }
+    std::span<std::pair<Partition::Block, ValueType>> const result(begin, support.size());
+    support.clear();
+    return result;
+}
 
 template<typename ValueType, SignatureMode Mode>
 std::strong_ordering StateSignature<ValueType, Mode>::ChoiceSignature::compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const {
@@ -92,6 +122,8 @@ Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> 
     : model(model),
       partition(partition),
       choiceClasses(choiceClasses),
+      choiceSignatureCache(partition),
+      choiceDistributionStorage(model.getTransitionMatrix().getEntryCount()),
       halfTolerance(storm::utility::zero<ValueType>()),
       stateSignatureCache(model.getNumberOfStates()) {}
 
@@ -102,21 +134,24 @@ Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> 
     : model(model),
       partition(partition),
       choiceClasses(choiceClasses),
+      choiceSignatureCache(partition),
+      choiceDistributionStorage(model.getTransitionMatrix().getEntryCount()),
       halfTolerance(tolerance / storm::utility::convertNumber<ValueType, uint64_t>(2)),
       stateSignatureCache(model.getNumberOfStates()) {}
 
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex) const -> ChoiceSignature {
-    typename Partition::OrderedBlockMap<ValueType> distr;
-    for (auto const& entry : model.getTransitionMatrix().getRow(choiceIndex)) {
+    auto const& matrix = model.getTransitionMatrix();
+    // Use the choiceSignatureCache to compute the distribution over successor blocks
+    for (auto const& entry : matrix.getRow(choiceIndex)) {
         if (!storm::utility::isZero(entry.getValue())) {
-            auto const emplace_res = distr.emplace(partition.getBlockOfElement(entry.getColumn()), entry.getValue());
-            if (!emplace_res.second) {
-                emplace_res.first->second += entry.getValue();
-            }
+            choiceSignatureCache.addValue(partition.getBlockOfElement(entry.getColumn()), entry.getValue());
         }
     }
-    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = std::move(distr)};
+    // Extract the resulting distribution from the cache. We put it into
+    uint64_t const offset = std::distance(matrix.begin(), matrix.begin(choiceIndex));
+    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0,
+                           .distr = choiceSignatureCache.extract(choiceDistributionStorage.data() + offset)};
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -243,6 +278,10 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
     signatureData.toRepresentativeChoice.shrink_to_fit();
     signatureData.quotientChoiceDistributions.shrink_to_fit();
 }
+
+template struct ChoiceSignatureCache<double>;
+template struct ChoiceSignatureCache<storm::RationalNumber>;
+template struct ChoiceSignatureCache<storm::RationalFunction>;
 
 template class Signatures<double, SignatureMode::Exact>;
 template class Signatures<double, SignatureMode::Approximative>;

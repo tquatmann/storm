@@ -5,6 +5,8 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <span>
+#include <utility>
 #include <vector>
 
 #include "storm/models/sparse/ModelForward.h"
@@ -14,6 +16,34 @@
 namespace storm::bisimulation {
 
 enum class SignatureMode { Exact, Approximative };
+
+/*!
+ * A reusable, sparse accumulator for building the distribution (Partition::Block -> ValueType) of a single choice, without allocating a fresh map for
+ * every choice: values is a dense array indexed by a block's front() element (unique per block, since blocks are disjoint), and support records which
+ * blocks were touched so that extract() only has to look at (and reset) those, not the whole array.
+ * @note the cache must not be used across a change of the partition, since a block's front() element is only a stable identifier for that block as long
+ * as the partition does not change.
+ */
+template<typename ValueType>
+struct ChoiceSignatureCache {
+    explicit ChoiceSignatureCache(storm::bisimulation::Partition const& partition);
+
+    /*!
+     * Adds value to the accumulated value of the block b. Registers b as touched the first time this happens.
+     */
+    void addValue(Partition::Block const& b, ValueType const& value);
+
+    /*!
+     * Writes the accumulated (block, value) pairs, sorted by Partition::BlockCompare, into the range starting at dest (which must be large enough to hold
+     * them.
+     * @return a span over the entries written to dest.
+     * @note resets the cache (i.e. all accumulated values) so that it can be reused for the next choice.
+     */
+    std::span<std::pair<Partition::Block, ValueType>> extract(std::pair<Partition::Block, ValueType>* dest);
+
+    std::vector<ValueType> values;
+    std::vector<Partition::Block> support;
+};
 
 /*!
  * The (static) signature of a state w.r.t. a partition, based on the distributions of its choices over blocks.
@@ -26,8 +56,10 @@ struct StateSignature {
     using ValueType = ValueType_;
 
     struct ChoiceSignature {
-        uint64_t choiceClass;                                  // The class of this choice according to the provided choice classes.
-        typename Partition::OrderedBlockMap<ValueType> distr;  // The accumulated transition values for each block.
+        uint64_t choiceClass;  // The class of this choice according to the provided choice classes.
+        // The accumulated transition values for each block, sorted by Partition::BlockCompare. This is a (non-owning) view into the choice's permanent
+        // slot of Signatures::choiceSignatureDistributions, see there.
+        std::span<std::pair<Partition::Block, ValueType>> distr;
         std::strong_ordering compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const;
         bool operator==(ChoiceSignature const& other) const
             requires(Mode == SignatureMode::Exact);
@@ -121,12 +153,27 @@ class Signatures {
     /*!
      * Gets the signature of the given choice index.
      * The underlying distribution maps blocks to (exact) aggregated probability.
+     * @note the returned ChoiceSignature::distr is a view into choiceSignatureDistributions; calling getChoiceSignature(choiceIndex) again later overwrites
+     * it. This is only safe because a choice's signature is always fully recomputed (via updateStateSignature, which discards the old ChoiceSignature
+     * objects first) before it is read again, and because the partition is unchanged between such a recomputation and any later re-derivation of the same
+     * choiceIndex (e.g. in extendQuotientData), so the overwritten content is identical to what was there before.
      */
     ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
 
     storm::models::sparse::Model<ValueType> const& model;
     Partition const& partition;
     std::optional<std::vector<uint64_t>> const& choiceClasses;
+
+    // Reused scratch space for getChoiceSignature; mutable since getChoiceSignature is logically const. See ChoiceSignatureCache.
+    mutable ChoiceSignatureCache<ValueType> choiceSignatureCache;
+
+    /*!
+     * Backing storage for all ChoiceSignature::distr views. Choice i is permanently assigned the sub-range starting at the same offset as row i within
+     * model's transition matrix (i.e. distance(model.getTransitionMatrix().begin(), model.getTransitionMatrix().begin(i))), which is guaranteed to fit
+     * distr's entries since distr can have at most as many entries as row i of the transition matrix (deduplicating by block only ever shrinks it). This
+     * avoids allocating a fresh container for every getChoiceSignature call. Sized to fit every row's entries at once, since (row-)offsets are permanent.
+     */
+    mutable std::vector<std::pair<Partition::Block, ValueType>> choiceDistributionStorage;
 
     /*!
      * Half of the tolerance passed to the constructor; only meaningful for approximate signatures.
