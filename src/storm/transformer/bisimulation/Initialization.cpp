@@ -11,7 +11,7 @@
 #include "storm/logic/AtomicExpressionFormula.h"
 #include "storm/logic/AtomicLabelFormula.h"
 #include "storm/logic/Formula.h"
-#include "storm/logic/FormulaInformation.h"
+#include "storm/logic/FragmentSpecification.h"
 #include "storm/models/sparse/MarkovAutomaton.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -66,12 +66,16 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
                                           std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas)
     : model(model), options(options), formulas(formulas) {
     // sanity checks
-    for (auto const& f : this->formulas) {
-        auto const fInfo = f->info();
-        if (fInfo.containsBoundedUntilFormula() || fInfo.containsNextFormula() || fInfo.containsCumulativeRewardFormula() || fInfo.containsDiscountFormula()) {
-            STORM_LOG_THROW(options.bisimulationType == Options::BisimulationType::Strong, storm::exceptions::IllegalFunctionCallException,
-                            "The formula " << *f << " is not known to be preserved by weak bisimulation.");
-            // TODO: e.g. time-bounded reachability for CTMC should work, right?
+    if (options.bisimulationType == Options::BisimulationType::Weak) {
+        // Weak bisimulation generally does not preserve formulas that depend on the number of steps taken.
+        storm::logic::FragmentSpecification preservedFragment = storm::logic::propositional();
+        preservedFragment.setProbabilityOperatorsAllowed(true).setUntilFormulasAllowed(true).setReachabilityProbabilityFormulasAllowed(true).setGloballyFormulasAllowed(true).setRewardOperatorsAllowed(true).setReachabilityRewardFormulasAllowed(true);
+        if (model.isOfType(storm::models::ModelType::Ctmc)) {
+            preservedFragment.setTimeBoundedUntilFormulasAllowed(true);
+        }
+        for (auto const& f : this->formulas) {
+            STORM_LOG_THROW(f->isInFragment(preservedFragment), storm::exceptions::IllegalFunctionCallException,
+                                "The formula " << *f << " is not known to be preserved by weak bisimulation.");
         }
     }
     auto const preservationInformation = getPreservationInformation();
