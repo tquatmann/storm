@@ -8,6 +8,7 @@
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/models/sparse/Model.h"
+#include "storm/storage/umb/model/Type.h"
 #include "storm/transformer/bisimulation/Partition.h"
 #include "storm/transformer/bisimulation/Signatures.h"
 #include "storm/utility/ConstantsComparator.h"
@@ -142,22 +143,20 @@ void refinePartitionBasedOnSplitter(SplitterRefinementContext<ValueType>& contex
             context.queue.insert(noPredecessors);
         }
 
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            // TODO: there is no sound tolerance-based order for interval-valued splitter probabilities yet, so we skip the
-            // magnitude-based split for interval models for now (predecessors are still split by presence/absence above).
+        // Splitting with interval probabilities is not trivial: it is not clear whether the entire toSplitterProbs interval (which might be the sum of several
+        // transitions) is feasible.
+        static_assert(!storm::IsIntervalType<ValueType>, "Interval-valued splitter probabilities are not supported.");
+        auto const& toSplitterProbs = predecessorToSplitterProbabilities.getValues();
+        auto const less = [&toSplitterProbs](uint64_t const state1, uint64_t const state2) { return toSplitterProbs[state1] < toSplitterProbs[state2]; };
+        if (storm::utility::isZero(context.tolerance)) {
+            // Attention: Do not short circuit, i.e., wasSplit = wasSplit || foo() might not execute foo()
+            wasSplit |= context.partition.splitBlockByOrder(predecessors, less);
         } else {
-            auto const& toSplitterProbs = predecessorToSplitterProbabilities.getValues();
-            auto const less = [&toSplitterProbs](uint64_t const state1, uint64_t const state2) { return toSplitterProbs[state1] < toSplitterProbs[state2]; };
-            if (storm::utility::isZero(context.tolerance)) {
-                // Attention: Do not short circuit, i.e., wasSplit = wasSplit || foo() might not execute foo()
-                wasSplit |= context.partition.splitBlockByOrder(predecessors, less);
-            } else {
-                auto const lessTolerance = [&toSplitterProbs, &context](uint64_t const state1, uint64_t const state2) {
-                    return toSplitterProbs[state1] + context.tolerance < toSplitterProbs[state2];
-                };
-                // Attention: Do not short circuit
-                wasSplit |= context.partition.splitBlockByOrder(predecessors, less, lessTolerance);
-            }
+            auto const lessTolerance = [&toSplitterProbs, &context](uint64_t const state1, uint64_t const state2) {
+                return toSplitterProbs[state1] + context.tolerance < toSplitterProbs[state2];
+            };
+            // Attention: Do not short circuit
+            wasSplit |= context.partition.splitBlockByOrder(predecessors, less, lessTolerance);
         }
 
         if (wasSplit) {
