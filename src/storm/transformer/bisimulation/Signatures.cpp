@@ -92,14 +92,18 @@ Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> 
     : model(model),
       partition(partition),
       choiceClasses(choiceClasses),
-      tolerance(storm::utility::zero<ValueType>()),
+      halfTolerance(storm::utility::zero<ValueType>()),
       stateSignatureCache(model.getNumberOfStates()) {}
 
 template<typename ValueType, SignatureMode Mode>
 Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
                                         storm::bisimulation::Partition const& partition, ValueType const& tolerance)
     requires(Mode == SignatureMode::Approximative)
-    : model(model), partition(partition), choiceClasses(choiceClasses), tolerance(tolerance), stateSignatureCache(model.getNumberOfStates()) {}
+    : model(model),
+      partition(partition),
+      choiceClasses(choiceClasses),
+      halfTolerance(tolerance / storm::utility::convertNumber<ValueType, uint64_t>(2)),
+      stateSignatureCache(model.getNumberOfStates()) {}
 
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex) const -> ChoiceSignature {
@@ -121,7 +125,7 @@ void Signatures<ValueType, Mode>::updateStateSignature(uint64_t const stateIndex
     choices.clear();
     for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(stateIndex)) {
         auto choiceSignature = getChoiceSignature(choiceIndex);
-        auto [it, found] = stateSignatureCache[stateIndex].find(choiceSignature, tolerance);
+        auto [it, found] = stateSignatureCache[stateIndex].find(choiceSignature, halfTolerance);
         if (!found) {
             choices.insert(it, std::move(choiceSignature));
         }
@@ -130,7 +134,7 @@ void Signatures<ValueType, Mode>::updateStateSignature(uint64_t const stateIndex
 
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getSplitOrder() const -> SplitOrder {
-    return SplitOrder{.signatures = stateSignatureCache, .tolerance = tolerance};
+    return SplitOrder{.signatures = stateSignatureCache, .tolerance = halfTolerance};
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -152,7 +156,7 @@ bool Signatures<ValueType, Mode>::SplitOrder::operator()(uint64_t const state1, 
 }
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getSplitCondition() const -> SplitCondition {
-    return SplitCondition{.signatures = stateSignatureCache, .tolerance = tolerance};
+    return SplitCondition{.signatures = stateSignatureCache, .tolerance = halfTolerance};
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -194,7 +198,7 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
 
         std::vector<uint64_t> choiceSignatureToQuotientChoiceIndex(representativeSignature.choices.size(), std::numeric_limits<uint64_t>::max());
         for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(representativeState)) {
-            auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), tolerance);
+            auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance);
             STORM_LOG_ASSERT(found, "Expected to find the signature of representative state");
             uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
             if (choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] == std::numeric_limits<uint64_t>::max()) {
@@ -220,10 +224,11 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
                 continue;
             }
             for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(state)) {
-                auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), tolerance);
-                // TODO: This can fail right now because the tolerance could be accumulated twice: once when comparing to a representative choice at the same
-                // state and once when comparing that representative choice to a choice of another state. An easy fix would be to just use 2*tolerance in a
-                // second find() call. Note that silently doubling the allowed tolerance is an inherent problem that we should make transparent.
+                // This raw choice can be up to halfTolerance away from state's own canonical choice (established while updating state's signature during
+                // refinement), which in turn can be up to halfTolerance away from the representative's canonical choice (established by SplitCondition).
+                // Comparing the raw choice directly against the representative's canonical choice therefore spans two independent halfTolerance steps, i.e.
+                // exactly the tolerance originally passed to this Signatures instance.
+                auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance + halfTolerance);
                 STORM_LOG_ASSERT(found, "Expected to find the signature of non-representative state");
                 uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
                 STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
