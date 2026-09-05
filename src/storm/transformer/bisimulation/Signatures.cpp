@@ -189,6 +189,7 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
         auto const representativeState = quotientData.toRepresentativeState[quotientState];
         uint64_t const firstQuotientChoiceIndex = signatureData.toRepresentativeChoice.size();
         signatureData.quotientChoiceGroupIndices.push_back(firstQuotientChoiceIndex);
+        // Relies on performSignatureBasedRefinement's postcondition that all cached signatures (including singleton blocks) are up to date.
         auto const& representativeSignature = stateSignatureCache[representativeState];
 
         std::vector<uint64_t> choiceSignatureToQuotientChoiceIndex(representativeSignature.choices.size(), std::numeric_limits<uint64_t>::max());
@@ -214,7 +215,7 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
             }
         }
         // Handle choice mappings for other blocks
-        for (auto const state : partition.getBlockOfElement(representativeState)) {
+        for (uint64_t const state : partition.getBlockOfElement(representativeState)) {
             if (state == representativeState) {
                 continue;
             }
@@ -223,7 +224,7 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
                 // TODO: This can fail right now because the tolerance could be accumulated twice: once when comparing to a representative choice at the same
                 // state and once when comparing that representative choice to a choice of another state. An easy fix would be to just use 2*tolerance in a
                 // second find() call. Note that silently doubling the allowed tolerance is an inherent problem that we should make transparent.
-                STORM_LOG_ASSERT(found, "Expected to find the signature of representative state");
+                STORM_LOG_ASSERT(found, "Expected to find the signature of non-representative state");
                 uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
                 STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
                                  "Expected to have already seen this representative choice");

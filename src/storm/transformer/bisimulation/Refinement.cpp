@@ -316,6 +316,14 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
         // Split the pivotBlock based on its signature and split the predecessor blocks based on a simple, graph-based criterion
         detail::refinePartitionBasedOnSignature(context, pivotBlock, enforcePredecessorExploration);
     }
+
+    // Singleton blocks are never re-examined once formed (because they cannot be split any further). Their cached signature can become stale if one of their
+    // successor blocks is split afterwards. Refresh them here so that, as documented, all signatures are up to date once this function returns.
+    partition.forEachBlock([&signatures](auto const& block) {
+        if (block.size() == 1) {
+            signatures.updateStateSignature(block.front());
+        }
+    });
 }
 
 template void performSplitterBasedRefinement<double>(storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
