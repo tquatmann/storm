@@ -82,11 +82,11 @@ class Signatures {
 
     /*!
      * Fills in the choice mappings of the given (already state-mapped) quotient data: for every quotient state, the choices of its representative state
-     * are deduplicated (exactly or up to tolerance, depending on Mode) into the quotient choices, and every original model choice is mapped to the
-     * quotient choice that represents it.
-     * @note only applicable to nondeterministic models.
+     * are deduplicated (exactly or up to tolerance, depending on Mode) into the quotient choices.
+     * @param createQuotientChoiceMapping if set, every original model choice is additionally mapped to the quotient choice that represents it
+     * (QuotientData::SignatureData::toQuotientChoice). If not set, that (comparatively expensive) mapping is left empty.
      */
-    void extendQuotientData(QuotientData<ValueType>& quotientData) const;
+    void extendQuotientData(QuotientData<ValueType>& quotientData, bool const createQuotientChoiceMapping) const;
 
    private:
     // For all choices, we store the current distributions over successor blocks in choiceDistributionStorage and use a view into that for ChoiceSignatures.

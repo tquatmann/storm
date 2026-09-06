@@ -13,7 +13,9 @@ namespace storm::bisimulation {
 template<typename ValueType>
 struct ReturnType {
     std::shared_ptr<storm::models::sparse::Model<ValueType>> quotient;
-    std::vector<uint64_t> toQuotientStateMapping;
+    std::vector<uint64_t> toQuotientStateMapping;                  // assigns to each input model state the corresponding quotient state
+    std::optional<std::vector<uint64_t>> toQuotientChoiceMapping;  // assigns to each input model choice the corresponding quotient choice. Only available if
+                                                                   // requested through the bisimulation options.
 };
 
 /*!

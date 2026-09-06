@@ -52,8 +52,8 @@ PreservationInformation Initialization<ValueType>::getPreservationInformation() 
             information.preservedRewardModels.insert(name);
         }
     }
-    // if requested and available, preserve all choice labels
-    if (options.preserveAllChoiceLabels && model.hasChoiceLabeling()) {
+    // if requested and available, preserve the choice labels
+    if (options.preserveChoiceLabels && model.hasChoiceLabeling()) {
         for (auto const& label : model.getChoiceLabeling().getLabels()) {
             information.preservedChoiceLabels.insert(label);
         }

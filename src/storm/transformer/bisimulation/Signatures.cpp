@@ -272,9 +272,11 @@ bool Signatures<ValueType, Mode>::SplitCondition::operator()(uint64_t const stat
 }
 
 template<typename ValueType, SignatureMode Mode>
-void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& quotientData) const {
+void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& quotientData, bool const createQuotientChoiceMapping) const {
     auto& signatureData = quotientData.signatureData.emplace();
-    signatureData.toQuotientChoice.resize(model.getNumberOfChoices(), 0);
+    if (createQuotientChoiceMapping) {
+        quotientData.toQuotientChoice.emplace(model.getNumberOfChoices(), 0);
+    }
     signatureData.quotientChoiceGroupIndices.reserve(quotientData.toRepresentativeState.size() + 1);
 
     for (uint64_t quotientState = 0; quotientState < quotientData.toRepresentativeState.size(); ++quotientState) {
@@ -294,7 +296,9 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
                 uint64_t const quotientChoiceIndex = signatureData.toRepresentativeChoice.size();
                 choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] = quotientChoiceIndex;
                 signatureData.toRepresentativeChoice.push_back(choiceIndex);
-                signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
+                if (createQuotientChoiceMapping) {
+                    (*quotientData.toQuotientChoice)[choiceIndex] = quotientChoiceIndex;
+                }
                 // Fill distribution from signature
                 auto& distr = signatureData.quotientChoiceDistributions.emplace_back();
                 for (auto const& [successorBlock, value] : it->distr) {
@@ -302,27 +306,30 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
                 }
             } else {
                 // We have already seen this representative choice before.
-                uint64_t const quotientChoiceIndex = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
-                signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
+                if (createQuotientChoiceMapping) {
+                    (*quotientData.toQuotientChoice)[choiceIndex] = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
+                }
             }
         }
-        // Handle choice mappings for other blocks
-        for (uint64_t const state : partition.getBlockOfElement(representativeState)) {
-            if (state == representativeState) {
-                continue;
-            }
-            for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(state)) {
-                // This raw choice can be up to halfTolerance away from state's own canonical choice (established while updating state's signature during
-                // refinement), which in turn can be up to halfTolerance away from the representative's canonical choice (established by SplitCondition).
-                // Comparing the raw choice directly against the representative's canonical choice therefore spans two independent halfTolerance steps, i.e.
-                // exactly the tolerance originally passed to this Signatures instance.
-                auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance + halfTolerance);
-                STORM_LOG_ASSERT(found, "Expected to find the signature of non-representative state");
-                uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
-                STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
-                                 "Expected to have already seen this representative choice");
-                uint64_t const quotientChoiceIndex = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
-                signatureData.toQuotientChoice[choiceIndex] = quotientChoiceIndex;
+        if (createQuotientChoiceMapping) {
+            // Handle choice mappings for other blocks. This is comparatively expensive, since (unlike the representative's own choices above) it visits
+            // every choice of every non-representative state, so it is skipped entirely if the caller does not need toQuotientChoice.
+            for (uint64_t const state : partition.getBlockOfElement(representativeState)) {
+                if (state == representativeState) {
+                    continue;
+                }
+                for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(state)) {
+                    // This raw choice can be up to halfTolerance away from state's own canonical choice (established while updating state's signature
+                    // during refinement), which in turn can be up to halfTolerance away from the representative's canonical choice (established by
+                    // SplitCondition). Comparing the raw choice directly against the representative's canonical choice therefore spans two independent
+                    // halfTolerance steps, i.e. exactly the tolerance originally passed to this Signatures instance.
+                    auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance + halfTolerance);
+                    STORM_LOG_ASSERT(found, "Expected to find the signature of non-representative state");
+                    uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
+                    STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
+                                     "Expected to have already seen this representative choice");
+                    (*quotientData.toQuotientChoice)[choiceIndex] = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
+                }
             }
         }
     }

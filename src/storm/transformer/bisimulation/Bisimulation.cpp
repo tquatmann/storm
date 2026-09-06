@@ -1,10 +1,9 @@
 #include "storm/transformer/bisimulation/Bisimulation.h"
 
 #include "storm/adapters/IntervalAdapter.h"
-#include "storm/adapters/IntervalForward.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
-#include "storm/exceptions/NotImplementedException.h"
+#include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/models/sparse/Model.h"
 
@@ -22,8 +21,12 @@ namespace storm::bisimulation {
 template<typename ValueType>
 ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model<ValueType> const& model, Options const& options,
                                                     std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+    // Step 0: Sanity checks and set-up
+    STORM_LOG_THROW(options.tolerance >= storm::utility::zero<storm::RationalNumber>(), storm::exceptions::InvalidArgumentException,
+                    "Tolerance for bisimulation minimization must be non-negative, but was " << options.tolerance << ".");
     storm::utility::Stopwatch sw(true);
     STORM_LOG_STATISTICS("-------- Bisimulation Minimization --------");
+
     // Step 1: Obtain an initial partition based on what needs to be preserved (labels, rewards, ...)
     storm::bisimulation::Initialization<ValueType> initialization(model, options, formulas);
     auto const preservationInformation = initialization.getPreservationInformation();
@@ -39,14 +42,16 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
         sw.restart();
         quotientData.emplace(model, partition);
     };
+    // Deterministic models default to splitter-based refinement, which is usually faster
+    bool const useSignatureRefinement = model.isNondeterministicModel() || options.preferSignatureRefinement;
     if constexpr (storm::IsIntervalType<ValueType>) {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Bisimulation is not supported for Interval models.");
-    } else if (model.isNondeterministicModel() && storm::utility::isZero(options.tolerance)) {
+    } else if (useSignatureRefinement && storm::utility::isZero(options.tolerance)) {
         storm::bisimulation::Signatures<ValueType, SignatureMode::Exact> signatures(model, choiceClasses, partition);
         storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
         initializeQuotientData();
-        signatures.extendQuotientData(quotientData.value());
-    } else if (model.isNondeterministicModel() && !storm::utility::isZero(options.tolerance)) {
+        signatures.extendQuotientData(quotientData.value(), options.createQuotientChoiceMapping);
+    } else if (useSignatureRefinement && !storm::utility::isZero(options.tolerance)) {
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException,
                             "Bisimulation with positive tolerance " << storm::utility::convertNumber<double>(options.tolerance)
@@ -56,12 +61,15 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
                                                                                                 storm::utility::convertNumber<ValueType>(options.tolerance));
             storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
             initializeQuotientData();
-            signatures.extendQuotientData(quotientData.value());
+            signatures.extendQuotientData(quotientData.value(), options.createQuotientChoiceMapping);
         }
     } else {
         // For deterministic models we do splitter based refinement.
         storm::bisimulation::performSplitterBasedRefinement<ValueType>(model, partition, storm::utility::convertNumber<ValueType>(options.tolerance));
         initializeQuotientData();
+        if (options.createQuotientChoiceMapping) {
+            quotientData->toQuotientChoice = quotientData->toQuotientState;  // For deterministic models, quotient state and choice mappings are identical.
+        }
     }
 
     // Step 3: Extract the quotient
@@ -69,7 +77,9 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
     STORM_LOG_STATISTICS(sw << " seconds for quotient extraction.");
     STORM_LOG_STATISTICS("-------------------------------------------");
 
-    return {std::move(quotientModel), std::move(quotientData->toQuotientState)};
+    return {.quotient = std::move(quotientModel),
+            .toQuotientStateMapping = std::move(quotientData->toQuotientState),
+            .toQuotientChoiceMapping = std::move(quotientData->toQuotientChoice)};
 }
 
 template ReturnType<double> applyBisimulationMinimization(storm::models::sparse::Model<double> const& model, Options const& options,
