@@ -85,7 +85,7 @@ void buildMonotonicityModel(std::string const& programFile, std::string const& f
         formulas[0] = simplifier.getSimplifiedFormula();
 
         // Apply bisimulation
-        model = storm::api::performBisimulationMinimization<storm::RationalFunction>(model, formulas, storm::storage::BisimulationType::Strong)
+        model = storm::api::performBisimulationMinimization<storm::RationalFunction>(model, formulas)
                     ->as<storm::models::sparse::Dtmc<storm::RationalFunction>>();
     }
 

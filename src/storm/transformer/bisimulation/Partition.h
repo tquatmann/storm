@@ -257,7 +257,73 @@ class Partition {
         }
         --numBlocks;  // the old superblock is no longer a block as counted by this partition
         STORM_LOG_ASSERT(isProperSuperBlock(block), "Partition in inconsistent state: Block was not split into multiple sub-blocks.");
-        checkBlockValidity(block);
+        STORM_LOG_ASSERT(checkBlockValidity(block), "Partition in inconsistent state: Block is not valid.");
+        return true;  // there must have been a split because the case without a split is already caught above
+    }
+
+    /*!
+     * Splits the given block by anchor-based clustering: repeatedly picks the first not-yet-grouped element as the anchor of a new group, moves every
+     * remaining not-yet-grouped element e with !condition(anchor, e) into that group (wherever it currently sits in the block), and finalizes the group
+     * once no more such elements remain; then continues with the next not-yet-grouped element as the next anchor.
+     * Unlike splitBlockByOrder, this does not require condition to be consistent with any (total or weak) order over the block's elements.
+     * @param condition returns true for pairs of elements that should not be in the same block; only ever invoked with the (still not-yet-grouped) anchor
+     * of the group currently being built as the first argument.
+     * @return true iff the block was split, i.e. if the input block is now a proper super block.
+     */
+    template<typename Condition>
+        requires std::invocable<Condition, ElementIndex, ElementIndex>
+    bool splitBlockByClustering(Block const& block, Condition const& condition) {
+        STORM_LOG_ASSERT(!isProperSuperBlock(block), "Tried to split a block that consists of multiple sub-blocks.");
+        if (block.size() <= 1) {
+            return false;  // nothing to do
+        }
+
+        auto const blockStart = getBlockIndex(block);
+        auto const blockEnd = blockStart + block.size();
+
+        // Swaps the elements in [start, blockEnd) so that those compatible (!condition) with the anchor at start directly follow it.
+        // @return mid such that all elements in [start, mid) are compatible with the anchor (located at start) and those at [mid, blockEnd) are not.
+        auto const partitionBlock = [this, &condition, &blockEnd](BlockIndex const start) {
+            auto const anchor = blockContents[start];
+            auto l = start + 1;
+            auto r = blockEnd - 1;
+            // Loop invariant: all elements at position in (start, l) are compatible with anchor, all elements at position > r are not.
+            while (l <= r) {
+                while (l <= r && !condition(anchor, std::as_const(blockContents[l]))) {
+                    ++l;
+                }
+                if (l > r) {
+                    break;
+                }
+                while (l < r && condition(anchor, std::as_const(blockContents[r]))) {
+                    --r;
+                }
+                if (l == r) {
+                    --r;
+                    break;
+                }
+                std::swap(blockContents[l], blockContents[r]);
+                blockContentsInverse[blockContents[l]] = l;
+                blockContentsInverse[blockContents[r]] = r;
+                ++l;
+                --r;
+            }
+            return l;
+        };
+
+        for (uint64_t start = blockStart; start < blockEnd;) {
+            auto const currEnd = partitionBlock(start);
+            // Catch the special case where there is no split
+            if (start == blockStart && currEnd == blockEnd) {
+                return false;  // nothing to do
+            }
+            registerNewBlock(start, currEnd);
+            start = currEnd;
+            ++numBlocks;
+        }
+        --numBlocks;  // the old superblock is no longer a block as counted by this partition
+        STORM_LOG_ASSERT(isProperSuperBlock(block), "Partition in inconsistent state: Block was not split into multiple sub-blocks.");
+        STORM_LOG_ASSERT(checkBlockValidity(block), "Partition in inconsistent state: Block is not valid.");
         return true;  // there must have been a split because the case without a split is already caught above
     }
 

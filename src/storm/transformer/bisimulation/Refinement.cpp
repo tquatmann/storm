@@ -198,8 +198,20 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
     for (uint64_t const state : pivotBlock) {
         context.signatures.updateStateSignature(state);
     }
-    // Then perform the signature-based split
-    bool pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getSplitOrder(), context.signatures.getSplitCondition());
+    // Then perform the signature-based split.
+    bool pivotHasBeenSplit{false};
+    if constexpr (SignatureMode == storm::bisimulation::SignatureMode::Exact) {
+        pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getEquivalenceSplitOrder());
+    } else {
+        // In approximative mode, there provably is no transitive order on signatures that captures "approximately equal signatures".
+        // We therefore split in two steps: first, we split by a coarse order based on structural properties of the state signature.
+        // Then, we do a more expensive split based on clustering on each sub-block.
+        pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getStructuralSplitOrder());
+        auto const splitCondition = context.signatures.getApproximateSplitCondition();
+        context.partition.forEachSubBlock(pivotBlock, [&context, &splitCondition, &pivotHasBeenSplit](auto const& subBlock) {
+            pivotHasBeenSplit |= context.partition.splitBlockByClustering(subBlock, splitCondition);
+        });
+    }
 
     if (!pivotHasBeenSplit && !enforcePredecessorExploration) {
         // When the current pivot block is stable, there is no need to look into its predecessors. We can continue with the next pivot.
