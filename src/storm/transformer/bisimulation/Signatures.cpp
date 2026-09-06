@@ -13,12 +13,12 @@
 
 namespace storm::bisimulation {
 
-template<typename ValueType>
-ChoiceSignatureCache<ValueType>::ChoiceSignatureCache(storm::bisimulation::Partition const& partition)
-    : values(partition.getNumberOfElements(), storm::utility::zero<ValueType>()) {}
+template<typename ValueType, SignatureMode Mode>
+Signatures<ValueType, Mode>::ChoiceSignatureCache::ChoiceSignatureCache(uint64_t const numStates)
+    : values(numStates, storm::utility::zero<ValueType>()) {}
 
-template<typename ValueType>
-void ChoiceSignatureCache<ValueType>::addValue(Partition::Block const& b, ValueType const& value) {
+template<typename ValueType, SignatureMode Mode>
+void Signatures<ValueType, Mode>::ChoiceSignatureCache::addValue(Partition::Block const& b, ValueType const& value) {
     auto& current = values[b.front()];
     if (storm::utility::isZero(current)) {
         support.push_back(b);
@@ -26,23 +26,30 @@ void ChoiceSignatureCache<ValueType>::addValue(Partition::Block const& b, ValueT
     current += value;
 }
 
-template<typename ValueType>
-std::span<std::pair<Partition::Block, ValueType>> ChoiceSignatureCache<ValueType>::extract(std::pair<Partition::Block, ValueType>* dest) {
+template<typename ValueType, SignatureMode Mode>
+auto Signatures<ValueType, Mode>::ChoiceSignatureCache::extract(BlockDistributionView const dest) -> BlockDistributionView {
     std::sort(support.begin(), support.end(), Partition::BlockCompare());
-    auto* const begin = dest;
+    STORM_LOG_ASSERT(support.size() <= dest.size(), "Destination span is too small to hold all entries.");
+    auto result = dest.first(support.size());
+
+    auto writeIt = result.begin();
     for (auto const& b : support) {
         auto& value = values[b.front()];
-        *dest = std::make_pair(b, std::move(value));
-        ++dest;
+        *writeIt = std::make_pair(b, std::move(value));
+        ++writeIt;
         value = storm::utility::zero<ValueType>();
     }
-    std::span<std::pair<Partition::Block, ValueType>> const result(begin, support.size());
+    if (result.size() != dest.size()) {
+        // Mark the end of the written entries with an empty block.
+        // This is used to easily get the choice signature later without rebuilding it. See getChoiceSignature.
+        dest[result.size()] = std::pair<Partition::Block, ValueType>{};
+    }
     support.clear();
     return result;
 }
 
 template<typename ValueType, SignatureMode Mode>
-std::strong_ordering StateSignature<ValueType, Mode>::ChoiceSignature::compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const {
+std::strong_ordering Signatures<ValueType, Mode>::ChoiceSignature::compare(ChoiceSignature const& other, [[maybe_unused]] ValueType const tolerance) const {
     // Let c_1, c_2, c_3 be choices and let ≈ be the used equality for the mode (operator== for Exact, approxEqual for Approximate).
     // It must hold that c_1 < c_2 < c_3 and c_1 ≈ c_3 implies c_1 ≈ c_2 ≈ c_3.
     // Since in all cases ≈ only holds if choiceClass and the support of distr coincide, we check those first
@@ -89,14 +96,14 @@ std::strong_ordering StateSignature<ValueType, Mode>::ChoiceSignature::compare(C
 }
 
 template<typename ValueType, SignatureMode Mode>
-bool StateSignature<ValueType, Mode>::ChoiceSignature::operator==(ChoiceSignature const& other) const
+bool Signatures<ValueType, Mode>::ChoiceSignature::operator==(ChoiceSignature const& other) const
     requires(Mode == SignatureMode::Exact)
 {
     return compare(other, storm::utility::zero<ValueType>()) == std::strong_ordering::equal;
 }
 
 template<typename ValueType, SignatureMode Mode>
-bool StateSignature<ValueType, Mode>::ChoiceSignature::approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
+bool Signatures<ValueType, Mode>::ChoiceSignature::approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
     requires(Mode == SignatureMode::Approximative)
 {
     if (choiceClass != other.choiceClass || distr.size() != other.distr.size()) {
@@ -116,13 +123,41 @@ bool StateSignature<ValueType, Mode>::ChoiceSignature::approxEqual(ChoiceSignatu
 }
 
 template<typename ValueType, SignatureMode Mode>
+auto Signatures<ValueType, Mode>::StateSignature::find(ChoiceSignature const& signature, ValueType const tolerance) const
+    -> std::pair<typename std::vector<ChoiceSignature>::const_iterator, bool> {
+    auto it = std::lower_bound(choices.begin(), choices.end(), signature, [&tolerance](ChoiceSignature const& choice1, ChoiceSignature const& choice2) {
+        return choice1.compare(choice2, tolerance) == std::strong_ordering::less;
+    });
+    if constexpr (Mode == SignatureMode::Exact) {
+        return std::make_pair(it, it != choices.end() && *it == signature);
+    } else {
+        // For approximate signatures, we need to check if the signature is approximately equal to any neighbouring signature.
+        if (it != choices.end() && it->approxEqual(signature, tolerance)) {
+            return std::make_pair(it, true);
+        }
+        if (it != choices.begin() && std::prev(it)->approxEqual(signature, tolerance)) {
+            return std::make_pair(std::prev(it), true);
+        }
+        return std::make_pair(it, false);
+    }
+}
+
+template<typename ValueType, SignatureMode Mode>
+void Signatures<ValueType, Mode>::StateSignature::insert(ChoiceSignature const& signature, ValueType const tolerance) {
+    auto [it, found] = find(signature, tolerance);
+    if (!found) {
+        choices.insert(it, signature);
+    }
+}
+
+template<typename ValueType, SignatureMode Mode>
 Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
                                         storm::bisimulation::Partition const& partition)
     requires(Mode == SignatureMode::Exact)
     : model(model),
       partition(partition),
       choiceClasses(choiceClasses),
-      choiceSignatureCache(partition),
+      choiceSignatureCache(partition.getNumberOfElements()),
       choiceDistributionStorage(model.getTransitionMatrix().getEntryCount()),
       halfTolerance(storm::utility::zero<ValueType>()),
       stateSignatureCache(model.getNumberOfStates()) {}
@@ -134,13 +169,13 @@ Signatures<ValueType, Mode>::Signatures(storm::models::sparse::Model<ValueType> 
     : model(model),
       partition(partition),
       choiceClasses(choiceClasses),
-      choiceSignatureCache(partition),
+      choiceSignatureCache(partition.getNumberOfElements()),
       choiceDistributionStorage(model.getTransitionMatrix().getEntryCount()),
       halfTolerance(tolerance / storm::utility::convertNumber<ValueType, uint64_t>(2)),
       stateSignatureCache(model.getNumberOfStates()) {}
 
 template<typename ValueType, SignatureMode Mode>
-auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex) const -> ChoiceSignature {
+auto Signatures<ValueType, Mode>::buildChoiceSignature(uint64_t const choiceIndex) -> ChoiceSignature {
     auto const& matrix = model.getTransitionMatrix();
     // Use the choiceSignatureCache to compute the distribution over successor blocks
     for (auto const& entry : matrix.getRow(choiceIndex)) {
@@ -148,28 +183,51 @@ auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex)
             choiceSignatureCache.addValue(partition.getBlockOfElement(entry.getColumn()), entry.getValue());
         }
     }
-    // Extract the resulting distribution from the cache. We put it into
-    uint64_t const offset = std::distance(matrix.begin(), matrix.begin(choiceIndex));
+    // Identify the choice distribution storage.
+    auto const row = matrix.getRow(choiceIndex);
+    uint64_t const offset = std::distance(matrix.begin(), row.begin());
+    BlockDistributionView distrStorage(choiceDistributionStorage.data() + offset, row.getNumberOfEntries());
+
+    // Extract the resulting distribution from the cache.
     return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0,
-                           .distr = choiceSignatureCache.extract(choiceDistributionStorage.data() + offset)};
+                           .distr = choiceSignatureCache.extract(distrStorage)};
+}
+
+template<typename ValueType, SignatureMode Mode>
+auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex) const -> ChoiceSignature {
+    // Identify the choice distribution storage
+    auto const& matrix = model.getTransitionMatrix();
+    auto const row = matrix.getRow(choiceIndex);
+    uint64_t const offset = std::distance(matrix.begin(), row.begin());
+    BlockDistributionView distrStorage(choiceDistributionStorage.data() + offset, row.getNumberOfEntries());
+
+    // Determine the right size by finding the first empty block (if any)
+    uint64_t size = 0;
+    for (auto const& [block, _] : distrStorage) {
+        if (block.empty()) {
+            break;
+        }
+        ++size;
+    }
+
+    return ChoiceSignature{
+        .choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0,
+        .distr = distrStorage.first(size)
+    };
 }
 
 template<typename ValueType, SignatureMode Mode>
 void Signatures<ValueType, Mode>::updateStateSignature(uint64_t const stateIndex) {
-    auto& choices = stateSignatureCache[stateIndex].choices;
-    choices.clear();
+    auto& sig = stateSignatureCache[stateIndex];
+    sig.choices.clear();
     for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(stateIndex)) {
-        auto choiceSignature = getChoiceSignature(choiceIndex);
-        auto [it, found] = stateSignatureCache[stateIndex].find(choiceSignature, halfTolerance);
-        if (!found) {
-            choices.insert(it, std::move(choiceSignature));
-        }
+        sig.insert(buildChoiceSignature(choiceIndex), halfTolerance);
     }
 }
 
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getSplitOrder() const -> SplitOrder {
-    return SplitOrder{.signatures = stateSignatureCache, .tolerance = halfTolerance};
+    return SplitOrder(stateSignatureCache, halfTolerance);
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -191,7 +249,7 @@ bool Signatures<ValueType, Mode>::SplitOrder::operator()(uint64_t const state1, 
 }
 template<typename ValueType, SignatureMode Mode>
 auto Signatures<ValueType, Mode>::getSplitCondition() const -> SplitCondition {
-    return SplitCondition{.signatures = stateSignatureCache, .tolerance = halfTolerance};
+    return SplitCondition(stateSignatureCache, halfTolerance);
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -278,10 +336,6 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
     signatureData.toRepresentativeChoice.shrink_to_fit();
     signatureData.quotientChoiceDistributions.shrink_to_fit();
 }
-
-template struct ChoiceSignatureCache<double>;
-template struct ChoiceSignatureCache<storm::RationalNumber>;
-template struct ChoiceSignatureCache<storm::RationalFunction>;
 
 template class Signatures<double, SignatureMode::Exact>;
 template class Signatures<double, SignatureMode::Approximative>;
