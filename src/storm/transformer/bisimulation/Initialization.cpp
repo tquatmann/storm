@@ -69,13 +69,18 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
     if (options.bisimulationType == Options::BisimulationType::Weak) {
         // Weak bisimulation generally does not preserve formulas that depend on the number of steps taken.
         storm::logic::FragmentSpecification preservedFragment = storm::logic::propositional();
-        preservedFragment.setProbabilityOperatorsAllowed(true).setUntilFormulasAllowed(true).setReachabilityProbabilityFormulasAllowed(true).setGloballyFormulasAllowed(true).setRewardOperatorsAllowed(true).setReachabilityRewardFormulasAllowed(true);
+        preservedFragment.setProbabilityOperatorsAllowed(true)
+            .setUntilFormulasAllowed(true)
+            .setReachabilityProbabilityFormulasAllowed(true)
+            .setGloballyFormulasAllowed(true)
+            .setRewardOperatorsAllowed(true)
+            .setReachabilityRewardFormulasAllowed(true);
         if (model.isOfType(storm::models::ModelType::Ctmc)) {
             preservedFragment.setTimeBoundedUntilFormulasAllowed(true);
         }
         for (auto const& f : this->formulas) {
             STORM_LOG_THROW(f->isInFragment(preservedFragment), storm::exceptions::IllegalFunctionCallException,
-                                "The formula " << *f << " is not known to be preserved by weak bisimulation.");
+                            "The formula " << *f << " is not known to be preserved by weak bisimulation.");
         }
     }
     auto const preservationInformation = getPreservationInformation();
@@ -119,7 +124,8 @@ bool Initialization<ValueType>::PreservedAnnotations::empty() const {
 }
 
 template<typename ValueType>
-void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& partition, ValueType const& tolerance, std::vector<uint64_t> const& extraAnnotation) const {
+void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& partition, ValueType const& tolerance,
+                                                                 std::vector<uint64_t> const& extraAnnotation) const {
     uint64_t const numElements = partition.getNumberOfElements();
 
     // Split according to Boolean annotations
@@ -194,7 +200,6 @@ std::optional<std::vector<uint64_t>> Initialization<ValueType>::getChoiceClasses
     }
     // Split the partition based on preserved choice annotations.
     preservedChoiceAnnotations.applySplit(choicePartition, storm::utility::convertNumber<ValueType>(options.tolerance), auxVector);
-
 
     // Catch the case where all choices are equal so we don't have to deal with choice classes.
     if (choicePartition.getNumberOfBlocks() == 1) {

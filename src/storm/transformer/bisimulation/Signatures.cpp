@@ -14,8 +14,7 @@
 namespace storm::bisimulation {
 
 template<typename ValueType, SignatureMode Mode>
-Signatures<ValueType, Mode>::ChoiceSignatureCache::ChoiceSignatureCache(uint64_t const numStates)
-    : values(numStates, storm::utility::zero<ValueType>()) {}
+Signatures<ValueType, Mode>::ChoiceSignatureCache::ChoiceSignatureCache(uint64_t const numStates) : values(numStates, storm::utility::zero<ValueType>()) {}
 
 template<typename ValueType, SignatureMode Mode>
 void Signatures<ValueType, Mode>::ChoiceSignatureCache::addValue(Partition::Block const& b, ValueType const& value) {
@@ -189,8 +188,7 @@ auto Signatures<ValueType, Mode>::buildChoiceSignature(uint64_t const choiceInde
     BlockDistributionView distrStorage(choiceDistributionStorage.data() + offset, row.getNumberOfEntries());
 
     // Extract the resulting distribution from the cache.
-    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0,
-                           .distr = choiceSignatureCache.extract(distrStorage)};
+    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = choiceSignatureCache.extract(distrStorage)};
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -210,10 +208,7 @@ auto Signatures<ValueType, Mode>::getChoiceSignature(uint64_t const choiceIndex)
         ++size;
     }
 
-    return ChoiceSignature{
-        .choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0,
-        .distr = distrStorage.first(size)
-    };
+    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = distrStorage.first(size)};
 }
 
 template<typename ValueType, SignatureMode Mode>

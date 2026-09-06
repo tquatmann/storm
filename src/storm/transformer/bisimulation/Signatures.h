@@ -40,15 +40,15 @@ class Signatures {
     void updateStateSignature(uint64_t const stateIndex);
 
    private:
-    struct StateSignature; // Forward-declared; defined privately further down.
+    struct StateSignature;  // Forward-declared; defined privately further down.
 
    public:
     /*!
      * Represents a strict weak order over state indices based on their signature.
      * @note assumes that only states are compared for which updateStateSignature has been called since the last change of the partition.
      */
-     class SplitOrder {
-    public:
+    class SplitOrder {
+       public:
         SplitOrder(std::vector<StateSignature> const& signatures, ValueType const& tolerance) : signatures(signatures), tolerance(tolerance) {}
         bool operator()(uint64_t const state1, uint64_t const state2) const;
 
@@ -89,7 +89,6 @@ class Signatures {
     void extendQuotientData(QuotientData<ValueType>& quotientData) const;
 
    private:
-
     // For all choices, we store the current distributions over successor blocks in choiceDistributionStorage and use a view into that for ChoiceSignatures.
     using BlockDistributionView = std::span<std::pair<Partition::Block, ValueType>>;
 
@@ -138,19 +137,19 @@ class Signatures {
 
     /*!
      * Gets the signature of the given choice index. The signature must have been built before.
-     * @note the returned ChoiceSignature::distr is a view into choiceDistributionStorage; calling buildChoiceSignature(choiceIndex) again later overwrites it.
+     * @note the returned ChoiceSignature::distr is a view into choiceDistributionStorage; calling buildChoiceSignature(choiceIndex) later overwrites it.
      */
-ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
+    ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
 
     /*!
-  * A reusable, sparse accumulator for building the distribution (Partition::Block -> ValueType) of a single choice, without allocating a fresh map for
-  * every choice: values is a dense array indexed by a block's front() element (unique per block, since blocks are disjoint), and support records which
-  * blocks were touched so that extract() only has to look at (and reset) those, not the whole array.
-  * @note the cache must not be used across a change of the partition, since a block's front() element is only a stable identifier for that block as long
-  * as the partition does not change.
-  */
+     * A reusable, sparse accumulator for building the distribution (Partition::Block -> ValueType) of a single choice, without allocating a fresh map for
+     * every choice: values is a dense array indexed by a block's front() element (unique per block, since blocks are disjoint), and support records which
+     * blocks were touched so that extract() only has to look at (and reset) those, not the whole array.
+     * @note the cache must not be used across a change of the partition, since a block's front() element is only a stable identifier for that block as long
+     * as the partition does not change.
+     */
     class ChoiceSignatureCache {
-    public:
+       public:
         explicit ChoiceSignatureCache(uint64_t const numStates);
 
         /*!
@@ -164,16 +163,15 @@ ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
          * @note resets the cache (i.e. all accumulated values) so that it can be reused for the next choice.
          */
         BlockDistributionView extract(BlockDistributionView const dest);
-    private:
+
+       private:
         std::vector<ValueType> values;
         std::vector<Partition::Block> support;
     } choiceSignatureCache;
 
-
     storm::models::sparse::Model<ValueType> const& model;
     Partition const& partition;
     std::optional<std::vector<uint64_t>> const& choiceClasses;
-
 
     /*!
      * Backing storage for all ChoiceSignature::distr views. Choice i is permanently assigned the sub-range starting at the same offset as row i within
