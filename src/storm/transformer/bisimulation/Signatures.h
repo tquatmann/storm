@@ -72,7 +72,7 @@ class Signatures {
      * Represents a condition for splitting two states based on their signature.
      * @note assumes that only states are compared for which updateStateSignature has been called since the last change of the partition.
      * @note assumes that the two states are equivalent with respect to getStructuralSplitOrder()
-     * The order returns true iff the two states are not approximately equal with respect to the given tolerance.
+     * operator() returns true iff the two states are not approximately equal with respect to the given tolerance.
      */
     struct SplitCondition {
         SplitCondition(std::vector<StateSignature> const& signatures, ValueType const& tolerance) : signatures(signatures), tolerance(tolerance) {}
@@ -84,8 +84,8 @@ class Signatures {
     };
 
     /*!
- * Instantiates a SplitCondition.
- */
+     * Instantiates a SplitCondition.
+     */
     SplitCondition getApproximateSplitCondition() const
         requires(Mode == SignatureMode::Approximative);
 
@@ -102,7 +102,7 @@ class Signatures {
     using BlockDistributionView = std::span<std::pair<Partition::Block, ValueType>>;
 
     /*!
-     * The signature of a single choice, consisting of its choice class and the distribution over successor blocks (Partition::Block -> ValueType)
+     * The signature of a single choice, consisting of its choice class and the distribution over successor blocks (Partition::Block -> ValueType).
      */
     struct ChoiceSignature {
         uint64_t choiceClass;  // The class of this choice according to the provided choice classes.
@@ -110,17 +110,12 @@ class Signatures {
         // slot of Signatures::choiceDistributionStorage, see there.
         BlockDistributionView distr;
 
-        // strong_ordering in exact mode (equal signatures are substitutable); only weak_ordering in approximative mode, since ties don't imply approxEqual.
-        using ComparisonResult = std::conditional_t<Mode == SignatureMode::Exact, std::strong_ordering, std::weak_ordering>;
-
-        // Strict weak order for sorting/lower_bound. In approximative mode, ties don't imply approxEqual - see StateSignature::find.
-        ComparisonResult compare(ChoiceSignature const& other) const;
         // Orders by choiceClass and the set of blocks (identity and order) of distr; independent of the actual transition values.
         std::strong_ordering compareStructure(ChoiceSignature const& other) const;
-        bool operator==(ChoiceSignature const& other) const
-            requires(Mode == SignatureMode::Exact);
-        bool approxEqual(ChoiceSignature const& other, ValueType const tolerance) const
-            requires(Mode == SignatureMode::Approximative);
+        // strong_ordering in exact mode (equal signatures are substitutable); only weak_ordering in approximative mode, since ties don't imply approxEqual.
+        using ComparisonResult = std::conditional_t<Mode == SignatureMode::Exact, std::strong_ordering, std::weak_ordering>;
+        // Strict weak order for sorting/lower_bound. In approximative mode, ties don't imply approximate equality - see StateSignature::find.
+        ComparisonResult compare(ChoiceSignature const& other) const;
     };
 
     using ChoiceSignatureIterator = typename std::vector<ChoiceSignature>::const_iterator;
@@ -128,23 +123,24 @@ class Signatures {
     /*!
      * The (static) signature of a state w.r.t. a partition.
      *  A state signature is seen as an ordered set of deduplicated choice signatures, where the order is defined by ChoiceSignature::compare and the
-     *  deduplication is defined by the equality used for the mode (ChoiceSignature::operator== for Exact, ChoiceSignature::approxEqual otherwise).
+     *  deduplication is defined by the equality used for the mode (exact equality for Exact, approximate equality for Approximative, see ChoiceSignature).
      */
     struct StateSignature {
         /*!
          * Find the given choice signature in the list.
          * Returns an (iterator,bool)-pair. The bool is true iff the given choice signature is contained.
          * The iterator is either (exact/approximately) equal to the given signature, or the position where it would be inserted.
+         * Two choice signatures are approximately equal (w.r.t. a tolerance) iff they have equal structure (compareStructure) and their distr values pairwise
+         * differ by at most the tolerance.
          */
         std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, ValueType const tolerance) const;
 
         /*!
-         * Like find(), but scans for an approxEqual entry at the given hint.
-        *  The choices vector is weakly ordered by compareStructure and the first value entry.
-        *  This yields a (potentially empty) window [l,r) in which signature could be.
-        *  The given 'hint' must be an iterator to some point in the window [l,r] (with right boundary included.)
-        *  Expects !signature.distr.empty() - for empty choice signatures, the window has size <=1.
-        *  @note returns {hint, false} if signature is not found.
+         * Like find(), but starts scanning at `hint` instead of locating the compare()-tie window via lower_bound.
+         * @param hint any iterator in [l, r], where [l, r) is the window of entries compareStructure-equal to signature and within tolerance of its first
+         * entry (r itself may lie outside that window, e.g. as an insertion point).
+         * @note requires !signature.distr.empty().
+         * @note returns {hint, false} if signature is not found.
          */
         std::pair<ChoiceSignatureIterator, bool> findWithHint(ChoiceSignatureIterator const hint, ChoiceSignature const& signature,
                                                                     ValueType const tolerance) const
