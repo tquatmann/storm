@@ -22,11 +22,12 @@ struct ReturnType {
  * Computes the bisimulation quotient of the given model.
  *
  * @param model the model to minimize.
- * @param options the options to use for the minimization.
  * @param formulas the formulas that need to be preserved by the minimization.
+ * @param options the options to use for the minimization.
  */
 template<typename ValueType>
-ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model<ValueType> const& model, Options const& options = {},
-                                                    std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas = {});
+ReturnType<ValueType> performBisimulationMinimization(storm::models::sparse::Model<ValueType> const& model,
+                                                    std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas = {},
+                                                    Options const& options = {});
 
 }  // namespace storm::bisimulation

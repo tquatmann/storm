@@ -19,8 +19,8 @@
 namespace storm::bisimulation {
 
 template<typename ValueType>
-ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model<ValueType> const& model, Options const& options,
-                                                    std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas) {
+ReturnType<ValueType> performBisimulationMinimization(storm::models::sparse::Model<ValueType> const& model,
+                                                    std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Options const& options) {
     // Step 0: Sanity checks and set-up
     STORM_LOG_THROW(options.tolerance >= storm::utility::zero<storm::RationalNumber>(), storm::exceptions::InvalidArgumentException,
                     "Tolerance for bisimulation minimization must be non-negative, but was " << options.tolerance << ".");
@@ -82,18 +82,19 @@ ReturnType<ValueType> applyBisimulationMinimization(storm::models::sparse::Model
             .toQuotientChoiceMapping = std::move(quotientData->toQuotientChoice)};
 }
 
-template ReturnType<double> applyBisimulationMinimization(storm::models::sparse::Model<double> const& model, Options const& options,
-                                                          std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
-template ReturnType<storm::RationalNumber> applyBisimulationMinimization(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                         Options const& options,
-                                                                         std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
-template ReturnType<storm::RationalFunction> applyBisimulationMinimization(storm::models::sparse::Model<storm::RationalFunction> const& model,
-                                                                           Options const& options,
-                                                                           std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
-template ReturnType<storm::Interval> applyBisimulationMinimization(storm::models::sparse::Model<storm::Interval> const& model, Options const& options,
-                                                                   std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
-template ReturnType<storm::RationalInterval> applyBisimulationMinimization(storm::models::sparse::Model<storm::RationalInterval> const& model,
-                                                                           Options const& options,
-                                                                           std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas);
+template ReturnType<double> performBisimulationMinimization(storm::models::sparse::Model<double> const& model,
+                                                          std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas, Options const& options);
+template ReturnType<storm::RationalNumber> performBisimulationMinimization(
+    storm::models::sparse::Model<storm::RationalNumber> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+    Options const& options);
+template ReturnType<storm::RationalFunction> performBisimulationMinimization(
+    storm::models::sparse::Model<storm::RationalFunction> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+    Options const& options);
+template ReturnType<storm::Interval> performBisimulationMinimization(storm::models::sparse::Model<storm::Interval> const& model,
+                                                                   std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+                                                                   Options const& options);
+template ReturnType<storm::RationalInterval> performBisimulationMinimization(
+    storm::models::sparse::Model<storm::RationalInterval> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas,
+    Options const& options);
 
 }  // namespace storm::bisimulation

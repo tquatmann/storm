@@ -128,7 +128,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMini
         storm::bisimulation::Options options;
         options.tolerance = tolerance.value_or(0.0);
         std::cout << "Tolerance is " << options.tolerance << std::endl;
-        return storm::bisimulation::applyBisimulationMinimization(*model, options, formulas).quotient;
+        return storm::bisimulation::performBisimulationMinimization(*model, formulas, options).quotient;
     }
 
     // Try to get rid of non state-rewards to easy bisimulation computation.
