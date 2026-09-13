@@ -296,7 +296,7 @@ TYPED_TEST(SymbolicModelBisimulationDecomposition, AsynchronousLeader) {
 }
 
 TYPED_TEST(SymbolicModelBisimulationDecomposition, MarkovAutomatonExitRates) {
-    // Bisimulation minimization for Markov automata must preserve the exit rates of Markovian states when extracting the Dd-format quotient.
+    // Bisimulation minimization must preserve the exit rates of Markovian states.
     const storm::dd::DdType DdType = TestFixture::DdType;
     storm::prism::Program program = storm::parser::PrismParser::parse(STORM_TEST_RESOURCES_DIR "/ma/bisimulation_exit_rates.ma").preprocess();
 
@@ -304,6 +304,18 @@ TYPED_TEST(SymbolicModelBisimulationDecomposition, MarkovAutomatonExitRates) {
     storm::storage::SymbolicModelDescription modelDescription(program.toJani());
     std::shared_ptr<storm::models::symbolic::Model<DdType, double>> model = storm::api::buildSymbolicModel<DdType, double>(
         this->env, modelDescription, std::vector<std::shared_ptr<storm::logic::Formula const>>(), /*buildFullModel=*/true);
+
+    // The exit rate of the initial state is lambda + lambda = 4, so the expected time to reach "done" is 1/4.
+    auto checkExitRatePreserved = [this](storm::models::symbolic::MarkovAutomaton<DdType, double> const& ma) {
+        storm::modelchecker::HybridMarkovAutomatonCslModelChecker<storm::models::symbolic::MarkovAutomaton<DdType, double>> checker(ma);
+        storm::parser::FormulaParser formulaParser;
+        std::shared_ptr<storm::logic::Formula const> formula = formulaParser.parseSingleFormulaFromString("Tmin=? [F \"done\"]");
+        storm::modelchecker::CheckTask<storm::logic::Formula, double> task(*formula);
+
+        std::unique_ptr<storm::modelchecker::CheckResult> result = checker.check(this->env, task);
+        result->filter(storm::modelchecker::SymbolicQualitativeCheckResult<DdType>(ma.getReachableStates(), ma.getInitialStates()));
+        EXPECT_NEAR(0.25, result->asQuantitativeCheckResult<double>().sum(), 1e-6);
+    };
 
     model->getManager().execute([&]() {
         ASSERT_EQ(storm::models::ModelType::MarkovAutomaton, model->getType());
@@ -323,19 +335,23 @@ TYPED_TEST(SymbolicModelBisimulationDecomposition, MarkovAutomatonExitRates) {
             // The bisimilar states 1 and 2 should have been merged into a single block.
             EXPECT_EQ(2ul, quotient->getNumberOfStates());
 
-            auto quotientMa = quotient->as<storm::models::symbolic::MarkovAutomaton<DdType, double>>();
-
-            storm::modelchecker::HybridMarkovAutomatonCslModelChecker<storm::models::symbolic::MarkovAutomaton<DdType, double>> checker(*quotientMa);
-            storm::parser::FormulaParser formulaParser;
-            std::shared_ptr<storm::logic::Formula const> formula = formulaParser.parseSingleFormulaFromString("Tmin=? [F \"done\"]");
-            storm::modelchecker::CheckTask<storm::logic::Formula, double> task(*formula);
-
-            std::unique_ptr<storm::modelchecker::CheckResult> result = checker.check(this->env, task);
-            result->filter(storm::modelchecker::SymbolicQualitativeCheckResult<DdType>(quotientMa->getReachableStates(), quotientMa->getInitialStates()));
-
-            // The exit rate of the initial state is lambda + lambda = 4, so the expected time to reach "done" is
-            // 1/4. Before the fix, the quotient's exit rate incorrectly collapsed to 1, yielding 1 instead of 0.25.
-            EXPECT_NEAR(0.25, result->asQuantitativeCheckResult<double>().sum(), 1e-6);
+            checkExitRatePreserved(*quotient->template as<storm::models::symbolic::MarkovAutomaton<DdType, double>>());
         }
     });
+
+    // Also test exact building (Sylvan only) with conversion to double
+    if constexpr (TestFixture::DdType == storm::dd::DdType::Sylvan) {
+        std::shared_ptr<storm::models::symbolic::Model<DdType, storm::RationalNumber>> exactModel =
+            storm::api::buildSymbolicModel<DdType, storm::RationalNumber>(
+                this->env, modelDescription, std::vector<std::shared_ptr<storm::logic::Formula const>>(), /*buildFullModel=*/true);
+
+        exactModel->getManager().execute([&]() {
+            auto exactMa = exactModel->template as<storm::models::symbolic::MarkovAutomaton<DdType, storm::RationalNumber>>();
+            ASSERT_TRUE(exactMa->hasLabel("done"));
+            auto doubleMa = exactMa->template toValueType<double>();
+            ASSERT_TRUE(doubleMa->hasLabel("done"));
+
+            checkExitRatePreserved(*doubleMa);
+        });
+    }
 }

@@ -1111,19 +1111,6 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingBlock
         std::vector<std::pair<storm::expressions::Variable, storm::expressions::Variable>> blockMetaVariablePairs = {
             std::make_pair(partition.getBlockVariable(), partition.getPrimedBlockVariable())};
 
-        // For Markov automata, the transition matrix of the model stores *normalized* probabilities for
-        // Markovian choices (the actual rates are only available via the separate exit-rate vector), since
-        // the rates were already divided out when the model's Markovian info was computed. As the quotient's
-        // Markovian info (in particular its exit rates) is (re-)derived from the transition matrix that we
-        // pass to its constructor, we first need to scale Markovian choices back to their original,
-        // unnormalized rates. Otherwise, the quotient would end up with incorrect (uniformly 1) exit rates.
-        storm::dd::Add<DdType, ValueType> transitionMatrix = model.getTransitionMatrix();
-        if (modelType == storm::models::ModelType::MarkovAutomaton) {
-            auto const& markovAutomaton = *model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>();
-            transitionMatrix = transitionMatrix * markovAutomaton.getMarkovianMarker().ite(markovAutomaton.getExitRateVector(),
-                                                                                           model.getManager().template getAddOne<ValueType>());
-        }
-
         auto start = std::chrono::high_resolution_clock::now();
 
         // Compute representatives.
@@ -1168,8 +1155,8 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingBlock
         std::set_union(blockPrimeVariableSet.begin(), blockPrimeVariableSet.end(), model.getColumnVariables().begin(), model.getColumnVariables().end(),
                        std::inserter(blockPrimeAndColumnVariables, blockPrimeAndColumnVariables.end()));
         storm::dd::Add<DdType, ValueType> partitionAsAdd = partitionAsBdd.template toAdd<ValueType>();
-        storm::dd::Add<DdType, ValueType> quotientTransitionMatrix =
-            transitionMatrix.multiplyMatrix(partitionAsAdd.renameVariables(blockAndRowVariables, blockPrimeAndColumnVariables), model.getColumnVariables());
+        storm::dd::Add<DdType, ValueType> quotientTransitionMatrix = model.getTransitionMatrix().multiplyMatrix(
+            partitionAsAdd.renameVariables(blockAndRowVariables, blockPrimeAndColumnVariables), model.getColumnVariables());
 
         // Pick a representative from each block.
         partitionAsBdd &= representatives;
@@ -1178,22 +1165,19 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingBlock
         quotientTransitionMatrix = quotientTransitionMatrix.multiplyMatrix(partitionAsAdd, model.getRowVariables());
         end = std::chrono::high_resolution_clock::now();
 
-        // Check quotient matrix for sanity. Markovian choices of a Markov automaton are stored as unnormalized
-        // rates rather than probabilities (see above), so these checks do not apply to that case.
-        if (modelType != storm::models::ModelType::MarkovAutomaton) {
-            if (std::is_same<ValueType, storm::RationalNumber>::value) {
-                STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>()).isZero(), "Illegal entries in quotient matrix.");
-            } else if (std::is_same<ValueType, storm::RationalFunction>::value) {
-                // No comparison for rational functions
-            } else {
-                STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>() + storm::utility::convertNumber<ValueType>(1e-6)).isZero(),
-                                 "Illegal entries in quotient matrix.");
-            }
-            STORM_LOG_ASSERT(quotientTransitionMatrix.sumAbstract(blockPrimeVariableSet)
-                                 .equalModuloPrecision(quotientTransitionMatrix.notZero().existsAbstract(blockPrimeVariableSet).template toAdd<ValueType>(),
-                                                       storm::utility::convertNumber<ValueType>(1e-6)),
-                             "Illegal non-probabilistic matrix.");
+        // Check quotient matrix for sanity.
+        if (std::is_same<ValueType, storm::RationalNumber>::value) {
+            STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>()).isZero(), "Illegal entries in quotient matrix.");
+        } else if (std::is_same<ValueType, storm::RationalFunction>::value) {
+            // No comparison for rational functions
+        } else {
+            STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>() + storm::utility::convertNumber<ValueType>(1e-6)).isZero(),
+                             "Illegal entries in quotient matrix.");
         }
+        STORM_LOG_ASSERT(quotientTransitionMatrix.sumAbstract(blockPrimeVariableSet)
+                             .equalModuloPrecision(quotientTransitionMatrix.notZero().existsAbstract(blockPrimeVariableSet).template toAdd<ValueType>(),
+                                                   storm::utility::convertNumber<ValueType>(1e-6)),
+                         "Illegal non-probabilistic matrix.");
 
         STORM_LOG_INFO("Quotient transition matrix extracted in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms.");
 
@@ -1238,12 +1222,18 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingBlock
                 model.getManager().asSharedPointer(), reachableStates, initialStates, deadlockStates, quotientTransitionMatrix, blockVariableSet,
                 blockPrimeVariableSet, blockMetaVariablePairs, model.getNondeterminismVariables(), preservedLabelBdds, quotientRewardModels));
         } else {
+            STORM_LOG_ASSERT(modelType == storm::models::ModelType::MarkovAutomaton, "Unexpected model type " << modelType << ".");
+            // For Markov automata, bisimilar Markovian states are required to have the same exit rate, so the
+            // quotient's exit rate for each block is simply the representative's (already known) exit rate --
+            // obtained via the same representative-based projection as for the reward vectors above.
+            auto const& ma = *model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>();
+            auto quotientExitRateVector = ma.getExitRateVector().multiplyMatrix(partitionAsAdd, model.getRowVariables());
             result =
                 std::shared_ptr<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>(new storm::models::symbolic::MarkovAutomaton<DdType, ValueType>(
                     model.getManager().asSharedPointer(),
                     model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>()->getMarkovianMarker(), reachableStates, initialStates,
                     deadlockStates, quotientTransitionMatrix, blockVariableSet, blockPrimeVariableSet, blockMetaVariablePairs,
-                    model.getNondeterminismVariables(), preservedLabelBdds, quotientRewardModels));
+                    model.getNondeterminismVariables(), preservedLabelBdds, quotientRewardModels, quotientExitRateVector));
         }
 
         return result->template toValueType<ExportValueType>();
@@ -1273,19 +1263,6 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingOrigi
         std::set<storm::expressions::Variable> blockPrimeVariableSet = {partition.getPrimedBlockVariable()};
         std::vector<std::pair<storm::expressions::Variable, storm::expressions::Variable>> blockMetaVariablePairs = {
             std::make_pair(partition.getBlockVariable(), partition.getPrimedBlockVariable())};
-
-        // For Markov automata, the transition matrix of the model stores *normalized* probabilities for
-        // Markovian choices (the actual rates are only available via the separate exit-rate vector), since
-        // the rates were already divided out when the model's Markovian info was computed. As the quotient's
-        // Markovian info (in particular its exit rates) is (re-)derived from the transition matrix that we
-        // pass to its constructor, we first need to scale Markovian choices back to their original,
-        // unnormalized rates. Otherwise, the quotient would end up with incorrect (uniformly 1) exit rates.
-        storm::dd::Add<DdType, ValueType> transitionMatrix = model.getTransitionMatrix();
-        if (modelType == storm::models::ModelType::MarkovAutomaton) {
-            auto const& markovAutomaton = *model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>();
-            transitionMatrix = transitionMatrix * markovAutomaton.getMarkovianMarker().ite(markovAutomaton.getExitRateVector(),
-                                                                                           model.getManager().template getAddOne<ValueType>());
-        }
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -1339,7 +1316,8 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingOrigi
                        std::inserter(blockPrimeAndColumnVariables, blockPrimeAndColumnVariables.end()));
         storm::dd::Add<DdType, ValueType> partitionAsAdd = partitionAsBdd.template toAdd<ValueType>();
         storm::dd::Add<DdType, ValueType> quotientTransitionMatrix =
-            transitionMatrix.multiplyMatrix(partitionAsAdd.renameVariables(model.getRowVariables(), model.getColumnVariables()), model.getColumnVariables())
+            model.getTransitionMatrix()
+                .multiplyMatrix(partitionAsAdd.renameVariables(model.getRowVariables(), model.getColumnVariables()), model.getColumnVariables())
                 .renameVariablesAbstract(blockVariableSet, model.getColumnVariables());
 
         // Pick a representative from each block.
@@ -1357,21 +1335,17 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingOrigi
         }
         end = std::chrono::high_resolution_clock::now();
 
-        // Check quotient matrix for sanity. Markovian choices of a Markov automaton are stored as unnormalized
-        // rates rather than probabilities (see above), so these checks do not apply to that case.
-        if (modelType != storm::models::ModelType::MarkovAutomaton) {
-            if (std::is_same<ValueType, storm::RationalNumber>::value) {
-                STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>()).isZero(), "Illegal entries in quotient matrix.");
-            } else {
-                STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>() + storm::utility::convertNumber<ValueType>(1e-6)).isZero(),
-                                 "Illegal entries in quotient matrix.");
-            }
-            STORM_LOG_ASSERT(
-                quotientTransitionMatrix.sumAbstract(model.getColumnVariables())
-                    .equalModuloPrecision(quotientTransitionMatrix.notZero().existsAbstract(model.getColumnVariables()).template toAdd<ValueType>(),
-                                          storm::utility::convertNumber<ValueType>(1e-6)),
-                "Illegal probabilistic matrix.");
+        // Check quotient matrix for sanity.
+        if (std::is_same<ValueType, storm::RationalNumber>::value) {
+            STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>()).isZero(), "Illegal entries in quotient matrix.");
+        } else {
+            STORM_LOG_ASSERT(quotientTransitionMatrix.greater(storm::utility::one<ValueType>() + storm::utility::convertNumber<ValueType>(1e-6)).isZero(),
+                             "Illegal entries in quotient matrix.");
         }
+        STORM_LOG_ASSERT(quotientTransitionMatrix.sumAbstract(model.getColumnVariables())
+                             .equalModuloPrecision(quotientTransitionMatrix.notZero().existsAbstract(model.getColumnVariables()).template toAdd<ValueType>(),
+                                                   storm::utility::convertNumber<ValueType>(1e-6)),
+                         "Illegal probabilistic matrix.");
 
         STORM_LOG_INFO("Quotient transition matrix extracted in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms.");
 
@@ -1421,12 +1395,20 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingOrigi
                 model.getColumnVariables(), model.getRowColumnMetaVariablePairs(), model.getNondeterminismVariables(), preservedLabelBdds,
                 quotientRewardModels));
         } else {
+            STORM_LOG_ASSERT(modelType == storm::models::ModelType::MarkovAutomaton, "Unexpected model type " << modelType << ".");
+            // For Markov automata, bisimilar Markovian states are required to have the same exit rate, so the
+            // quotient's exit rate for each block is simply the representative's (already known) exit rate --
+            // obtained via the same representative-based projection as for the reward vectors above.
+            auto const& ma = *model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>();
+            auto quotientExitRateVector = ma.getExitRateVector()
+                                         .multiplyMatrix(partitionAsAdd, model.getRowVariables())
+                                         .renameVariablesAbstract(blockVariableSet, model.getRowVariables());
             result =
                 std::shared_ptr<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>(new storm::models::symbolic::MarkovAutomaton<DdType, ValueType>(
                     model.getManager().asSharedPointer(),
                     model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>()->getMarkovianMarker(), reachableStates, initialStates,
                     deadlockStates, quotientTransitionMatrix, model.getRowVariables(), model.getColumnVariables(), model.getRowColumnMetaVariablePairs(),
-                    model.getNondeterminismVariables(), preservedLabelBdds, quotientRewardModels));
+                    model.getNondeterminismVariables(), preservedLabelBdds, quotientRewardModels, quotientExitRateVector));
         }
 
         return result->template toValueType<ExportValueType>();
