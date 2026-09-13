@@ -708,7 +708,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBisimulation(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
-    storm::settings::modules::BisimulationSettings const& bisimulationSettings, bool graphPreserving = true) {
+    storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
     storm::bisimulation::Options options;
     options.bisimulationType =
         bisimulationSettings.isWeakBisimulationSet() ? storm::bisimulation::BisimulationType::Weak : storm::bisimulation::BisimulationType::Strong;

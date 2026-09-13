@@ -40,8 +40,8 @@ void testModelB(std::string programFile, std::string formulaAsString, std::strin
     storm::transformer::BinaryDtmcTransformer binaryDtmcTransformer;
     auto simpleDtmc = binaryDtmcTransformer.transform(*dtmc, true);
 
-    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, storm::RationalNumber> modelChecker(storm::Environment(),
-                                                                                                                                        *dtmc);
+    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, storm::RationalNumber> modelChecker(
+        storm::Environment(), *dtmc);
     modelChecker.specifyFormula(checkTask);
     storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, storm::RationalNumber> modelCheckerSimple(
         storm::Environment(), *simpleDtmc);
@@ -70,8 +70,8 @@ void testModelB(std::string programFile, std::string formulaAsString, std::strin
     for (auto const& instantiation : testInstantiations) {
         auto result = modelChecker.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
         auto resultSimple = modelCheckerSimple.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
-        EXPECT_EQ(result, resultSimple)
-            << "Results ≈" << storm::utility::convertNumber<double>(result) << " and ≈" << storm::utility::convertNumber<double>(resultSimple) << " are not the same but should be.";
+        EXPECT_EQ(result, resultSimple) << "Results ≈" << storm::utility::convertNumber<double>(result) << " and ≈"
+                                        << storm::utility::convertNumber<double>(resultSimple) << " are not the same but should be.";
     }
 
     auto region = storm::api::createRegion<storm::RationalFunction>("0.4", *dtmc);

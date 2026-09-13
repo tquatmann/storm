@@ -138,6 +138,11 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
         }
     }
 
+    // build state valuations
+    if (model.hasStateValuations()) {
+        components.stateValuations = model.getStateValuations().selectEntities(toRepresentativeState);
+    }
+
     // build choice labeling
     if (!preservationInformation.preservedChoiceLabels.empty()) {
         STORM_LOG_ASSERT(model.hasChoiceLabeling(), "Model has no choice labeling but bisimulation preserved some.");

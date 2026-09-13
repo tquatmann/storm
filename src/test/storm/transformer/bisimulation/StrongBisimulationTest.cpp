@@ -523,6 +523,30 @@ TEST(StrongBisimulationTest, DiePropositionalSubformulas) {
     testQuotient(STORM_TEST_RESOURCES_DIR "/dtmc/die.pm", formulaString, 13ull, 7ull, 11ull, 7ull, options);
 }
 
+/*!
+ * The quotient carries the state valuations of the representative states.
+ */
+TEST(StrongBisimulationTest, DieStateValuations) {
+#ifndef STORM_HAVE_Z3
+    GTEST_SKIP() << "Z3 not available.";
+#endif
+    auto const input = buildFromPrism<ValueType>(STORM_TEST_RESOURCES_DIR "/dtmc/die.pm", "P=? [F \"one\"]", {.stateValuations = true});
+    ASSERT_TRUE(input.model->hasStateValuations());
+
+    auto const result = storm::bisimulation::performBisimulationMinimization<ValueType>(*input.model, input.formulas, strongOptions());
+    ASSERT_TRUE(result.quotient->hasStateValuations());
+    ASSERT_EQ(result.quotient->getNumberOfStates(), result.quotient->getStateValuations().getNumberOfEntities());
+    // Every quotient state carries the valuation of one of the states that it represents.
+    std::set<uint64_t> quotientStatesWithRepresentedValuation;
+    for (uint64_t state = 0; state < input.model->getNumberOfStates(); ++state) {
+        uint64_t const quotientState = result.toQuotientStateMapping[state];
+        if (input.model->getStateValuations().toString(state) == result.quotient->getStateValuations().toString(quotientState)) {
+            quotientStatesWithRepresentedValuation.insert(quotientState);
+        }
+    }
+    EXPECT_EQ(result.quotient->getNumberOfStates(), quotientStatesWithRepresentedValuation.size());
+}
+
 TEST(StrongBisimulationTest, Crowds) {
     testQuotient(STORM_TEST_RESOURCES_DIR "/dtmc/crowds5_5.pm", "P=? [F \"observe0Greater1\"]", 7403ull, 65ull, 105ull, 65ull);
 }

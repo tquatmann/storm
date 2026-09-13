@@ -132,10 +132,11 @@ struct PrismInput {
  * What to build from a PRISM program in addition to what the formulas require.
  */
 struct BuildOptions {
-    bool allLabels = false;      // If set, the full state space is built with all labels of the program. Otherwise, the formulas may restrict the
-                                 // exploration, e.g. by making the target states of a reachability formula absorbing.
-    bool choiceLabels = false;   // If set, the choice labeling is built.
-    bool choiceOrigins = false;  // If set, the choice origins are built.
+    bool allLabels = false;        // If set, the full state space is built with all labels of the program. Otherwise, the formulas may restrict the
+                                   // exploration, e.g. by making the target states of a reachability formula absorbing.
+    bool choiceLabels = false;     // If set, the choice labeling is built.
+    bool choiceOrigins = false;    // If set, the choice origins are built.
+    bool stateValuations = false;  // If set, the state valuations are built.
 };
 
 template<typename ValueType>
@@ -151,6 +152,9 @@ PrismInput<ValueType> buildFromPrism(std::string const& prismFile, std::string c
     }
     if (buildOptions.choiceOrigins) {
         builderOptions.setBuildChoiceOrigins();
+    }
+    if (buildOptions.stateValuations) {
+        builderOptions.setBuildStateValuations();
     }
     result.model = storm::api::buildSparseModel<ValueType>(program, builderOptions);
     return result;

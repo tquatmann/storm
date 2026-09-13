@@ -17,7 +17,7 @@ class TraverseFormulaVisitor : public FormulaVisitor {
     explicit TraverseFormulaVisitor(std::function<bool(Formula const&)> callback);
 
     /*!
-     * Visits the given formula and, as far as the callback demands it, its subformulas.
+     * Visits the given formula and, as far as the callback demands it, its subformulas in pre-order.
      */
     void traverse(Formula const& f) const;
 
