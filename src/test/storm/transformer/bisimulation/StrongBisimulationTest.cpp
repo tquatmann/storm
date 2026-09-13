@@ -235,6 +235,28 @@ TEST(StrongBisimulationTest, InitLabelCombinedWithOtherLabel) {
     EXPECT_NEAR(checkFormula<ValueType>(quotient, formulaString), 0.0, 1e-12);
 }
 
+/*!
+ * With double arithmetic, 0.1 + 0.2 != 0.3, so a tolerance is needed to recognize that 1 and 2 are bisimilar.
+ */
+TEST(StrongBisimulationTest, FloatingPointRoundingNeedsTolerance) {
+    // 1 reaches {3, 4} via two transitions (0.1 and 0.2), 2 via a single one (0.3); both sums equal 0.3 mathematically but not as doubles.
+    storm::storage::SparseMatrixBuilder<ValueType> builder(6, 6);
+    builder.addNextValue(0, 1, 0.5);
+    builder.addNextValue(0, 2, 0.5);
+    builder.addNextValue(1, 3, 0.1);
+    builder.addNextValue(1, 4, 0.2);
+    builder.addNextValue(1, 5, 0.7);
+    builder.addNextValue(2, 3, 0.3);
+    builder.addNextValue(2, 5, 0.7);
+    builder.addNextValue(3, 3, 1.0);
+    builder.addNextValue(4, 4, 1.0);
+    builder.addNextValue(5, 5, 1.0);
+    auto const model = buildModel<storm::models::sparse::Dtmc<ValueType>>(builder.build(), {{"target", {3, 4}}});
+
+    EXPECT_EQ(5ull, storm::bisimulation::performBisimulationMinimization<ValueType>(*model, {}, strongOptions()).quotient->getNumberOfStates());
+    EXPECT_EQ(4ull, storm::bisimulation::performBisimulationMinimization<ValueType>(*model, {}, approximateOptions()).quotient->getNumberOfStates());
+}
+
 // ------------------------------------------------------------
 // Nondeterministic models
 // ------------------------------------------------------------

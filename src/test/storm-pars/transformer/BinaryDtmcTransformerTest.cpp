@@ -40,10 +40,10 @@ void testModelB(std::string programFile, std::string formulaAsString, std::strin
     storm::transformer::BinaryDtmcTransformer binaryDtmcTransformer;
     auto simpleDtmc = binaryDtmcTransformer.transform(*dtmc, true);
 
-    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, double> modelChecker(storm::Environment(),
+    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, storm::RationalNumber> modelChecker(storm::Environment(),
                                                                                                                                         *dtmc);
     modelChecker.specifyFormula(checkTask);
-    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, double> modelCheckerSimple(
+    storm::modelchecker::SparseDtmcInstantiationModelChecker<storm::models::sparse::Dtmc<storm::RationalFunction>, storm::RationalNumber> modelCheckerSimple(
         storm::Environment(), *simpleDtmc);
     modelCheckerSimple.specifyFormula(checkTask);
 
@@ -68,10 +68,10 @@ void testModelB(std::string programFile, std::string formulaAsString, std::strin
 
     storm::Environment env;
     for (auto const& instantiation : testInstantiations) {
-        auto result = modelChecker.check(env, instantiation)->asExplicitQuantitativeCheckResult<double>()[initialStateModel];
-        auto resultSimple = modelCheckerSimple.check(env, instantiation)->asExplicitQuantitativeCheckResult<double>()[initialStateModel];
-        ASSERT_TRUE(storm::utility::isAlmostZero(result - resultSimple))
-            << "Results " << result << " and " << resultSimple << " are not the same but should be.";
+        auto result = modelChecker.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
+        auto resultSimple = modelCheckerSimple.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
+        EXPECT_EQ(result, resultSimple)
+            << "Results ≈" << storm::utility::convertNumber<double>(result) << " and ≈" << storm::utility::convertNumber<double>(resultSimple) << " are not the same but should be.";
     }
 
     auto region = storm::api::createRegion<storm::RationalFunction>("0.4", *dtmc);
@@ -136,9 +136,7 @@ class BinaryDtmcTransformerTest : public ::testing::Test {
     }
 };
 
-TEST_F(BinaryDtmcTransformerTest, DISABLED_Crowds) {
-    // for some reason this test fails on some machines (on debian 12, but not on ubuntu 22.04)
-    // probably some exact model checking thing? no clue
+TEST_F(BinaryDtmcTransformerTest, Crowds) {
     std::string programFile = STORM_TEST_RESOURCES_DIR "/pdtmc/crowds3_5.pm";
     std::string formulaAsString = "P=? [F \"observeIGreater1\"]";
     std::string constantsAsString = "";  // e.g. pL=0.9,TOACK=0.5
