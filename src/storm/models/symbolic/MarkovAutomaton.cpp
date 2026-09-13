@@ -67,7 +67,6 @@ void MarkovAutomaton<Type, ValueType>::computeMarkovianChoicesAndStates() {
 
 template<storm::dd::DdType Type, typename ValueType>
 void MarkovAutomaton<Type, ValueType>::convertToExitRatesAndProbabilities() {
-
     std::set<storm::expressions::Variable> columnAndNondeterminsmVariables;
     std::set_union(this->getColumnVariables().begin(), this->getColumnVariables().end(), this->getNondeterminismVariables().begin(),
                    this->getNondeterminismVariables().end(), std::inserter(columnAndNondeterminsmVariables, columnAndNondeterminsmVariables.begin()));

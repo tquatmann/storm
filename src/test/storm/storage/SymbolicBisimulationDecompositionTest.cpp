@@ -342,8 +342,8 @@ TYPED_TEST(SymbolicModelBisimulationDecomposition, MarkovAutomatonExitRates) {
     // Also test exact building (Sylvan only) with conversion to double
     if constexpr (TestFixture::DdType == storm::dd::DdType::Sylvan) {
         std::shared_ptr<storm::models::symbolic::Model<DdType, storm::RationalNumber>> exactModel =
-            storm::api::buildSymbolicModel<DdType, storm::RationalNumber>(
-                this->env, modelDescription, std::vector<std::shared_ptr<storm::logic::Formula const>>(), /*buildFullModel=*/true);
+            storm::api::buildSymbolicModel<DdType, storm::RationalNumber>(this->env, modelDescription,
+                                                                          std::vector<std::shared_ptr<storm::logic::Formula const>>(), /*buildFullModel=*/true);
 
         exactModel->getManager().execute([&]() {
             auto exactMa = exactModel->template as<storm::models::symbolic::MarkovAutomaton<DdType, storm::RationalNumber>>();

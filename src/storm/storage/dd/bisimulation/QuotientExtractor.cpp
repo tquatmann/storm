@@ -1401,8 +1401,8 @@ QuotientExtractor<DdType, ValueType, ExportValueType>::extractQuotientUsingOrigi
             // obtained via the same representative-based projection as for the reward vectors above.
             auto const& ma = *model.template as<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>();
             auto quotientExitRateVector = ma.getExitRateVector()
-                                         .multiplyMatrix(partitionAsAdd, model.getRowVariables())
-                                         .renameVariablesAbstract(blockVariableSet, model.getRowVariables());
+                                              .multiplyMatrix(partitionAsAdd, model.getRowVariables())
+                                              .renameVariablesAbstract(blockVariableSet, model.getRowVariables());
             result =
                 std::shared_ptr<storm::models::symbolic::MarkovAutomaton<DdType, ValueType>>(new storm::models::symbolic::MarkovAutomaton<DdType, ValueType>(
                     model.getManager().asSharedPointer(),
