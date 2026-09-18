@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <set>
 
 #include "storm/adapters/IntervalForward.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
@@ -32,7 +31,7 @@ struct SignatureRefinementContext {
 
     struct Cache {
         Cache(Partition const& partition) : predecessorToPivotBlocks(partition.getNumberOfElements()), predecessorBlocks(partition) {}
-        SparseAccumulator<std::set<uint64_t>> predecessorToPivotBlocks;
+        WrappingSetAccumulator predecessorToPivotBlocks;
         Partition::NonSuperBlockSet predecessorBlocks;
     } cache;
 };
@@ -100,7 +99,7 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
         auto [noPredecessors, predecessors] =
             predecessorToPivotBlocks.getNonDefaultStates().size() < predecessorBlock.size()
                 ? context.partition.splitBlockByRange(predecessorBlock, predecessorToPivotBlocks.getNonDefaultStates())
-                : context.partition.splitBlockByPredicate(predecessorBlock, [&toPivotBlocks](auto const& state) { return !toPivotBlocks[state].empty(); });
+                : context.partition.splitBlockByPredicate(predecessorBlock, [&toPivotBlocks](auto const& state) { return toPivotBlocks[state] != 0ull; });
 
         // At least one state should be a predecessor of the pivot block (otherwise we wouldn't have found that block above)
         STORM_LOG_ASSERT(!predecessors.empty(), "The predecessor block should contain at least one predecessor state.");
@@ -112,8 +111,7 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
                 predecessors, [&toPivotBlocks](uint64_t const state1, uint64_t const state2) { return toPivotBlocks[state1] < toPivotBlocks[state2]; });
         } else {
             STORM_LOG_ASSERT(
-                std::all_of(predecessors.begin(), predecessors.end(),
-                            [&toPivotBlocks](uint64_t const& state) { return toPivotBlocks[state].size() == 1 && *toPivotBlocks[state].begin() == 0; }),
+                std::all_of(predecessors.begin(), predecessors.end(), [&toPivotBlocks](uint64_t const& state) { return toPivotBlocks[state] == 1ull; }),
                 "Expected all predecessor states to reach the pivot block.");
         }
 
