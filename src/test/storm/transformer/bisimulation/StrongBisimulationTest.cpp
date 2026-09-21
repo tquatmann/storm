@@ -7,6 +7,7 @@
 #include <set>
 
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/transformer/StatePermuter.h"
 
 namespace {
@@ -21,6 +22,24 @@ using storm::test::bisimulation::StateLabelPreservation;
 using storm::test::bisimulation::strongOptions;
 
 using ValueType = double;
+
+/*!
+ * Checks that every quotient choice is the image of at least one choice of every state of the corresponding block, which is what makes it possible to
+ * translate a scheduler for the quotient back to the original model.
+ */
+void checkChoiceMapping(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::ReturnType<ValueType> const& result) {
+    ASSERT_TRUE(result.toQuotientChoiceMapping.has_value());
+    ASSERT_EQ(model.getNumberOfChoices(), result.toQuotientChoiceMapping->size());
+    for (uint64_t state = 0; state < model.getNumberOfStates(); ++state) {
+        auto const quotientChoices = result.quotient->getTransitionMatrix().getRowGroupIndices(result.toQuotientStateMapping[state]);
+        std::set<uint64_t> const expectedChoices(quotientChoices.begin(), quotientChoices.end());
+        std::set<uint64_t> mappedChoices;
+        for (uint64_t const choice : model.getTransitionMatrix().getRowGroupIndices(state)) {
+            mappedChoices.insert((*result.toQuotientChoiceMapping)[choice]);
+        }
+        EXPECT_EQ(expectedChoices, mappedChoices) << "unexpected quotient choices for the choices of state " << state;
+    }
+}
 
 /*!
  * Checks the number of states, transitions and choices of the bisimulation quotient of the model built from the given PRISM file, plus that the quotient
@@ -40,7 +59,11 @@ void testQuotient(std::string const& prismFile, std::string const& formulaString
     auto const input = buildFromPrism<ValueType>(prismFile, formulaString, buildOptions);
     ASSERT_EQ(expectedModelStates, input.model->getNumberOfStates());
 
-    auto const quotient = storm::bisimulation::performBisimulationMinimization<ValueType>(*input.model, input.formulas, options).quotient;
+    Options quotientOptions = options;
+    quotientOptions.createQuotientChoiceMapping = true;  // Does not affect the quotient, but lets us check the mapping.
+    auto const result = storm::bisimulation::performBisimulationMinimization<ValueType>(*input.model, input.formulas, quotientOptions);
+    auto const& quotient = result.quotient;
+    checkChoiceMapping(*input.model, result);
     EXPECT_EQ(input.model->getType(), quotient->getType());
     EXPECT_EQ(expectedStates, quotient->getNumberOfStates());
     EXPECT_EQ(expectedTransitions, quotient->getNumberOfTransitions());
@@ -320,7 +343,7 @@ TEST(StrongBisimulationTest, ChoiceOrderMattersIfActionSensitive) {
 
 /*!
  * With a positive tolerance, two states are bisimilar if every choice of one has an approximately equal choice in the other. That partner does not need to be
- * at the same position of the (sorted) signature.
+ * at the same position of the (sorted) signature, and it does not have to be a different one for every choice.
  */
 TEST(StrongBisimulationTest, ApproximateChoicePartnersAtDifferentPositions) {
     // States 0 and 1 have three choices each over "goal" (2) and "sink" (3). Every choice has a partner within 0.01 in the other state, but the middle
@@ -350,6 +373,63 @@ TEST(StrongBisimulationTest, ApproximateChoicePartnersAtDifferentPositions) {
     Options options = strongOptions();
     options.tolerance = storm::utility::convertNumber<storm::RationalNumber>(0.02);  // i.e., halfTolerance 0.01
     EXPECT_EQ(3ull, storm::bisimulation::performBisimulationMinimization<ValueType>(*model, {}, options).quotient->getNumberOfStates());
+
+    // The choices 0.001 and 0.019 of state 0 both only have the partner 0.010 in state 1, so the quotient choices cannot be matched with the choices of
+    // state 1 one-to-one.
+    options.createQuotientChoiceMapping = true;
+    STORM_SILENT_EXPECT_THROW(storm::bisimulation::performBisimulationMinimization<ValueType>(*model, {}, options), storm::exceptions::UnexpectedException);
+}
+
+/*!
+ * A choice can be approximately equal to several choices of the representative state of its block. Mapping two choices of a state to the same quotient choice
+ * would leave another quotient choice without a choice of that state, so the mapping has to be one-to-one.
+ */
+TEST(StrongBisimulationTest, ApproximateChoiceMappingIsOneToOne) {
+    // The states 0 and 1 (and, analogously, 4 and 5) have three choices each over "goal" (2) and "sink" (3). With tolerance 0.2, the two states of such a
+    // pair are bisimilar (their choices are pairwise 0.05 apart), while the choices of a single state are more than 0.1 apart. Some choices are within the
+    // tolerance of two choices of the other state, e.g. 0.15 of state 1 is within 0.2 of both, 0.1 and 0.32 of state 0. The second pair mirrors the first one
+    // (p vs. 1-p), so that one of them is affected no matter how the signatures are sorted and which state of a pair is the representative.
+    storm::storage::SparseMatrixBuilder<ValueType> builder(14, 6, 0, true, true, 6);  // States 4 and 5 have no predecessors, so we force the dimensions.
+    auto const addChoice = [&builder](uint64_t const row, ValueType const goalProbability) {
+        builder.addNextValue(row, 2, goalProbability);
+        builder.addNextValue(row, 3, storm::utility::one<ValueType>() - goalProbability);
+    };
+    builder.newRowGroup(0);  // state 0
+    addChoice(0, 0.1);
+    addChoice(1, 0.32);
+    addChoice(2, 0.5);
+    builder.newRowGroup(3);  // state 1
+    addChoice(3, 0.15);
+    addChoice(4, 0.27);
+    addChoice(5, 0.45);
+    builder.newRowGroup(6);
+    builder.addNextValue(6, 2, 1.0);  // state 2, absorbing and labeled "goal"
+    builder.newRowGroup(7);
+    builder.addNextValue(7, 3, 1.0);  // state 3, absorbing and labeled "sink"
+    builder.newRowGroup(8);           // state 4
+    addChoice(8, 0.5);
+    addChoice(9, 0.68);
+    addChoice(10, 0.9);
+    builder.newRowGroup(11);  // state 5
+    addChoice(11, 0.55);
+    addChoice(12, 0.73);
+    addChoice(13, 0.85);
+    auto const model = buildModel<storm::models::sparse::Mdp<ValueType>>(builder.build(), {{"goal", {2}}, {"sink", {3}}});
+
+    Options options = strongOptions();
+    options.tolerance = storm::utility::convertNumber<storm::RationalNumber>(0.2);  // i.e., halfTolerance 0.1
+    options.createQuotientChoiceMapping = true;
+    auto const result = storm::bisimulation::performBisimulationMinimization<ValueType>(*model, {}, options);
+    ASSERT_EQ(4ull, result.quotient->getNumberOfStates());  // {0,1}, {2}, {3}, {4,5}
+    ASSERT_EQ(8ull, result.quotient->getNumberOfChoices());
+    checkChoiceMapping(*model, result);
+
+    // Within a pair, the i'th choices of the two states are only close to each other, so they share their quotient choice.
+    auto const& mapping = *result.toQuotientChoiceMapping;
+    for (uint64_t i = 0; i < 3; ++i) {
+        EXPECT_EQ(mapping[i], mapping[3 + i]) << "unexpected quotient choice for the choices " << i << " and " << (3 + i);
+        EXPECT_EQ(mapping[8 + i], mapping[11 + i]) << "unexpected quotient choice for the choices " << (8 + i) << " and " << (11 + i);
+    }
 }
 
 /*!

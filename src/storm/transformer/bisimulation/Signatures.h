@@ -92,7 +92,11 @@ class Signatures {
      * Fills in the choice mappings of the given (already state-mapped) quotient data: for every quotient state, the choices of its representative state
      * are deduplicated (exactly or up to tolerance, depending on Mode) into the quotient choices.
      * @param createQuotientChoiceMapping if set, every original model choice is additionally mapped to the quotient choice that represents it
-     * (QuotientData::SignatureData::toQuotientChoice). If not set, that (comparatively expensive) mapping is left empty.
+     *   (SignatureData::toQuotientChoice). For each original model state, this mapping is surjective onto the choices of the corresponding quotient state,
+     *   so that, e.g., a scheduler for the quotient can be translated back to the original model.
+     *   If not set, that (comparatively expensive) mapping remains empty.
+     * @throws UnexpectedException if the choices of a state cannot be related to the choices of the state representing it in the quotient, which can happen
+     *   in approximative mode since approximate equality is not transitive.
      */
     void extendQuotientData(QuotientData<ValueType>& quotientData, bool const createQuotientChoiceMapping) const;
 
@@ -115,6 +119,9 @@ class Signatures {
         using ComparisonResult = std::conditional_t<Mode == SignatureMode::Exact, std::strong_ordering, std::weak_ordering>;
         // Strict weak order for sorting/lower_bound. In approximative mode, ties don't imply approximate equality - see StateSignature::find.
         ComparisonResult compare(ChoiceSignature const& other) const;
+        // True iff the two signatures have the same structure and their distr values pairwise differ by at most the given tolerance.
+        bool approximatelyEqual(ChoiceSignature const& other, ValueType const& tolerance) const
+            requires(Mode == SignatureMode::Approximative);
     };
 
     using ChoiceSignatureIterator = typename std::vector<ChoiceSignature>::const_iterator;
@@ -150,6 +157,20 @@ class Signatures {
 
         std::vector<ChoiceSignature> choices;  // Always ordered and deduplicated as described above.
     };
+
+    /*!
+     * Assigns to every choice of the given state the quotient choice that represents it, i.e., fills the corresponding entries of toQuotientChoice.
+     * The assignment is surjective on the quotient choices of the corresponding quotient state, so that, e.g., a scheduler for the quotient can be translated
+     * back to this state. Moreover, the values of a choice and those of the quotient choice representing it differ by at most the tolerance this instance was
+     * created with.
+     * @throws UnexpectedException if no such assignment is found, cf. extendQuotientData.
+     * @param state a state of the block that representativeSignature belongs to
+     * @param representativeSignature the signature of the representative state of that block
+     * @param choiceSignatureToQuotientChoiceIndex assigns to each index of representativeSignature.choices the quotient choice derived from it
+     * @param toQuotientChoice out-parameter, cf. QuotientData::toQuotientChoice
+     */
+    void addQuotientChoiceMapping(uint64_t const state, StateSignature const& representativeSignature,
+                                  std::vector<uint64_t> const& choiceSignatureToQuotientChoiceIndex, std::vector<uint64_t>& toQuotientChoice) const;
 
     /*!
      * Builds the signature of the given choice index.

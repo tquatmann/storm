@@ -2,13 +2,17 @@
 
 #include <algorithm>
 #include <limits>
+#include <set>
 
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
+#include "storm/exceptions/UnexpectedException.h"
 #include "storm/models/sparse/Model.h"
 #include "storm/storage/SparseMatrix.h"
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
+#include "storm/utility/matching.h"
+#include "storm/utility/vector.h"
 
 namespace storm::bisimulation {
 
@@ -95,6 +99,23 @@ auto Signatures<ValueType, Mode>::ChoiceSignature::compare(ChoiceSignature const
         }
     }
     return ComparisonResult::equivalent;
+}
+
+template<typename ValueType, SignatureMode Mode>
+bool Signatures<ValueType, Mode>::ChoiceSignature::approximatelyEqual(ChoiceSignature const& other, ValueType const& tolerance) const
+    requires(Mode == SignatureMode::Approximative)
+{
+    if (compareStructure(other) != 0) {
+        return false;
+    }
+    auto otherIt = other.distr.begin();
+    for (auto const& [block, value] : distr) {
+        if (storm::utility::abs<ValueType>(value - otherIt->second) > tolerance) {
+            return false;
+        }
+        ++otherIt;
+    }
+    return true;
 }
 
 template<typename ValueType, SignatureMode Mode>
@@ -381,12 +402,74 @@ bool Signatures<ValueType, Mode>::SplitCondition::operator()(uint64_t const stat
 }
 
 template<typename ValueType, SignatureMode Mode>
+void Signatures<ValueType, Mode>::addQuotientChoiceMapping(uint64_t const state, StateSignature const& representativeSignature,
+                                                           std::vector<uint64_t> const& choiceSignatureToQuotientChoiceIndex,
+                                                           std::vector<uint64_t>& toQuotientChoice) const {
+    constexpr uint64_t Invalid = std::numeric_limits<uint64_t>::max();
+    auto const& stateSignature = stateSignatureCache[state];
+    auto const choiceIndices = model.getTransitionMatrix().getRowGroupIndices(state);
+    STORM_LOG_ASSERT(stateSignature.choices.size() == representativeSignature.choices.size(), "States in a block have different number of choice signatures.");
+
+    // Every choice of the state is represented by one of the state's own choice signatures. That representation is surjective, since each of those signatures
+    // was established from a choice of this state. It thus suffices to find a bijective matching between the choice signatures of the state and those of the
+    // representative: the composition of the two is surjective on the choice signatures of the representative as well. Such a surjective mapping is needed,
+    // as otherwise a scheduler for the quotient model could not be translated back to a choice for this state. Both steps are within halfTolerance, i.e. the
+    // values of a choice and those of the quotient choice representing it differ by at most the tolerance this instance was created with.
+    std::vector<uint64_t> choiceSignatureMatching;
+    if constexpr (Mode == SignatureMode::Exact) {
+        // The signatures of two states of the same block are equal entry-wise, so we can match them in order.
+        choiceSignatureMatching = storm::utility::vector::buildVectorForRange<uint64_t>(0, stateSignature.choices.size());
+        STORM_LOG_ASSERT(std::all_of(choiceSignatureMatching.begin(), choiceSignatureMatching.end(),
+                                     [&stateSignature, &representativeSignature](uint64_t const i) {
+                                         return stateSignature.choices[i].compare(representativeSignature.choices[i]) == std::strong_ordering::equal;
+                                     }),
+                         "In exact mode, choice signatures are expected to be equal for states in the same block.");
+    } else {
+        // In approximate mode, this is in fact a matching problem on a bipartite graph.
+        auto optionalChoiceSignatureMatching = storm::utility::findPerfectMatching(
+            stateSignature.choices.size(), [&stateSignature, &representativeSignature, this](uint64_t const stateChoice, uint64_t const representativeChoice) {
+                return stateSignature.choices[stateChoice].approximatelyEqual(representativeSignature.choices[representativeChoice], halfTolerance);
+            });
+        // Such a matching does not have to exist: approximate equality is not transitive, so two choice signatures of the state can have the same, single
+        // approximately equal partner in the representative's signature, which is not enough of a reason to split the block during refinement.
+        STORM_LOG_THROW(optionalChoiceSignatureMatching.has_value(), storm::exceptions::UnexpectedException,
+                        "Unable to match the choices of state " << state << " with the choices of the state that represents it in the quotient. "
+                                                                << "Try again with a smaller tolerance.");
+        choiceSignatureMatching = std::move(*optionalChoiceSignatureMatching);
+    }
+
+    for (uint64_t const choiceIndex : choiceIndices) {
+        auto [it, found] = stateSignature.find(getChoiceSignature(choiceIndex), halfTolerance);
+        STORM_LOG_ASSERT(found, "Expected to find the signature of a choice in the signature of its own state");
+        uint64_t const indexInStateSignature = std::distance(stateSignature.choices.begin(), it);
+        uint64_t const indexInRepresentativeSignature = choiceSignatureMatching[indexInStateSignature];
+        STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[indexInRepresentativeSignature] != Invalid,
+                         "Expected to have already seen this representative choice");
+        toQuotientChoice[choiceIndex] = choiceSignatureToQuotientChoiceIndex[indexInRepresentativeSignature];
+    }
+
+    // Finally, assert that we indeed have a surjective mapping
+    STORM_LOG_ASSERT(([&]() {
+                         std::set<uint64_t> seenQuotientChoices;
+                         for (uint64_t const choiceIndex : choiceIndices) {
+                             seenQuotientChoices.insert(toQuotientChoice[choiceIndex]);
+                         }
+                         return seenQuotientChoices.size() == representativeSignature.choices.size();
+                     }()),
+                     "The mapping from state choices to quotient choices is not surjective.");
+}
+
+template<typename ValueType, SignatureMode Mode>
 void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& quotientData, bool const createQuotientChoiceMapping) const {
     auto& signatureData = quotientData.signatureData.emplace();
     if (createQuotientChoiceMapping) {
         quotientData.toQuotientChoice.emplace(model.getNumberOfChoices(), 0);
     }
     signatureData.quotientChoiceGroupIndices.reserve(quotientData.toRepresentativeState.size() + 1);
+
+    // Scratch space for mappings, reused for every state.
+    std::vector<uint64_t> choiceSignatureToQuotientChoiceIndex;  // Maps choiceSignature indices to quotient model choice indices
+    constexpr uint64_t Invalid = std::numeric_limits<uint64_t>::max();
 
     for (uint64_t quotientState = 0; quotientState < quotientData.toRepresentativeState.size(); ++quotientState) {
         auto const representativeState = quotientData.toRepresentativeState[quotientState];
@@ -399,12 +482,12 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
         // effects downstream (e.g. different quality of the initial policy in policy iteration). For Markov automata with hybrid states, this is even necessary
         // to ensure that the Markovian choice remains the first one.
         // The choiceSignatureToQuotientChoiceIndex mapping below permutes the choices as they appear in representativeSignature into the right order.
-        std::vector<uint64_t> choiceSignatureToQuotientChoiceIndex(representativeSignature.choices.size(), std::numeric_limits<uint64_t>::max());
+        choiceSignatureToQuotientChoiceIndex.assign(representativeSignature.choices.size(), Invalid);
         for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(representativeState)) {
             auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance);
             STORM_LOG_ASSERT(found, "Expected to find the signature of representative state");
             uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
-            if (choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] == std::numeric_limits<uint64_t>::max()) {
+            if (choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] == Invalid) {
                 // We see this representative choice for the first time. Establish some mappings
                 uint64_t const quotientChoiceIndex = signatureData.toRepresentativeChoice.size();
                 choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] = quotientChoiceIndex;
@@ -425,23 +508,11 @@ void Signatures<ValueType, Mode>::extendQuotientData(QuotientData<ValueType>& qu
             }
         }
         if (createQuotientChoiceMapping) {
-            // Handle choice mappings for other blocks. This is comparatively expensive, since (unlike the representative's own choices above) it visits
-            // every choice of every non-representative state, so it is skipped entirely if the caller does not need toQuotientChoice.
+            // Handle choice mappings for the other states of the block. This is comparatively expensive, since (unlike the representative's own choices
+            // above) it visits every choice of every non-representative state, so it is skipped entirely if the caller does not need toQuotientChoice.
             for (uint64_t const state : partition.getBlockOfElement(representativeState)) {
-                if (state == representativeState) {
-                    continue;
-                }
-                for (uint64_t const choiceIndex : model.getTransitionMatrix().getRowGroupIndices(state)) {
-                    // This raw choice can be up to halfTolerance away from state's own canonical choice (established while updating state's signature
-                    // during refinement), which in turn can be up to halfTolerance away from the representative's canonical choice (established by
-                    // SplitCondition). Comparing the raw choice directly against the representative's canonical choice therefore spans two independent
-                    // halfTolerance steps, i.e. exactly the tolerance originally passed to this Signatures instance.
-                    auto [it, found] = representativeSignature.find(getChoiceSignature(choiceIndex), halfTolerance + halfTolerance);
-                    STORM_LOG_ASSERT(found, "Expected to find the signature of non-representative state");
-                    uint64_t const choiceSignatureIndex = std::distance(representativeSignature.choices.begin(), it);
-                    STORM_LOG_ASSERT(choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex] != std::numeric_limits<uint64_t>::max(),
-                                     "Expected to have already seen this representative choice");
-                    (*quotientData.toQuotientChoice)[choiceIndex] = choiceSignatureToQuotientChoiceIndex[choiceSignatureIndex];
+                if (state != representativeState) {
+                    addQuotientChoiceMapping(state, representativeSignature, choiceSignatureToQuotientChoiceIndex, *quotientData.toQuotientChoice);
                 }
             }
         }
