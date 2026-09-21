@@ -183,6 +183,22 @@ boost::any TraverseFormulaVisitor::visit(UntilFormula const& f, boost::any const
     return boost::any();
 }
 
+boost::any TraverseFormulaVisitor::visit(WeakUntilFormula const& f, boost::any const& data) const {
+    if (callback(f)) {
+        f.getLeftSubformula().accept(*this, data);
+        f.getRightSubformula().accept(*this, data);
+    }
+    return boost::any();
+}
+
+boost::any TraverseFormulaVisitor::visit(ReleaseFormula const& f, boost::any const& data) const {
+    if (callback(f)) {
+        f.getLeftSubformula().accept(*this, data);
+        f.getRightSubformula().accept(*this, data);
+    }
+    return boost::any();
+}
+
 boost::any TraverseFormulaVisitor::visit(HOAPathFormula const& f, boost::any const& data) const {
     if (callback(f)) {
         for (auto const& mapped : f.getAPMapping()) {
