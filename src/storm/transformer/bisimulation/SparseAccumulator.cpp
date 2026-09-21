@@ -24,7 +24,7 @@ std::vector<uint64_t> const& SparseAccumulator<ValueType>::getNonDefaultStates()
 
 template<typename ValueType>
 void SparseAccumulator<ValueType>::addValue(uint64_t const state, ValueType value) {
-    if constexpr (std::is_same_v<ValueType, uint64_t>) { // WrappingSetAccumulator case
+    if constexpr (std::is_same_v<ValueType, uint64_t>) {  // WrappingSetAccumulator case
         // We only store the value modulo 64, namely as a bit of the mask of the given state.
         if (values[state] == 0ull) {
             nonDefaultStates.push_back(state);
@@ -57,6 +57,6 @@ ValueType SparseAccumulator<ValueType>::defaultValue() {
 template class SparseAccumulator<double>;
 template class SparseAccumulator<storm::RationalNumber>;
 template class SparseAccumulator<storm::RationalFunction>;
-template class SparseAccumulator<uint64_t>; // WrappingSetAccumulator
+template class SparseAccumulator<uint64_t>;  // WrappingSetAccumulator
 
 }  // namespace storm::bisimulation
