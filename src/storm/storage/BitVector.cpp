@@ -393,6 +393,7 @@ BitVector& BitVector::operator^=(BitVector const& other) {
     STORM_LOG_ASSERT(bitCount == other.bitCount, "Length of the bit vectors does not match.");
     std::transform(this->buckets, this->buckets + this->bucketCount(), other.buckets, this->buckets,
                    [](uint64_t const& a, uint64_t const& b) { return a ^ b; });
+    truncateLastBucket();
     return *this;
 }
 
