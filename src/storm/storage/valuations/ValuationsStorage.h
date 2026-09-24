@@ -513,6 +513,16 @@ class ValuationsStorage {
     explicit ValuationsStorage(std::vector<VariablesInformation> const& variableClasses);
 
     VariablesInformation const& info(uint64_t entity) const;
+
+    /*!
+     * @return true iff the given value can be encoded within the bit size of the (integer) type of the given variable, i.e. iff it lies in
+     * [-2^(bitSize-1), 2^(bitSize-1)) for a signed type and in [0, 2^bitSize) for an unsigned type.
+     * @note The given value is compared to the encodable range directly. In particular, the bounds and the offset of the variable are not taken into account.
+     * If the offset is non-zero, callers have to subtract it from the value beforehand.
+     */
+    template<typename ValueType>
+    bool fitsIntoStoredType(ValueType const& value, VariableInformation const& varInfo) const;
+
     std::span<char const> getRawBytes(uint64_t entity) const;
     std::span<char> getRawBytes(uint64_t entity);
 
@@ -759,6 +769,9 @@ class ValuationsStorage {
                                 value -= storm::utility::convertNumber<ValueType>(offset);
                             }
                         }
+                        STORM_LOG_THROW(fitsIntoStoredType(value, varInfo), storm::exceptions::OutOfRangeException,
+                                        "Value " << value << " does not fit into the " << varInfo.description.type.toString() << " variable "
+                                                 << varInfo.description.name << ".");
                     }
                     // Write the value
                     writeValue(getRawBytes(entity), varInfo.bitOffset, varInfo.description.type.bitSize(), value);
