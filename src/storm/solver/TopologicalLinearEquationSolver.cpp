@@ -210,8 +210,9 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
 }
 
 template<typename ValueType>
-bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::StronglyConnectedComponent const& scc, storm::storage::BitVector const& sccAsBitVector,
-                                                          std::vector<ValueType>& globalX, std::vector<ValueType> const& globalB,
+bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::StronglyConnectedComponent const& scc,
+                                                          storm::storage::BitVector const& sccAsBitVector, std::vector<ValueType>& globalX,
+                                                          std::vector<ValueType> const& globalB,
                                                           std::optional<storm::storage::BitVector> const& globalRelevantValues) const {
     // Restricts a vector indexed by states to the states of the scc
     auto restrictToScc = [&scc](std::vector<ValueType> const& globalVector) {
