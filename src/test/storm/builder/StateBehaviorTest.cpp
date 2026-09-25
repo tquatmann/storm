@@ -1,0 +1,88 @@
+#include "storm-config.h"
+#include "test/storm_gtest.h"
+
+#include "storm/generator/StateBehavior.h"
+
+TEST(StateBehaviorTest, StartNewChoiceAndClear) {
+    storm::generator::StateBehavior<double> behavior;
+    EXPECT_TRUE(behavior.empty());
+    EXPECT_FALSE(behavior.wasExpanded());
+
+    auto& c0 = behavior.startNewChoice(3, true);
+    c0.addProbability(1, 0.25);
+    c0.addProbability(2, 0.75);
+    c0.getRewards().push_back(5.0);
+    auto& c1 = behavior.startNewChoice(4);
+    c1.addProbability(0, 1.0);
+    behavior.setExpanded();
+    behavior.addStateReward(2.0);
+
+    ASSERT_EQ(2u, behavior.getNumberOfChoices());
+    ASSERT_EQ(2u, behavior.getChoices().size());
+    EXPECT_EQ(3u, behavior.getChoices()[0].getActionIndex());
+    EXPECT_TRUE(behavior.getChoices()[0].isMarkovian());
+    EXPECT_EQ(2u, behavior.getChoices()[0].size());
+    EXPECT_EQ(4u, behavior.getChoices()[1].getActionIndex());
+    EXPECT_EQ(2, std::distance(behavior.begin(), behavior.end()));
+
+    behavior.clear();
+    EXPECT_TRUE(behavior.empty());
+    EXPECT_FALSE(behavior.wasExpanded());
+    EXPECT_EQ(0u, behavior.getNumberOfChoices());
+    EXPECT_EQ(0, std::distance(behavior.begin(), behavior.end()));
+    EXPECT_TRUE(behavior.getStateRewards().empty());
+
+    // The reused choice must be completely reset
+    auto& reused = behavior.startNewChoice(7);
+    EXPECT_EQ(7u, reused.getActionIndex());
+    EXPECT_FALSE(reused.isMarkovian());
+    EXPECT_EQ(0u, reused.size());
+    EXPECT_TRUE(reused.getRewards().empty());
+    EXPECT_FALSE(reused.hasLabels());
+    EXPECT_FALSE(reused.hasOriginData());
+    EXPECT_DOUBLE_EQ(0.0, reused.getTotalMass());
+    EXPECT_EQ(1u, behavior.getNumberOfChoices());
+}
+
+TEST(StateBehaviorTest, AddChoiceAndRemove) {
+    storm::generator::StateBehavior<double> behavior;
+    for (uint64_t i = 0; i < 4; ++i) {
+        storm::generator::Choice<double> choice(i);
+        choice.addProbability(i, 1.0);
+        behavior.addChoice(std::move(choice));
+    }
+    ASSERT_EQ(4u, behavior.getNumberOfChoices());
+    behavior.removeLastChoices(2);
+    ASSERT_EQ(2u, behavior.getNumberOfChoices());
+    EXPECT_EQ(1u, behavior.getChoices().back().getActionIndex());
+    // Adding after removal reuses the slot
+    storm::generator::Choice<double> choice(9);
+    behavior.addChoice(std::move(choice));
+    ASSERT_EQ(3u, behavior.getNumberOfChoices());
+    EXPECT_EQ(9u, behavior.getChoices().back().getActionIndex());
+    behavior.clearChoices();
+    EXPECT_TRUE(behavior.empty());
+}
+
+TEST(StateBehaviorTest, CopyOnlyContainsActiveChoices) {
+    storm::generator::StateBehavior<double> behavior;
+    behavior.startNewChoice(1).addProbability(0, 1.0);
+    behavior.startNewChoice(2).addProbability(1, 1.0);
+    behavior.startNewChoice(3).addProbability(2, 1.0);
+    behavior.addStateReward(1.5);
+    behavior.setExpanded();
+    behavior.removeLastChoices(2);  // Only the first choice is active
+
+    storm::generator::StateBehavior<double> copy(behavior);
+    EXPECT_EQ(1u, copy.getNumberOfChoices());
+    EXPECT_EQ(1, std::distance(copy.begin(), copy.end()));
+    EXPECT_TRUE(copy.wasExpanded());
+    ASSERT_EQ(1u, copy.getStateRewards().size());
+
+    storm::generator::StateBehavior<double> assigned;
+    assigned.startNewChoice(5);
+    assigned.startNewChoice(6);
+    assigned = behavior;
+    EXPECT_EQ(1u, assigned.getNumberOfChoices());
+    EXPECT_EQ(1u, assigned.getChoices()[0].getActionIndex());
+}
