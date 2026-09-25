@@ -47,7 +47,7 @@ class TopologicalMinMaxLinearEquationSolver : public StandardMinMaxLinearEquatio
                                            std::vector<ValueType> const& b) const;
     // ... for the remaining cases (1 < scc.size() < x.size())
     bool solveScc(storm::Environment const& sccSolverEnvironment, OptimizationDirection d, storm::storage::StronglyConnectedComponent const& scc,
-                  std::vector<SolutionType>& globalX, std::vector<ValueType> const& globalB,
+                  storm::storage::BitVector const& sccAsBitVector, std::vector<SolutionType>& globalX, std::vector<ValueType> const& globalB,
                   std::optional<storm::storage::BitVector> const& globalRelevantValues) const;
 
     // cached auxiliary data

@@ -114,6 +114,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSol
                 }
             }
         }
+        storm::storage::BitVector sccAsBitVector(x.size(), false);
         uint64_t sccIndex = 0;
         storm::utility::ProgressMeasurement progress("states", env.solver().getShowProgressDelay());
         progress.setMaxCount(x.size());
@@ -123,7 +124,18 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::internalSol
                 returnValue = solveTrivialScc(*scc.begin(), dir, x, b) && returnValue;
             } else {
                 STORM_LOG_TRACE("Solving SCC of size " << scc.size() << ".");
-                returnValue = solveScc(sccSolverEnvironment, dir, scc, x, b, newRelevantValues) && returnValue;
+                for (auto const& state : scc) {
+                    sccAsBitVector.set(state, true);
+                }
+                returnValue = solveScc(sccSolverEnvironment, dir, scc, sccAsBitVector, x, b, newRelevantValues) && returnValue;
+                // clear sccAsBitVector, either by clearing all bits or by clearing the bits of the current SCC (if its small)
+                if (scc.size() * 64 < sccAsBitVector.size()) {
+                    for (auto const& state : scc) {
+                        sccAsBitVector.set(state, false);
+                    }
+                } else {
+                    sccAsBitVector.clear();
+                }
             }
             ++sccIndex;
             progress.updateProgress(sccIndex);
@@ -286,6 +298,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::solveFullyC
 template<typename ValueType, typename SolutionType>
 bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::solveScc(storm::Environment const& sccSolverEnvironment, OptimizationDirection dir,
                                                                               storm::storage::StronglyConnectedComponent const& scc,
+                                                                              storm::storage::BitVector const& sccAsBitVector,
                                                                               std::vector<SolutionType>& globalX, std::vector<ValueType> const& globalB,
                                                                               std::optional<storm::storage::BitVector> const& globalRelevantValues) const {
     // Restricts a vector indexed by row groups to the states of the scc
@@ -377,7 +390,7 @@ bool TopologicalMinMaxLinearEquationSolver<ValueType, SolutionType>::solveScc(st
         for (uint64_t row = rowBegin; row < rowEnd; ++row) {
             ValueType bi = globalB[row];
             for (auto const& entry : this->A->getRow(row)) {
-                if (!scc.containsState(entry.getColumn())) {
+                if (!sccAsBitVector.get(entry.getColumn())) {
                     bi += entry.getValue() * globalX[entry.getColumn()];
                 }
             }

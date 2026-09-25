@@ -108,6 +108,7 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
                 }
             }
         }
+        storm::storage::BitVector sccAsBitVector(x.size(), false);
         uint64_t sccIndex = 0;
         storm::utility::ProgressMeasurement progress("states", env.solver().getShowProgressDelay());
         progress.setMaxCount(x.size());
@@ -116,7 +117,18 @@ bool TopologicalLinearEquationSolver<ValueType>::internalSolveEquations(Environm
             if (scc.size() == 1) {
                 returnValue = solveTrivialScc(*scc.begin(), x, b) && returnValue;
             } else {
-                returnValue = solveScc(sccSolverEnvironment, scc, x, b, newRelevantValues) && returnValue;
+                for (auto const& state : scc) {
+                    sccAsBitVector.set(state, true);
+                }
+                returnValue = solveScc(sccSolverEnvironment, scc, sccAsBitVector, x, b, newRelevantValues) && returnValue;
+                // clear sccAsBitVector, either by clearing all bits or by clearing the bits of the current SCC (if its small)
+                if (scc.size() * 64 < sccAsBitVector.size()) {
+                    for (auto const& state : scc) {
+                        sccAsBitVector.set(state, false);
+                    }
+                } else {
+                    sccAsBitVector.clear();
+                }
             }
             ++sccIndex;
             progress.updateProgress(sccIndex);
@@ -198,7 +210,7 @@ bool TopologicalLinearEquationSolver<ValueType>::solveFullyConnectedEquationSyst
 }
 
 template<typename ValueType>
-bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::StronglyConnectedComponent const& scc,
+bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment const& sccSolverEnvironment, storm::storage::StronglyConnectedComponent const& scc, storm::storage::BitVector const& sccAsBitVector,
                                                           std::vector<ValueType>& globalX, std::vector<ValueType> const& globalB,
                                                           std::optional<storm::storage::BitVector> const& globalRelevantValues) const {
     // Restricts a vector indexed by states to the states of the scc
@@ -245,7 +257,7 @@ bool TopologicalLinearEquationSolver<ValueType>::solveScc(storm::Environment con
     for (uint64_t const row : scc) {
         ValueType bi = globalB[row];
         for (auto const& entry : this->A->getRow(row)) {
-            if (!scc.containsState(entry.getColumn())) {
+            if (!sccAsBitVector.get(entry.getColumn())) {
                 bi += entry.getValue() * globalX[entry.getColumn()];
             }
         }
