@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <boost/optional/optional.hpp>
 #include <cstdint>
 #include <limits>
 #include <vector>
-#include <boost/optional/optional.hpp>
 
 #include "storm/exceptions/InvalidArgumentException.h"
 #include "storm/storage/BitVector.h"
@@ -106,8 +106,9 @@ class SubmatrixBuilder {
     };
 
     /*!
-     * Calls f(row, diagonalIndex) for every selected row in ascending order. Also calls g(row) right before the first row of a new (nonempty) row group (only if there is a nontrivial row grouping).
-     * In group mode, the diagonal index of a row is the index of its group in the submatrix, otherwise it is the index of the row in the submatrix.
+     * Calls f(row, diagonalIndex) for every selected row in ascending order. Also calls g(row) right before the first row of a new (nonempty) row group (only
+     * if there is a nontrivial row grouping). In group mode, the diagonal index of a row is the index of its group in the submatrix, otherwise it is the index
+     * of the row in the submatrix.
      */
     template<bool GroupMode, typename ConstraintType, typename RowFunc, typename NewGroupFunc>
     void forEachSelectedRow(ConstraintType const& rowConstraint, RowFunc&& f, NewGroupFunc&& g) const {
