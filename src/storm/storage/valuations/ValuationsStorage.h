@@ -521,6 +521,7 @@ class ValuationsStorage {
      * If the offset is non-zero, callers have to subtract it from the value beforehand.
      */
     template<typename ValueType>
+        requires(std::is_same_v<ValueType, int64_t> || std::is_same_v<ValueType, uint64_t> || std::is_same_v<ValueType, Integer>)
     bool fitsIntoStoredType(ValueType const& value, VariableInformation const& varInfo) const;
 
     std::span<char const> getRawBytes(uint64_t entity) const;

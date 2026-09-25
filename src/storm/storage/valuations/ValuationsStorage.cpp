@@ -382,8 +382,10 @@ ValuationsStorage::VariablesInformation const& ValuationsStorage::info(uint64_t 
 }
 
 template<typename ValueType>
+    requires(std::is_same_v<ValueType, int64_t> || std::is_same_v<ValueType, uint64_t> || std::is_same_v<ValueType, ValuationsStorage::Integer>)
 bool ValuationsStorage::fitsIntoStoredType(ValueType const& value, VariableInformation const& varInfo) const {
     auto const bitSize = varInfo.description.type.bitSize();
+    STORM_LOG_ASSERT(bitSize > 0, "Expected a positive bit size for variable " << varInfo.description.name << ".");
     bool const isSigned = varInfo.description.type.type == storm::umb::Type::Int;
     STORM_LOG_ASSERT(isSigned || varInfo.description.type.type == storm::umb::Type::Uint, "Expected an integer type.");
     if constexpr (std::is_same_v<ValueType, Integer>) {
@@ -499,8 +501,11 @@ void ValuationsStorage::writeUint64(std::span<char> bytes, uint64_t const bitOff
             // we have to write a partial byte at the end, so we need to read the existing byte and only overwrite the relevant bits
             char& lastByte = bytes[firstByte + numFullBytes];
             uint8_t const numBitsUsedInLastByte = (bitOffsetWithinByte + bitSize) % 8;
-            lastByte &= static_cast<char>(~((1 << numBitsUsedInLastByte) - 1));                // set relevant bits to zero
-            lastByte |= static_cast<char>(value >> (numFullBytes * 8 - bitOffsetWithinByte));  // set relevant bits to the value bits
+            uint8_t const relevantBitsMask = static_cast<uint8_t>((uint8_t(1) << numBitsUsedInLastByte) - 1);  // e.g. 0000 0111 for 3 bits
+            uint8_t newLastByte = std::bit_cast<uint8_t>(lastByte);
+            newLastByte &= static_cast<uint8_t>(~relevantBitsMask);                                  // set relevant bits to zero
+            newLastByte |= static_cast<uint8_t>(value >> (numFullBytes * 8 - bitOffsetWithinByte));  // set relevant bits to the value bits
+            lastByte = std::bit_cast<char>(newLastByte);
         }
     }
 }
