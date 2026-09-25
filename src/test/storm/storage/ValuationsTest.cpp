@@ -1,3 +1,5 @@
+#include <ranges>
+
 #include "storm-config.h"
 #include "test/storm_gtest.h"
 
@@ -451,12 +453,8 @@ TEST(ValuationTest, ResizeInitializesAllNewEntitiesWithDefaults) {
     auto const b = manager->declareBooleanVariable("b");
     storm::storage::sparse::ValuationDescriptionBuilder descBuilder(manager);
     // The default value of i is its upper bound -3, whose bit representation is not zero
-    descBuilder.addVariable({.name = "i",
-                             .isOptional = std::nullopt,
-                             .type = {storm::umb::Type::Int, 8},
-                             .lower = std::nullopt,
-                             .upper = -3,
-                             .offset = std::nullopt});
+    descBuilder.addVariable(
+        {.name = "i", .isOptional = std::nullopt, .type = {storm::umb::Type::Int, 8}, .lower = std::nullopt, .upper = -3, .offset = std::nullopt});
     // The default value of r is 0/1 (and not 0/0)
     descBuilder.addRationalVariable(r, 16);
     descBuilder.addBooleanVariable(b);
@@ -537,7 +535,7 @@ TEST(ValuationTest, WriteRejectsValuesThatDoNotFitIntoStoredType) {
     using storm::exceptions::OutOfRangeException;
     using Integer = storm::storage::sparse::ValuationsStorage::Integer;
 
-    for (int64_t v = -8; v <= 7; ++v) {
+    for (int64_t v : std::views::iota(-8, 8)) {
         storage.writeValue<int64_t>(0, s, v);
         EXPECT_EQ(v, storage.readValue<int64_t>(0, s));
     }
@@ -550,7 +548,7 @@ TEST(ValuationTest, WriteRejectsValuesThatDoNotFitIntoStoredType) {
     STORM_SILENT_EXPECT_THROW(storage.writeValue<int64_t>(0, s, 8), OutOfRangeException);
     EXPECT_EQ(-8, storage.readValue<int64_t>(0, s));
 
-    for (int64_t v = 0; v <= 15; ++v) {
+    for (int64_t v : std::views::iota(0, 16)) {
         storage.writeValue<int64_t>(0, u, v);
         EXPECT_EQ(v, storage.readValue<int64_t>(0, u));
     }
@@ -558,4 +556,28 @@ TEST(ValuationTest, WriteRejectsValuesThatDoNotFitIntoStoredType) {
         STORM_SILENT_EXPECT_THROW(storage.writeValue<int64_t>(0, u, v), OutOfRangeException);
     }
     STORM_SILENT_EXPECT_THROW(storage.writeValue<Integer>(0, u, Integer(-1)), OutOfRangeException);
+}
+
+TEST(ValuationTest, FailedWriteDoesNotSetPresenceBitOfOptionalVariable) {
+    auto manager = std::make_shared<storm::expressions::ExpressionManager>();
+    auto const i = manager->declareIntegerVariable("i");
+    storm::storage::sparse::ValuationDescriptionBuilder descBuilder(manager);
+    descBuilder.addIntegerVariable(i, 0, 5, true);
+    storm::storage::sparse::ValuationsStorage storage(descBuilder.buildClassDescription(), manager);
+    storage.emplaceBack<true>([](auto, auto, auto&) { /* leave optional variable unset */ });
+    auto isSet = [&storage, &i]() {
+        bool result = false;
+        storage.readCallback<std::nullopt_t, int64_t>(
+            0, i, [&result](auto, auto, auto const& value) { result = !std::is_same_v<std::remove_cvref_t<decltype(value)>, std::nullopt_t>; });
+        return result;
+    };
+    ASSERT_FALSE(isSet());
+    // Out of the variable's bounds
+    auto writeOutOfBounds = [&storage, &i]() { storage.writeCallback<false, true, int64_t>(0, i, [](auto, auto, auto& value) { value = 10; }); };
+    STORM_SILENT_EXPECT_THROW(writeOutOfBounds(), storm::exceptions::OutOfRangeException);
+    EXPECT_FALSE(isSet());
+    // Successful write
+    storage.writeCallback<false, true, int64_t>(0, i, [](auto, auto, auto& value) { value = 3; });
+    ASSERT_TRUE(isSet());
+    EXPECT_EQ(3, storage.readValue<int64_t>(0, i));
 }
