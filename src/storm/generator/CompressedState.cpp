@@ -1,6 +1,7 @@
 #include "storm/generator/CompressedState.h"
 
 #include <array>
+#include <span>
 #include <vector>
 
 #include <boost/algorithm/string/join.hpp>
@@ -44,9 +45,14 @@ namespace {
 template<uint64_t StackCapacity = 16>
 class StackedIndexVector {
    public:
-    StackedIndexVector(uint64_t size) : heapData(size > StackCapacity ? size : 0, 0) {
+    explicit StackedIndexVector(uint64_t size) : heapData(size > StackCapacity ? size : 0, 0) {
         data = size > StackCapacity ? std::span<uint64_t>(heapData) : std::span<uint64_t>(stackData).subspan(0, size);
     }
+    // The span points into this object. Thus, copying or moving would result in dangling pointers.
+    StackedIndexVector(StackedIndexVector const&) = delete;
+    StackedIndexVector(StackedIndexVector&&) = delete;
+    StackedIndexVector& operator=(StackedIndexVector const&) = delete;
+    StackedIndexVector& operator=(StackedIndexVector&&) = delete;
     std::span<uint64_t> get() {
         return data;
     }

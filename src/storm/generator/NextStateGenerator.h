@@ -173,6 +173,7 @@ class NextStateGenerator {
     void postprocess(StateBehavior<ValueType, StateType>& result);
 
     /// The behavior of the most recently expanded state. It is reused for every call of expand to avoid allocations.
+    /// @note As a consequence, expand is not thread-safe: A next state generator must not be used concurrently from multiple threads.
     StateBehavior<ValueType, StateType> currentStateBehavior;
 
     /// The options to be used for next-state generation.

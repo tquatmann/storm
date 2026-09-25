@@ -623,7 +623,34 @@ void JaniNextStateGenerator<ValueType, StateType>::addStateValuation(storm::stor
 }
 
 template<typename ValueType, typename StateType>
+bool JaniNextStateGenerator<ValueType, StateType>::evaluatorHoldsState(CompressedState const& state) const {
+    // Values that can not be represented exactly by the evaluator (e.g., double-based) are not compared.
+    auto const exactlyRepresentable = [](int64_t value) { return value > -(int64_t(1) << 52) && value < (int64_t(1) << 52); };
+    for (auto const& locationVariable : this->variableInformation.locationVariables) {
+        int64_t const expected =
+            locationVariable.bitWidth == 0 ? 0 : static_cast<int64_t>(state.getAsInt(locationVariable.bitOffset, locationVariable.bitWidth));
+        if (this->evaluator->asInt(locationVariable.variable.getExpression()) != expected) {
+            return false;
+        }
+    }
+    for (auto const& booleanVariable : this->variableInformation.booleanVariables) {
+        if (this->evaluator->asBool(booleanVariable.variable.getExpression()) != state.get(booleanVariable.bitOffset)) {
+            return false;
+        }
+    }
+    for (auto const& integerVariable : this->variableInformation.integerVariables) {
+        int64_t const expected = static_cast<int64_t>(state.getAsInt(integerVariable.bitOffset, integerVariable.bitWidth)) + integerVariable.lowerBound;
+        if (exactlyRepresentable(expected) && this->evaluator->asInt(integerVariable.variable.getExpression()) != expected) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename ValueType, typename StateType>
 void JaniNextStateGenerator<ValueType, StateType>::setEvaluatorState(CompressedState const& state) {
+    STORM_LOG_ASSERT(state.size() == scratch.evaluatorState.size(), "Unexpected state size.");
+    STORM_LOG_ASSERT(evaluatorHoldsState(scratch.evaluatorState), "The evaluator does not hold the expected state.");
     unpackStateDifferenceIntoEvaluator(state, scratch.evaluatorState, this->variableInformation, *this->evaluator);
     scratch.evaluatorState = state;
 }
@@ -638,6 +665,7 @@ StateBehavior<ValueType, StateType> const& JaniNextStateGenerator<ValueType, Sta
 
     // The evaluator currently holds the values of the state that is expanded (see NextStateGenerator::load)
     scratch.evaluatorState = *this->state;
+    STORM_LOG_ASSERT(evaluatorHoldsState(*this->state), "The state to expand must be loaded into the evaluator (see load).");
 
     // Retrieve the locations from the state.
     std::vector<uint64_t>& locations = scratch.locations;
@@ -988,10 +1016,10 @@ void JaniNextStateGenerator<ValueType, StateType>::expandSynchronizingEdgeCombin
         generateSynchronizedDistribution(state, edgeCombination, iteratorList, distribution, stateActionRewards, edgeIndices, stateToIdCallback);
         distribution.compress();
 
-        // At this point, we applied all commands of the current command combination and newTargetStates
-        // contains all target states and their respective probabilities. That means we are now ready to
-        // add the choice to the list of transitions.
-        // Now create the actual distribution.
+        // At this point, we applied all commands of the current command combination and the distribution
+        // contains all target states and their respective probabilities. The choice (which has already been added
+        // to the behavior above) and its rewards are already set. That means we are now ready to
+        // fill in the origin data, the probabilities/rates and the labels of the choice.
 
         // Add the edge indices if requested.
         if (this->getOptions().isBuildChoiceOriginsSet()) {

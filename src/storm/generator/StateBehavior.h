@@ -17,9 +17,12 @@ class StateBehavior {
     StateBehavior();
 
     StateBehavior(StateBehavior const& other);
-    StateBehavior(StateBehavior&& other) = default;
+    /*!
+     * Moves the content of other into this. Afterwards, other is an empty behavior (as if it was cleared).
+     */
+    StateBehavior(StateBehavior&& other) noexcept;
     StateBehavior& operator=(StateBehavior const& other);
-    StateBehavior& operator=(StateBehavior&& other) = default;
+    StateBehavior& operator=(StateBehavior&& other) noexcept;
 
     /*!
      * Resets this to an empty behavior, i.e. the state was not yet expanded.

@@ -86,3 +86,51 @@ TEST(StateBehaviorTest, CopyOnlyContainsActiveChoices) {
     EXPECT_EQ(1u, assigned.getNumberOfChoices());
     EXPECT_EQ(1u, assigned.getChoices()[0].getActionIndex());
 }
+
+TEST(StateBehaviorTest, Move) {
+    storm::generator::StateBehavior<double> behavior;
+    behavior.startNewChoice(1).addProbability(0, 1.0);
+    behavior.startNewChoice(2).addProbability(1, 1.0);
+    behavior.addStateReward(1.5);
+    behavior.setExpanded();
+
+    storm::generator::StateBehavior<double> moved(std::move(behavior));
+    EXPECT_EQ(2u, moved.getNumberOfChoices());
+    EXPECT_EQ(2u, moved.getChoices().size());
+    EXPECT_EQ(2, std::distance(moved.begin(), moved.end()));
+    EXPECT_TRUE(moved.wasExpanded());
+    EXPECT_EQ(1u, moved.getStateRewards().size());
+
+    // The source of the move is a valid empty behavior that can be reused
+    EXPECT_TRUE(behavior.empty());
+    EXPECT_EQ(0u, behavior.getNumberOfChoices());
+    EXPECT_EQ(0u, behavior.getChoices().size());
+    EXPECT_EQ(0, std::distance(behavior.begin(), behavior.end()));
+    EXPECT_FALSE(behavior.wasExpanded());
+    EXPECT_TRUE(behavior.getStateRewards().empty());
+    behavior.startNewChoice(5);
+    EXPECT_EQ(1u, behavior.getNumberOfChoices());
+
+    storm::generator::StateBehavior<double> assigned;
+    assigned.startNewChoice(9);
+    assigned = std::move(moved);
+    EXPECT_EQ(2u, assigned.getNumberOfChoices());
+    EXPECT_EQ(2u, assigned.getChoices()[1].getActionIndex());
+    EXPECT_TRUE(moved.empty());
+    EXPECT_EQ(0, std::distance(moved.begin(), moved.end()));
+}
+
+TEST(StateBehaviorTest, AddChoicesSumsAllRewards) {
+    storm::generator::Choice<double> a(0, true);
+    a.addProbability(0, 1.0);
+    a.getRewards() = {1.0, 10.0, 100.0};
+    storm::generator::Choice<double> b(0, true);
+    b.addProbability(1, 2.0);
+    b.getRewards() = {2.0, 20.0, 200.0};
+    a.add(b);
+    ASSERT_EQ(3u, a.getRewards().size());
+    EXPECT_DOUBLE_EQ(3.0, a.getRewards()[0]);
+    EXPECT_DOUBLE_EQ(30.0, a.getRewards()[1]);
+    EXPECT_DOUBLE_EQ(300.0, a.getRewards()[2]);
+    EXPECT_DOUBLE_EQ(3.0, a.getTotalMass());
+}

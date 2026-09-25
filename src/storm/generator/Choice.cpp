@@ -46,6 +46,7 @@ void Choice<ValueType, StateType>::add(Choice const& other) {
     auto otherRewIt = other.rewards.begin();
     for (auto& rewardValue : this->rewards) {
         rewardValue += *otherRewIt;
+        ++otherRewIt;
     }
 
     // Join label sets and origin data if given.

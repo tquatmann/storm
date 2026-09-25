@@ -154,8 +154,16 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
      * Makes the evaluator hold the (non-transient) variable values of the given state.
      * To avoid rewriting all variables, only the variables that differ from the state that was previously loaded via this method are written.
      * @pre This must only be called during the expansion of a state, i.e., the evaluator holds the values of scratch.evaluatorState.
+     *      This is checked in debug mode. In particular, do not modify the (non-transient) variable values of the evaluator by other means while expanding a
+     * state.
      */
     void setEvaluatorState(CompressedState const& state);
+
+    /*!
+     * Checks whether the (non-transient) variable values in the evaluator coincide with the values in the given state.
+     * @note This is expensive and only meant to be used in assertions.
+     */
+    bool evaluatorHoldsState(CompressedState const& state) const;
 
     /*!
      * Retrieves all choices possible from the given state.
@@ -259,6 +267,7 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
     /*!
      * Scratch memory that is reused across calls in order to avoid (many small) allocations for every explored state.
      * The members are only valid within a single call of the respective functions.
+     * @note As a consequence, a JaniNextStateGenerator (in particular its expand method) must not be used concurrently from multiple threads.
      */
     struct ScratchMemory {
         std::vector<uint64_t> locations;

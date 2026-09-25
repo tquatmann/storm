@@ -1,5 +1,7 @@
 #include "storm/generator/StateBehavior.h"
 
+#include <utility>
+
 #include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
@@ -20,6 +22,30 @@ StateBehavior<ValueType, StateType>::StateBehavior(StateBehavior const& other)
       stateRewards(other.stateRewards),
       expanded(other.expanded) {
     // Intentionally left empty. Note that we only copy the choices that are actually part of the behavior.
+}
+
+template<typename ValueType, typename StateType>
+StateBehavior<ValueType, StateType>::StateBehavior(StateBehavior&& other) noexcept
+    : choices(std::move(other.choices)),
+      numberOfChoices(std::exchange(other.numberOfChoices, 0)),
+      stateRewards(std::move(other.stateRewards)),
+      expanded(std::exchange(other.expanded, false)) {
+    // Make sure that other is in a well-defined (empty) state.
+    other.choices.clear();
+    other.stateRewards.clear();
+}
+
+template<typename ValueType, typename StateType>
+StateBehavior<ValueType, StateType>& StateBehavior<ValueType, StateType>::operator=(StateBehavior&& other) noexcept {
+    if (this != &other) {
+        choices = std::move(other.choices);
+        numberOfChoices = std::exchange(other.numberOfChoices, 0);
+        stateRewards = std::move(other.stateRewards);
+        expanded = std::exchange(other.expanded, false);
+        other.choices.clear();
+        other.stateRewards.clear();
+    }
+    return *this;
 }
 
 template<typename ValueType, typename StateType>
