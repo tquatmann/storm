@@ -1,5 +1,6 @@
 #include "storm/generator/StateBehavior.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "storm/adapters/IntervalAdapter.h"
@@ -51,7 +52,14 @@ StateBehavior<ValueType, StateType>& StateBehavior<ValueType, StateType>::operat
 template<typename ValueType, typename StateType>
 StateBehavior<ValueType, StateType>& StateBehavior<ValueType, StateType>::operator=(StateBehavior const& other) {
     if (this != &other) {
-        *this = StateBehavior(other);
+        // Copy the active choices into the already existing choices (this reuses their memory)
+        if (choices.size() < other.numberOfChoices) {
+            choices.resize(other.numberOfChoices);
+        }
+        std::copy(other.choices.begin(), other.choices.begin() + other.numberOfChoices, choices.begin());
+        numberOfChoices = other.numberOfChoices;
+        stateRewards = other.stateRewards;
+        expanded = other.expanded;
     }
     return *this;
 }

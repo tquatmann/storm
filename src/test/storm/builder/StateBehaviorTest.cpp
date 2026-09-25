@@ -102,6 +102,7 @@ TEST(StateBehaviorTest, Move) {
     EXPECT_EQ(1u, moved.getStateRewards().size());
 
     // The source of the move is a valid empty behavior that can be reused
+    // NOLINTBEGIN(bugprone-use-after-move): We explicitly test the state of moved-from objects
     EXPECT_TRUE(behavior.empty());
     EXPECT_EQ(0u, behavior.getNumberOfChoices());
     EXPECT_EQ(0u, behavior.getChoices().size());
@@ -110,14 +111,17 @@ TEST(StateBehaviorTest, Move) {
     EXPECT_TRUE(behavior.getStateRewards().empty());
     behavior.startNewChoice(5);
     EXPECT_EQ(1u, behavior.getNumberOfChoices());
+    // NOLINTEND(bugprone-use-after-move)
 
     storm::generator::StateBehavior<double> assigned;
     assigned.startNewChoice(9);
     assigned = std::move(moved);
     EXPECT_EQ(2u, assigned.getNumberOfChoices());
     EXPECT_EQ(2u, assigned.getChoices()[1].getActionIndex());
+    // NOLINTBEGIN(bugprone-use-after-move): We explicitly test the state of moved-from objects
     EXPECT_TRUE(moved.empty());
     EXPECT_EQ(0, std::distance(moved.begin(), moved.end()));
+    // NOLINTEND(bugprone-use-after-move)
 }
 
 TEST(StateBehaviorTest, AddChoicesSumsAllRewards) {
@@ -133,4 +137,46 @@ TEST(StateBehaviorTest, AddChoicesSumsAllRewards) {
     EXPECT_DOUBLE_EQ(30.0, a.getRewards()[1]);
     EXPECT_DOUBLE_EQ(300.0, a.getRewards()[2]);
     EXPECT_DOUBLE_EQ(3.0, a.getTotalMass());
+}
+
+TEST(StateBehaviorTest, CopyAssignmentReusesAndGrows) {
+    storm::generator::StateBehavior<double> source;
+    for (uint64_t i = 0; i < 3; ++i) {
+        auto& choice = source.startNewChoice(i + 1, i == 1);
+        choice.addProbability(i, 0.5);
+        choice.addProbability(i + 10, 0.5);
+        choice.getRewards() = {static_cast<double>(i)};
+    }
+    source.addStateReward(4.0);
+    source.setExpanded();
+
+    // Target with fewer choices than the source (the choices vector has to grow)
+    storm::generator::StateBehavior<double> small;
+    small.startNewChoice(42).addProbability(7, 1.0);
+    small = source;
+    ASSERT_EQ(3u, small.getNumberOfChoices());
+    for (uint64_t i = 0; i < 3; ++i) {
+        EXPECT_EQ(i + 1, small.getChoices()[i].getActionIndex());
+        EXPECT_EQ(i == 1, small.getChoices()[i].isMarkovian());
+        EXPECT_EQ(2u, small.getChoices()[i].size());
+        EXPECT_DOUBLE_EQ(static_cast<double>(i), small.getChoices()[i].getRewards().at(0));
+    }
+    EXPECT_TRUE(small.wasExpanded());
+    ASSERT_EQ(1u, small.getStateRewards().size());
+
+    // Target with more (stale) choices than the source: only the active ones are visible afterwards
+    storm::generator::StateBehavior<double> large;
+    for (uint64_t i = 0; i < 5; ++i) {
+        large.startNewChoice(100 + i).addProbability(i, 1.0);
+    }
+    storm::generator::StateBehavior<double> twoChoices;
+    twoChoices.startNewChoice(1).addProbability(0, 1.0);
+    twoChoices.startNewChoice(2).addProbability(1, 1.0);
+    large = twoChoices;
+    ASSERT_EQ(2u, large.getNumberOfChoices());
+    EXPECT_EQ(2, std::distance(large.begin(), large.end()));
+    EXPECT_EQ(1u, large.getChoices()[0].getActionIndex());
+    EXPECT_EQ(2u, large.getChoices()[1].getActionIndex());
+    EXPECT_EQ(1u, large.getChoices()[1].size());
+    EXPECT_FALSE(large.wasExpanded());
 }

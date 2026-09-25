@@ -7,8 +7,8 @@
 
 #include "storm/generator/CompressedState.h"
 #include "storm/generator/VariableInformation.h"
+#include "storm/storage/expressions/ExpressionEvaluator.h"
 #include "storm/storage/expressions/ExpressionManager.h"
-#include "storm/storage/expressions/ExprtkExpressionEvaluator.h"
 
 namespace {
 
@@ -64,8 +64,8 @@ storm::generator::CompressedState perturbState(storm::generator::CompressedState
     return state;
 }
 
-void expectSameValues(storm::generator::VariableInformation const& info, storm::expressions::ExprtkExpressionEvaluator const& expected,
-                      storm::expressions::ExprtkExpressionEvaluator const& actual) {
+void expectSameValues(storm::generator::VariableInformation const& info, storm::expressions::ExpressionEvaluator<double> const& expected,
+                      storm::expressions::ExpressionEvaluator<double> const& actual) {
     for (auto const& v : info.locationVariables) {
         EXPECT_EQ(expected.asInt(v.variable.getExpression()), actual.asInt(v.variable.getExpression())) << v.variable.getName();
     }
@@ -87,11 +87,11 @@ TEST(CompressedStateTest, UnpackStateDifferenceIntoEvaluator) {
             auto manager = std::make_shared<storm::expressions::ExpressionManager>();
             auto const info = createRandomLayout(*manager, rng, targetBits);
             // The evaluators must be created after declaring all variables
-            storm::expressions::ExprtkExpressionEvaluator fullyUnpacked(*manager);
-            storm::expressions::ExprtkExpressionEvaluator incremental(*manager);
+            storm::expressions::ExpressionEvaluator<double> fullyUnpacked(*manager);
+            storm::expressions::ExpressionEvaluator<double> incremental(*manager);
 
             auto current = randomState(rng, info.totalBitOffset);
-            storm::generator::unpackStateIntoEvaluator(current, info, incremental);
+            storm::generator::unpackStateIntoEvaluator<double>(current, info, incremental);
             for (int step = 0; step < 30; ++step) {
                 storm::generator::CompressedState next;
                 switch (step % 4) {
@@ -108,8 +108,8 @@ TEST(CompressedStateTest, UnpackStateDifferenceIntoEvaluator) {
                         next = randomState(rng, info.totalBitOffset);
                         break;
                 }
-                storm::generator::unpackStateDifferenceIntoEvaluator(next, current, info, incremental);
-                storm::generator::unpackStateIntoEvaluator(next, info, fullyUnpacked);
+                storm::generator::unpackStateDifferenceIntoEvaluator<double>(next, current, info, incremental);
+                storm::generator::unpackStateIntoEvaluator<double>(next, info, fullyUnpacked);
                 expectSameValues(info, fullyUnpacked, incremental);
                 if (::testing::Test::HasFailure()) {
                     return;

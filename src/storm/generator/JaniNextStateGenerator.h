@@ -274,6 +274,8 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
         TransientVariableValuation<ValueType> transientValuation;
         std::vector<AutomataEdgeSets> automataEdgeSets;  // one entry for each element of 'edges'
         std::vector<EdgeSetWithIndices::const_iterator> iteratorList;
+        std::vector<EdgeSetWithIndices const*> edgeSets;
+        std::vector<EdgeSetWithIndices::const_iterator> firstEnabledEdgeIterators;
         storm::generator::Distribution<StateType, ValueType> distribution;
         std::vector<storm::jani::EdgeDestination const*> destinations;
         std::vector<LocationVariableInformation const*> locationVars;
@@ -282,6 +284,10 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
         CompressedState evaluatorState;
     };
     ScratchMemory scratch;
+
+    /// The expressions of the (non-transient) variables (location, boolean, integer variables in that order).
+    /// Only used by evaluatorHoldsState (i.e., in assertions). Caching them avoids that the evaluator has to compile the expressions over and over again.
+    mutable std::vector<storm::expressions::Expression> variableExpressionsForAssertions;
 };
 
 }  // namespace generator

@@ -624,23 +624,39 @@ void JaniNextStateGenerator<ValueType, StateType>::addStateValuation(storm::stor
 
 template<typename ValueType, typename StateType>
 bool JaniNextStateGenerator<ValueType, StateType>::evaluatorHoldsState(CompressedState const& state) const {
+    auto const& info = this->variableInformation;
+    // Compiling expressions is expensive, so we do it only once (the compiled expressions are stored within the Expression objects)
+    if (variableExpressionsForAssertions.empty()) {
+        for (auto const& v : info.locationVariables) {
+            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+        }
+        for (auto const& v : info.booleanVariables) {
+            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+        }
+        for (auto const& v : info.integerVariables) {
+            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+        }
+    }
+    auto const expected = unpackStateIntoValuation(state, info, *this->expressionManager);
     // Values that can not be represented exactly by the evaluator (e.g., double-based) are not compared.
     auto const exactlyRepresentable = [](int64_t value) { return value > -(int64_t(1) << 52) && value < (int64_t(1) << 52); };
-    for (auto const& locationVariable : this->variableInformation.locationVariables) {
-        int64_t const expected =
-            locationVariable.bitWidth == 0 ? 0 : static_cast<int64_t>(state.getAsInt(locationVariable.bitOffset, locationVariable.bitWidth));
-        if (this->evaluator->asInt(locationVariable.variable.getExpression()) != expected) {
+    auto const holdsInteger = [&](storm::expressions::Variable const& variable, storm::expressions::Expression const& expression) {
+        int64_t const expectedValue = expected.getIntegerValue(variable);
+        return !exactlyRepresentable(expectedValue) || this->evaluator->asInt(expression) == expectedValue;
+    };
+    auto expressionIt = variableExpressionsForAssertions.begin();
+    for (auto const& v : info.locationVariables) {
+        if (!holdsInteger(v.variable, *expressionIt++)) {
             return false;
         }
     }
-    for (auto const& booleanVariable : this->variableInformation.booleanVariables) {
-        if (this->evaluator->asBool(booleanVariable.variable.getExpression()) != state.get(booleanVariable.bitOffset)) {
+    for (auto const& v : info.booleanVariables) {
+        if (this->evaluator->asBool(*expressionIt++) != expected.getBooleanValue(v.variable)) {
             return false;
         }
     }
-    for (auto const& integerVariable : this->variableInformation.integerVariables) {
-        int64_t const expected = static_cast<int64_t>(state.getAsInt(integerVariable.bitOffset, integerVariable.bitWidth)) + integerVariable.lowerBound;
-        if (exactlyRepresentable(expected) && this->evaluator->asInt(integerVariable.variable.getExpression()) != expected) {
+    for (auto const& v : info.integerVariables) {
+        if (!holdsInteger(v.variable, *expressionIt++)) {
             return false;
         }
     }
@@ -1072,11 +1088,11 @@ void JaniNextStateGenerator<ValueType, StateType>::getActionChoices(std::vector<
                                                                     StateBehavior<ValueType, StateType>& behavior) {
     scratch.automataEdgeSets.resize(edges.size());
 
-    // To avoid reallocations, we declare some memory here here.
+    // To avoid reallocations, we reuse some scratch memory.
     // This vector will store for each automaton the set of edges with the current output and the current source location
-    std::vector<EdgeSetWithIndices const*> edgeSetsMemory;
+    std::vector<EdgeSetWithIndices const*>& edgeSetsMemory = scratch.edgeSets;
     // This vector will store the 'first' combination of edges that is productive.
-    std::vector<typename EdgeSetWithIndices::const_iterator> edgeIteratorMemory;
+    std::vector<typename EdgeSetWithIndices::const_iterator>& edgeIteratorMemory = scratch.firstEnabledEdgeIterators;
 
     uint64_t outputAndEdgesIndex = 0;
     for (OutputAndEdges const& outputAndEdges : edges) {
