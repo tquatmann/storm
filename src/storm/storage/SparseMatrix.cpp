@@ -11,6 +11,7 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/exceptions/OutOfRangeException.h"
 #include "storm/storage/BitVector.h"
+#include "storm/storage/SubmatrixBuilder.h"
 #include "storm/storage/sparse/StateType.h"
 #include "storm/utility/ConstantsComparator.h"
 #include "storm/utility/NumberTraits.h"
@@ -628,29 +629,29 @@ bool SparseMatrix<ValueType>::operator==(SparseMatrix<ValueType> const& other) c
     }
 
     // For the actual contents, we need to do a little bit more work, because we want to ignore elements that
-    // are set to zero, please they may be represented implicitly in the other matrix.
+    // are set to zero, as they may be represented implicitly in the other matrix.
     for (index_type row = 0; row < this->getRowCount(); ++row) {
-        for (const_iterator it1 = this->begin(row), ite1 = this->end(row), it2 = other.begin(row), ite2 = other.end(row); it1 != ite1 && it2 != ite2;
-             ++it1, ++it2) {
-            // Skip over all zero entries in both matrices.
+        const_iterator it1 = this->begin(row), ite1 = this->end(row), it2 = other.begin(row), ite2 = other.end(row);
+        while (true) {
+            // Skip over all zero entries in both rows.
             while (it1 != ite1 && storm::utility::isZero(it1->getValue())) {
                 ++it1;
             }
             while (it2 != ite2 && storm::utility::isZero(it2->getValue())) {
                 ++it2;
             }
-            if ((it1 == ite1) || (it2 == ite2)) {
-                equalityResult = (it1 == ite1) ^ (it2 == ite2);
-                break;
-            } else {
-                if (it1->getColumn() != it2->getColumn() || it1->getValue() != it2->getValue()) {
-                    equalityResult = false;
-                    break;
+            if (it1 == ite1 || it2 == ite2) {
+                // The rows are equal iff both have no further non-zero entries.
+                if (it1 != ite1 || it2 != ite2) {
+                    return false;
                 }
+                break;
             }
-        }
-        if (!equalityResult) {
-            return false;
+            if (it1->getColumn() != it2->getColumn() || it1->getValue() != it2->getValue()) {
+                return false;
+            }
+            ++it1;
+            ++it2;
         }
     }
 
@@ -1128,122 +1129,16 @@ template<typename ValueType>
 SparseMatrix<ValueType> SparseMatrix<ValueType>::getSubmatrix(bool useGroups, storm::storage::BitVector const& rowConstraint,
                                                               storm::storage::BitVector const& columnConstraint, bool insertDiagonalElements,
                                                               storm::storage::BitVector const& makeZeroColumns) const {
+    SubmatrixBuilder<ValueType> submatrixBuilder(*this);
+    storm::OptionalRef<storm::storage::BitVector const> makeZeroColumnsRef;
+    if (makeZeroColumns.size() > 0) {
+        makeZeroColumnsRef.reset(makeZeroColumns);
+    }
     if (useGroups) {
-        return getSubmatrix(rowConstraint, columnConstraint, this->getRowGroupIndices(), insertDiagonalElements, makeZeroColumns);
+        return submatrixBuilder.getByRowGroupConstraint(rowConstraint, columnConstraint, insertDiagonalElements, makeZeroColumnsRef);
     } else {
-        // Create a fake row grouping to reduce this to a call to a more general method.
-        std::vector<index_type> fakeRowGroupIndices(rowCount + 1);
-        index_type i = 0;
-        for (std::vector<index_type>::iterator it = fakeRowGroupIndices.begin(); it != fakeRowGroupIndices.end(); ++it, ++i) {
-            *it = i;
-        }
-        auto res = getSubmatrix(rowConstraint, columnConstraint, fakeRowGroupIndices, insertDiagonalElements, makeZeroColumns);
-
-        // Create a new row grouping that reflects the new sizes of the row groups if the current matrix has a
-        // non trivial row-grouping.
-        if (!this->hasTrivialRowGrouping()) {
-            std::vector<index_type> newRowGroupIndices;
-            newRowGroupIndices.push_back(0);
-            auto selectedRowIt = rowConstraint.begin();
-
-            // For this, we need to count how many rows were preserved in every group.
-            for (index_type group = 0; group < this->getRowGroupCount(); ++group) {
-                index_type newRowCount = 0;
-                while (*selectedRowIt < this->getRowGroupIndices()[group + 1]) {
-                    ++selectedRowIt;
-                    ++newRowCount;
-                }
-                if (newRowCount > 0) {
-                    newRowGroupIndices.push_back(newRowGroupIndices.back() + newRowCount);
-                }
-            }
-
-            res.trivialRowGrouping = false;
-            res.rowGroupIndices = newRowGroupIndices;
-        }
-
-        return res;
+        return submatrixBuilder.getByRowConstraint(rowConstraint, columnConstraint, insertDiagonalElements, makeZeroColumnsRef);
     }
-}
-
-template<typename ValueType>
-SparseMatrix<ValueType> SparseMatrix<ValueType>::getSubmatrix(storm::storage::BitVector const& rowGroupConstraint,
-                                                              storm::storage::BitVector const& columnConstraint, std::vector<index_type> const& rowGroupIndices,
-                                                              bool insertDiagonalEntries, storm::storage::BitVector const& makeZeroColumns) const {
-    STORM_LOG_THROW(!rowGroupConstraint.empty() && !columnConstraint.empty(), storm::exceptions::InvalidArgumentException, "Cannot build empty submatrix.");
-    index_type submatrixColumnCount = columnConstraint.getNumberOfSetBits();
-
-    // Start by creating a temporary vector that stores for each index whose bit is set to true the number of
-    // bits that were set before that particular index.
-    std::vector<index_type> columnBitsSetBeforeIndex = columnConstraint.getNumberOfSetBitsBeforeIndices();
-    std::unique_ptr<std::vector<index_type>> tmp;
-    if (rowGroupConstraint != columnConstraint) {
-        tmp = std::make_unique<std::vector<index_type>>(rowGroupConstraint.getNumberOfSetBitsBeforeIndices());
-    }
-    std::vector<index_type> const& rowBitsSetBeforeIndex = tmp ? *tmp : columnBitsSetBeforeIndex;
-
-    // Then, we need to determine the number of entries and the number of rows of the submatrix.
-    index_type subEntries = 0;
-    index_type subRows = 0;
-    index_type rowGroupCount = 0;
-    for (uint64_t index : rowGroupConstraint) {
-        subRows += rowGroupIndices[index + 1] - rowGroupIndices[index];
-        for (index_type i = rowGroupIndices[index]; i < rowGroupIndices[index + 1]; ++i) {
-            bool foundDiagonalElement = false;
-
-            for (const_iterator it = this->begin(i), ite = this->end(i); it != ite; ++it) {
-                if (columnConstraint.get(it->getColumn()) && (makeZeroColumns.size() == 0 || !makeZeroColumns.get(it->getColumn()))) {
-                    ++subEntries;
-
-                    if (columnBitsSetBeforeIndex[it->getColumn()] == rowBitsSetBeforeIndex[index]) {
-                        foundDiagonalElement = true;
-                    }
-                }
-            }
-
-            // If requested, we need to reserve one entry more for inserting the diagonal zero entry.
-            if (insertDiagonalEntries && !foundDiagonalElement && rowGroupCount < submatrixColumnCount) {
-                ++subEntries;
-            }
-        }
-        ++rowGroupCount;
-    }
-
-    // Create and initialize resulting matrix.
-    SparseMatrixBuilder<ValueType> matrixBuilder(subRows, submatrixColumnCount, subEntries, true, !this->hasTrivialRowGrouping());
-
-    // Copy over selected entries.
-    rowGroupCount = 0;
-    index_type rowCount = 0;
-    subEntries = 0;
-    for (uint64_t index : rowGroupConstraint) {
-        if (!this->hasTrivialRowGrouping()) {
-            matrixBuilder.newRowGroup(rowCount);
-        }
-        for (index_type i = rowGroupIndices[index]; i < rowGroupIndices[index + 1]; ++i) {
-            bool insertedDiagonalElement = false;
-
-            for (const_iterator it = this->begin(i), ite = this->end(i); it != ite; ++it) {
-                if (columnConstraint.get(it->getColumn()) && (makeZeroColumns.size() == 0 || !makeZeroColumns.get(it->getColumn()))) {
-                    if (columnBitsSetBeforeIndex[it->getColumn()] == rowBitsSetBeforeIndex[index]) {
-                        insertedDiagonalElement = true;
-                    } else if (insertDiagonalEntries && !insertedDiagonalElement && columnBitsSetBeforeIndex[it->getColumn()] > rowBitsSetBeforeIndex[index]) {
-                        matrixBuilder.addNextValue(rowCount, rowGroupCount, storm::utility::zero<ValueType>());
-                        insertedDiagonalElement = true;
-                    }
-                    ++subEntries;
-                    matrixBuilder.addNextValue(rowCount, columnBitsSetBeforeIndex[it->getColumn()], it->getValue());
-                }
-            }
-            if (insertDiagonalEntries && !insertedDiagonalElement && rowGroupCount < submatrixColumnCount) {
-                matrixBuilder.addNextValue(rowCount, rowGroupCount, storm::utility::zero<ValueType>());
-            }
-            ++rowCount;
-        }
-        ++rowGroupCount;
-    }
-
-    return matrixBuilder.build();
 }
 
 template<typename ValueType>
