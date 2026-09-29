@@ -50,7 +50,7 @@ runs:
     - name: Check LTO IR is actually embedded (native)
       if: ${{ (inputs.docker == 'false') && (inputs.buildType == 'Release') }}
       run: |
-        bash "${{ github.action_path }}/check-lto.sh" build/src/storm/CMakeFiles/storm.dir
+        bash "${GITHUB_WORKSPACE}/.github/actions/check-compile-flags-action/check-lto.sh" build/src/storm/CMakeFiles/storm.dir
       shell: bash
     - name: Check debug flags (Docker)
       if: ${{ (inputs.docker == 'true') && (inputs.buildType == 'Debug') }}
