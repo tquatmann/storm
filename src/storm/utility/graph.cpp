@@ -676,10 +676,8 @@ storm::storage::BitVector performProbGreater0E(storm::storage::SparseMatrix<T> c
     size_t numberOfStates = phiStates.size();
 
     // Prepare resulting bit vector.
-    storm::storage::BitVector statesWithProbabilityGreater0(numberOfStates);
-
     // Add all psi states as the already satisfy the condition.
-    statesWithProbabilityGreater0 |= psiStates;
+    storm::storage::BitVector statesWithProbabilityGreater0 = psiStates;
 
     // Initialize the stack used for the DFS with the states
     std::vector<uint_fast64_t> stack(psiStates.begin(), psiStates.end());
@@ -753,28 +751,28 @@ storm::storage::BitVector performProb1E(storm::storage::SparseMatrix<T> const& t
     storm::storage::BitVector candidates = phiStates | psiStates;
 
     // The choices of the given state.
-    auto choicesOf = [&nondeterministicChoiceIndices](uint_fast64_t state) {
+    auto choicesOf = [&nondeterministicChoiceIndices](uint64_t const state) {
         return std::views::iota(nondeterministicChoiceIndices[state], nondeterministicChoiceIndices[state + 1]);
     };
 
     // Whether the given choice is enabled and all of its successors are candidates.
-    auto choiceStaysInCandidates = [&](uint_fast64_t choice) -> bool {
+    auto choiceStaysInCandidates = [&](uint64_t const choice) -> bool {
         return (!choiceConstraint || choiceConstraint->get(choice)) &&
                std::ranges::all_of(transitionMatrix.getRow(choice), [&candidates](auto const& entry) { return candidates.get(entry.getColumn()); });
     };
 
     // Whether the given state satisfies (i).
-    auto satisfiesSafety = [&](uint_fast64_t state) -> bool { return psiStates.get(state) || std::ranges::any_of(choicesOf(state), choiceStaysInCandidates); };
+    auto satisfiesSafety = [&](uint64_t const state) -> bool { return psiStates.get(state) || std::ranges::any_of(choicesOf(state), choiceStaysInCandidates); };
 
-    std::vector<uint_fast64_t> stack;  // used for backpropagation.
+    std::vector<uint64_t> stack;  // used for backpropagation.
 
     // Removes the candidates that (transitively) violate (i) by backpropagating from the current stack contents
     auto propagateRemovals = [&] {
         while (!stack.empty()) {
-            uint_fast64_t const removedState = stack.back();
+            uint64_t const removedState = stack.back();
             stack.pop_back();
             for (auto const& predecessorEntry : backwardTransitions.getRow(removedState)) {
-                uint_fast64_t const predecessor = predecessorEntry.getColumn();
+                uint64_t const predecessor = predecessorEntry.getColumn();
                 if (candidates.get(predecessor) && !satisfiesSafety(predecessor)) {
                     candidates.set(predecessor, false);
                     stack.push_back(predecessor);
@@ -786,7 +784,7 @@ storm::storage::BitVector performProb1E(storm::storage::SparseMatrix<T> const& t
     storm::storage::BitVector auxStates;  // Auxiliary storage used to check (ii)
 
     // Whether the given choice stays in the candidates and has a successor in auxStates
-    auto isSafeChoiceReachingAux = [&](uint_fast64_t choice) -> bool {
+    auto isSafeChoiceReachingAux = [&](uint64_t const choice) -> bool {
         if (choiceConstraint && !choiceConstraint->get(choice)) {
             return false;
         }
@@ -805,10 +803,10 @@ storm::storage::BitVector performProb1E(storm::storage::SparseMatrix<T> const& t
         auxStates = psiStates;
         stack.assign(psiStates.begin(), psiStates.end());
         while (!stack.empty()) {
-            uint_fast64_t const currentState = stack.back();
+            uint64_t const currentState = stack.back();
             stack.pop_back();
             for (auto const& predecessorEntry : backwardTransitions.getRow(currentState)) {
-                uint_fast64_t const predecessor = predecessorEntry.getColumn();
+                uint64_t const predecessor = predecessorEntry.getColumn();
                 if (candidates.get(predecessor) && !auxStates.get(predecessor) && std::ranges::any_of(choicesOf(predecessor), isSafeChoiceReachingAux)) {
                     auxStates.set(predecessor, true);
                     stack.push_back(predecessor);
@@ -818,7 +816,7 @@ storm::storage::BitVector performProb1E(storm::storage::SparseMatrix<T> const& t
     };
 
     // Initially, safety (i) has to be checked for every candidate.
-    for (uint_fast64_t state : candidates) {
+    for (uint64_t const state : candidates) {
         if (!satisfiesSafety(state)) {
             candidates.set(state, false);  // Note: BitVectors support removing elements while iterating over them.
             stack.push_back(state);
@@ -836,7 +834,7 @@ storm::storage::BitVector performProb1E(storm::storage::SparseMatrix<T> const& t
         STORM_LOG_ASSERT(auxStates.isSubsetOf(candidates), "Expected that reaching states are a subset of the candidates.");
         auxStates ^= candidates;
         // At this point auxStates contains those candidates that cannot reach psi. Remove those states from the candidates.
-        for (uint_fast64_t state : auxStates) {
+        for (uint64_t const state : auxStates) {
             candidates.set(state, false);
             stack.push_back(state);
         }
@@ -888,10 +886,8 @@ storm::storage::BitVector performProbGreater0A(storm::storage::SparseMatrix<T> c
     size_t numberOfStates = phiStates.size();
 
     // Prepare resulting bit vector.
-    storm::storage::BitVector statesWithProbabilityGreater0(numberOfStates);
-
     // Add all psi states as the already satisfy the condition.
-    statesWithProbabilityGreater0 |= psiStates;
+    storm::storage::BitVector statesWithProbabilityGreater0 = psiStates;
 
     // Initialize the stack used for the DFS with the states
     std::vector<uint_fast64_t> stack(psiStates.begin(), psiStates.end());

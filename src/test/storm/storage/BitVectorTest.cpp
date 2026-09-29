@@ -285,10 +285,14 @@ TEST(BitVectorTest, OperatorXor) {
     storm::storage::BitVector vector3 = vector1 ^ vector2;
     storm::storage::BitVector vector4 = ~vector2;
     storm::storage::BitVector vector5 = vector1 ^ vector1;  // NOLINT(misc-redundant-expression)
+    vector1 ^= vector2;
+    vector2 ^= vector2;
 
     for (uint64_t i = 0; i < 32; ++i) {
         ASSERT_EQ(vector3.get(i), vector4.get(i));
+        ASSERT_EQ(vector1.get(i), vector3.get(i));
         ASSERT_FALSE(vector5.get(i));
+        ASSERT_FALSE(vector2.get(i));
     }
 }
 

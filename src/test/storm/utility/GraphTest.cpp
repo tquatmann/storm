@@ -312,11 +312,7 @@ storm::storage::SparseMatrix<double> buildProb1ETestModel(std::vector<uint_fast6
 }
 
 storm::storage::BitVector asBitVector(uint64_t size, std::vector<uint64_t> const& setIndices) {
-    storm::storage::BitVector result(size);
-    for (uint64_t index : setIndices) {
-        result.set(index, true);
-    }
-    return result;
+    return storm::storage::BitVector(size, setIndices);
 }
 }  // namespace
 
