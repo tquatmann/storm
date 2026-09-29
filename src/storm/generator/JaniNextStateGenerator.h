@@ -1,6 +1,7 @@
 #pragma once
 
-#include "storm/generator/Distribution.h"
+#include <memory>
+
 #include "storm/generator/NextStateGenerator.h"
 #include "storm/generator/TransientVariableInformation.h"
 
@@ -16,6 +17,17 @@ class EdgeDestination;
 }  // namespace jani
 
 namespace generator {
+
+template<typename StateType, typename ValueType>
+class Distribution;
+
+/*!
+ * Scratch memory used internally by JaniNextStateGenerator. Its definition lives in the .cpp file (pimpl idiom) so that this (rather public)
+ * header does not expose these implementation details and does not need to be recompiled whenever they change.
+ */
+template<typename ValueType, typename StateType = uint32_t>
+struct JaniNextStateGeneratorScratchMemory;
+
 template<typename ValueType, typename StateType = uint32_t>
 class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
    public:
@@ -25,6 +37,11 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
     enum class EdgeFilter { All, WithRate, WithoutRate };
 
     JaniNextStateGenerator(storm::jani::Model const& model, NextStateGeneratorOptions const& options = NextStateGeneratorOptions());
+
+    /*!
+     * Declared (instead of implicitly defaulted) and defined in the .cpp file, because JaniNextStateGeneratorScratchMemory is only complete there.
+     */
+    ~JaniNextStateGenerator();
 
     /*!
      * Returns the jani features with which this builder can deal natively.
@@ -153,7 +170,7 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
     /*!
      * Makes the evaluator hold the (non-transient) variable values of the given state.
      * To avoid rewriting all variables, only the variables that differ from the state that was previously loaded via this method are written.
-     * @pre This must only be called during the expansion of a state, i.e., the evaluator holds the values of scratch.evaluatorState.
+     * @pre This must only be called during the expansion of a state, i.e., the evaluator holds the values of scratch->evaluatorState.
      *      This is checked in debug mode. In particular, do not modify the (non-transient) variable values of the evaluator by other means while expanding a
      * state.
      */
@@ -265,29 +282,17 @@ class JaniNextStateGenerator : public NextStateGenerator<ValueType, StateType> {
     TransientVariableInformation<ValueType> transientVariableInformation;
 
     /*!
+     * Grants JaniNextStateGeneratorScratchMemory access to the private members (in particular, the EdgeSetWithIndices/AutomataEdgeSets typedefs) it needs
+     * for its definition in the .cpp file.
+     */
+    friend struct JaniNextStateGeneratorScratchMemory<ValueType, StateType>;
+
+    /*!
      * Scratch memory that is reused across calls in order to avoid (many small) allocations for every explored state.
      * The members are only valid within a single call of the respective functions.
      * @note As a consequence, a JaniNextStateGenerator (in particular its expand method) must not be used concurrently from multiple threads.
      */
-    struct ScratchMemory {
-        std::vector<uint64_t> locations;
-        TransientVariableValuation<ValueType> transientValuation;
-        std::vector<AutomataEdgeSets> automataEdgeSets;  // one entry for each element of 'edges'
-        std::vector<EdgeSetWithIndices::const_iterator> iteratorList;
-        std::vector<EdgeSetWithIndices const*> edgeSets;
-        std::vector<EdgeSetWithIndices::const_iterator> firstEnabledEdgeIterators;
-        storm::generator::Distribution<StateType, ValueType> distribution;
-        std::vector<storm::jani::EdgeDestination const*> destinations;
-        std::vector<LocationVariableInformation const*> locationVars;
-        CompressedState successorState;
-        // The state whose (non-transient) variable values are currently stored in the evaluator while a state is expanded. See setEvaluatorState.
-        CompressedState evaluatorState;
-    };
-    ScratchMemory scratch;
-
-    /// The expressions of the (non-transient) variables (location, boolean, integer variables in that order).
-    /// Only used by evaluatorHoldsState (i.e., in assertions). Caching them avoids that the evaluator has to compile the expressions over and over again.
-    mutable std::vector<storm::expressions::Expression> variableExpressionsForAssertions;
+    std::unique_ptr<JaniNextStateGeneratorScratchMemory<ValueType, StateType>> scratch;
 };
 
 }  // namespace generator

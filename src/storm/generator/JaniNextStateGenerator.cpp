@@ -1,5 +1,7 @@
 #include "storm/generator/JaniNextStateGenerator.h"
 
+#include <memory>
+
 #include "storm/adapters/JsonAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/InvalidArgumentException.h"
@@ -32,6 +34,33 @@
 namespace storm {
 namespace generator {
 
+/*!
+ * The actual (private) implementation of JaniNextStateGeneratorScratchMemory, see the corresponding member in JaniNextStateGenerator.h.
+ * This is a friend of JaniNextStateGenerator<ValueType, StateType> so that it can reuse its (private) EdgeSetWithIndices/AutomataEdgeSets typedefs.
+ */
+template<typename ValueType, typename StateType>
+struct JaniNextStateGeneratorScratchMemory {
+    using Generator = JaniNextStateGenerator<ValueType, StateType>;
+
+    std::vector<uint64_t> locations;
+    TransientVariableValuation<ValueType> transientValuation;
+    std::vector<typename Generator::AutomataEdgeSets> automataEdgeSets;  // one entry for each element of 'edges'
+    std::vector<typename Generator::EdgeSetWithIndices::const_iterator> iteratorList;
+    std::vector<typename Generator::EdgeSetWithIndices const*> edgeSets;
+    std::vector<typename Generator::EdgeSetWithIndices::const_iterator> firstEnabledEdgeIterators;
+    storm::generator::Distribution<StateType, ValueType> distribution;
+    std::vector<storm::jani::EdgeDestination const*> destinations;
+    std::vector<LocationVariableInformation const*> locationVars;
+    CompressedState successorState;
+    // The state whose (non-transient) variable values are currently stored in the evaluator while a state is expanded. See
+    // JaniNextStateGenerator::setEvaluatorState.
+    CompressedState evaluatorState;
+
+    // The expressions of the (non-transient) variables (location, boolean, integer variables in that order).
+    // Only used by evaluatorHoldsState (i.e., in assertions). Caching them avoids that the evaluator has to compile the expressions over and over again.
+    std::vector<storm::expressions::Expression> variableExpressionsForAssertions;
+};
+
 template<typename ValueType, typename StateType>
 JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani::Model const& model, NextStateGeneratorOptions const& options)
     : JaniNextStateGenerator(model.substituteConstantsFunctionsTranscendentals(), options, false) {
@@ -45,7 +74,8 @@ JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani
       rewardExpressions(),
       hasStateActionRewards(false),
       evaluateRewardExpressionsAtEdges(false),
-      evaluateRewardExpressionsAtDestinations(false) {
+      evaluateRewardExpressionsAtDestinations(false),
+      scratch(std::make_unique<JaniNextStateGeneratorScratchMemory<ValueType, StateType>>()) {
     auto features = this->model.getModelFeatures();
     features.remove(storm::jani::ModelFeature::DerivedOperators);
     features.remove(storm::jani::ModelFeature::StateExitRewards);
@@ -141,6 +171,11 @@ JaniNextStateGenerator<ValueType, StateType>::JaniNextStateGenerator(storm::jani
         }
     }
 }
+
+// Declared (instead of implicitly defaulted) in the header, because JaniNextStateGeneratorScratchMemory is incomplete there; defined here, where it is
+// complete, so that std::unique_ptr<JaniNextStateGeneratorScratchMemory<...>> can be destructed.
+template<typename ValueType, typename StateType>
+JaniNextStateGenerator<ValueType, StateType>::~JaniNextStateGenerator() = default;
 
 template<typename ValueType, typename StateType>
 storm::jani::ModelFeatures JaniNextStateGenerator<ValueType, StateType>::getSupportedJaniFeatures() {
@@ -626,15 +661,15 @@ template<typename ValueType, typename StateType>
 bool JaniNextStateGenerator<ValueType, StateType>::evaluatorHoldsState(CompressedState const& state) const {
     auto const& info = this->variableInformation;
     // Compiling expressions is expensive, so we do it only once (the compiled expressions are stored within the Expression objects)
-    if (variableExpressionsForAssertions.empty()) {
+    if (scratch->variableExpressionsForAssertions.empty()) {
         for (auto const& v : info.locationVariables) {
-            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+            scratch->variableExpressionsForAssertions.push_back(v.variable.getExpression());
         }
         for (auto const& v : info.booleanVariables) {
-            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+            scratch->variableExpressionsForAssertions.push_back(v.variable.getExpression());
         }
         for (auto const& v : info.integerVariables) {
-            variableExpressionsForAssertions.push_back(v.variable.getExpression());
+            scratch->variableExpressionsForAssertions.push_back(v.variable.getExpression());
         }
     }
     auto const expected = unpackStateIntoValuation(state, info, *this->expressionManager);
@@ -644,7 +679,7 @@ bool JaniNextStateGenerator<ValueType, StateType>::evaluatorHoldsState(Compresse
         int64_t const expectedValue = expected.getIntegerValue(variable);
         return !exactlyRepresentable(expectedValue) || this->evaluator->asInt(expression) == expectedValue;
     };
-    auto expressionIt = variableExpressionsForAssertions.begin();
+    auto expressionIt = scratch->variableExpressionsForAssertions.begin();
     for (auto const& v : info.locationVariables) {
         if (!holdsInteger(v.variable, *expressionIt++)) {
             return false;
@@ -665,10 +700,10 @@ bool JaniNextStateGenerator<ValueType, StateType>::evaluatorHoldsState(Compresse
 
 template<typename ValueType, typename StateType>
 void JaniNextStateGenerator<ValueType, StateType>::setEvaluatorState(CompressedState const& state) {
-    STORM_LOG_ASSERT(state.size() == scratch.evaluatorState.size(), "Unexpected state size.");
-    STORM_LOG_ASSERT(evaluatorHoldsState(scratch.evaluatorState), "The evaluator does not hold the expected state.");
-    unpackStateDifferenceIntoEvaluator(state, scratch.evaluatorState, this->variableInformation, *this->evaluator);
-    scratch.evaluatorState = state;
+    STORM_LOG_ASSERT(state.size() == scratch->evaluatorState.size(), "Unexpected state size.");
+    STORM_LOG_ASSERT(evaluatorHoldsState(scratch->evaluatorState), "The evaluator does not hold the expected state.");
+    unpackStateDifferenceIntoEvaluator(state, scratch->evaluatorState, this->variableInformation, *this->evaluator);
+    scratch->evaluatorState = state;
 }
 
 template<typename ValueType, typename StateType>
@@ -680,17 +715,17 @@ StateBehavior<ValueType, StateType> const& JaniNextStateGenerator<ValueType, Sta
     result.clear();
 
     // The evaluator currently holds the values of the state that is expanded (see NextStateGenerator::load)
-    scratch.evaluatorState = *this->state;
+    scratch->evaluatorState = *this->state;
     STORM_LOG_ASSERT(evaluatorHoldsState(*this->state), "The state to expand must be loaded into the evaluator (see load).");
 
     // Retrieve the locations from the state.
-    std::vector<uint64_t>& locations = scratch.locations;
+    std::vector<uint64_t>& locations = scratch->locations;
     getLocations(*this->state, locations);
 
     // First, construct the state rewards, as we may return early if there are no choices later and we already
     // need the state rewards then.
-    getTransientVariableValuationAtLocations(locations, *this->evaluator, scratch.transientValuation);
-    scratch.transientValuation.setInEvaluator(*this->evaluator, this->getOptions().isExplorationChecksSet());
+    getTransientVariableValuationAtLocations(locations, *this->evaluator, scratch->transientValuation);
+    scratch->transientValuation.setInEvaluator(*this->evaluator, this->getOptions().isExplorationChecksSet());
     evaluateRewardExpressions(result.getStateRewards());
 
     // If a terminal expression was set and we must not expand this state, return now.
@@ -794,7 +829,7 @@ Choice<ValueType>& JaniNextStateGenerator<ValueType, StateType>::expandNonSynchr
     std::vector<ValueType>& stateActionRewards = choice.getRewards();
 
     // Perform the transient edge assignments and create the state action rewards
-    TransientVariableValuation<ValueType>& transientVariableValuation = scratch.transientValuation;
+    TransientVariableValuation<ValueType>& transientVariableValuation = scratch->transientValuation;
     transientVariableValuation.clear();
     if (!evaluateRewardExpressionsAtEdges || edge.getAssignments().empty()) {
         stateActionRewards.resize(rewardModelInformation.size(), storm::utility::zero<ValueType>());
@@ -821,7 +856,7 @@ Choice<ValueType>& JaniNextStateGenerator<ValueType, StateType>::expandNonSynchr
             int64_t assignmentLevel = edge.getLowestAssignmentLevel();  // Might be the largest possible integer, if there is no assignment
             int64_t const& highestLevel = edge.getHighestAssignmentLevel();
             bool hasTransientAssignments = destination.hasTransientAssignment();
-            CompressedState& newState = scratch.successorState;
+            CompressedState& newState = scratch->successorState;
             newState = state;
             applyUpdate(newState, destination, this->variableInformation.locationVariables[automatonIndex], assignmentLevel, *this->evaluator);
             if (hasTransientAssignments) {
@@ -912,7 +947,7 @@ void JaniNextStateGenerator<ValueType, StateType>::generateSynchronizedDistribut
     }
 
     // Perform the edge assignments (if there are any)
-    TransientVariableValuation<ValueType>& transientVariableValuation = scratch.transientValuation;
+    TransientVariableValuation<ValueType>& transientVariableValuation = scratch->transientValuation;
     transientVariableValuation.clear();
     if (evaluateRewardExpressionsAtEdges && lowestEdgeAssignmentLevel <= highestEdgeAssignmentLevel) {
         for (int64_t assignmentLevel = lowestEdgeAssignmentLevel; assignmentLevel <= highestEdgeAssignmentLevel; ++assignmentLevel) {
@@ -927,15 +962,15 @@ void JaniNextStateGenerator<ValueType, StateType>::generateSynchronizedDistribut
         transientVariableInformation.setDefaultValuesInEvaluator(*this->evaluator);
     }
 
-    std::vector<storm::jani::EdgeDestination const*>& destinations = scratch.destinations;
-    std::vector<LocationVariableInformation const*>& locationVars = scratch.locationVars;
+    std::vector<storm::jani::EdgeDestination const*>& destinations = scratch->destinations;
+    std::vector<LocationVariableInformation const*>& locationVars = scratch->locationVars;
 
     for (uint64_t destinationId = 0; destinationId < numDestinations; ++destinationId) {
         // First assignment level
         destinations.clear();
         locationVars.clear();
         transientVariableValuation.clear();
-        CompressedState& successorState = scratch.successorState;
+        CompressedState& successorState = scratch->successorState;
         successorState = state;
         ValueType successorProbability = storm::utility::one<ValueType>();
 
@@ -1008,7 +1043,7 @@ void JaniNextStateGenerator<ValueType, StateType>::expandSynchronizingEdgeCombin
         checkGlobalVariableWritesValid(edgeCombination);
     }
 
-    std::vector<EdgeSetWithIndices::const_iterator>& iteratorList = scratch.iteratorList;
+    std::vector<EdgeSetWithIndices::const_iterator>& iteratorList = scratch->iteratorList;
     iteratorList.resize(edgeCombination.size());
 
     // Initialize the list of iterators.
@@ -1016,7 +1051,7 @@ void JaniNextStateGenerator<ValueType, StateType>::expandSynchronizingEdgeCombin
         iteratorList[i] = edgeCombination[i].second.cbegin();
     }
 
-    storm::generator::Distribution<StateType, ValueType>& distribution = scratch.distribution;
+    storm::generator::Distribution<StateType, ValueType>& distribution = scratch->distribution;
 
     // As long as there is one feasible combination of commands, keep on expanding it.
     bool done = false;
@@ -1086,18 +1121,18 @@ template<typename ValueType, typename StateType>
 void JaniNextStateGenerator<ValueType, StateType>::getActionChoices(std::vector<uint64_t> const& locations, CompressedState const& state,
                                                                     StateToIdCallback const& stateToIdCallback, EdgeFilter const& edgeFilter,
                                                                     StateBehavior<ValueType, StateType>& behavior) {
-    scratch.automataEdgeSets.resize(edges.size());
+    scratch->automataEdgeSets.resize(edges.size());
 
     // To avoid reallocations, we reuse some scratch memory.
     // This vector will store for each automaton the set of edges with the current output and the current source location
-    std::vector<EdgeSetWithIndices const*>& edgeSetsMemory = scratch.edgeSets;
+    std::vector<EdgeSetWithIndices const*>& edgeSetsMemory = scratch->edgeSets;
     // This vector will store the 'first' combination of edges that is productive.
-    std::vector<typename EdgeSetWithIndices::const_iterator>& edgeIteratorMemory = scratch.firstEnabledEdgeIterators;
+    std::vector<typename EdgeSetWithIndices::const_iterator>& edgeIteratorMemory = scratch->firstEnabledEdgeIterators;
 
     uint64_t outputAndEdgesIndex = 0;
     for (OutputAndEdges const& outputAndEdges : edges) {
         auto const& edges = outputAndEdges.second;
-        AutomataEdgeSets& automataEdgeSets = scratch.automataEdgeSets[outputAndEdgesIndex++];
+        AutomataEdgeSets& automataEdgeSets = scratch->automataEdgeSets[outputAndEdgesIndex++];
         if (edges.size() == 1) {
             // If the synch consists of just one element, it's non-synchronizing.
             auto const& nonsychingEdges = edges.front();
