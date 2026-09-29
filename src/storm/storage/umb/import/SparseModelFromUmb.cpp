@@ -103,7 +103,7 @@ storm::models::sparse::StateLabeling constructStateLabeling(storm::umb::UmbModel
             auto labeledStates = createBitVector(ap.states->values.template get<bool>(), numStates);
             if (stateLabelling.containsLabel(labelName)) {
                 STORM_LOG_THROW(stateLabelling.getStates(labelName) == labeledStates, storm::exceptions::WrongFormatException,
-                                "Label '" << labelName << "' is declared multiple times and the labellings are not consistent.");
+                                "Label '" << labelName << "' is declared multiple times with different labellings.");
                 STORM_LOG_WARN("Ignoring additional declaration of label '" << labelName << "' as it is already defined with the same labelling.");
             } else {
                 stateLabelling.addLabel(labelName, std::move(labeledStates));
