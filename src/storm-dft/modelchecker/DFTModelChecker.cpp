@@ -165,8 +165,7 @@ auto getBisimOptions() {
     storm::bisimulation::Options bisimOptions;
     bisimOptions.bisimulationType = storm::bisimulation::BisimulationType::Weak;
     if constexpr (std::is_same_v<ValueType, double>) {
-        bisimOptions.tolerance =
-            storm::utility::convertNumber<storm::RationalNumber>(storm::settings::getModule<storm::settings::modules::GeneralSettings>().getPrecision() * 1e-3);
+        bisimOptions.tolerance = storm::utility::convertNumber<storm::RationalNumber>(1e-9);  // TODO: make tolerance configurable
     }
     return bisimOptions;
 }

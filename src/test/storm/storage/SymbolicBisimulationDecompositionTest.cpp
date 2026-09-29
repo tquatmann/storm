@@ -327,7 +327,7 @@ void checkMarkovAutomatonExitRatesPreservedUnderBisimulation(storm::Environment 
         for (bool useOriginalVariables : {false, true}) {
             storm::dd::bisimulation::BisimulationOptions options;
             options.useOriginalVariables = useOriginalVariables;
-            storm::dd::BisimulationDecomposition<DdType, ValueType> decomposition(*model, storm::storage::BisimulationType::Strong, options);
+            storm::dd::BisimulationDecomposition<DdType, ValueType> decomposition(*model, storm::bisimulation::BisimulationType::Strong, options);
             decomposition.compute();
             std::shared_ptr<storm::models::Model<ValueType>> quotient = decomposition.getQuotient(storm::dd::bisimulation::QuotientFormat::Dd);
 
