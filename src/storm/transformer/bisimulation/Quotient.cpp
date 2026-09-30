@@ -109,10 +109,10 @@ auto Quotient<ValueType, QuotientValueType>::buildFromPartition(storm::models::s
                 return quotientRow;
             };
 
-            for (uint64_t quotientState = 0, quotientChoice = 0; quotientState < numberOfQuotientStates; ++quotientState) {
-                // quotientChoice == quotientState for deterministic models.
+            for (uint64_t quotientState = 0; quotientState < numberOfQuotientStates; ++quotientState) {
+                // The quotient choice coincides with the quotient state for deterministic models.
                 for (auto const& [column, value] : getQuotientRowSplitterBased(quotientState)) {
-                    builder.addNextValue(quotientChoice, column, value);
+                    builder.addNextValue(quotientState, column, value);
                 }
             }
         } else {

@@ -33,6 +33,6 @@ inline bool lessLex(carl::Interval<Number> const& lhs, carl::Interval<Number> co
     } else {
         return lhs.upper() < rhs.upper();
     }
-};
+}
 
 }  // namespace storm

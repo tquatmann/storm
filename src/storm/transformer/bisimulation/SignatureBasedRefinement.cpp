@@ -157,27 +157,42 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
     });
 }
 
-#define STORM_INSTANTIATE_SIGNATURE_REFINEMENT(ValueType, QuotientValueType, Mode)                       \
-    template void performSignatureBasedRefinement<ValueType, SignatureMode::Mode, QuotientValueType>(    \
-        storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition, \
-        Signatures<ValueType, SignatureMode::Mode, QuotientValueType>& signatures);
-
 // Explicit instantiations for QuotientValueType == ValueType
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, double, Exact)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, double, Approximative)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalNumber, Exact)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalNumber, Approximative)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalFunction, storm::RationalFunction, Exact)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::Interval, storm::Interval, Exact)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::Interval, storm::Interval, Approximative)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalInterval, storm::RationalInterval, Exact)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalInterval, storm::RationalInterval, Approximative)
+template void performSignatureBasedRefinement<double, SignatureMode::Exact>(storm::models::sparse::Model<double> const& model,
+                                                                            storm::bisimulation::Partition& partition,
+                                                                            Signatures<double, SignatureMode::Exact>& signatures);
+template void performSignatureBasedRefinement<double, SignatureMode::Approximative>(storm::models::sparse::Model<double> const& model,
+                                                                                    storm::bisimulation::Partition& partition,
+                                                                                    Signatures<double, SignatureMode::Approximative>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Exact>(storm::models::sparse::Model<storm::RationalNumber> const& model,
+                                                                                           storm::bisimulation::Partition& partition,
+                                                                                           Signatures<storm::RationalNumber, SignatureMode::Exact>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Approximative>(
+    storm::models::sparse::Model<storm::RationalNumber> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::RationalNumber, SignatureMode::Approximative>& signatures);
+template void performSignatureBasedRefinement<storm::RationalFunction, SignatureMode::Exact>(
+    storm::models::sparse::Model<storm::RationalFunction> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::RationalFunction, SignatureMode::Exact>& signatures);
+template void performSignatureBasedRefinement<storm::Interval, SignatureMode::Exact>(storm::models::sparse::Model<storm::Interval> const& model,
+                                                                                     storm::bisimulation::Partition& partition,
+                                                                                     Signatures<storm::Interval, SignatureMode::Exact>& signatures);
+template void performSignatureBasedRefinement<storm::Interval, SignatureMode::Approximative>(
+    storm::models::sparse::Model<storm::Interval> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::Interval, SignatureMode::Approximative>& signatures);
+template void performSignatureBasedRefinement<storm::RationalInterval, SignatureMode::Exact>(
+    storm::models::sparse::Model<storm::RationalInterval> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::RationalInterval, SignatureMode::Exact>& signatures);
+template void performSignatureBasedRefinement<storm::RationalInterval, SignatureMode::Approximative>(
+    storm::models::sparse::Model<storm::RationalInterval> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::RationalInterval, SignatureMode::Approximative>& signatures);
 
 // Explicit instantiations for QuotientValueType == IntervalType<ValueType> (for interval abstraction)
-// Exact mode is not meaningfull in this case, as that would mean that we are never allowed to abstract values into intervals.
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, storm::Interval, Approximative)
-STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalInterval, Approximative)
-
-#undef STORM_INSTANTIATE_SIGNATURE_REFINEMENT
+// Exact mode is not meaningful in this case, as that would mean that we are never allowed to abstract values into intervals.
+template void performSignatureBasedRefinement<double, SignatureMode::Approximative, storm::Interval>(
+    storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
+    Signatures<double, SignatureMode::Approximative, storm::Interval>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Approximative, storm::RationalInterval>(
+    storm::models::sparse::Model<storm::RationalNumber> const& model, storm::bisimulation::Partition& partition,
+    Signatures<storm::RationalNumber, SignatureMode::Approximative, storm::RationalInterval>& signatures);
 
 }  // namespace storm::bisimulation

@@ -34,29 +34,28 @@ template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 auto Signatures<ValueType, Mode, QuotientValueType>::ChoiceSignatureCache::extract(BlockDistributionView const dest) -> BlockDistributionView {
     std::sort(support.begin(), support.end(), Partition::BlockCompare());
     STORM_LOG_ASSERT(support.size() <= dest.size(), "Destination span is too small to hold all entries.");
-    auto result = dest.first(support.size()); // Take the sub-span of the first support.size() entries as result.
+    auto result = dest.first(support.size());  // Take the sub-span of the first support.size() entries as result.
 
     auto writeIt = result.begin();
     for (auto const& block : support) {
-        auto& value = values[b.front()];
+        auto& value = values[block.front()];
         *writeIt = std::make_pair(block, std::move(value));
         ++writeIt;
-        value = storm::utility::zero<QuotientValueType>(); // reset value for next use of the cache.
+        value = storm::utility::zero<QuotientValueType>();  // reset value for next use of the cache.
     }
     if (result.size() != dest.size()) {
         // Mark the end of the written entries with an empty block.
         // This is used to easily get the choice signature later without rebuilding it. See getChoiceSignature.
         dest[result.size()] = std::pair<Partition::Block, QuotientValueType>{};
     }
-    support.clear(); // clear cache for next use.
+    support.clear();  // clear cache for next use.
     return result;
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 bool Signatures<ValueType, Mode, QuotientValueType>::lessValue(QuotientValueType const& value1, QuotientValueType const& value2) {
-    // todo: lessLex
     if constexpr (storm::IsIntervalType<QuotientValueType>) {
-        return value1.lower() != value2.lower() ? value1.lower() < value2.lower() : value1.upper() < value2.upper();
+        return storm::lessLex(value1, value2);
     } else {
         return value1 < value2;
     }
@@ -584,7 +583,7 @@ template class Signatures<storm::RationalInterval, SignatureMode::Exact>;
 template class Signatures<storm::RationalInterval, SignatureMode::Approximative>;
 
 // Explicit instantiations for QuotientValueType == IntervalType<ValueType> (for interval abstraction)
-// Exact mode is not meaningfull in this case, as that would mean that we are never allowed to abstract values into intervals.
+// Exact mode is not meaningful in this case, as that would mean that we are never allowed to abstract values into intervals.
 template class Signatures<double, SignatureMode::Approximative, storm::Interval>;
 template class Signatures<storm::RationalNumber, SignatureMode::Approximative, storm::RationalInterval>;
 

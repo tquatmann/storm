@@ -19,7 +19,7 @@ namespace detail {
 template<typename ValueType>
 struct IntervalMetaProgrammingHelper {
     using BaseType = ValueType;
-    // Interval no interval type available for the default helper (e.g. used for RationalFunction)
+    // No interval type available for the default helper (e.g. used for RationalFunction)
     static constexpr bool isInterval = false;
 };
 template<>

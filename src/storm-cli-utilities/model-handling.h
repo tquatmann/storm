@@ -721,8 +721,7 @@ std::shared_ptr<storm::models::ModelBase> preprocessSparseModelBisimulation(std:
     options.actionSensitive = bisimulationSettings.isActionSensitiveSet();
     STORM_LOG_INFO("Performing bisimulation minimization (type: "
                    << (options.bisimulationType == storm::bisimulation::BisimulationType::Weak ? "weak" : "strong") << ", tolerance: " << options.tolerance
-                   << (options.actionSensitive ? ", action-sensitive" : "") << (bisimulationSettings.isIntervalAbstractionSet() ? ", interval-abstraction" : "")
-                   << ")...");
+                   << (options.actionSensitive ? ", action-sensitive" : "") << (enableIntervalAbstraction ? ", interval-abstraction" : "") << ")...");
     auto const formulas = createFormulasToRespect(input.properties);
     if (bisimulationSettings.isIntervalAbstractionSet()) {
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {

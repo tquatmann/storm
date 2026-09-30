@@ -75,13 +75,25 @@ TEST(IntervalBisimulationTest, IntervalMdp) {
 
 /*!
  * With a quotient value type that differs from the one of the model, the values of the model are abstracted into intervals.
+ * @note the abstraction requires a positive tolerance, as it only pays off if it groups states with (slightly) different values.
  */
 TEST(IntervalBisimulationTest, IntervalAbstraction) {
     auto const model = buildDtmc<double>(0.5);
-    auto const quotient = storm::bisimulation::performBisimulationMinimization<double, Interval>(*model, {}, strongOptions()).quotient;
+    Options options = strongOptions();
+    options.tolerance = storm::utility::convertNumber<storm::RationalNumber>(1e-6);
+    auto const quotient = storm::bisimulation::performBisimulationMinimization<double, Interval>(*model, {}, options).quotient;
     EXPECT_EQ(2ull, quotient->getNumberOfStates());  // {0,1}, {2}
     // TODO: As long as the quotient values are taken from the representative state, they only are point intervals, cf. Signatures::extendQuotientData.
     EXPECT_EQ(std::vector<Interval>({Interval(0.5, 0.5), Interval(0.5, 0.5), Interval(1.0, 1.0)}), transitionValues(*quotient));
+}
+
+/*!
+ * Interval abstraction only pays off with a positive tolerance, as the quotient values are point intervals otherwise.
+ */
+TEST(IntervalBisimulationTest, IntervalAbstractionWithoutTolerance) {
+    auto const model = buildDtmc<double>(0.5);
+    STORM_SILENT_EXPECT_THROW((storm::bisimulation::performBisimulationMinimization<double, Interval>(*model, {}, strongOptions())),
+                              storm::exceptions::NotSupportedException);
 }
 
 /*!
