@@ -237,9 +237,22 @@ void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& part
     // Helper for the remaining numeric annotations
     auto splitByNumeric = [&numElements, &partition, &tolerance](auto const& v) {
         STORM_LOG_ASSERT(numElements == v.size(), "Annotation has wrong size.");
-        auto const less = [&v](auto const& a, auto const& b) { return v[a] < v[b]; };
-        if constexpr (std::is_same_v<ValueType, typename std::remove_cvref_t<decltype(v)>::value_type>) {
+        using AnnotationType = typename std::remove_cvref_t<decltype(v)>::value_type;
+        auto const less = [&v](Partition::ElementIndex const a, Partition::ElementIndex const b) {
+            if constexpr (storm::IsIntervalType<AnnotationType>) {
+                return storm::lessLex(v[a], v[b]);
+            } else {
+                return v[a] < v[b];
+            }
+        };
+
+        // Handle tolerance-based comparisions.
+        // For interval types, we do not apply tolerance-based comparisons: For example, grouping together states with similar, but slightly different rewards
+        // given as point intervals [r,r] would technically result in a model with uncertain interval-rewards.
+        if constexpr (std::is_same_v<ValueType, AnnotationType> && !IsIntervalType<AnnotationType>) {
             if (!storm::utility::isZero(tolerance)) {
+                STORM_LOG_ASSERT(!(std::is_same_v<AnnotationType, storm::RationalFunction>),
+                                 "Tolerance-based comparisons are not supported for rational functions.");  // should be already catched at the top-level
                 auto const lessTol = [&v, &tolerance](auto const& a, auto const& b) {
                     // A zero value is never grouped with a non-zero one, whether an annotation (e.g. reward) is zero can be semantically relevant
                     if (storm::utility::isZero(v[a]) || storm::utility::isZero(v[b])) {
@@ -255,6 +268,7 @@ void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& part
                 return;
             }
         }
+        // Reaching this point means that we do not apply tolerance-based comparisons
         partition.forEachBlock([&partition, &less](auto const& block) {
             if (block.size() > 1) {
                 partition.splitBlockByOrder(block, less);

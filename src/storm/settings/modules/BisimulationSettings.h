@@ -109,6 +109,12 @@ class BisimulationSettings : public ModuleSettings {
      */
     bool isActionSensitiveSet() const;
 
+    /*!
+     * Retrieves whether the quotient model shall abstract the values of the original model into intervals.
+     * NOTE: only applies to sparse bisimulation.
+     */
+    bool isIntervalAbstractionSet() const;
+
     virtual bool check() const override;
 
     // The name of the module.
@@ -128,6 +134,7 @@ class BisimulationSettings : public ModuleSettings {
     static const std::string exactArithmeticDdOptionName;
     static const std::string toleranceOptionName;
     static const std::string actionSensitiveOptionName;
+    static const std::string intervalAbstractionOptionName;
 };
 }  // namespace modules
 }  // namespace settings

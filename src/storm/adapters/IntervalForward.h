@@ -19,17 +19,32 @@ namespace detail {
 template<typename ValueType>
 struct IntervalMetaProgrammingHelper {
     using BaseType = ValueType;
-    static const bool isInterval = false;
+    // Interval no interval type available for the default helper (e.g. used for RationalFunction)
+    static constexpr bool isInterval = false;
+};
+template<>
+struct IntervalMetaProgrammingHelper<double> {
+    using BaseType = double;
+    using IntervalType = Interval;
+    static constexpr bool isInterval = false;
+};
+template<>
+struct IntervalMetaProgrammingHelper<storm::RationalNumber> {
+    using BaseType = storm::RationalNumber;
+    using IntervalType = RationalInterval;
+    static constexpr bool isInterval = false;
 };
 template<>
 struct IntervalMetaProgrammingHelper<Interval> {
     using BaseType = double;
-    static const bool isInterval = true;
+    using IntervalType = Interval;
+    static constexpr bool isInterval = true;
 };
 template<>
 struct IntervalMetaProgrammingHelper<RationalInterval> {
     using BaseType = storm::RationalNumber;
-    static const bool isInterval = true;
+    using IntervalType = RationalInterval;
+    static constexpr bool isInterval = true;
 };
 }  // namespace detail
 
@@ -45,4 +60,11 @@ constexpr bool IsIntervalType = detail::IntervalMetaProgrammingHelper<ValueType>
  */
 template<typename ValueType>
 using IntervalBaseType = typename detail::IntervalMetaProgrammingHelper<ValueType>::BaseType;
+
+/*!
+ * Helper to access the interval type whose bounds are of the given type, e.g., storm::Interval for double.
+ * Yields the type identity if the given type already is an interval type and is not defined if there is no such interval type.
+ */
+template<typename ValueType>
+using IntervalType = typename detail::IntervalMetaProgrammingHelper<ValueType>::IntervalType;
 }  // namespace storm

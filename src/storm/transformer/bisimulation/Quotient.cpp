@@ -20,10 +20,12 @@
 
 namespace storm::bisimulation {
 
-template<typename ValueType>
-auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Options const& options,
-                                             storm::bisimulation::PreservationInformation const& preservationInformation,
-                                             QuotientData<ValueType> const& quotientData) -> std::shared_ptr<storm::models::sparse::Model<ValueType>> {
+template<typename ValueType, typename QuotientValueType>
+auto Quotient<ValueType, QuotientValueType>::buildFromPartition(storm::models::sparse::Model<ValueType> const& model,
+                                                                storm::bisimulation::Options const& options,
+                                                                storm::bisimulation::PreservationInformation const& preservationInformation,
+                                                                QuotientData<QuotientValueType> const& quotientData)
+    -> std::shared_ptr<storm::models::sparse::Model<QuotientValueType>> {
     auto const& weakData = quotientData.weakData;
     bool const isWeak = options.bisimulationType == BisimulationType::Weak;
     STORM_LOG_ASSERT(isWeak == weakData.has_value(), "Weak bisimulation data must be given for (and only for) weak bisimulation.");
@@ -39,35 +41,49 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     STORM_LOG_ASSERT(isNondeterministic || numberOfQuotientStates == numberOfQuotientChoices, "Unexpected choice count.");
 
     // Now build the model components one after the other
-    storm::storage::sparse::ModelComponents<ValueType> components;
+    storm::storage::sparse::ModelComponents<QuotientValueType> components;
 
     // Build the transition matrix
     {
-        // Helper function to get the distribution over successor quotient states for a given quotient choice.
-        auto getQuotientRow = [&model, &useSignature, &quotientData, &toRepresentativeChoice, &toQuotientState, &isWeak,
-                               &weakData](uint64_t const quotientChoice) -> std::map<uint64_t, ValueType> {
-            if (useSignature) {
-                return quotientData.signatureData->quotientChoiceDistributions[quotientChoice];
-            }
-            uint64_t const representative = toRepresentativeChoice[quotientChoice];
-            uint64_t const ownQuotientState = toQuotientState[representative];
-            if (isWeak) {
-                if (weakData->divergentStates.get(representative)) {
-                    // The states of this block can never leave it, so the quotient state is absorbing. For a CTMC the rate of the self-loop is irrelevant.
-                    return {{ownQuotientState, storm::utility::one<ValueType>()}};
+        storm::storage::SparseMatrixBuilder<QuotientValueType> builder(numberOfQuotientChoices, numberOfQuotientStates, 0, true, isNondeterministic,
+                                                                       isNondeterministic ? numberOfQuotientStates : 0);
+        if (useSignature) {
+            // In case of signature-refinement, the distributions were already computed beforehand.
+            for (uint64_t quotientState = 0, quotientChoice = 0; quotientState < numberOfQuotientStates; ++quotientState) {
+                if (isNondeterministic) {
+                    builder.newRowGroup(quotientChoice);
                 }
-                // Non-divergent, representative states must not be silent because we have to represent the probability of exiting a block.
-                // It is ruled out by the caller passing the non-silent states as the preferred representatives in the constructor of QuotientData.
-                STORM_LOG_ASSERT(!weakData->silentStates.get(representative),
-                                 "Weak bisimulation quotient: The representative of a non-divergent block is silent.");
-            }
-            std::map<uint64_t, ValueType> quotientRow;
-            for (auto const& entry : model.getTransitionMatrix().getRow(representative)) {
-                if (auto const ret = quotientRow.emplace(toQuotientState[entry.getColumn()], entry.getValue()); !ret.second) {
-                    ret.first->second += entry.getValue();
+                uint64_t const quotientChoiceEnd = quotientData.signatureData->quotientChoiceGroupIndices[quotientState + 1];
+                for (; quotientChoice < quotientChoiceEnd; ++quotientChoice) {
+                    for (auto const& [column, value] : quotientData.signatureData->quotientChoiceDistributions[quotientChoice]) {
+                        builder.addNextValue(quotientChoice, column, value);
+                    }
                 }
             }
-            if constexpr (!storm::IsIntervalType<ValueType>) {
+        } else if constexpr (std::is_same_v<ValueType, QuotientValueType> && !storm::IsIntervalType<QuotientValueType>) {
+            // For splitter-refinement, the distributions are computed on the fly.
+            STORM_LOG_ASSERT(!isNondeterministic, "In an unexpected state: Splitter-based refinement is not implemented for nondeterministic models.");
+            // Helper function to get the distribution over successor quotient states for a given quotient choice.
+            auto getQuotientRowSplitterBased = [&model, &toRepresentativeChoice, &toQuotientState, &isWeak,
+                                                &weakData](uint64_t const quotientChoice) -> std::map<uint64_t, ValueType> {
+                uint64_t const representative = toRepresentativeChoice[quotientChoice];
+                uint64_t const ownQuotientState = toQuotientState[representative];
+                if (isWeak) {
+                    if (weakData->divergentStates.get(representative)) {
+                        // The states of this block can never leave it, so the quotient state is absorbing. For a CTMC the rate of the self-loop is irrelevant.
+                        return {{ownQuotientState, storm::utility::one<ValueType>()}};
+                    }
+                    // Non-divergent, representative states must not be silent because we have to represent the probability of exiting a block.
+                    // It is ruled out by the caller passing the non-silent states as the preferred representatives in the constructor of QuotientData.
+                    STORM_LOG_ASSERT(!weakData->silentStates.get(representative),
+                                     "Weak bisimulation quotient: The representative of a non-divergent block is silent.");
+                }
+                std::map<uint64_t, ValueType> quotientRow;
+                for (auto const& entry : model.getTransitionMatrix().getRow(representative)) {
+                    if (auto const ret = quotientRow.emplace(toQuotientState[entry.getColumn()], entry.getValue()); !ret.second) {
+                        ret.first->second += entry.getValue();
+                    }
+                }
                 if (isWeak && !weakData->stepSensitiveStates.get(representative)) {
                     // Moves within the own block are unobservable, so they are dropped.
                     if (auto const ownBlockIt = quotientRow.find(ownQuotientState); ownBlockIt != quotientRow.end()) {
@@ -90,22 +106,18 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
                         }
                     }
                 }
-            }
-            return quotientRow;
-        };
+                return quotientRow;
+            };
 
-        storm::storage::SparseMatrixBuilder<ValueType> builder(numberOfQuotientChoices, numberOfQuotientStates, 0, true, isNondeterministic,
-                                                               isNondeterministic ? numberOfQuotientStates : 0);
-        for (uint64_t quotientState = 0, quotientChoice = 0; quotientState < numberOfQuotientStates; ++quotientState) {
-            if (isNondeterministic) {
-                builder.newRowGroup(quotientChoice);
-            }
-            uint64_t const quotientChoiceEnd = useSignature ? quotientData.signatureData->quotientChoiceGroupIndices[quotientState + 1] : quotientChoice + 1;
-            for (; quotientChoice < quotientChoiceEnd; ++quotientChoice) {
-                for (auto const& [column, value] : getQuotientRow(quotientChoice)) {
+            for (uint64_t quotientState = 0, quotientChoice = 0; quotientState < numberOfQuotientStates; ++quotientState) {
+                // quotientChoice == quotientState for deterministic models.
+                for (auto const& [column, value] : getQuotientRowSplitterBased(quotientState)) {
                     builder.addNextValue(quotientChoice, column, value);
                 }
             }
+        } else {
+            // This branch should be unreachable for all currently supported template instantiations.
+            STORM_LOG_THROW_UNCONDITIONALLY(storm::exceptions::UnexpectedException, "Splitter-based refinement for interval quotients not implemented.");
         }
         components.transitionMatrix = builder.build();
     }
@@ -167,25 +179,26 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     // build reward models
     {
         for (auto const& r : preservationInformation.preservedRewardModels) {
-            std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
+            std::optional<std::vector<QuotientValueType>> stateRewards, stateActionRewards;
             auto const& rm = model.getRewardModel(r);
             if (rm.hasStateRewards()) {
                 stateRewards.emplace();
                 stateRewards->reserve(numberOfQuotientStates);
                 for (auto const representativeState : toRepresentativeState) {
-                    stateRewards->push_back(rm.getStateReward(representativeState));
+                    stateRewards->push_back(storm::utility::convertNumber<QuotientValueType>(rm.getStateReward(representativeState)));
                 }
             }
             if (rm.hasStateActionRewards()) {
                 stateActionRewards.emplace();
                 stateActionRewards->reserve(numberOfQuotientChoices);
                 for (auto const representativeChoice : toRepresentativeChoice) {
-                    stateActionRewards->push_back(rm.getStateActionReward(representativeChoice));
+                    stateActionRewards->push_back(storm::utility::convertNumber<QuotientValueType>(rm.getStateActionReward(representativeChoice)));
                 }
             }
             STORM_LOG_THROW(!rm.hasTransitionRewards(), storm::exceptions::NotSupportedException,
                             "Transition rewards are not supported for quotient construction");
-            components.rewardModels.emplace(r, storm::models::sparse::StandardRewardModel<ValueType>(std::move(stateRewards), std::move(stateActionRewards)));
+            components.rewardModels.emplace(
+                r, storm::models::sparse::StandardRewardModel<QuotientValueType>(std::move(stateRewards), std::move(stateActionRewards)));
         }
     }
 
@@ -196,14 +209,14 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     } else if (model.isOfType(MarkovAutomaton)) {
         auto const& ma = model.template as<storm::models::sparse::MarkovAutomaton<ValueType>>();
         components.markovianStates.emplace(numberOfQuotientStates, false);
-        components.exitRates.emplace(numberOfQuotientStates, storm::utility::zero<ValueType>());
+        components.exitRates.emplace(numberOfQuotientStates, storm::utility::zero<QuotientValueType>());
         for (uint64_t quotientState = 0; quotientState < numberOfQuotientStates; ++quotientState) {
             auto const representativeState = toRepresentativeState[quotientState];
             if (ma->isMarkovianState(representativeState)) {
                 // Note that a hybrid state (i.e. a Markovian state with further, probabilistic choices) keeps all of its choices here. As in the input
                 // model, the Markovian choice is the first one of the state, since the quotient choices follow the order of the representative state.
                 components.markovianStates->set(quotientState, true);
-                components.exitRates.value()[quotientState] = ma->getExitRate(representativeState);
+                components.exitRates.value()[quotientState] = storm::utility::convertNumber<QuotientValueType>(ma->getExitRate(representativeState));
             }
         }
     } else {
@@ -213,10 +226,15 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     return storm::utility::builder::buildModelFromComponents(model.getType(), std::move(components));
 }
 
+// Instantiations for QuotientType==ValueType
 template class Quotient<double>;
 template class Quotient<storm::RationalNumber>;
 template class Quotient<storm::RationalFunction>;
 template class Quotient<storm::Interval>;
 template class Quotient<storm::RationalInterval>;
+
+// Instantiations for QuotientType==IntervalType<ValueType>
+template class Quotient<double, storm::Interval>;
+template class Quotient<storm::RationalNumber, storm::RationalInterval>;
 
 }  // namespace storm::bisimulation

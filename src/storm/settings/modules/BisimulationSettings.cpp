@@ -24,6 +24,7 @@ const std::string BisimulationSettings::refinementModeOptionName = "refine";
 const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
 const std::string BisimulationSettings::toleranceOptionName = "tolerance";
 const std::string BisimulationSettings::actionSensitiveOptionName = "action-sensitive";
+const std::string BisimulationSettings::intervalAbstractionOptionName = "interval-abstraction";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -109,6 +110,12 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                                        "sparse bisimulation).")
             .setIsAdvanced()
             .build());
+
+    this->addOption(storm::settings::OptionBuilder(moduleName, intervalAbstractionOptionName, true,
+                                                   "Sets whether the values of the quotient model are intervals that abstract the values of the original "
+                                                   "model (only for sparse bisimulation). Has no effect if the original model already has interval values.")
+                        .setIsAdvanced()
+                        .build());
 }
 
 bool BisimulationSettings::isStrongBisimulationSet() const {
@@ -201,6 +208,10 @@ double BisimulationSettings::getTolerance() const {
 
 bool BisimulationSettings::isActionSensitiveSet() const {
     return this->getOption(actionSensitiveOptionName).getHasOptionBeenSet();
+}
+
+bool BisimulationSettings::isIntervalAbstractionSet() const {
+    return this->getOption(intervalAbstractionOptionName).getHasOptionBeenSet();
 }
 
 bool BisimulationSettings::check() const {

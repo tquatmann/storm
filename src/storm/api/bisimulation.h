@@ -13,11 +13,14 @@
 namespace storm {
 namespace api {
 
-template<typename ValueType>
-std::shared_ptr<storm::models::sparse::Model<ValueType>> performBisimulationMinimization(
+/*!
+ * @tparam QuotientValueType the value type of the quotient model, cf. storm::bisimulation::performBisimulationMinimization.
+ */
+template<typename ValueType, typename QuotientValueType = ValueType>
+std::shared_ptr<storm::models::sparse::Model<QuotientValueType>> performBisimulationMinimization(
     std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, std::vector<std::shared_ptr<storm::logic::Formula const>> const& formulas = {},
     storm::bisimulation::Options const& options = {}) {
-    return storm::bisimulation::performBisimulationMinimization<ValueType>(*model, formulas, options).quotient;
+    return storm::bisimulation::performBisimulationMinimization<ValueType, QuotientValueType>(*model, formulas, options).quotient;
 }
 
 template<storm::dd::DdType DdType, typename ValueType, typename ExportValueType = ValueType>

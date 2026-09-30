@@ -23,4 +23,16 @@ namespace storm {
  */
 using BoundType = carl::BoundType;
 
+/*!
+ * Lexicographic comparison of two intervals.
+ */
+template<typename Number>
+inline bool lessLex(carl::Interval<Number> const& lhs, carl::Interval<Number> const& rhs) {
+    if (lhs.lower() != rhs.lower()) {
+        return lhs.lower() < rhs.lower();
+    } else {
+        return lhs.upper() < rhs.upper();
+    }
+};
+
 }  // namespace storm

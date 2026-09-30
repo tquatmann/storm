@@ -706,13 +706,14 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseMarkovA
 }
 
 template<typename ValueType>
-std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBisimulation(
-    std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model, SymbolicInput const& input,
-    storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
+std::shared_ptr<storm::models::ModelBase> preprocessSparseModelBisimulation(std::shared_ptr<storm::models::sparse::Model<ValueType>> const& model,
+                                                                            SymbolicInput const& input,
+                                                                            storm::settings::modules::BisimulationSettings const& bisimulationSettings) {
+    bool const enableIntervalAbstraction = bisimulationSettings.isIntervalAbstractionSet() && !storm::IsIntervalType<ValueType>;
     storm::bisimulation::Options options;
     options.bisimulationType =
         bisimulationSettings.isWeakBisimulationSet() ? storm::bisimulation::BisimulationType::Weak : storm::bisimulation::BisimulationType::Strong;
-    if (bisimulationSettings.isToleranceSet() || !storm::NumberTraits<ValueType>::IsExact) {
+    if (bisimulationSettings.isToleranceSet() || !storm::NumberTraits<ValueType>::IsExact || enableIntervalAbstraction) {
         options.tolerance = storm::utility::convertNumber<storm::RationalNumber>(bisimulationSettings.getTolerance());
     } else {
         options.tolerance = storm::utility::zero<storm::RationalNumber>();
@@ -720,8 +721,20 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> preprocessSparseModelBi
     options.actionSensitive = bisimulationSettings.isActionSensitiveSet();
     STORM_LOG_INFO("Performing bisimulation minimization (type: "
                    << (options.bisimulationType == storm::bisimulation::BisimulationType::Weak ? "weak" : "strong") << ", tolerance: " << options.tolerance
-                   << (options.actionSensitive ? ", action-sensitive" : "") << ")...");
-    return storm::api::performBisimulationMinimization<ValueType>(model, createFormulasToRespect(input.properties), options);
+                   << (options.actionSensitive ? ", action-sensitive" : "") << (bisimulationSettings.isIntervalAbstractionSet() ? ", interval-abstraction" : "")
+                   << ")...");
+    auto const formulas = createFormulasToRespect(input.properties);
+    if (bisimulationSettings.isIntervalAbstractionSet()) {
+        if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Interval abstraction is not supported for parametric models.");
+        } else if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_LOG_INFO("Ignoring the interval abstraction setting as the values of the given model already are intervals.");
+        } else {
+            STORM_LOG_INFO("Abstracting the values of the quotient model into intervals.");
+            return storm::api::performBisimulationMinimization<ValueType, storm::IntervalType<ValueType>>(model, formulas, options);
+        }
+    }
+    return storm::api::performBisimulationMinimization<ValueType>(model, formulas, options);
 }
 
 template<typename ValueType>
@@ -733,15 +746,22 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     auto ioSettings = storm::settings::getModule<storm::settings::modules::IOSettings>();
     auto transformationSettings = storm::settings::getModule<storm::settings::modules::TransformationSettings>();
 
-    std::pair<std::shared_ptr<storm::models::sparse::Model<ValueType>>, bool> result = std::make_pair(model, false);
+    std::pair<std::shared_ptr<storm::models::ModelBase>, bool> result = std::make_pair(model, false);
+
+    // Some API methods expect a sparse model, so we provide a little helper.
+    auto getSparseModel = [&result]<typename VT = ValueType>() {
+        std::shared_ptr<storm::models::sparse::Model<VT>> sparseModelPtr = result.first->template as<storm::models::sparse::Model<VT>>();
+        STORM_LOG_THROW(sparseModelPtr, storm::exceptions::UnexpectedException, "Unexpected model representation.");
+        return sparseModelPtr;
+    };
 
     if (auto order = transformationSettings.getModelPermutation(); order.has_value()) {
         auto seed = transformationSettings.getModelPermutationSeed();
         STORM_PRINT_AND_LOG("Permuting model states using " << storm::utility::permutation::orderKindtoString(order.value()) << " order"
                                                             << (seed.has_value() ? " with seed " + std::to_string(seed.value()) : "") << ".\n");
-        result.first = storm::api::permuteModelStates(result.first, order.value(), seed);
+        result.first = storm::api::permuteModelStates(getSparseModel(), order.value(), seed);
         result.second = true;
-        STORM_PRINT_AND_LOG("Transition matrix hash after permuting: " << result.first->getTransitionMatrix().hash() << ".\n");
+        STORM_PRINT_AND_LOG("Transition matrix hash after permuting: " << getSparseModel()->getTransitionMatrix().hash() << ".\n");
     }
 
     // Merging of states should be done before applying bisimulation as this order leads to the smallest quotient
@@ -751,7 +771,7 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
         } else {
             auto formulas = createFormulasToRespect(input.properties);
             if (formulas.size() == 1) {
-                auto mergedModel = storm::api::mergeEquivalentStatesForFormula<ValueType>(result.first, *formulas.front());
+                auto mergedModel = storm::api::mergeEquivalentStatesForFormula<ValueType>(getSparseModel(), *formulas.front());
                 if (mergedModel) {
                     STORM_LOG_INFO("Merged equivalent states for the considered property '" << *formulas.front() << "'.");
                     result.first = mergedModel;
@@ -768,40 +788,47 @@ std::pair<std::shared_ptr<storm::models::ModelBase>, bool> preprocessModel(std::
     }
 
     if (result.first->isOfType(storm::models::ModelType::MarkovAutomaton)) {
-        result.first = preprocessSparseMarkovAutomaton(result.first->template as<storm::models::sparse::MarkovAutomaton<ValueType>>());
+        result.first = preprocessSparseMarkovAutomaton(getSparseModel()->template as<storm::models::sparse::MarkovAutomaton<ValueType>>());
         result.second = true;
     }
 
     if (mpi.applyBisimulation) {
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Bisimulation not supported for interval models.");
-        } else {
-            result.first = preprocessSparseModelBisimulation(result.first, input, bisimulationSettings);
-            result.second = true;
-        }
-    }
-
-    if (transformationSettings.isToDiscreteTimeModelSet()) {
-        if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Transformation to discrete time model not supported for interval models.");
-        } else {
-            // TODO: we should also transform the properties at this point.
-            STORM_LOG_WARN_COND(
-                !model->hasRewardModel("_time"),
-                "Scheduled transformation to discrete time model, but a reward model named '_time' is already present in this model. We might take "
-                "the wrong reward model later.");
-            result.first =
-                storm::api::transformContinuousToDiscreteTimeSparseModel(std::move(*result.first), storm::api::extractFormulasFromProperties(input.properties))
-                    .first;
-            result.second = true;
-        }
-    }
-
-    if (transformationSettings.isToNondeterministicModelSet()) {
-        result.first = storm::api::transformToNondeterministicModel<ValueType>(std::move(*result.first));
+        result.first = preprocessSparseModelBisimulation(getSparseModel(), input, bisimulationSettings);
         result.second = true;
     }
 
+    // Bisimulation might have changed the model ValueType to IntervalType<ValueType>, so we need a case distinction for the remaining preprocessings.
+    auto preprocessAfterBisimulation = [&result, &getSparseModel, &transformationSettings, &input]<typename VT>() {  // Will be invoked on the right VT
+        if (transformationSettings.isToDiscreteTimeModelSet()) {
+            if constexpr (storm::IsIntervalType<VT>) {
+                STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Transformation to discrete time model not supported for interval models.");
+            } else {
+                // TODO: we should also transform the properties at this point.
+                STORM_LOG_WARN_COND(
+                    !getSparseModel.template operator()<VT>()->hasRewardModel("_time"),
+                    "Scheduled transformation to discrete time model, but a reward model named '_time' is already present in this model. We might take "
+                    "the wrong reward model later.");
+                result.first = storm::api::transformContinuousToDiscreteTimeSparseModel(std::move(*getSparseModel.template operator()<VT>()),
+                                                                                        storm::api::extractFormulasFromProperties(input.properties))
+                                   .first;
+                result.second = true;
+            }
+        }
+
+        if (transformationSettings.isToNondeterministicModelSet()) {
+            result.first = storm::api::transformToNondeterministicModel<VT>(std::move(*getSparseModel.template operator()<VT>()));
+            result.second = true;
+        }
+    };
+    if (result.first->supportsUncertainty() && !model->supportsUncertainty()) {
+        if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
+            STORM_LOG_THROW_UNCONDITIONALLY(storm::exceptions::UnexpectedException, "Unexpected rational function for model with introduced uncertainty.");
+        } else {
+            preprocessAfterBisimulation.template operator()<storm::IntervalType<ValueType>>();
+        }
+    } else {
+        preprocessAfterBisimulation.template operator()<ValueType>();
+    }
     return result;
 }
 

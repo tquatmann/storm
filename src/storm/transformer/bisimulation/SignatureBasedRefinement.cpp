@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "storm/adapters/IntervalForward.h"
+#include "storm/adapters/IntervalAdapter.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/models/sparse/Model.h"
@@ -16,15 +16,15 @@ namespace storm::bisimulation {
 
 namespace detail {
 
-template<typename ValueType, SignatureMode SignatureMode>
+template<typename ValueType, SignatureMode SignatureMode, typename QuotientValueType>
 struct SignatureRefinementContext {
     SignatureRefinementContext(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                               Signatures<ValueType, SignatureMode>& signatures)
+                               Signatures<ValueType, SignatureMode, QuotientValueType>& signatures)
         : model(model), partition(partition), signatures(signatures), backwardTransitions(model.getBackwardTransitions()), cache(partition) {}
 
     storm::models::sparse::Model<ValueType> const& model;
     storm::bisimulation::Partition& partition;
-    storm::bisimulation::Signatures<ValueType, SignatureMode>& signatures;
+    storm::bisimulation::Signatures<ValueType, SignatureMode, QuotientValueType>& signatures;
     storm::storage::SparseMatrix<ValueType> const backwardTransitions;
     storm::bisimulation::Partition::OrderedBlockMap<bool>
         queue;  // stores an extra flag for each element in the queue. The flag indicates whether we enforce exploring the predecessors of the block
@@ -36,9 +36,9 @@ struct SignatureRefinementContext {
     } cache;
 };
 
-template<typename ValueType, SignatureMode SignatureMode>
-void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, SignatureMode>& context, storm::bisimulation::Partition::Block const pivotBlock,
-                                     bool const enforcePredecessorExploration) {
+template<typename ValueType, SignatureMode SignatureMode, typename QuotientValueType>
+void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, SignatureMode, QuotientValueType>& context,
+                                     storm::bisimulation::Partition::Block const pivotBlock, bool const enforcePredecessorExploration) {
     // Split the pivot block B into B=B_1 cup B_2 cup ... cup B_n using signature refinement
     // First update the state signatures
     for (uint64_t const state : pivotBlock) {
@@ -132,11 +132,10 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
 
 }  // namespace detail
 
-template<typename ValueType, SignatureMode SignatureMode>
+template<typename ValueType, SignatureMode SignatureMode, typename QuotientValueType>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                     Signatures<ValueType, SignatureMode>& signatures) {
-    static_assert(!storm::IsIntervalType<ValueType>, "Interval types are not yet supported for signature-based refinement.");
-    detail::SignatureRefinementContext<ValueType, SignatureMode> context(model, partition, signatures);
+                                     Signatures<ValueType, SignatureMode, QuotientValueType>& signatures) {
+    detail::SignatureRefinementContext<ValueType, SignatureMode, QuotientValueType> context(model, partition, signatures);
     // Initially, add all current blocks to the queue. No need to enforce exploring predecessors.
     partition.forEachBlock([&context](auto const& block) { context.queue.emplace(block, false); });
 
@@ -158,25 +157,27 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
     });
 }
 
-// double
-template void performSignatureBasedRefinement<double, SignatureMode::Exact>(storm::models::sparse::Model<double> const& model,
-                                                                            storm::bisimulation::Partition& partition,
-                                                                            Signatures<double, SignatureMode::Exact>& signatures);
-template void performSignatureBasedRefinement<double, SignatureMode::Approximative>(storm::models::sparse::Model<double> const& model,
-                                                                                    storm::bisimulation::Partition& partition,
-                                                                                    Signatures<double, SignatureMode::Approximative>& signatures);
+#define STORM_INSTANTIATE_SIGNATURE_REFINEMENT(ValueType, QuotientValueType, Mode)                       \
+    template void performSignatureBasedRefinement<ValueType, SignatureMode::Mode, QuotientValueType>(    \
+        storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition, \
+        Signatures<ValueType, SignatureMode::Mode, QuotientValueType>& signatures);
 
-// storm::RationalNumber
-template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Exact>(storm::models::sparse::Model<storm::RationalNumber> const& model,
-                                                                                           storm::bisimulation::Partition& partition,
-                                                                                           Signatures<storm::RationalNumber, SignatureMode::Exact>& signatures);
-template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Approximative>(
-    storm::models::sparse::Model<storm::RationalNumber> const& model, storm::bisimulation::Partition& partition,
-    Signatures<storm::RationalNumber, SignatureMode::Approximative>& signatures);
+// Explicit instantiations for QuotientValueType == ValueType
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, double, Exact)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, double, Approximative)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalNumber, Exact)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalNumber, Approximative)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalFunction, storm::RationalFunction, Exact)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::Interval, storm::Interval, Exact)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::Interval, storm::Interval, Approximative)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalInterval, storm::RationalInterval, Exact)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalInterval, storm::RationalInterval, Approximative)
 
-// storm::RationalFunction
-template void performSignatureBasedRefinement<storm::RationalFunction, SignatureMode::Exact>(
-    storm::models::sparse::Model<storm::RationalFunction> const& model, storm::bisimulation::Partition& partition,
-    Signatures<storm::RationalFunction, SignatureMode::Exact>& signatures);
+// Explicit instantiations for QuotientValueType == IntervalType<ValueType> (for interval abstraction)
+// Exact mode is not meaningfull in this case, as that would mean that we are never allowed to abstract values into intervals.
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(double, storm::Interval, Approximative)
+STORM_INSTANTIATE_SIGNATURE_REFINEMENT(storm::RationalNumber, storm::RationalInterval, Approximative)
+
+#undef STORM_INSTANTIATE_SIGNATURE_REFINEMENT
 
 }  // namespace storm::bisimulation

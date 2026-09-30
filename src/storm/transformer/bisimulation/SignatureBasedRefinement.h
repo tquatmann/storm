@@ -11,8 +11,8 @@ namespace storm::bisimulation {
  * @note applicable to deterministic and nondeterministic models, in contrast to splitter-based refinement.
  * @note upon return, the signature of every state (as cached by `signatures`) is up to date with respect to the final partition.
  */
-template<typename ValueType, SignatureMode Mode>
+template<typename ValueType, SignatureMode Mode, typename QuotientValueType = ValueType>
 void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> const& model, storm::bisimulation::Partition& partition,
-                                     Signatures<ValueType, Mode>& signatures);
+                                     Signatures<ValueType, Mode, QuotientValueType>& signatures);
 
 }  // namespace storm::bisimulation
