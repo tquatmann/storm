@@ -49,14 +49,16 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
     if constexpr (SignatureMode == storm::bisimulation::SignatureMode::Exact) {
         pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getEquivalenceSplitOrder());
     } else {
-        // In approximative mode, there provably is no transitive order on signatures that captures "approximately equal signatures".
-        // We therefore split in two steps: first, we split by a coarse order based on structural properties of the state signature.
-        // Then, we do a more expensive split based on clustering on each sub-block.
+        // In approximative mode or interval abstraction mode, there is no transitive order on signatures that captures "approximately equal signatures".
+        // We therefore split in two steps: first, we split by a coarse order based on structural properties of the state signature. Then, we do a more
+        // expensive split based on clustering on each sub-block.
         pivotHasBeenSplit = context.partition.splitBlockByOrder(pivotBlock, context.signatures.getStructuralSplitOrder());
-        auto const splitCondition = context.signatures.getApproximateSplitCondition();
+        auto splitCondition = context.signatures.getClusteringSplitCondition();
         context.partition.forEachSubBlock(pivotBlock, [&context, &splitCondition, &pivotHasBeenSplit](auto const& subBlock) {
             pivotHasBeenSplit |= context.partition.splitBlockByClustering(subBlock, splitCondition);
         });
+        // In interval-abstraction mode, the clustering-based split also triggers widening of the signature of the *first* state of each subBlock so that it contains all behaviour of the remaining state signatures in the subblock.
+        // Once the partition is final, we will ensure that every state of a block gets that representative signature. See performSignatureBasedRefinement.
     }
 
     if (!pivotHasBeenSplit && !enforcePredecessorExploration) {
@@ -153,6 +155,11 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
     partition.forEachBlock([&signatures](auto const& block) {
         if (block.size() == 1) {
             signatures.updateStateSignature(block.front());
+        } else if (SignatureMode == bisimulation::SignatureMode::IntervalAbstraction) {
+            // refinePartitionBasedOnSignature only ensures that the widened (abstracted) intervals are stored at the *first* state of each block. We copy it over to the other states, too.
+            for (auto blockIt = block.begin() + 1; blockIt != block.end(); ++blockIt) {
+                signatures.copyStructuralEquivalentStateSignature(block.front(), *blockIt);
+            }
         }
     });
 }
@@ -176,23 +183,23 @@ template void performSignatureBasedRefinement<storm::RationalFunction, Signature
 template void performSignatureBasedRefinement<storm::Interval, SignatureMode::Exact>(storm::models::sparse::Model<storm::Interval> const& model,
                                                                                      storm::bisimulation::Partition& partition,
                                                                                      Signatures<storm::Interval, SignatureMode::Exact>& signatures);
-template void performSignatureBasedRefinement<storm::Interval, SignatureMode::Approximative>(
+template void performSignatureBasedRefinement<storm::Interval, SignatureMode::IntervalAbstraction>(
     storm::models::sparse::Model<storm::Interval> const& model, storm::bisimulation::Partition& partition,
-    Signatures<storm::Interval, SignatureMode::Approximative>& signatures);
+    Signatures<storm::Interval, SignatureMode::IntervalAbstraction>& signatures);
 template void performSignatureBasedRefinement<storm::RationalInterval, SignatureMode::Exact>(
     storm::models::sparse::Model<storm::RationalInterval> const& model, storm::bisimulation::Partition& partition,
     Signatures<storm::RationalInterval, SignatureMode::Exact>& signatures);
-template void performSignatureBasedRefinement<storm::RationalInterval, SignatureMode::Approximative>(
+template void performSignatureBasedRefinement<storm::RationalInterval, SignatureMode::IntervalAbstraction>(
     storm::models::sparse::Model<storm::RationalInterval> const& model, storm::bisimulation::Partition& partition,
-    Signatures<storm::RationalInterval, SignatureMode::Approximative>& signatures);
+    Signatures<storm::RationalInterval, SignatureMode::IntervalAbstraction>& signatures);
 
 // Explicit instantiations for QuotientValueType == IntervalType<ValueType> (for interval abstraction)
 // Exact mode is not meaningful in this case, as that would mean that we are never allowed to abstract values into intervals.
-template void performSignatureBasedRefinement<double, SignatureMode::Approximative, storm::Interval>(
+template void performSignatureBasedRefinement<double, SignatureMode::IntervalAbstraction, storm::Interval>(
     storm::models::sparse::Model<double> const& model, storm::bisimulation::Partition& partition,
-    Signatures<double, SignatureMode::Approximative, storm::Interval>& signatures);
-template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::Approximative, storm::RationalInterval>(
+    Signatures<double, SignatureMode::IntervalAbstraction, storm::Interval>& signatures);
+template void performSignatureBasedRefinement<storm::RationalNumber, SignatureMode::IntervalAbstraction, storm::RationalInterval>(
     storm::models::sparse::Model<storm::RationalNumber> const& model, storm::bisimulation::Partition& partition,
-    Signatures<storm::RationalNumber, SignatureMode::Approximative, storm::RationalInterval>& signatures);
+    Signatures<storm::RationalNumber, SignatureMode::IntervalAbstraction, storm::RationalInterval>& signatures);
 
 }  // namespace storm::bisimulation

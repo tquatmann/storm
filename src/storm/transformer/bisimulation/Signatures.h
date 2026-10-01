@@ -14,24 +14,34 @@
 
 namespace storm::bisimulation {
 
-enum class SignatureMode { Exact, Approximative };
+enum class SignatureMode {
+    Exact,                 // Two values are equal iff they coincide.
+    Approximative,         // Two values are equal iff they differ by at most a given tolerance.
+    IntervalAbstraction  // The signature values are intervals that cover all values of the represented states.
+};
 
 /*!
  * Computes and caches the state signatures and provides state-based order / condition for splitting in signature refinement.
  * @tparam ValueType the type of the transition values in the model
- * @tparam Mode the mode of the signature computation (exact or approximate)
+ * @tparam Mode the mode of the signature computation, cf. SignatureMode
  * @tparam QuotientValueType the type of the quotient model. Either coincides with ValueType or with IntervalType<ValueType> (for interval abstraction).
  */
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType = ValueType>
 class Signatures {
+    static_assert(Mode != SignatureMode::IntervalAbstraction || storm::IsIntervalType<QuotientValueType>,
+                  "SignatureMode::IntervalAbstraction requires an interval quotient value type.");
+    static_assert(Mode != SignatureMode::Approximative || !storm::IsIntervalType<QuotientValueType>,
+                  "Approximative signatures over interval values are expressed by SignatureMode::IntervalAbstraction.");
+
    public:
+    using ToleranceType = storm::IntervalBaseType<QuotientValueType>;
     Signatures(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
                storm::bisimulation::Partition const& partition)
         requires(Mode == SignatureMode::Exact);
 
     Signatures(storm::models::sparse::Model<ValueType> const& model, std::optional<std::vector<uint64_t>> const& choiceClasses,
-               storm::bisimulation::Partition const& partition, storm::IntervalBaseType<ValueType> const& tolerance)
-        requires(Mode == SignatureMode::Approximative);
+               storm::bisimulation::Partition const& partition, ToleranceType const& tolerance)
+        requires(Mode != SignatureMode::Exact);
 
     /*!
      * Updates the state signature of the given state index.
@@ -39,8 +49,9 @@ class Signatures {
      */
     void updateStateSignature(uint64_t const stateIndex);
 
-   private:
-    struct StateSignature;  // Forward-declared; defined privately further down.
+   private: // Forward-declared structs; defined privately further down.
+    struct StateSignature;
+    struct TemporaryStateSignature;
 
    public:
     /*!
@@ -66,30 +77,39 @@ class Signatures {
      * Instantiates a SplitOrder that only compares with respect to structural equality of the state signature (ChoiceSignature::compareStructure)
      */
     SplitOrder getStructuralSplitOrder() const
-        requires(Mode == SignatureMode::Approximative);
+        requires(Mode != SignatureMode::Exact);
 
     /*!
      * Represents a condition for splitting two states based on their signature.
      * @note assumes that only states are compared for which updateStateSignature has been called since the last change of the partition.
      * @note assumes that the two states are equivalent with respect to getStructuralSplitOrder()
-     * operator() returns true iff the two states are not approximately equal with respect to the given tolerance.
+     * operator() returns true iff the anchor state and the candidate state should *not* be grouped together.
      */
     struct SplitCondition {
-        SplitCondition(std::vector<StateSignature> const& signatures, storm::IntervalBaseType<ValueType> const& tolerance)
-            : signatures(signatures), tolerance(tolerance) {}
-        bool operator()(uint64_t const state1, uint64_t const state2) const
+        SplitCondition(std::vector<StateSignature>& signatures, ToleranceType const& tolerance, TemporaryStateSignature& tmpStateSignature)
+            : signatures(signatures), tolerance(tolerance), tmpStateSignature(tmpStateSignature) {}
+        bool operator()(uint64_t const anchorState, uint64_t const candidateState) const
             requires(Mode == SignatureMode::Approximative);
+        bool operator()(uint64_t const anchorState, uint64_t const candidateState)
+            requires(Mode == SignatureMode::IntervalAbstraction);
 
        private:
-        std::vector<StateSignature> const& signatures;
-        storm::IntervalBaseType<ValueType> const tolerance;
+        std::vector<StateSignature>& signatures;
+        ToleranceType const tolerance;
+        TemporaryStateSignature& tmpStateSignature;
     };
 
     /*!
      * Instantiates a SplitCondition.
      */
-    SplitCondition getApproximateSplitCondition() const
-        requires(Mode == SignatureMode::Approximative);
+    SplitCondition getClusteringSplitCondition()
+        requires(Mode != SignatureMode::Exact);
+
+    /*!
+     * Copies the state signature from src to dst. Assumes that both have the same choice count and the choices are pairwise structurally equal (compareStructure() == 0).
+     * @note: currently only needed for IntervalAbstraction.
+     */
+    void copyStructuralEquivalentStateSignature(uint64_t const& srcState, uint64_t const& dstState) requires(Mode == SignatureMode::IntervalAbstraction);
 
     /*!
      * Fills in the choice mappings of the given (already state-mapped) quotient data: for every quotient state, the choices of its representative state
@@ -108,49 +128,54 @@ class Signatures {
     using BlockDistributionView = std::span<std::pair<Partition::Block, QuotientValueType>>;
 
     /*!
-     * @return true iff value1 is strictly less than value2 with respect to the order the choice signatures are sorted by.
-     * @note for intervals this is the lexicographic order over the two bounds: the order the interval type itself provides only relates intervals that do not
-     * overlap and thus is no strict weak order.
-     */
-    static bool lessValue(QuotientValueType const& value1, QuotientValueType const& value2);
-
-    /*!
-     * @return true iff the two values differ by at most the given tolerance. For intervals, the two bounds are compared individually.
-     */
-    static bool nearValue(QuotientValueType const& value1, QuotientValueType const& value2, storm::IntervalBaseType<ValueType> const& tolerance)
-        requires(Mode == SignatureMode::Approximative);
-
-    /*!
-     * @return the given value of the input model, converted to the value type of the signatures.
-     */
-    static QuotientValueType convertValue(ValueType const& value);
-
-    /*!
      * The signature of a single choice, consisting of its choice class and the distribution over successor blocks (Partition::Block -> QuotientValueType).
      */
-    struct ChoiceSignature {
-        uint64_t choiceClass;  // The class of this choice according to the provided choice classes.
+    struct ConcreteChoiceSignature {
+        uint64_t choiceClass{0};  // The class of this choice according to the provided choice classes.
         // The accumulated transition values for each block, sorted by Partition::BlockCompare. This is a (non-owning) view into the choice's permanent
         // slot of Signatures::choiceDistributionStorage, see there.
         BlockDistributionView distr;
 
         // Orders by choiceClass and the set of blocks (identity and order) of distr; independent of the actual transition values.
-        std::strong_ordering compareStructure(ChoiceSignature const& other) const;
-        // strong_ordering in exact mode (equal signatures are substitutable); only weak_ordering in approximative mode, since ties don't imply approxEqual.
+        std::strong_ordering compareStructure(ConcreteChoiceSignature const& other) const;
+        // strong_ordering in exact mode (equal signatures are substitutable); only weak_ordering in approximative/interval abstraction mode, since ties don't
+        // imply approxEqual.
         using ComparisonResult = std::conditional_t<Mode == SignatureMode::Exact, std::strong_ordering, std::weak_ordering>;
-        // Strict weak order for sorting/lower_bound. In approximative mode, ties don't imply approximate equality - see StateSignature::find.
-        ComparisonResult compare(ChoiceSignature const& other) const;
+        // Strict weak order for sorting/lower_bound. In approximative/interval abstraction mode, ties don't imply (approximate) equality - see
+        // StateSignature::find.
+        ComparisonResult compare(ConcreteChoiceSignature const& other) const;
         // True iff the two signatures have the same structure and their distr values pairwise differ by at most the given tolerance.
-        bool approximatelyEqual(ChoiceSignature const& other, storm::IntervalBaseType<ValueType> const& tolerance) const
+        bool approximatelyEqual(ConcreteChoiceSignature const& other, ToleranceType const& tolerance) const
             requires(Mode == SignatureMode::Approximative);
     };
+    struct AbstractChoiceSignature : public ConcreteChoiceSignature {
+        // The lower and upper delta values accumulate the amount that the choice signature got widened compared to the concrete signature
+        ToleranceType lowerDelta{storm::utility::zero<ToleranceType>()}, upperDelta{storm::utility::zero<ToleranceType>()};
 
-    using ChoiceSignatureIterator = typename std::vector<ChoiceSignature>::const_iterator;
+        /*!
+         * Widens the current choice signature to also include the other choice signature.
+         * The lowerDelta and upperDelta values keep track of how much the intervals were widened compared to the concrete signatures.
+         *
+         * @param other the other choice signature. Assumes that the two signatures have the same structure (compareStructure() == 0).
+         */
+        void enhance(AbstractChoiceSignature const& other) requires(Mode == SignatureMode::IntervalAbstraction);
+
+        /*!
+         * We call two choice signatures c1 and c2 compatible if the delta values of c1.enhance(c2) are both less than or equal to the tolerance.
+         * @param other the other choice signature. Assumes that the two signatures have the same structure (compareStructure() == 0).
+         * @param requireContainsOther if true, the other signature must additionally be contained in the current signature in order to be compatible.
+         */
+        bool isCompatibleWith(AbstractChoiceSignature const& other, ToleranceType const& tolerance, bool requireContainsOther) const
+            requires(Mode == SignatureMode::IntervalAbstraction);
+    };
+    using ChoiceSignature = std::conditional_t<Mode == SignatureMode::IntervalAbstraction, AbstractChoiceSignature, ConcreteChoiceSignature>;
+
+    using ChoiceSignatureIterator = std::vector<ChoiceSignature>::const_iterator;
 
     /*!
      * The (static) signature of a state w.r.t. a partition.
      *  A state signature is seen as an ordered set of deduplicated choice signatures, where the order is defined by ChoiceSignature::compare and the
-     *  deduplication is defined by the equality used for the mode (exact equality for Exact, approximate equality for Approximative, see ChoiceSignature).
+     *  deduplication is defined by the equality used for the mode (exact equality for Exact, approximate equality otherwise, see ChoiceSignature).
      */
     struct StateSignature {
         /*!
@@ -159,8 +184,9 @@ class Signatures {
          * The iterator is either (exact/approximately) equal to the given signature, or the position where it would be inserted.
          * Two choice signatures are approximately equal (w.r.t. a tolerance) iff they have equal structure (compareStructure) and their distr values pairwise
          * differ by at most the tolerance.
+         * @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given signature.
          */
-        std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, storm::IntervalBaseType<ValueType> const& tolerance) const;
+        std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, ToleranceType const& tolerance, [[maybe_unused]] bool requireContainsSignature = false)  const;
 
         /*!
          * Like find(), but starts searching at `hint` instead of locating the window of candidates via lower_bound. The window consists of the entries that are
@@ -169,14 +195,57 @@ class Signatures {
          * it.
          * @note requires !signature.distr.empty().
          * @note returns {hint, false} if signature is not found.
+         *  @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given signature.
          */
         std::pair<ChoiceSignatureIterator, bool> findWithHint(ChoiceSignatureIterator const hint, ChoiceSignature const& signature,
-                                                              storm::IntervalBaseType<ValueType> const& tolerance) const
-            requires(Mode == SignatureMode::Approximative);
+                                                              ToleranceType const& tolerance,  [[maybe_unused]] bool requireContainsSignature = false) const
+            requires(Mode != SignatureMode::Exact);
 
-        void insert(ChoiceSignature const& signature, storm::IntervalBaseType<ValueType> const& tolerance);
+        void insert(ChoiceSignature const& choiceSignature, ToleranceType const& tolerance);
 
         std::vector<ChoiceSignature> choices;  // Always ordered and deduplicated as described above.
+    };
+
+    /*!
+     * A small helper class that holds a state signature as a deep copy.
+     * Currently only used for IntervalAbstraction signatures.
+     */
+    class TemporaryStateSignature {
+    public:
+        TemporaryStateSignature(uint64_t const maxTransitions) : distrStorage(maxTransitions) {}
+
+        StateSignature& load(StateSignature const& src) requires(Mode == SignatureMode::IntervalAbstraction) {
+            uint64_t offset = 0;
+            sig.choices.resize(src.distr.size());
+            for (uint64_t choiceIndex = 0; choiceIndex < src.choices.size(); ++choiceIndex) {
+                auto& sigChoice = sig.choices[choiceIndex];
+                auto const& srcChoice = src.choices[choiceIndex];
+                sigChoice.choiceClass = srcChoice.choiceClass;
+                sigChoice.lowerDelta = srcChoice.lowerDelta;
+                sigChoice.upperDelta = srcChoice.upperDelta;
+                sigChoice.distr = BlockDistributionView(distrStorage.data() + offset, srcChoice.distr.size()); // Initialize the distr view
+                std::copy(srcChoice.distr.begin(), srcChoice.distr.end(), sigChoice.distr.begin()); // Copy the distribution
+                offset += srcChoice.distr.size();
+            }
+            return sig;
+        }
+
+        void store(StateSignature& dst) {
+            STORM_LOG_ASSERT(sig.choices.size() == dst.distr.size(), "Expected that the destination has the same choice count.");
+            for (uint64_t choiceIndex = 0; choiceIndex < sig.choices.size; ++choiceIndex) {
+                auto const& sigChoice = sig.choices[choiceIndex];
+                auto& dstChoice = dst.choices[choiceIndex];
+                dstChoice.choiceClass = sigChoice.choiceClass;
+                dstChoice.lowerDelta = sigChoice.lowerDelta;
+                dstChoice.upperDelta = sigChoice.upperDelta;
+                STORM_LOG_ASSERT(sigChoice.distr.size() == dstChoice.distr.size(), "Expected that the destination has the same distribution size.");
+                std::copy(sigChoice.distr.begin(), sigChoice.distr.end(), dstChoice.distr.begin());
+            }
+        }
+
+    private:
+        StateSignature sig;
+        std::vector<std::pair<Partition::Block, QuotientValueType>> distrStorage;
     };
 
     /*!
@@ -207,7 +276,7 @@ class Signatures {
     ChoiceSignature getChoiceSignature(uint64_t const choiceIndex) const;
 
     /*!
-     * A reusable, sparse accumulator for building the distribution (Partition::Block -> QuotientValueType) of a single choice, without allocating a fresh map
+     * A reusable, sparse accumulator for building the distribution (Partition::Block -> ValueType) of a single choice, without allocating a fresh map
      * for every choice: values is a dense array indexed by a block's front() element (unique per block, since blocks are disjoint), and support records which
      * blocks were touched so that extract() only has to look at (and reset) those, not the whole array.
      * @note the cache must not be used across a change of the partition, since a block's front() element is only a stable identifier for that block as long
@@ -220,7 +289,7 @@ class Signatures {
         /*!
          * Adds value to the accumulated value of the block b. Registers b as touched the first time this happens.
          */
-        void addValue(Partition::Block const& b, QuotientValueType const& value);
+        void addValue(Partition::Block const& block, ValueType const& value);
 
         /*!
          * Writes the accumulated (block, value) pairs, sorted by Partition::BlockCompare, into the given range (which must be large enough to hold them)
@@ -230,7 +299,7 @@ class Signatures {
         BlockDistributionView extract(BlockDistributionView const dest);
 
        private:
-        std::vector<QuotientValueType> values;
+        std::vector<ValueType> values;
         std::vector<Partition::Block> support;
     } choiceSignatureCache;
 
@@ -256,9 +325,14 @@ class Signatures {
      * The quotient might only have s_1 and c_1 as representatives for the block but c_1 ≈ c'_2 does not need to hold. c_1 ≈ c_2 ≈ c'_2 only implies that
      * c_1 and c'_2 are within twice of the tolerance considered for ≈.
      */
-    storm::IntervalBaseType<ValueType> const halfTolerance;
+    ToleranceType const halfTolerance;
 
     std::vector<StateSignature> stateSignatureCache;
+
+    /*!
+     * Scratch space for a temporary state signature.
+     */
+    TemporaryStateSignature tmpStateSignature;
 };
 
 }  // namespace storm::bisimulation

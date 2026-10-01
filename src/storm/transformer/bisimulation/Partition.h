@@ -280,12 +280,13 @@ class Partition {
      * once no more such elements remain; then continues with the next not-yet-grouped element as the next anchor.
      * Unlike splitBlockByOrder, this does not require condition to be consistent with any (total or weak) order over the block's elements.
      * @param condition returns true for pairs of elements that should not be in the same block; only ever invoked with the (still not-yet-grouped) anchor
-     * of the group currently being built as the first argument.
+     * of the group currently being built as the first argument. The condition may modify its own state, e.g., to accumulate information about the
+     * elements grouped with an anchor.
      * @return true iff the block was split, i.e. if the input block is now a proper super block.
      */
     template<typename Condition>
-        requires std::invocable<Condition, ElementIndex, ElementIndex>
-    bool splitBlockByClustering(Block const& block, Condition const& condition) {
+        requires std::invocable<Condition&, ElementIndex, ElementIndex>
+    bool splitBlockByClustering(Block const& block, Condition&& condition) {
         STORM_LOG_ASSERT(!isProperSuperBlock(block), "Tried to split a block that consists of multiple sub-blocks.");
         if (block.size() <= 1) {
             return false;  // nothing to do

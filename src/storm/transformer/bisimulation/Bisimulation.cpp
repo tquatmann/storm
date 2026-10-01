@@ -74,6 +74,7 @@ ReturnType<QuotientValueType> performBisimulationMinimization(storm::models::spa
     };
     if (useSignatureRefinement) {
         if (storm::utility::isZero(options.tolerance)) {
+            // Exact signature-based refinement
             if constexpr (!useIntervalAbstraction) {
                 storm::bisimulation::Signatures<ValueType, SignatureMode::Exact, QuotientValueType> signatures(model, choiceClasses, partition);
                 storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
@@ -83,9 +84,17 @@ ReturnType<QuotientValueType> performBisimulationMinimization(storm::models::spa
                 STORM_LOG_THROW_UNCONDITIONALLY(storm::exceptions::NotSupportedException,
                                                 "Bisimulation with interval-abstraction and zero tolerance is not supported.");
             }
-        } else if constexpr (!std::is_same_v<ValueType, storm::RationalFunction>) {
-            storm::bisimulation::Signatures<ValueType, SignatureMode::Approximative, QuotientValueType> signatures(
+        } else if constexpr (storm::IsIntervalType<QuotientValueType>) {
+            // Interval abstraction with positive tolerance (either from a non-interval model or from an interval model)
+            storm::bisimulation::Signatures<ValueType, SignatureMode::IntervalAbstraction, QuotientValueType> signatures(
                 model, choiceClasses, partition, storm::utility::convertNumber<storm::IntervalBaseType<ValueType>>(options.tolerance));
+            storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
+            initializeQuotientData();
+            signatures.extendQuotientData(quotientData.value(), options.createQuotientChoiceMapping);
+        } else if constexpr (!std::is_same_v<ValueType, storm::RationalFunction>) {
+            // Approximative signature-based refinement with positive tolerance (from a non-interval model to a non-interval model)
+            storm::bisimulation::Signatures<ValueType, SignatureMode::Approximative, QuotientValueType> signatures(
+                model, choiceClasses, partition, storm::utility::convertNumber<ValueType>(options.tolerance));
             storm::bisimulation::performSignatureBasedRefinement(model, partition, signatures);
             initializeQuotientData();
             signatures.extendQuotientData(quotientData.value(), options.createQuotientChoiceMapping);
@@ -95,7 +104,7 @@ ReturnType<QuotientValueType> performBisimulationMinimization(storm::models::spa
                                                                                           << " is not supported for parametric models.");
         }
     } else if constexpr (!storm::IsIntervalType<QuotientValueType>) {  // IsIntervalType shouldn't hold either way but condition needed for compilation
-        // Use Splitter-based refinement (weak or strong)
+        // Splitter-based refinement (weak or strong)
         if (isWeak) {
             // Weak bisimulation additionally needs to know the divergent, step sensitive and silent states. Computing them further refines the partition.
             // Both that computation and the refinement need the transposed transition matrix, so we build it once and share it.
