@@ -240,7 +240,7 @@ void Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::en
         BaseType const lowerDiff = otherIt->second.lower() - value.lower();
         if (lowerDiff < zero) {
             lowerDelta -= lowerDiff;
-            value.setLower(otherIt->second.lower());;
+            value.setLower(otherIt->second.lower());
         } else {
             otherLowerDelta += lowerDiff;
         }
@@ -259,8 +259,8 @@ void Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::en
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
-bool Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::isCompatibleWith(ConcreteChoiceSignature const& other,
-                                                                                               ToleranceType const& tolerance, bool requireContainsSignature) const
+bool Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::isCompatibleWith(AbstractChoiceSignature const& other,
+                                                                                               ToleranceType const& tolerance, bool requireContainsOther) const
     requires(Mode == SignatureMode::IntervalAbstraction)
 {
     STORM_LOG_ASSERT(ConcreteChoiceSignature::compareStructure(other) == std::strong_ordering::equal, "Assuming same structure for compatible check.");
@@ -274,7 +274,7 @@ bool Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::is
     for (auto& [block, value] : ConcreteChoiceSignature::distr) {
         BaseType const lowerDiff = otherIt->second.lower() - value.lower();
         if (lowerDiff < zero) {
-            if (requireContainsSignature) {
+            if (requireContainsOther) {
                 return false;
             }
             thisLowerDelta -= lowerDiff;
@@ -283,7 +283,7 @@ bool Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::is
         }
         BaseType const upperDiff = otherIt->second.upper() - value.upper();
         if (upperDiff > zero) {
-            if (requireContainsSignature) {
+            if (requireContainsOther) {
                 return false;
             }
             thisUpperDelta += upperDiff;
@@ -515,7 +515,8 @@ auto Signatures<ValueType, Mode, QuotientValueType>::buildChoiceSignature(uint64
     BlockDistributionView distrStorage(choiceDistributionStorage.data() + offset, row.getNumberOfEntries());
 
     // Extract the resulting distribution from the cache.
-    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = choiceSignatureCache.extract(distrStorage)};
+    return ChoiceSignature{
+        ConcreteChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = choiceSignatureCache.extract(distrStorage)}};
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
@@ -535,7 +536,7 @@ auto Signatures<ValueType, Mode, QuotientValueType>::getChoiceSignature(uint64_t
         ++size;
     }
 
-    return ChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = distrStorage.first(size)};
+    return ChoiceSignature{ConcreteChoiceSignature{.choiceClass = choiceClasses ? (*choiceClasses)[choiceIndex] : 0, .distr = distrStorage.first(size)}};
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
@@ -662,7 +663,9 @@ bool Signatures<ValueType, Mode, QuotientValueType>::SplitCondition::operator()(
         // Find a choice matching choice2 in sig1. As both signatures are sorted the same way, it1 is usually close to the window of choice2.
         auto const [choiceInSig1It, foundIn1] = sig1.findWithHint(it1, *it2, tolerance);
         if (foundIn1) {
-            choiceInSig1It->enhance(*it2);
+            // findWithHint yields a const iterator, so we have to convert it into a mutable one to widen the found choice signature.
+            auto mutableIt1 = sig1.choices.begin() + std::distance(sig1.choices.cbegin(),choiceInSig1It);
+            mutableIt1->enhance(*it2);
         } else {
             // candidateState does not match with the anchorState: no match for choice2=*it2 in sig1
             return true;

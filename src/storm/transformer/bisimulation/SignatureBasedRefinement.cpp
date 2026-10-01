@@ -155,7 +155,7 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
     partition.forEachBlock([&signatures](auto const& block) {
         if (block.size() == 1) {
             signatures.updateStateSignature(block.front());
-        } else if (SignatureMode == bisimulation::SignatureMode::IntervalAbstraction) {
+        } else if constexpr (SignatureMode == bisimulation::SignatureMode::IntervalAbstraction) {
             // refinePartitionBasedOnSignature only ensures that the widened (abstracted) intervals are stored at the *first* state of each block. We copy it over to the other states, too.
             for (auto blockIt = block.begin() + 1; blockIt != block.end(); ++blockIt) {
                 signatures.copyStructuralEquivalentStateSignature(block.front(), *blockIt);

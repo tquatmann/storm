@@ -165,7 +165,7 @@ class Signatures {
          * @param other the other choice signature. Assumes that the two signatures have the same structure (compareStructure() == 0).
          * @param requireContainsOther if true, the other signature must additionally be contained in the current signature in order to be compatible.
          */
-        bool isCompatibleWith(AbstractChoiceSignature const& other, ToleranceType const& tolerance, bool requireContainsOther) const
+        bool isCompatibleWith(AbstractChoiceSignature const& other, ToleranceType const& tolerance, bool requireContainsOther = false) const
             requires(Mode == SignatureMode::IntervalAbstraction);
     };
     using ChoiceSignature = std::conditional_t<Mode == SignatureMode::IntervalAbstraction, AbstractChoiceSignature, ConcreteChoiceSignature>;
@@ -216,7 +216,7 @@ class Signatures {
 
         StateSignature& load(StateSignature const& src) requires(Mode == SignatureMode::IntervalAbstraction) {
             uint64_t offset = 0;
-            sig.choices.resize(src.distr.size());
+            sig.choices.resize(src.choices.size());
             for (uint64_t choiceIndex = 0; choiceIndex < src.choices.size(); ++choiceIndex) {
                 auto& sigChoice = sig.choices[choiceIndex];
                 auto const& srcChoice = src.choices[choiceIndex];
@@ -230,9 +230,11 @@ class Signatures {
             return sig;
         }
 
-        void store(StateSignature& dst) {
-            STORM_LOG_ASSERT(sig.choices.size() == dst.distr.size(), "Expected that the destination has the same choice count.");
-            for (uint64_t choiceIndex = 0; choiceIndex < sig.choices.size; ++choiceIndex) {
+        void store(StateSignature& dst) const
+            requires(Mode == SignatureMode::IntervalAbstraction)
+        {
+            STORM_LOG_ASSERT(sig.choices.size() == dst.choices.size(), "Expected that the destination has the same choice count.");
+            for (uint64_t choiceIndex = 0; choiceIndex < sig.choices.size(); ++choiceIndex) {
                 auto const& sigChoice = sig.choices[choiceIndex];
                 auto& dstChoice = dst.choices[choiceIndex];
                 dstChoice.choiceClass = sigChoice.choiceClass;
