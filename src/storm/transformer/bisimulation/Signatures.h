@@ -15,8 +15,8 @@
 namespace storm::bisimulation {
 
 enum class SignatureMode {
-    Exact,                 // Two values are equal iff they coincide.
-    Approximative,         // Two values are equal iff they differ by at most a given tolerance.
+    Exact,               // Two values are equal iff they coincide.
+    Approximative,       // Two values are equal iff they differ by at most a given tolerance.
     IntervalAbstraction  // The signature values are intervals that cover all values of the represented states.
 };
 
@@ -49,7 +49,7 @@ class Signatures {
      */
     void updateStateSignature(uint64_t const stateIndex);
 
-   private: // Forward-declared structs; defined privately further down.
+   private:  // Forward-declared structs; defined privately further down.
     struct StateSignature;
     struct TemporaryStateSignature;
 
@@ -106,10 +106,12 @@ class Signatures {
         requires(Mode != SignatureMode::Exact);
 
     /*!
-     * Copies the state signature from src to dst. Assumes that both have the same choice count and the choices are pairwise structurally equal (compareStructure() == 0).
+     * Copies the state signature from src to dst. Assumes that both have the same choice count and the choices are pairwise structurally equal
+     * (compareStructure() == 0).
      * @note: currently only needed for IntervalAbstraction.
      */
-    void copyStructuralEquivalentStateSignature(uint64_t const& srcState, uint64_t const& dstState) requires(Mode == SignatureMode::IntervalAbstraction);
+    void copyStructuralEquivalentStateSignature(uint64_t const& srcState, uint64_t const& dstState)
+        requires(Mode == SignatureMode::IntervalAbstraction);
 
     /*!
      * Fills in the choice mappings of the given (already state-mapped) quotient data: for every quotient state, the choices of its representative state
@@ -158,7 +160,8 @@ class Signatures {
          *
          * @param other the other choice signature. Assumes that the two signatures have the same structure (compareStructure() == 0).
          */
-        void enhance(AbstractChoiceSignature const& other) requires(Mode == SignatureMode::IntervalAbstraction);
+        void enhance(AbstractChoiceSignature const& other)
+            requires(Mode == SignatureMode::IntervalAbstraction);
 
         /*!
          * We call two choice signatures c1 and c2 compatible if the delta values of c1.enhance(c2) are both less than or equal to the tolerance.
@@ -184,9 +187,11 @@ class Signatures {
          * The iterator is either (exact/approximately) equal to the given signature, or the position where it would be inserted.
          * Two choice signatures are approximately equal (w.r.t. a tolerance) iff they have equal structure (compareStructure) and their distr values pairwise
          * differ by at most the tolerance.
-         * @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given signature.
+         * @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given
+         * signature.
          */
-        std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, ToleranceType const& tolerance, [[maybe_unused]] bool requireContainsSignature = false)  const;
+        std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, ToleranceType const& tolerance,
+                                                      [[maybe_unused]] bool requireContainsSignature = false) const;
 
         /*!
          * Like find(), but starts searching at `hint` instead of locating the window of candidates via lower_bound. The window consists of the entries that are
@@ -195,10 +200,11 @@ class Signatures {
          * it.
          * @note requires !signature.distr.empty().
          * @note returns {hint, false} if signature is not found.
-         *  @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given signature.
+         *  @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given
+         * signature.
          */
         std::pair<ChoiceSignatureIterator, bool> findWithHint(ChoiceSignatureIterator const hint, ChoiceSignature const& signature,
-                                                              ToleranceType const& tolerance,  [[maybe_unused]] bool requireContainsSignature = false) const
+                                                              ToleranceType const& tolerance, [[maybe_unused]] bool requireContainsSignature = false) const
             requires(Mode != SignatureMode::Exact);
 
         void insert(ChoiceSignature const& choiceSignature, ToleranceType const& tolerance);
@@ -211,10 +217,12 @@ class Signatures {
      * Currently only used for IntervalAbstraction signatures.
      */
     class TemporaryStateSignature {
-    public:
+       public:
         TemporaryStateSignature(uint64_t const maxTransitions) : distrStorage(maxTransitions) {}
 
-        StateSignature& load(StateSignature const& src) requires(Mode == SignatureMode::IntervalAbstraction) {
+        StateSignature& load(StateSignature const& src)
+            requires(Mode == SignatureMode::IntervalAbstraction)
+        {
             uint64_t offset = 0;
             sig.choices.resize(src.choices.size());
             for (uint64_t choiceIndex = 0; choiceIndex < src.choices.size(); ++choiceIndex) {
@@ -223,8 +231,8 @@ class Signatures {
                 sigChoice.choiceClass = srcChoice.choiceClass;
                 sigChoice.lowerDelta = srcChoice.lowerDelta;
                 sigChoice.upperDelta = srcChoice.upperDelta;
-                sigChoice.distr = BlockDistributionView(distrStorage.data() + offset, srcChoice.distr.size()); // Initialize the distr view
-                std::copy(srcChoice.distr.begin(), srcChoice.distr.end(), sigChoice.distr.begin()); // Copy the distribution
+                sigChoice.distr = BlockDistributionView(distrStorage.data() + offset, srcChoice.distr.size());  // Initialize the distr view
+                std::copy(srcChoice.distr.begin(), srcChoice.distr.end(), sigChoice.distr.begin());             // Copy the distribution
                 offset += srcChoice.distr.size();
             }
             return sig;
@@ -245,7 +253,7 @@ class Signatures {
             }
         }
 
-    private:
+       private:
         StateSignature sig;
         std::vector<std::pair<Partition::Block, QuotientValueType>> distrStorage;
     };

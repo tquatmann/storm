@@ -25,7 +25,9 @@ namespace {
  * those where the bounds can actually be instantiated to a valid probability distribution.
  */
 template<typename IntervalType>
-void makeFeasibleIntervalDistribution(std::span<std::pair<Partition::Block, IntervalType>> const distribution) requires IsIntervalType<IntervalType> {
+void makeFeasibleIntervalDistribution(std::span<std::pair<Partition::Block, IntervalType>> const distribution)
+    requires IsIntervalType<IntervalType>
+{
     using BaseType = storm::IntervalBaseType<IntervalType>;
     BaseType const one = storm::utility::one<BaseType>();
 
@@ -63,8 +65,9 @@ void makeFeasibleIntervalDistribution(std::span<std::pair<Partition::Block, Inte
             break;  // continue with the general case below.
     }
     // Now the general case:
-    IntervalType const sum = std::accumulate(distribution.begin(), distribution.end(), storm::utility::zero<IntervalType>(),
-                                [](IntervalType const& acc, std::pair<Partition::Block, IntervalType> const& entry) { return acc + entry.second; });
+    IntervalType const sum =
+        std::accumulate(distribution.begin(), distribution.end(), storm::utility::zero<IntervalType>(),
+                        [](IntervalType const& acc, std::pair<Partition::Block, IntervalType> const& entry) { return acc + entry.second; });
     for (auto& entry : distribution) {
         auto& v = entry.second;
         BaseType const otherSumLower = sum.lower() - v.lower();
@@ -91,7 +94,7 @@ std::strong_ordering compareValue(ValueType const& value1, ValueType const& valu
         }
     }
 }
-}
+}  // namespace
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 Signatures<ValueType, Mode, QuotientValueType>::ChoiceSignatureCache::ChoiceSignatureCache(uint64_t const numStates)
@@ -140,7 +143,7 @@ auto Signatures<ValueType, Mode, QuotientValueType>::ChoiceSignatureCache::extra
     support.clear();  // clear cache for next use.
 
     if constexpr (storm::IsIntervalType<QuotientValueType>) {
-         makeFeasibleIntervalDistribution(result);
+        makeFeasibleIntervalDistribution(result);
     }
     return result;
 }
@@ -205,13 +208,15 @@ auto Signatures<ValueType, Mode, QuotientValueType>::ConcreteChoiceSignature::co
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 bool Signatures<ValueType, Mode, QuotientValueType>::ConcreteChoiceSignature::approximatelyEqual(ConcreteChoiceSignature const& other,
-                                                                                         ToleranceType const& tolerance) const
+                                                                                                 ToleranceType const& tolerance) const
     requires(Mode == SignatureMode::Approximative)
 {
     if (compareStructure(other) != std::strong_ordering::equal) {
         return false;
     }
-    auto const near = [&tolerance](QuotientValueType const& value1, QuotientValueType const& value2) { return storm::utility::abs<QuotientValueType>(value1 - value2) <= tolerance; };
+    auto const near = [&tolerance](QuotientValueType const& value1, QuotientValueType const& value2) {
+        return storm::utility::abs<QuotientValueType>(value1 - value2) <= tolerance;
+    };
     auto otherIt = other.distr.begin();
     for (auto const& [block, value] : distr) {
         if (!near(value, otherIt->second)) {
@@ -226,7 +231,8 @@ template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 void Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::enhance(AbstractChoiceSignature const& other)
     requires(Mode == SignatureMode::IntervalAbstraction)
 {
-    STORM_LOG_ASSERT(ConcreteChoiceSignature::compareStructure(other) == std::strong_ordering::equal, "Cannot enhance two choice signatures with different structure.");
+    STORM_LOG_ASSERT(ConcreteChoiceSignature::compareStructure(other) == std::strong_ordering::equal,
+                     "Cannot enhance two choice signatures with different structure.");
     using BaseType = storm::IntervalBaseType<QuotientValueType>;
     BaseType const zero = storm::utility::zero<BaseType>();
 
@@ -300,8 +306,8 @@ bool Signatures<ValueType, Mode, QuotientValueType>::AbstractChoiceSignature::is
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
-auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::find(ChoiceSignature const& signature,
-                                                                          ToleranceType const& tolerance,  [[maybe_unused]] bool requireContainsSignature) const
+auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::find(ChoiceSignature const& signature, ToleranceType const& tolerance,
+                                                                          [[maybe_unused]] bool requireContainsSignature) const
     -> std::pair<ChoiceSignatureIterator, bool> {
     if (choices.empty()) {
         return std::make_pair(choices.end(), false);
@@ -322,7 +328,8 @@ auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::find(Choice
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::findWithHint(ChoiceSignatureIterator hint, ChoiceSignature const& signature,
-                                                                                  ToleranceType const& tolerance,  [[maybe_unused]] bool requireContainsSignature) const
+                                                                                  ToleranceType const& tolerance,
+                                                                                  [[maybe_unused]] bool requireContainsSignature) const
     -> std::pair<ChoiceSignatureIterator, bool>
     requires(Mode != SignatureMode::Exact)
 {
@@ -364,9 +371,10 @@ auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::findWithHin
         } else {
             return getPosition(value, signatureValue);
         }
-   };
+    };
 
-    // Returns true iff the choice is considered equivalent to the signature. Assumes that the given choice is in the window, in particular has the same structure.
+    // Returns true iff the choice is considered equivalent to the signature. Assumes that the given choice is in the window, in particular has the same
+    // structure.
     auto const found = [&](ChoiceSignature const& choice) {
         if constexpr (Mode == SignatureMode::IntervalAbstraction) {
             return choice.isCompatibleWith(signature, tolerance, requireContainsSignature);
@@ -448,15 +456,14 @@ auto Signatures<ValueType, Mode, QuotientValueType>::StateSignature::findWithHin
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
-void Signatures<ValueType, Mode, QuotientValueType>::StateSignature::insert(ChoiceSignature const& choiceSignature,
-                                                                            ToleranceType const& tolerance) {
+void Signatures<ValueType, Mode, QuotientValueType>::StateSignature::insert(ChoiceSignature const& choiceSignature, ToleranceType const& tolerance) {
     auto [it, found] = find(choiceSignature, tolerance);
     if (!found) {
         // Add fresh choice signature
         choices.insert(it, choiceSignature);
     } else if constexpr (Mode == SignatureMode::IntervalAbstraction) {
         // Suitable choice signature already exists. Enhance it!
-        auto mutableIt = choices.begin() + std::distance(choices.cbegin(),it);
+        auto mutableIt = choices.begin() + std::distance(choices.cbegin(), it);
         mutableIt->enhance(choiceSignature);
     }
 }
@@ -484,7 +491,7 @@ uint64_t getLargestRowGroupEntryCount(storm::storage::SparseMatrix<ValueType> co
     }
     return maxSize;
 }
-}
+}  // namespace
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 Signatures<ValueType, Mode, QuotientValueType>::Signatures(storm::models::sparse::Model<ValueType> const& model,
@@ -604,7 +611,8 @@ void Signatures<ValueType, Mode, QuotientValueType>::copyStructuralEquivalentSta
     for (uint64_t choiceIndex = 0; choiceIndex < src.choices.size(); ++choiceIndex) {
         auto const& srcChoice = src.choices[choiceIndex];
         auto& dstChoice = dst.choices[choiceIndex];
-        STORM_LOG_ASSERT(srcChoice.compareStructure(dstChoice) == std::strong_ordering::equal, "Expected that source and destination have the same choice structure.");
+        STORM_LOG_ASSERT(srcChoice.compareStructure(dstChoice) == std::strong_ordering::equal,
+                         "Expected that source and destination have the same choice structure.");
         std::copy(srcChoice.distr.begin(), srcChoice.distr.end(), dstChoice.distr.begin());
         dstChoice.lowerDelta = srcChoice.lowerDelta;
         dstChoice.upperDelta = srcChoice.upperDelta;
@@ -645,15 +653,15 @@ template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 bool Signatures<ValueType, Mode, QuotientValueType>::SplitCondition::operator()(uint64_t const anchorState, uint64_t const candidateState)
     requires(Mode == SignatureMode::IntervalAbstraction)
 {
-    // store the potential enhanced choice signature as a temporary, as we might not want to enhance the anchorState's signature if the candidateState does not match.
-    auto& sig1 =     tmpStateSignature.load(signatures[anchorState]);
+    // store the potential enhanced choice signature as a temporary, as we might not want to enhance the anchorState's signature if the candidateState does not
+    // match.
+    auto& sig1 = tmpStateSignature.load(signatures[anchorState]);
     auto const& sig2 = signatures[candidateState];
     // We can assume that sig1.choices and sig2.choices have the same pointwise structure (compareStructure-equivalent) as this comparison is only called after
     // splitting with respect to getStructuralSplitOrder.
     STORM_LOG_ASSERT(sig1.choices.size() == sig2.choices.size(), "SplitCondition should only be called for signatures with the same number of choices.");
     auto it1 = sig1.choices.begin();
     auto it2 = sig2.choices.begin();
-
 
     for (; it1 != sig1.choices.end() && it2 != sig2.choices.end(); ++it1, ++it2) {
         STORM_LOG_ASSERT(it1->distr.size() == it2->distr.size(), "SplitCondition should only be called for signatures with pointwise same choice structure.");
@@ -664,7 +672,7 @@ bool Signatures<ValueType, Mode, QuotientValueType>::SplitCondition::operator()(
         auto const [choiceInSig1It, foundIn1] = sig1.findWithHint(it1, *it2, tolerance);
         if (foundIn1) {
             // findWithHint yields a const iterator, so we have to convert it into a mutable one to widen the found choice signature.
-            auto mutableIt1 = sig1.choices.begin() + std::distance(sig1.choices.cbegin(),choiceInSig1It);
+            auto mutableIt1 = sig1.choices.begin() + std::distance(sig1.choices.cbegin(), choiceInSig1It);
             mutableIt1->enhance(*it2);
         } else {
             // candidateState does not match with the anchorState: no match for choice2=*it2 in sig1
@@ -686,7 +694,6 @@ bool Signatures<ValueType, Mode, QuotientValueType>::SplitCondition::operator()(
     tmpStateSignature.store(signatures[anchorState]);
     return false;
 }
-
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
 void Signatures<ValueType, Mode, QuotientValueType>::addQuotientChoiceMapping(uint64_t const state, StateSignature const& representativeSignature,
@@ -735,7 +742,8 @@ void Signatures<ValueType, Mode, QuotientValueType>::addQuotientChoiceMapping(ui
                                      [&stateSignature, &representativeSignature](uint64_t const i) {
                                          auto const& c1 = stateSignature.choices[i];
                                          auto const& c2 = representativeSignature.choices[i];
-                                         return (c1.compareStructure(c2) == std::strong_ordering::equal) && c1.isCompatibleWith(c2, storm::utility::zero<ToleranceType>());
+                                         return (c1.compareStructure(c2) == std::strong_ordering::equal) &&
+                                                c1.isCompatibleWith(c2, storm::utility::zero<ToleranceType>());
                                      }),
                          "In exact mode, choice signatures are expected to be equal for states in the same block.");
     }

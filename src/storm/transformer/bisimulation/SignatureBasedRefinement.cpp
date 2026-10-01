@@ -57,8 +57,9 @@ void refinePartitionBasedOnSignature(SignatureRefinementContext<ValueType, Signa
         context.partition.forEachSubBlock(pivotBlock, [&context, &splitCondition, &pivotHasBeenSplit](auto const& subBlock) {
             pivotHasBeenSplit |= context.partition.splitBlockByClustering(subBlock, splitCondition);
         });
-        // In interval-abstraction mode, the clustering-based split also triggers widening of the signature of the *first* state of each subBlock so that it contains all behaviour of the remaining state signatures in the subblock.
-        // Once the partition is final, we will ensure that every state of a block gets that representative signature. See performSignatureBasedRefinement.
+        // In interval-abstraction mode, the clustering-based split also triggers widening of the signature of the *first* state of each subBlock so that it
+        // contains all behaviour of the remaining state signatures in the subblock. Once the partition is final, we will ensure that every state of a block
+        // gets that representative signature. See performSignatureBasedRefinement.
     }
 
     if (!pivotHasBeenSplit && !enforcePredecessorExploration) {
@@ -156,7 +157,8 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
         if (block.size() == 1) {
             signatures.updateStateSignature(block.front());
         } else if constexpr (SignatureMode == bisimulation::SignatureMode::IntervalAbstraction) {
-            // refinePartitionBasedOnSignature only ensures that the widened (abstracted) intervals are stored at the *first* state of each block. We copy it over to the other states, too.
+            // refinePartitionBasedOnSignature only ensures that the widened (abstracted) intervals are stored at the *first* state of each block. We copy it
+            // over to the other states, too.
             for (auto blockIt = block.begin() + 1; blockIt != block.end(); ++blockIt) {
                 signatures.copyStructuralEquivalentStateSignature(block.front(), *blockIt);
             }
