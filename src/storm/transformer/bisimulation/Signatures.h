@@ -110,7 +110,7 @@ class Signatures {
      * (compareStructure() == 0).
      * @note: currently only needed for IntervalAbstraction.
      */
-    void copyStructuralEquivalentStateSignature(uint64_t const& srcState, uint64_t const& dstState)
+    void copyStructuralEquivalentStateSignature(uint64_t const srcState, uint64_t const dstState)
         requires(Mode == SignatureMode::IntervalAbstraction);
 
     /*!
@@ -187,7 +187,7 @@ class Signatures {
          * The iterator is either (exact/approximately) equal to the given signature, or the position where it would be inserted.
          * Two choice signatures are approximately equal (w.r.t. a tolerance) iff they have equal structure (compareStructure) and their distr values pairwise
          * differ by at most the tolerance.
-         * @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given
+         * @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contain the given
          * signature.
          */
         std::pair<ChoiceSignatureIterator, bool> find(ChoiceSignature const& signature, ToleranceType const& tolerance,
@@ -200,7 +200,7 @@ class Signatures {
          * it.
          * @note requires !signature.distr.empty().
          * @note returns {hint, false} if signature is not found.
-         *  @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contained the given
+         *  @param requireContainsSignature only relevant for Mode==IntervalAbstraction: if true, the found signature must additionally contain the given
          * signature.
          */
         std::pair<ChoiceSignatureIterator, bool> findWithHint(ChoiceSignatureIterator const hint, ChoiceSignature const& signature,
@@ -234,6 +234,8 @@ class Signatures {
                 sigChoice.distr = BlockDistributionView(distrStorage.data() + offset, srcChoice.distr.size());  // Initialize the distr view
                 std::copy(srcChoice.distr.begin(), srcChoice.distr.end(), sigChoice.distr.begin());             // Copy the distribution
                 offset += srcChoice.distr.size();
+                // The choice signatures of a state are deduplicated, so their distributions together have at most as many entries as the rows of that state.
+                STORM_LOG_ASSERT(offset <= distrStorage.size(), "The temporary state signature does not fit into the reserved storage.");
             }
             return sig;
         }

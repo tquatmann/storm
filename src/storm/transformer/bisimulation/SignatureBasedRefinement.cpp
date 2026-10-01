@@ -159,6 +159,9 @@ void performSignatureBasedRefinement(storm::models::sparse::Model<ValueType> con
         } else if constexpr (SignatureMode == bisimulation::SignatureMode::IntervalAbstraction) {
             // refinePartitionBasedOnSignature only ensures that the widened (abstracted) intervals are stored at the *first* state of each block. We copy it
             // over to the other states, too.
+            // This relies on the invariant that the first state of a block is the anchor whose signature the clustering widened, i.e., that every block has
+            // been clustered since its elements were reordered the last time. The graph-based splitting of the predecessor blocks reorders elements, but it
+            // also enqueues the resulting sub-blocks (with enforced predecessor exploration), so each of them is clustered again before the queue runs empty.
             for (auto blockIt = block.begin() + 1; blockIt != block.end(); ++blockIt) {
                 signatures.copyStructuralEquivalentStateSignature(block.front(), *blockIt);
             }

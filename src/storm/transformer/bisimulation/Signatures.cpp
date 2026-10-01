@@ -21,7 +21,7 @@ namespace storm::bisimulation {
 
 namespace {
 /*!
- * Shrinkens the intervals in the provided distribution to the feasible (aka coherent) parts of the intervals, i.e.,
+ * Shrinks the intervals in the provided distribution to the feasible (aka coherent) parts of the intervals, i.e.,
  * those where the bounds can actually be instantiated to a valid probability distribution.
  */
 template<typename IntervalType>
@@ -52,7 +52,7 @@ void makeFeasibleIntervalDistribution(std::span<std::pair<Partition::Block, Inte
         case 0:
             return;
         case 1:
-            distribution[0].second = one;
+            distribution[0].second = IntervalType(one);
             return;
         case 2: {
             auto& v0 = distribution[0].second;
@@ -603,7 +603,7 @@ auto Signatures<ValueType, Mode, QuotientValueType>::getClusteringSplitCondition
 }
 
 template<typename ValueType, SignatureMode Mode, typename QuotientValueType>
-void Signatures<ValueType, Mode, QuotientValueType>::copyStructuralEquivalentStateSignature(uint64_t const& srcState, uint64_t const& dstState)
+void Signatures<ValueType, Mode, QuotientValueType>::copyStructuralEquivalentStateSignature(uint64_t const srcState, uint64_t const dstState)
     requires(Mode == SignatureMode::IntervalAbstraction)
 {
     auto const& src = stateSignatureCache[srcState];
@@ -738,7 +738,7 @@ void Signatures<ValueType, Mode, QuotientValueType>::addQuotientChoiceMapping(ui
         // In interval abstraction mode, the signatures of two states of the same block are equal by construction as we have copied them over after enhancement.
         // Therefore, this is the same as in exact mode: we can match them in order.
         choiceSignatureMatching = storm::utility::vector::buildVectorForRange<uint64_t>(0, stateSignature.choices.size());
-        // Assert pointwise equality by chacking compatibility with tolerance=0, which comes down to equality.
+        // Assert pointwise equality by checking compatibility with tolerance=0, which comes down to equality.
         STORM_LOG_ASSERT(std::all_of(choiceSignatureMatching.begin(), choiceSignatureMatching.end(),
                                      [&stateSignature, &representativeSignature](uint64_t const i) {
                                          auto const& c1 = stateSignature.choices[i];
@@ -746,7 +746,7 @@ void Signatures<ValueType, Mode, QuotientValueType>::addQuotientChoiceMapping(ui
                                          return (c1.compareStructure(c2) == std::strong_ordering::equal) &&
                                                 c1.isCompatibleWith(c2, storm::utility::zero<ToleranceType>());
                                      }),
-                         "In exact mode, choice signatures are expected to be equal for states in the same block.");
+                         "In interval abstraction mode, choice signatures are expected to be equal for states in the same block.");
     }
 
     // Step 2: Map actual choice signatures to the representatives.
