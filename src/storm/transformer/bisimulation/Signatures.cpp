@@ -32,16 +32,17 @@ void makeFeasibleIntervalDistribution(std::span<std::pair<Partition::Block, Inte
     BaseType const one = storm::utility::one<BaseType>();
 
     // Helper function to set interval := interval cap [l,u]
+    // The new bounds are computed first: assigning them one at a time can make the interval inconsistent (lower > upper), in which case carl replaces both
+    // bounds by NaN, so that the emptiness could not be detected afterwards.
     auto const intersect = [&one](IntervalType& interval, BaseType const& l, BaseType const& u) {
-        interval.setLower(std::max(interval.lower(), l));
-        interval.setUpper(std::min(interval.upper(), u));
-        if constexpr (!storm::NumberTraits<BaseType>::IsExact) {
-            // Ensure that the intersection is never empty, even if (for numerical reasons) the intervals are disjoint or if u < l.
-            if (interval.lower() > interval.upper()) {
-                interval = IntervalType((interval.lower() + interval.upper()) / (one + one));
-            }
+        BaseType newLower = std::max(interval.lower(), l);
+        BaseType newUpper = std::min(interval.upper(), u);
+        if (newLower > newUpper) {
+            // The intersection is empty. This happens if the bounds are slightly off for numerical reasons, but also if the given distribution is infeasible,
+            // i.e., if there is no probability distribution within its bounds at all. We take the midpoint in both cases.
+            newLower = newUpper = (newLower + newUpper) / (one + one);
         }
-        STORM_LOG_ASSERT(interval.lower() <= interval.upper(), "Restricting an interval to the coherent values made it empty.");
+        interval = IntervalType(newLower, newUpper);
     };
 
     // A value can be at most one minus the sum of the lower bounds of the other values and at least one minus the sum of their upper bounds.
