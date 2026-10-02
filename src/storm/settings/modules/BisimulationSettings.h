@@ -115,6 +115,18 @@ class BisimulationSettings : public ModuleSettings {
      */
     bool isIntervalAbstractionSet() const;
 
+    /*!
+     * Retrieves whether the mapping from the states of the original model to the states of the quotient shall be exported.
+     * NOTE: only applies to sparse bisimulation.
+     */
+    bool isExportQuotientSet() const;
+
+    /*!
+     * Retrieves the name of the archive file to which the mapping from the states of the original model to the states of the quotient is to be written.
+     * NOTE: only applies to sparse bisimulation.
+     */
+    std::string getExportQuotientFilename() const;
+
     virtual bool check() const override;
 
     // The name of the module.
@@ -135,6 +147,7 @@ class BisimulationSettings : public ModuleSettings {
     static const std::string toleranceOptionName;
     static const std::string actionSensitiveOptionName;
     static const std::string intervalAbstractionOptionName;
+    static const std::string exportQuotientOptionName;
 };
 }  // namespace modules
 }  // namespace settings

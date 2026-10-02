@@ -13,6 +13,8 @@
 #include "storm/environment/dd/DdEnvironment.h"
 #include "storm/environment/dd/SylvanDdManagerEnvironment.h"
 #include "storm/exceptions/OptionParserException.h"
+#include "storm/io/ArchiveWriter.h"
+#include "storm/io/CompressionMode.h"
 #include "storm/io/file.h"
 #include "storm/models/ModelBase.h"
 #include "storm/models/sparse/StandardRewardModel.h"
@@ -723,6 +725,21 @@ std::shared_ptr<storm::models::ModelBase> preprocessSparseModelBisimulation(std:
                    << (options.bisimulationType == storm::bisimulation::BisimulationType::Weak ? "weak" : "strong") << ", tolerance: " << options.tolerance
                    << (options.actionSensitive ? ", action-sensitive" : "") << (enableIntervalAbstraction ? ", interval-abstraction" : "") << ")...");
     auto const formulas = createFormulasToRespect(input.properties);
+    // Computes the quotient and, if requested, exports the mapping from the states of the model to the states of the quotient.
+    auto minimize = [&model, &formulas, &options, &bisimulationSettings]<typename QuotientValueType>() -> std::shared_ptr<storm::models::ModelBase> {
+        storm::utility::Stopwatch bisimulationWatch(true);
+        auto result = storm::bisimulation::performBisimulationMinimization<ValueType, QuotientValueType>(*model, formulas, options);
+        bisimulationWatch.stop();
+        STORM_PRINT("\nTime for bisimulation minimization: " << bisimulationWatch << ".\n");
+
+        if (bisimulationSettings.isExportQuotientSet()) {
+            std::filesystem::path exportpath = bisimulationSettings.getExportQuotientFilename();
+            STORM_PRINT_AND_LOG("Exporting the quotient state mapping to '" << exportpath.string() << "'.\n");
+            storm::io::ArchiveWriter archiveWriter(exportpath, storm::io::getCompressionModeFromFileExtension(exportpath));
+            archiveWriter.addBinaryFile("toQuotientStateMapping", result.toQuotientStateMapping);
+        }
+        return std::move(result.quotient);
+    };
     if (bisimulationSettings.isIntervalAbstractionSet()) {
         if constexpr (std::is_same_v<ValueType, storm::RationalFunction>) {
             STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Interval abstraction is not supported for parametric models.");
@@ -730,10 +747,10 @@ std::shared_ptr<storm::models::ModelBase> preprocessSparseModelBisimulation(std:
             STORM_LOG_INFO("Ignoring the interval abstraction setting as the values of the given model already are intervals.");
         } else {
             STORM_LOG_INFO("Abstracting the values of the quotient model into intervals.");
-            return storm::api::performBisimulationMinimization<ValueType, storm::IntervalType<ValueType>>(model, formulas, options);
+            return minimize.template operator()<storm::IntervalType<ValueType>>();
         }
     }
-    return storm::api::performBisimulationMinimization<ValueType>(model, formulas, options);
+    return minimize.template operator()<ValueType>();
 }
 
 template<typename ValueType>

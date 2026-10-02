@@ -25,6 +25,7 @@ const std::string BisimulationSettings::exactArithmeticDdOptionName = "ddexact";
 const std::string BisimulationSettings::toleranceOptionName = "tolerance";
 const std::string BisimulationSettings::actionSensitiveOptionName = "action-sensitive";
 const std::string BisimulationSettings::intervalAbstractionOptionName = "interval-abstraction";
+const std::string BisimulationSettings::exportQuotientOptionName = "exportquotient";
 
 BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
     std::vector<std::string> types = {"strong", "weak"};
@@ -109,6 +110,16 @@ BisimulationSettings::BisimulationSettings() : ModuleSettings(moduleName) {
                                        "Sets whether choices are only lumped together if they belong to the same state-local action index (only for "
                                        "sparse bisimulation).")
             .setIsAdvanced()
+            .build());
+
+    this->addOption(
+        storm::settings::OptionBuilder(moduleName, exportQuotientOptionName, false,
+                                       "If given, the mapping from the states of the original model to the states of the quotient is written to the specified "
+                                       "archive (only for sparse bisimulation).")
+            .setIsAdvanced()
+            .addArgument(storm::settings::ArgumentBuilder::createStringArgument(
+                             "filename", "The name of the archive file, e.g. 'quotient.tar.gz'. The file extension determines the compression.")
+                             .build())
             .build());
 
     this->addOption(storm::settings::OptionBuilder(moduleName, intervalAbstractionOptionName, true,
@@ -212,6 +223,14 @@ bool BisimulationSettings::isActionSensitiveSet() const {
 
 bool BisimulationSettings::isIntervalAbstractionSet() const {
     return this->getOption(intervalAbstractionOptionName).getHasOptionBeenSet();
+}
+
+bool BisimulationSettings::isExportQuotientSet() const {
+    return this->getOption(exportQuotientOptionName).getHasOptionBeenSet();
+}
+
+std::string BisimulationSettings::getExportQuotientFilename() const {
+    return this->getOption(exportQuotientOptionName).getArgumentByName("filename").getValueAsString();
 }
 
 bool BisimulationSettings::check() const {
