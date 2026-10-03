@@ -224,10 +224,11 @@ template<typename SparseDtmcModelType>
 std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::computeCumulativeRewards(
     Environment const& env, CheckTask<storm::logic::CumulativeRewardFormula, SolutionType> const& checkTask) {
     storm::logic::CumulativeRewardFormula const& rewardPathFormula = checkTask.getFormula();
-    if constexpr (storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We have not yet implemented cumulative rewards with intervals.");
-    } else {
-        if (rewardPathFormula.isMultiDimensional() || rewardPathFormula.getTimeBoundReference().isRewardBound()) {
+    if (rewardPathFormula.isMultiDimensional() || rewardPathFormula.getTimeBoundReference().isRewardBound()) {
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_LOG_THROW(false, storm::exceptions::NotImplementedException,
+                            "We have not yet implemented multi-dimensional or reward-bounded cumulative rewards with intervals.");
+        } else {
             STORM_LOG_THROW(checkTask.isOnlyInitialStatesRelevantSet(), storm::exceptions::InvalidOperationException,
                             "Checking non-trivial bounded until probabilities can only be computed for the initial states of the model.");
             STORM_LOG_THROW(!checkTask.getFormula().hasRewardAccumulation(), storm::exceptions::InvalidOperationException,
@@ -241,15 +242,23 @@ std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::c
                 env, this->getModel(), formula);
             // The helper returns one value per initial state, in the order in which the bit vector selects them.
             return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<ValueType>(this->getModel().getInitialStates(), std::move(numericResult)));
-        } else {
-            STORM_LOG_THROW(rewardPathFormula.hasIntegerBound(), storm::exceptions::InvalidPropertyException, "Formula needs to have a discrete time bound.");
-            auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
-            std::vector<SolutionType> numericResult =
-                storm::modelchecker::helper::SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeCumulativeRewards(
-                    env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
-                    rewardModel.get(), rewardPathFormula.getNonStrictBound<uint64_t>());
-            return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(numericResult)));
         }
+    } else {
+        if constexpr (storm::IsIntervalType<ValueType>) {
+            STORM_LOG_THROW(checkTask.isUncertaintyResolutionModeSet(), storm::exceptions::InvalidSettingsException,
+                            "Uncertainty resolution mode must be set for uncertain (interval) models.");
+            STORM_LOG_THROW(checkTask.getUncertaintyResolutionMode() != UncertaintyResolutionMode::Robust &&
+                                checkTask.getUncertaintyResolutionMode() != UncertaintyResolutionMode::Cooperative,
+                            storm::exceptions::InvalidSettingsException,
+                            "Uncertainty resolution modes robust or cooperative not allowed if optimization direction is not stated explicitly.");
+        }
+        STORM_LOG_THROW(rewardPathFormula.hasIntegerBound(), storm::exceptions::InvalidPropertyException, "Formula needs to have a discrete time bound.");
+        auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
+        std::vector<SolutionType> numericResult =
+            storm::modelchecker::helper::SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeCumulativeRewards(
+                env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(), rewardModel.get(),
+                rewardPathFormula.getNonStrictBound<uint64_t>());
+        return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(numericResult)));
     }
 }
 

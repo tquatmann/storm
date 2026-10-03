@@ -892,23 +892,25 @@ template<typename RewardModelType>
 std::vector<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeCumulativeRewards(
     Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     RewardModelType const& rewardModel, uint_fast64_t stepBound) {
+    // Only compute the result if the model has at least one reward this->getModel().
+    STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
     if constexpr (storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We do not support cumulative rewards with interval models.");
-    } else {
-        // Only compute the result if the model has at least one reward this->getModel().
-        STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
-
-        // Compute the reward vector to add in each step based on the available reward models.
-        std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
-
-        // Initialize result to the zero vector.
-        std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
-
-        auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
-        multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound, goal.getUncertaintyResolutionMode());
-
-        return result;
+        STORM_LOG_ASSERT(storm::solver::isSet(goal.getUncertaintyResolutionMode()), "Interval model given, but no uncertainty resolution mode is specified.");
+        STORM_LOG_THROW(!rewardModel.hasTransitionRewards(), storm::exceptions::NotSupportedException,
+                        "Cumulative rewards on interval models do not support transition rewards.");
     }
+
+    // Compute the reward vector to add in each step based on the available reward models.
+    // For interval models, this vector may contain intervals. The multiplier picks the bound that is consistent with the uncertainty resolution mode.
+    std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
+
+    // Initialize result to the zero vector.
+    std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
+
+    auto multiplier = storm::solver::MultiplierFactory<ValueType, SolutionType>().create(env, transitionMatrix);
+    multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound, goal.getUncertaintyResolutionMode());
+
+    return result;
 }
 
 template<typename ValueType, typename SolutionType>
