@@ -302,6 +302,27 @@ TEST(RobustMDPModelCheckingTest, Tiny04maxmin_rewards) {
     expectThrow(STORM_TEST_RESOURCES_DIR "/imdp/tiny-04.drn", "Rmin=? [ F \"target\"]");
 }
 
+TEST(RobustMDPModelCheckingTest, CumulativeRewards) {
+    // Arguments: Rmax robust, Rmax cooperative, Rmin robust, Rmin cooperative
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=0 ];Rmin=? [ C<=0 ]", 0, 0, 0, 0, false);
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=1 ];Rmin=? [ C<=1 ]", 7, 7, 1, 1, false);
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=2 ];Rmin=? [ C<=2 ]", 9, 9.5, 9, 7.5, false);
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=3 ];Rmin=? [ C<=3 ]", 11, 11.5, 11, 9.5, false);
+}
+
+TEST(RobustMDPModelCheckingTest, CumulativeRewardsNoUncertaintyResolutionMode) {
+    std::shared_ptr<storm::models::sparse::Model<storm::Interval>> modelPtr =
+        storm::parser::parseDirectEncodingModel<storm::Interval>(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn");
+    std::vector<std::shared_ptr<storm::logic::Formula const>> formulas =
+        storm::api::extractFormulasFromProperties(storm::api::parseProperties("Rmax=? [ C<=2 ]"));
+    storm::Environment env;
+    env.solver().minMax().setMethod(storm::solver::MinMaxMethod::ValueIteration);
+    auto mdp = modelPtr->as<storm::models::sparse::Mdp<storm::Interval>>();
+    auto task = storm::modelchecker::CheckTask<storm::logic::Formula, double>(*formulas[0]);
+    auto checker = storm::modelchecker::SparseMdpPrctlModelChecker<storm::models::sparse::Mdp<storm::Interval>>(*mdp);
+    STORM_SILENT_EXPECT_THROW(checker.check(env, task), storm::exceptions::BaseException);
+}
+
 TEST(RobustMDPModelCheckingTest, CrowdsQuotientIMDP) {
     // Ensuring equivalent behavior when checking identical model as IDTMC and IMDP (cf. CrowdsQuotientIDTMC)
     checkModel(STORM_TEST_RESOURCES_DIR "/imdp/crowds-quotient-3-5.drn", "Pmax=? [ F \"observe0Greater1\"]; Pmin=? [ F \"observe0Greater1\"]", 0.1383409,
@@ -309,6 +330,13 @@ TEST(RobustMDPModelCheckingTest, CrowdsQuotientIMDP) {
 }
 
 // ---- RationalInterval tests (exact arithmetic) ----
+
+TEST(RobustRationalMDPModelCheckingTest, CumulativeRewards) {
+    checkModelRational(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=2 ];Rmin=? [ C<=2 ]", storm::RationalNumber(9), storm::RationalNumber("19/2"),
+                       storm::RationalNumber(9), storm::RationalNumber("15/2"), false);
+    checkModelRational(STORM_TEST_RESOURCES_DIR "/imdp/tiny-06.drn", "Rmax=? [ C<=3 ];Rmin=? [ C<=3 ]", storm::RationalNumber(11),
+                       storm::RationalNumber("23/2"), storm::RationalNumber(11), storm::RationalNumber("19/2"), false);
+}
 
 TEST(RobustRationalMDPModelCheckingTest, Tiny01maxmin) {
     checkModelRational(STORM_TEST_RESOURCES_DIR "/imdp/tiny-01.drn", "Pmax=? [ F \"target\"];Pmin=? [ F \"target\"]", storm::RationalNumber("2/5"),

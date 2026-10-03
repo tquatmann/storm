@@ -321,7 +321,7 @@ SparseMdpHintType<SolutionType> computeHints(Environment const& env, SemanticSol
                                              storm::OptimizationDirection const& dir, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                              storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& maybeStates,
                                              storm::storage::BitVector const& phiStates, storm::storage::BitVector const& targetStates, bool produceScheduler,
-                                             boost::optional<storm::storage::BitVector> const& selectedChoices = boost::none) {
+                                             boost::optional<storm::storage::BitVector> const& selectedChoices = boost::none, bool hasUniqueSolution = false) {
     SparseMdpHintType<SolutionType> result;
 
     // There are no end components if we minimize until probabilities or
@@ -332,7 +332,7 @@ SparseMdpHintType<SolutionType> computeHints(Environment const& env, SemanticSol
 
     // If there are no end components, the solution is unique. (Note that the other direction does not hold,
     // e.g., end components in which infinite reward is collected.
-    result.uniqueSolution = result.hasNoEndComponents();
+    result.uniqueSolution = result.hasNoEndComponents() || hasUniqueSolution;
 
     // Check for requirements of the solver.
     bool hasSchedulerHint = hint.isExplicitModelCheckerHint() && hint.template asExplicitModelCheckerHint<ValueType>().hasSchedulerHint();
@@ -892,23 +892,25 @@ template<typename RewardModelType>
 std::vector<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeCumulativeRewards(
     Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     RewardModelType const& rewardModel, uint_fast64_t stepBound) {
+    // Only compute the result if the model has at least one reward this->getModel().
+    STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
     if constexpr (storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We do not support cumulative rewards with interval models.");
-    } else {
-        // Only compute the result if the model has at least one reward this->getModel().
-        STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
-
-        // Compute the reward vector to add in each step based on the available reward models.
-        std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
-
-        // Initialize result to the zero vector.
-        std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
-
-        auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
-        multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound, goal.getUncertaintyResolutionMode());
-
-        return result;
+        STORM_LOG_ASSERT(storm::solver::isSet(goal.getUncertaintyResolutionMode()), "Interval model given, but no uncertainty resolution mode is specified.");
+        STORM_LOG_THROW(!rewardModel.hasTransitionRewards(), storm::exceptions::NotSupportedException,
+                        "Cumulative rewards on interval models do not support transition rewards.");
     }
+
+    // Compute the reward vector to add in each step based on the available reward models.
+    // For interval models, this vector may contain intervals. The multiplier picks the bound that is consistent with the uncertainty resolution mode.
+    std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
+
+    // Initialize result to the zero vector.
+    std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
+
+    auto multiplier = storm::solver::MultiplierFactory<ValueType, SolutionType>().create(env, transitionMatrix);
+    multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound, goal.getUncertaintyResolutionMode());
+
+    return result;
 }
 
 template<typename ValueType, typename SolutionType>
@@ -1438,9 +1440,23 @@ typename SparseMdpPrctlHelper<ValueType, SolutionType>::ExtendedReturnType Spars
             }
 
             // Obtain proper hint information either from the provided hint or from requirements of the solver.
+            bool hasUniqueSolution = goal.direction() == storm::solver::OptimizationDirection::Maximize;
+            if constexpr (storm::IsIntervalType<ValueType>) {
+                // For interval models, it is worth checking if the solution is unique, since we have no support for upper-bounds computation.
+                if (!hasUniqueSolution) {
+                    auto zeroRewardChoices = zeroRewardChoicesGetter();
+                    auto oneStepZeroRewardStates = qualitativeStateSets.maybeStates & transitionMatrix.getRowGroupFilter(zeroRewardChoices, false);
+                    // The solution is not unique iff there is a 0-reward EC iff there is a state from which we always stay inside oneStepZeroRewardStates
+                    // while taking only zeroRewardChoices.
+                    hasUniqueSolution =
+                        storm::utility::graph::performProbGreater0A(transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions,
+                                                                    oneStepZeroRewardStates, ~oneStepZeroRewardStates, false, 0, std::move(zeroRewardChoices))
+                            .full();
+                }
+            }
             SparseMdpHintType<SolutionType> hintInformation = computeHints<ValueType, SolutionType>(
                 env, SemanticSolutionType::ExpectedRewards, hint, goal.direction(), transitionMatrix, backwardTransitions, qualitativeStateSets.maybeStates,
-                ~qualitativeStateSets.rewardZeroStates, qualitativeStateSets.rewardZeroStates, produceScheduler, selectedChoices);
+                ~qualitativeStateSets.rewardZeroStates, qualitativeStateSets.rewardZeroStates, produceScheduler, selectedChoices, hasUniqueSolution);
 
             // Declare the components of the equation system we will solve.
             storm::storage::SparseMatrix<ValueType> submatrix;
