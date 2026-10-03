@@ -303,9 +303,8 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
     if (rewardPathFormula.isMultiDimensional() || rewardPathFormula.getTimeBoundReference().isRewardBound()) {
         if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotImplementedException,
-                            "We have not yet implemented multi-dimensional or reward-bounded cumulative rewards with intervals.");
-            return nullptr;
+            STORM_LOG_THROW_UNCONDITIONALLY(storm::exceptions::NotImplementedException,
+                                            "We have not yet implemented multi-dimensional or reward-bounded cumulative rewards with intervals.");
         } else {
             STORM_LOG_THROW(checkTask.isOnlyInitialStatesRelevantSet(), storm::exceptions::InvalidOperationException,
                             "Checking reward bounded cumulative reward formulas can only be done for the initial states of the model.");

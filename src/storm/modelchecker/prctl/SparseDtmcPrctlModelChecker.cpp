@@ -226,8 +226,8 @@ std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::c
     storm::logic::CumulativeRewardFormula const& rewardPathFormula = checkTask.getFormula();
     if (rewardPathFormula.isMultiDimensional() || rewardPathFormula.getTimeBoundReference().isRewardBound()) {
         if constexpr (storm::IsIntervalType<ValueType>) {
-            STORM_LOG_THROW(false, storm::exceptions::NotImplementedException,
-                            "We have not yet implemented multi-dimensional or reward-bounded cumulative rewards with intervals.");
+            STORM_LOG_THROW_UNCONDITIONALLY(storm::exceptions::NotImplementedException,
+                                            "We have not yet implemented multi-dimensional or reward-bounded cumulative rewards with intervals.");
         } else {
             STORM_LOG_THROW(checkTask.isOnlyInitialStatesRelevantSet(), storm::exceptions::InvalidOperationException,
                             "Checking non-trivial bounded until probabilities can only be computed for the initial states of the model.");
