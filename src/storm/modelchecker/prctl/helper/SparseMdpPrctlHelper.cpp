@@ -321,7 +321,7 @@ SparseMdpHintType<SolutionType> computeHints(Environment const& env, SemanticSol
                                              storm::OptimizationDirection const& dir, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                              storm::storage::SparseMatrix<ValueType> const& backwardTransitions, storm::storage::BitVector const& maybeStates,
                                              storm::storage::BitVector const& phiStates, storm::storage::BitVector const& targetStates, bool produceScheduler,
-                                             boost::optional<storm::storage::BitVector> const& selectedChoices = boost::none) {
+                                             boost::optional<storm::storage::BitVector> const& selectedChoices = boost::none, bool hasUniqueSolution = false) {
     SparseMdpHintType<SolutionType> result;
 
     // There are no end components if we minimize until probabilities or
@@ -332,7 +332,7 @@ SparseMdpHintType<SolutionType> computeHints(Environment const& env, SemanticSol
 
     // If there are no end components, the solution is unique. (Note that the other direction does not hold,
     // e.g., end components in which infinite reward is collected.
-    result.uniqueSolution = result.hasNoEndComponents();
+    result.uniqueSolution = result.hasNoEndComponents() || hasUniqueSolution;
 
     // Check for requirements of the solver.
     bool hasSchedulerHint = hint.isExplicitModelCheckerHint() && hint.template asExplicitModelCheckerHint<ValueType>().hasSchedulerHint();
@@ -1440,9 +1440,23 @@ typename SparseMdpPrctlHelper<ValueType, SolutionType>::ExtendedReturnType Spars
             }
 
             // Obtain proper hint information either from the provided hint or from requirements of the solver.
+            bool hasUniqueSolution = goal.direction() == storm::solver::OptimizationDirection::Maximize;
+            if constexpr (storm::IsIntervalType<ValueType>) {
+                // For interval models, it is worth checking if the solution is unique, since we have no support for upper-bounds computation.
+                if (!hasUniqueSolution) {
+                    auto zeroRewardChoices = zeroRewardChoicesGetter();
+                    auto oneStepZeroRewardStates = qualitativeStateSets.maybeStates & transitionMatrix.getRowGroupFilter(zeroRewardChoices, false);
+                    // The solution is not unique iff there is a 0-reward EC iff there is a state from which we always stay inside oneStepZeroRewardStates
+                    // while taking only zeroRewardChoices.
+                    hasUniqueSolution =
+                        storm::utility::graph::performProbGreater0A(transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions,
+                                                                    oneStepZeroRewardStates, ~oneStepZeroRewardStates, false, 0, std::move(zeroRewardChoices))
+                            .full();
+                }
+            }
             SparseMdpHintType<SolutionType> hintInformation = computeHints<ValueType, SolutionType>(
                 env, SemanticSolutionType::ExpectedRewards, hint, goal.direction(), transitionMatrix, backwardTransitions, qualitativeStateSets.maybeStates,
-                ~qualitativeStateSets.rewardZeroStates, qualitativeStateSets.rewardZeroStates, produceScheduler, selectedChoices);
+                ~qualitativeStateSets.rewardZeroStates, qualitativeStateSets.rewardZeroStates, produceScheduler, selectedChoices, hasUniqueSolution);
 
             // Declare the components of the equation system we will solve.
             storm::storage::SparseMatrix<ValueType> submatrix;
