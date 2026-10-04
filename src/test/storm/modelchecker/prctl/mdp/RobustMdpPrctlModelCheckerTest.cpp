@@ -298,8 +298,17 @@ TEST(RobustMDPModelCheckingTest, Tiny05maxmin) {
     checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-05.drn", "Pmax=? [ F \"target\"];Pmin=? [ F \"target\"]", 0.3, 0.4, 0.4, 0.3, false);
 }
 
-TEST(RobustMDPModelCheckingTest, Tiny04maxmin_rewards) {
-    expectThrow(STORM_TEST_RESOURCES_DIR "/imdp/tiny-04.drn", "Rmin=? [ F \"target\"]");
+TEST(RobustMDPModelCheckingTest, MinRewardsUniqueSolution) {
+    // There is no end component with zero reward among the states with finite reward, i.e., the solution of the equation system is unique and no upper
+    // reward bounds are required. Arguments: Rmin robust, Rmin cooperative, Rmin robust, Rmin cooperative.
+    // Choosing action 0 in state 0 yields 2 + 1 / (1 - p) with self-loop probability p in [0.2, 0.5], which is cheaper than action 1 (cost 6).
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-08.drn", "Rmin=? [ F \"target\" ];Rmin=? [ F \"target\" ]", 4, 3.25, 4, 3.25, false);
+}
+
+TEST(RobustMDPModelCheckingTest, MinRewardsNonUniqueSolution) {
+    // State 0 has a zero-reward self loop, i.e., there is an end component with zero reward. The solution is not unique and we cannot compute the required
+    // upper reward bounds for interval models.
+    expectThrow(STORM_TEST_RESOURCES_DIR "/imdp/tiny-07.drn", "Rmin=? [ F \"target\" ]");
 }
 
 TEST(RobustMDPModelCheckingTest, CumulativeRewards) {
