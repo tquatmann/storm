@@ -576,16 +576,12 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeReachabi
                                                                                           storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                           storm::storage::BitVector const& targetStates, bool qualitative,
                                                                                           ModelCheckerHint const& hint) {
-    if constexpr (storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We do not support computing reachability times with interval models.");
-    } else {
-        return computeReachabilityRewards(
-            env, std::move(goal), transitionMatrix, backwardTransitions,
-            [&](uint_fast64_t numberOfRows, storm::storage::SparseMatrix<ValueType> const&, storm::storage::BitVector const&) {
-                return std::vector<ValueType>(numberOfRows, storm::utility::one<ValueType>());
-            },
-            targetStates, qualitative, [&]() { return storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false); }, hint);
-    }
+    return computeReachabilityRewards(
+        env, std::move(goal), transitionMatrix, backwardTransitions,
+        [&](uint_fast64_t numberOfRows, storm::storage::SparseMatrix<ValueType> const&, storm::storage::BitVector const&) {
+            return std::vector<ValueType>(numberOfRows, storm::utility::one<ValueType>());
+        },
+        targetStates, qualitative, [&]() { return storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false); }, hint);
 }
 
 // This function computes an upper bound on the reachability rewards (see Baier et al, CAV'17).
@@ -663,7 +659,11 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeReachabi
                 storm::storage::SparseMatrix<ValueType> submatrix = transitionMatrix.filterEntries(transitionMatrix.getRowFilter(maybeStates));
 
                 // Prepare the right-hand side of the equation system.
-                std::vector<ValueType> b = totalStateRewardVectorGetter(submatrix.getRowCount(), transitionMatrix, maybeStates);
+                // The system keeps the rows of all states, so b must be indexed by the rows of the original matrix. We compute the rewards for all
+                // states and set the entries of non-maybe states to zero.
+                std::vector<ValueType> b = totalStateRewardVectorGetter(submatrix.getRowCount(), transitionMatrix,
+                                                                        storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true));
+                storm::utility::vector::setVectorValues(b, ~transitionMatrix.getRowFilter(maybeStates), storm::utility::zero<ValueType>());
 
                 // Compute values for maybe states.
                 std::vector<SolutionType> x = computeRobustValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, true);

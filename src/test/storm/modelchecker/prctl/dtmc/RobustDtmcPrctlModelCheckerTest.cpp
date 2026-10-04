@@ -367,6 +367,20 @@ TEST(RobustDtmcModelCheckerTest, Tiny03CumulativeRewardsRobust) {
     expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.drn", "R=? [ C<=2 ]", storm::UncertaintyResolutionMode::Robust);
 }
 
+TEST(RobustDtmcModelCheckerTest, ReachabilityTimes) {
+    // The self-loop probability p is in [0, 0.5], i.e., the expected time 1 / (1 - p) is in [1, 2].
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-06.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 1, 2);
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 2, 2);
+}
+
+TEST(RobustDtmcModelCheckerTest, ReachabilityTimesNoUncertaintyResolutionMode) {
+    expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-06.drn", "T=? [ F \"target\" ]", storm::UncertaintyResolutionMode::Unset);
+}
+
+TEST(RobustDtmcModelCheckerTest, ReachabilityTimesRobust) {
+    expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-06.drn", "T=? [ F \"target\" ]", storm::UncertaintyResolutionMode::Robust);
+}
+
 TEST(RobustDtmcModelCheckerTest, CrowdsQuotientIDTMC) {
     // Ensuring equivalent behavior when checking identical model as IDTMC and IMDP (cf. CrowdsQuotientIMDP)
     checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/crowds-quotient-3-5.drn",
@@ -496,6 +510,12 @@ TEST(RobustRationalDtmcModelCheckerTest, Tiny04CumulativeRewards) {
 
 TEST(RobustRationalDtmcModelCheckerTest, Tiny03CumulativeRewardsNoUncertaintyResolutionMode) {
     expectThrowRational(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.drn", "R=? [ C<=2 ]", storm::UncertaintyResolutionMode::Unset);
+}
+
+TEST(RobustRationalDtmcModelCheckerTest, ReachabilityTimes) {
+    // Value iteration reaches the exact value after finitely many steps as the model is acyclic (apart from the target).
+    checkExplicitModelForQuantitativeResultRational(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]",
+                                                    storm::RationalNumber(2), storm::RationalNumber(2));
 }
 
 TEST(RobustRationalDtmcModelCheckerTest, AddUncertaintyBrpMax) {
