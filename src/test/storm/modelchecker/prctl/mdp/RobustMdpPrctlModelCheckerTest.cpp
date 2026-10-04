@@ -298,6 +298,30 @@ TEST(RobustMDPModelCheckingTest, Tiny05maxmin) {
     checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-05.drn", "Pmax=? [ F \"target\"];Pmin=? [ F \"target\"]", 0.3, 0.4, 0.4, 0.3, false);
 }
 
+TEST(RobustMDPModelCheckingTest, Tiny04MinRewards) {
+    // The reward of a state is collected every time the state is visited. Only the cycle 0 -> 2 -> 0 can be repeated without reaching infinite reward, and
+    // state 0 reaches the target with (fixed) probability 0.3. From state 1 (reached with probability 0.4) one has to move on to state 2 (reward 1).
+    // This yields V0 = 1 + 0.4 * (1 + V2) + 0.3 * V2 with V2 = 1 + V0, i.e., V0 = 7. Rmax is infinite as the sink state 4 is reachable.
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-04.drn", "Rmin=? [ F \"target\" ];Rmin=? [ F \"target\" ]", 7, 7, 7, 7, false);
+}
+
+TEST(RobustMDPModelCheckingTest, RewardsTargetTransitionInterval) {
+    // The probability of moving to the target is at least 0.5, so the self-loop probability p is at most 0.5. The expected reward 1 / (1 - p) is thus in
+    // [1, 2]. This requires that the interval of the transition to the target state is respected when resolving the uncertainty.
+    // Arguments: Rmax robust, Rmax cooperative, Rmin robust, Rmin cooperative.
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-09.drn", "Rmax=? [ F \"target\" ];Rmin=? [ F \"target\" ]", 1, 2, 2, 1, false);
+}
+
+TEST(RobustMDPModelCheckingTest, ReachabilityTimes) {
+    // Action 0 has self-loop probability p in [0, 0.5], i.e., expected time 1 / (1 - p) in [1, 2]. Action 1 has expected time 1 + 0.5 * 1 = 1.5.
+    // Arguments: Tmax robust, Tmax cooperative, Tmin robust, Tmin cooperative.
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-10.drn", "Tmax=? [ F \"target\" ];Tmin=? [ F \"target\" ]", 1.5, 2, 1.5, 1, false);
+}
+
+TEST(RobustMDPModelCheckingTest, ReachabilityTimesSingleAction) {
+    checkModel(STORM_TEST_RESOURCES_DIR "/imdp/tiny-09.drn", "Tmax=? [ F \"target\" ];Tmin=? [ F \"target\" ]", 1, 2, 2, 1, false);
+}
+
 TEST(RobustMDPModelCheckingTest, MinRewardsUniqueSolution) {
     // There is no end component with zero reward among the states with finite reward, i.e., the solution of the equation system is unique and no upper
     // reward bounds are required. Arguments: Rmin robust, Rmin cooperative, Rmin robust, Rmin cooperative.

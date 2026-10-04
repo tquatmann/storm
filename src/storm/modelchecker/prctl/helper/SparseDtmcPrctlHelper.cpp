@@ -659,7 +659,11 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeReachabi
                 storm::storage::SparseMatrix<ValueType> submatrix = transitionMatrix.filterEntries(transitionMatrix.getRowFilter(maybeStates));
 
                 // Prepare the right-hand side of the equation system.
-                std::vector<ValueType> b = totalStateRewardVectorGetter(submatrix.getRowCount(), transitionMatrix, maybeStates);
+                // The system keeps the rows of all states, so b must be indexed by the rows of the original matrix. We compute the rewards for all
+                // states and set the entries of non-maybe states to zero.
+                std::vector<ValueType> b = totalStateRewardVectorGetter(submatrix.getRowCount(), transitionMatrix,
+                                                                        storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true));
+                storm::utility::vector::setVectorValues(b, ~transitionMatrix.getRowFilter(maybeStates), storm::utility::zero<ValueType>());
 
                 // Compute values for maybe states.
                 std::vector<SolutionType> x = computeRobustValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, true);

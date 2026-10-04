@@ -1260,6 +1260,35 @@ void computeFixedPointSystemReachabilityRewards(
     std::function<std::vector<ValueType>(uint_fast64_t, storm::storage::SparseMatrix<ValueType> const&, storm::storage::BitVector const&)> const&
         totalStateRewardVectorGetter,
     storm::storage::SparseMatrix<ValueType>& submatrix, std::vector<ValueType>& b, std::vector<ValueType>* oneStepTargetProbabilities = nullptr) {
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        // For interval models, we must not remove the columns of states whose reward values are already known (i.e., target states): the probability
+        // mass that is moved to these states is constrained by the transition intervals, which is relevant for resolving the uncertainty at predecessors.
+        // We thus keep all columns (so the system has one row group for every state) and drop all outgoing transitions of non-maybe states.
+        // The values of non-maybe states are then 0 by construction (no transitions, no reward), which is the correct value for target states.
+        // Infinity states are never reached via the choices we keep.
+        submatrix = transitionMatrix.filterEntries(transitionMatrix.getRowFilter(qualitativeStateSets.maybeStates));
+        // The rows of non-maybe states carry no reward. Note that b must be indexed by the rows of the original matrix, so we compute the rewards for all
+        // states and set the entries of non-maybe states to zero.
+        b = totalStateRewardVectorGetter(transitionMatrix.getRowCount(), transitionMatrix,
+                                         storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true));
+        storm::utility::vector::setVectorValues(b, ~transitionMatrix.getRowFilter(qualitativeStateSets.maybeStates), storm::utility::zero<ValueType>());
+        if (!qualitativeStateSets.infinityStates.empty()) {
+            // Remove the choices of maybe states that lead to infinity states. The (empty) rows of non-maybe states are kept.
+            storm::storage::BitVector const rowsToKeep = *selectedChoices | transitionMatrix.getRowFilter(~qualitativeStateSets.maybeStates);
+            submatrix = submatrix.restrictRows(rowsToKeep);
+            storm::utility::vector::filterVectorInPlace(b, rowsToKeep);
+        }
+        if (oneStepTargetProbabilities) {
+            if (qualitativeStateSets.infinityStates.empty()) {
+                (*oneStepTargetProbabilities) =
+                    transitionMatrix.getConstrainedRowGroupSumVector(qualitativeStateSets.maybeStates, qualitativeStateSets.rewardZeroStates);
+            } else {
+                (*oneStepTargetProbabilities) = transitionMatrix.getConstrainedRowSumVector(*selectedChoices, qualitativeStateSets.rewardZeroStates);
+            }
+        }
+        // Note that the solution vector has an entry for each state, so the relevant values of the solve goal are not restricted to the maybe states.
+        return;
+    }
     // Remove rows and columns from the original transition probability matrix for states whose reward values are already known.
     // If there are infinity states, we additionally have to remove choices of maybeState that lead to infinity.
     if (qualitativeStateSets.infinityStates.empty()) {
@@ -1509,7 +1538,15 @@ typename SparseMdpPrctlHelper<ValueType, SolutionType>::ExtendedReturnType Spars
                 }
             } else {
                 // Set values of resulting vector according to result.
-                storm::utility::vector::setVectorValues(result, qualitativeStateSets.maybeStates, resultForMaybeStates.getValues());
+                if constexpr (storm::IsIntervalType<ValueType>) {
+                    // For interval models, the solution has an entry for every state. We only take the values of the maybe states.
+                    STORM_LOG_ASSERT(resultForMaybeStates.getValues().size() == transitionMatrix.getRowGroupCount(), "Dimensions do not match.");
+                    storm::utility::vector::setVectorValues(
+                        result, qualitativeStateSets.maybeStates,
+                        storm::utility::vector::filterVector(resultForMaybeStates.getValues(), qualitativeStateSets.maybeStates));
+                } else {
+                    storm::utility::vector::setVectorValues(result, qualitativeStateSets.maybeStates, resultForMaybeStates.getValues());
+                }
                 if (produceScheduler) {
                     extractSchedulerChoices(*scheduler, transitionMatrix, resultForMaybeStates.getScheduler(), qualitativeStateSets.maybeStates,
                                             selectedChoices);
