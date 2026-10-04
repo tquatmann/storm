@@ -576,16 +576,12 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeReachabi
                                                                                           storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                                                           storm::storage::BitVector const& targetStates, bool qualitative,
                                                                                           ModelCheckerHint const& hint) {
-    if constexpr (storm::IsIntervalType<ValueType>) {
-        STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "We do not support computing reachability times with interval models.");
-    } else {
-        return computeReachabilityRewards(
-            env, std::move(goal), transitionMatrix, backwardTransitions,
-            [&](uint_fast64_t numberOfRows, storm::storage::SparseMatrix<ValueType> const&, storm::storage::BitVector const&) {
-                return std::vector<ValueType>(numberOfRows, storm::utility::one<ValueType>());
-            },
-            targetStates, qualitative, [&]() { return storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false); }, hint);
-    }
+    return computeReachabilityRewards(
+        env, std::move(goal), transitionMatrix, backwardTransitions,
+        [&](uint_fast64_t numberOfRows, storm::storage::SparseMatrix<ValueType> const&, storm::storage::BitVector const&) {
+            return std::vector<ValueType>(numberOfRows, storm::utility::one<ValueType>());
+        },
+        targetStates, qualitative, [&]() { return storm::storage::BitVector(transitionMatrix.getRowGroupCount(), false); }, hint);
 }
 
 // This function computes an upper bound on the reachability rewards (see Baier et al, CAV'17).
