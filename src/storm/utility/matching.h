@@ -12,7 +12,7 @@ namespace storm::utility {
 /*
  * Finds a bijective mapping f: {0,...,n-1} -> {0,...,n-1} such that hasEdge(v, f(v)) is true for all v.
  * If no such mapping exists, returns std::nullopt.
- * The algorithm  finds a maximum matching in the bipartite graph defined by hasEdge
+ * The algorithm finds a maximum matching in the bipartite graph defined by hasEdge
  */
 template<std::predicate<uint64_t, uint64_t> EdgePredicate>
 std::optional<std::vector<uint64_t>> findPerfectMatching(uint64_t const n, EdgePredicate&& hasEdge) {
