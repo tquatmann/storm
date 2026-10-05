@@ -77,7 +77,16 @@ MARK_AS_ADVANCED(STORM_QVBS_ROOT)
 
 ## Configuring dependencies
 set(STORM_CARL_GIT_REPO "https://github.com/stormchecker/carl-storm.git" CACHE STRING "For fetching carl: which git repo to use")
-option(STORM_CARL_GIT_TAG "For fetching carl: which git tag to use" "14.36")
+set(STORM_CARL_GIT_TAG_DEFAULT "14.36")
+set(STORM_CARL_GIT_TAG "${STORM_CARL_GIT_TAG_DEFAULT}" CACHE STRING "For fetching carl: which git tag to use")
+
+# Correct a non-STRING cache entry, while leaving a tag that was set deliberately untouched.
+get_property(STORM_CARL_GIT_TAG_TYPE CACHE STORM_CARL_GIT_TAG PROPERTY TYPE)
+if(STORM_CARL_GIT_TAG_TYPE STREQUAL "BOOL")
+    message(STATUS "Storm - Correcting the boolean cache entry of STORM_CARL_GIT_TAG.")
+    set(STORM_CARL_GIT_TAG "${STORM_CARL_GIT_TAG_DEFAULT}" CACHE STRING "For fetching carl: which git tag to use" FORCE)
+endif()
+
 MARK_AS_ADVANCED(STORM_CARL_GIT_TAG)
 option(STORM_DISABLE_CUDD "Sets whether linking with CUDD should be disabled." OFF)
 option(STORM_DISABLE_GLPK "Sets whether linking with GLPK should be disabled." OFF)
@@ -108,6 +117,8 @@ mark_as_advanced(XERCESC_ROOT)
 option(STORM_DISABLE_Z3  "Sets whether linking with Z3 should be disabled." OFF)
 set(Z3_ROOT "" CACHE STRING "A hint to the root directory of Z3.")
 mark_as_advanced(Z3_ROOT)
+set(STORM_DEFAULT_SMT_SOLVER "Auto" CACHE STRING "The default SMT solver to use (Auto, Z3 or Mathsat). Must be available at compile time.")
+MARK_AS_ADVANCED(STORM_DEFAULT_SMT_SOLVER)
 
 option(STORM_DEBUG_CUDD "Build CUDD in debug mode." OFF)
 MARK_AS_ADVANCED(STORM_DEBUG_CUDD)
@@ -526,6 +537,31 @@ endif()
 message(STATUS "Storm - Version is ${STORM_VERSION_STRING}.")
 export_option(STORM_VERSION) # We want this information also in the more accessible stormOptions.cmake
 export_option(STORM_VERSION_DEV) # We want this information also in the more accessible stormOptions.cmake
+
+# Determine the compile-time default SMT solver from the STORM_DEFAULT_SMT_SOLVER option.
+set(STORM_DEFAULT_SMT_SOLVER_Z3 OFF)
+set(STORM_DEFAULT_SMT_SOLVER_MATHSAT OFF)
+if(STORM_DEFAULT_SMT_SOLVER STREQUAL "Z3")
+	if(NOT STORM_HAVE_Z3)
+		message(FATAL_ERROR "STORM_DEFAULT_SMT_SOLVER=Z3 requested, but Z3 is not available.")
+	endif()
+	set(STORM_DEFAULT_SMT_SOLVER_Z3 ON)
+elseif(STORM_DEFAULT_SMT_SOLVER STREQUAL "Mathsat")
+	if(NOT STORM_HAVE_MATHSAT)
+		message(FATAL_ERROR "STORM_DEFAULT_SMT_SOLVER=Mathsat requested, but MathSAT is not available.")
+	endif()
+	set(STORM_DEFAULT_SMT_SOLVER_MATHSAT ON)
+elseif(STORM_DEFAULT_SMT_SOLVER STREQUAL "Auto")
+	if(STORM_HAVE_Z3)
+		set(STORM_DEFAULT_SMT_SOLVER_Z3 ON)
+	elseif(STORM_HAVE_MATHSAT)
+		set(STORM_DEFAULT_SMT_SOLVER_MATHSAT ON)
+	else()
+		message(WARNING "Storm - No SMT solver (Z3 or Mathsat) available; SMT-based features will fail at run time.")
+	endif()
+else()
+	message(FATAL_ERROR "STORM_DEFAULT_SMT_SOLVER must be one of Auto, Z3 or Mathsat, but was '${STORM_DEFAULT_SMT_SOLVER}'.")
+endif()
 
 # Configure a header file to pass some of the CMake settings to the source code
 configure_file (
