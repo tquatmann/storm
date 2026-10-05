@@ -99,7 +99,7 @@ class BisimulationSettings : public ModuleSettings {
 
     /*!
      * Retrieves the tolerance to use for bisimulation minimization.
-     * NOTE: only applies to sparse bisimulation.
+     * @note: only applies to sparse bisimulation.
      */
     double getTolerance() const;
 
