@@ -668,8 +668,11 @@ SparseDtmcPrctlHelper<ValueType, RewardModelType, SolutionType>::computeReachabi
                 // Compute values for maybe states.
                 std::vector<SolutionType> x = computeRobustValuesForMaybeStates(env, std::move(goal), std::move(submatrix), b, true);
 
-                // Set values of resulting vector according to result.
-                storm::utility::vector::setVectorValues(result, maybeStates, x);
+                // The solution has an entry for every state. We only take the values of the maybe states.
+                STORM_LOG_ASSERT(x.size() == transitionMatrix.getColumnCount(), "Dimensions do not match.");
+                for (auto const state : maybeStates) {
+                    result[state] = x[state];
+                }
             } else {
                 // Check whether we need to convert the input to equation system format.
                 storm::solver::GeneralLinearEquationSolverFactory<ValueType> linearEquationSolverFactory;

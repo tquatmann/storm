@@ -176,6 +176,10 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     storm::logic::UntilFormula const& pathFormula = checkTask.getFormula();
     STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
+                        "Computing until probabilities on uncertain model requires graph-preservation.");
+    }
     std::unique_ptr<CheckResult> leftResultPointer = this->check(env, pathFormula.getLeftSubformula());
     std::unique_ptr<CheckResult> rightResultPointer = this->check(env, pathFormula.getRightSubformula());
     ExplicitQualitativeCheckResult<SolutionType> const& leftResult = leftResultPointer->template asExplicitQualitativeCheckResult<SolutionType>();
@@ -384,6 +388,10 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     storm::logic::EventuallyFormula const& eventuallyFormula = checkTask.getFormula();
     STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
+                        "Computing rewards on uncertain model requires graph-preservation.");
+    }
     std::unique_ptr<CheckResult> subResultPointer = this->check(env, eventuallyFormula.getSubformula());
     ExplicitQualitativeCheckResult<SolutionType> const& subResult = subResultPointer->template asExplicitQualitativeCheckResult<SolutionType>();
     auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
@@ -404,6 +412,10 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     storm::logic::EventuallyFormula const& eventuallyFormula = checkTask.getFormula();
     STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
+                        "Computing reachability times on uncertain model requires graph-preservation.");
+    }
     std::unique_ptr<CheckResult> subResultPointer = this->check(env, eventuallyFormula.getSubformula());
     ExplicitQualitativeCheckResult<SolutionType> const& subResult = subResultPointer->template asExplicitQualitativeCheckResult<SolutionType>();
     auto ret = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeReachabilityTimes(
@@ -422,6 +434,10 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     Environment const& env, CheckTask<storm::logic::TotalRewardFormula, SolutionType> const& checkTask) {
     STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    if constexpr (storm::IsIntervalType<ValueType>) {
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
+                        "Computing total rewards on uncertain model requires graph-preservation.");
+    }
     auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
     auto ret = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeTotalRewards(
         env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),

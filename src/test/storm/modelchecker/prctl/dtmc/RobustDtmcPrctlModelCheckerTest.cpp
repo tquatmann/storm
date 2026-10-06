@@ -368,9 +368,27 @@ TEST(RobustDtmcModelCheckerTest, Tiny03CumulativeRewardsRobust) {
 }
 
 TEST(RobustDtmcModelCheckerTest, ReachabilityTimes) {
-    // The self-loop probability p is in [0, 0.5], i.e., the expected time 1 / (1 - p) is in [1, 2].
-    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-06.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 1, 2);
+    // The self-loop probability p is in [0.2, 0.5], i.e., the expected time 1 / (1 - p) is in [1.25, 2].
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-06.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 1.25, 2);
     checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-03.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 2, 2);
+}
+
+TEST(RobustDtmcModelCheckerTest, ReachabilityTimesAndRewardsTargetStateBeforeMaybeStates) {
+    // The target state has a smaller index than the other state. The values of target states must not be mixed up with the values of the remaining states.
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-07.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 1.25, 2);
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-07.drn", "R=? [ F \"target\" ];R=? [ F \"target\" ]", 1.25, 2);
+}
+
+TEST(RobustDtmcModelCheckerTest, GraphPreservationRequired) {
+    // The self-loop interval [0, 1] allows to never reach the target, i.e., the graph of the model is not preserved.
+    expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-08.drn", "T=? [ F \"target\" ]", storm::UncertaintyResolutionMode::Maximize);
+    expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-08.drn", "R=? [ F \"target\" ]", storm::UncertaintyResolutionMode::Maximize);
+    expectThrow(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-08.drn", "P=? [ F \"target\" ]", storm::UncertaintyResolutionMode::Maximize);
+}
+
+TEST(RobustDtmcModelCheckerTest, GraphPreservationAfterTightening) {
+    // The self-loop interval [0, 0.5] is tightened to [0.5, 0.5] as the other transition has probability at most 0.5. The model is graph preserving.
+    checkExplicitModelForQuantitativeResult(STORM_TEST_RESOURCES_DIR "/idtmc/tiny-09.drn", "T=? [ F \"target\" ];T=? [ F \"target\" ]", 2, 2);
 }
 
 TEST(RobustDtmcModelCheckerTest, ReachabilityTimesNoUncertaintyResolutionMode) {

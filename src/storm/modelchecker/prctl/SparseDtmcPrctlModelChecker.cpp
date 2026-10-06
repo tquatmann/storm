@@ -146,7 +146,7 @@ std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::c
                             checkTask.getUncertaintyResolutionMode() != UncertaintyResolutionMode::Cooperative,
                         storm::exceptions::InvalidSettingsException,
                         "Uncertainty resolution modes robust or cooperative not allowed if optimization direction is not stated explicitly.");
-        STORM_LOG_THROW(this->getModel().getTransitionMatrix().hasOnlyPositiveEntries(), storm::exceptions::InvalidSettingsException,
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
                         "Computing until probabilities on uncertain model requires graph-preservation.");
     }
     std::unique_ptr<CheckResult> leftResultPointer = this->check(env, pathFormula.getLeftSubformula());
@@ -314,7 +314,7 @@ std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::c
                             checkTask.getUncertaintyResolutionMode() != UncertaintyResolutionMode::Cooperative,
                         storm::exceptions::InvalidSettingsException,
                         "Uncertainty resolution modes robust or cooperative not allowed if optimization direction is not stated explicitly.");
-        STORM_LOG_THROW(this->getModel().getTransitionMatrix().hasOnlyPositiveEntries(), storm::exceptions::InvalidSettingsException,
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
                         "Computing rewards on uncertain model requires graph-preservation.");
     }
     std::unique_ptr<CheckResult> subResultPointer = this->check(env, eventuallyFormula.getSubformula());
@@ -337,6 +337,8 @@ std::unique_ptr<CheckResult> SparseDtmcPrctlModelChecker<SparseDtmcModelType>::c
                             checkTask.getUncertaintyResolutionMode() != UncertaintyResolutionMode::Cooperative,
                         storm::exceptions::InvalidSettingsException,
                         "Uncertainty resolution modes robust or cooperative not allowed if optimization direction is not stated explicitly.");
+        STORM_LOG_THROW(this->getModel().getTransitionMatrix().isProbabilisticGraphPreserving(), storm::exceptions::InvalidSettingsException,
+                        "Computing reachability times on uncertain model requires graph-preservation.");
     }
     storm::logic::EventuallyFormula const& eventuallyFormula = checkTask.getFormula();
     std::unique_ptr<CheckResult> subResultPointer = this->check(env, eventuallyFormula.getSubformula());
