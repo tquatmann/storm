@@ -70,8 +70,9 @@ void testModelB(std::string programFile, std::string formulaAsString, std::strin
     for (auto const& instantiation : testInstantiations) {
         auto result = modelChecker.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
         auto resultSimple = modelCheckerSimple.check(env, instantiation)->asExplicitQuantitativeCheckResult<storm::RationalNumber>()[initialStateModel];
-        EXPECT_EQ(result, resultSimple) << "Results ≈" << storm::utility::convertNumber<double>(result) << " and ≈"
-                                        << storm::utility::convertNumber<double>(resultSimple) << " are not the same but should be.";
+        // The results are exact rationals, but we print their rounded double approximations for readability.
+        EXPECT_EQ(result, resultSimple) << "Results " << storm::utility::convertNumber<double>(result) << " and "
+                                        << storm::utility::convertNumber<double>(resultSimple) << " (both rounded) are not the same but should be.";
     }
 
     auto region = storm::api::createRegion<storm::RationalFunction>("0.4", *dtmc);

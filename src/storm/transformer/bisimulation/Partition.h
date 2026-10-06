@@ -297,31 +297,9 @@ class Partition {
         // Swaps the elements in [start, blockEnd) so that those compatible (!condition) with the anchor at start directly follow it.
         // @return mid such that all elements in [start, mid) are compatible with the anchor (located at start) and those at [mid, blockEnd) are not.
         auto const partitionBlock = [this, &condition, &blockEnd](BlockIndex const start) {
+            // The anchor itself stays in place, so we only partition the elements after it.
             auto const anchor = blockContents[start];
-            auto l = start + 1;
-            auto r = blockEnd - 1;
-            // Loop invariant: all elements at position in (start, l) are compatible with anchor, all elements at position > r are not.
-            while (l <= r) {
-                while (l <= r && !condition(anchor, std::as_const(blockContents[l]))) {
-                    ++l;
-                }
-                if (l > r) {
-                    break;
-                }
-                while (l < r && condition(anchor, std::as_const(blockContents[r]))) {
-                    --r;
-                }
-                if (l == r) {
-                    --r;
-                    break;
-                }
-                std::swap(blockContents[l], blockContents[r]);
-                blockContentsInverse[blockContents[l]] = l;
-                blockContentsInverse[blockContents[r]] = r;
-                ++l;
-                --r;
-            }
-            return l;
+            return partitionBlockContents(start + 1, blockEnd, [&condition, &anchor](ElementIndex const element) { return condition(anchor, element); });
         };
 
         for (uint64_t start = blockStart; start < blockEnd;) {
@@ -355,33 +333,7 @@ class Partition {
         // swap the block contents so that all elements e with f(e) == false come first
         auto const blockStart = getBlockIndex(block);
         auto const blockEnd = blockStart + block.size();
-        auto l = blockStart;
-        auto r = blockEnd - 1;
-        // Loop invariant: all elements at position < l are false, all elements at position > r are true
-        while (l <= r) {
-            while (l <= r && !f(std::as_const(blockContents[l]))) {
-                ++l;
-            }
-            if (l > r) {
-                break;  // no more elements to swap
-            }
-            // At this point we know that f(blockContents[l]) == true
-            while (l < r && f(std::as_const(blockContents[r]))) {
-                --r;
-            }
-            if (l == r) {
-                // We have f(blockContents[r]) == f(blockContents[l]) == true
-                --r;
-                break;  // l > r holds now
-            } else if (l < r) {
-                std::swap(blockContents[l], blockContents[r]);
-                blockContentsInverse[blockContents[l]] = l;
-                blockContentsInverse[blockContents[r]] = r;
-                ++l;
-                --r;
-            }
-        }
-        STORM_LOG_ASSERT(l == r + 1, "Unexpected indices");
+        auto const l = partitionBlockContents(blockStart, blockEnd, f);
 
         // Handle cases where there is no split
         if (l == blockStart) {
@@ -449,6 +401,46 @@ class Partition {
      * @note we make this private since we do not want to expose the internal representation of the partition.
      */
     using BlockIndex = uint64_t;
+
+    /*!
+     * Swaps the elements at the positions [start, end) of blockContents such that all elements for which the given predicate is false come first.
+     * @return the position mid such that the predicate is false for the elements at [start, mid) and true for those at [mid, end).
+     */
+    template<typename SplittingPredicate>
+        requires std::predicate<SplittingPredicate, ElementIndex>
+    BlockIndex partitionBlockContents(BlockIndex const start, BlockIndex const end, SplittingPredicate const& f) {
+        STORM_LOG_ASSERT(start <= end, "Tried to partition an invalid range.");
+        if (start == end) {
+            return start;  // empty range, nothing to swap
+        }
+        auto l = start;
+        auto r = end - 1;
+        // Loop invariant: all elements at position < l are false, all elements at position > r are true
+        while (l <= r) {
+            while (l <= r && !f(std::as_const(blockContents[l]))) {
+                ++l;
+            }
+            if (l > r) {
+                break;  // no more elements to swap
+            }
+            // At this point we know that f(blockContents[l]) == true
+            while (l < r && f(std::as_const(blockContents[r]))) {
+                --r;
+            }
+            if (l == r) {
+                // We have f(blockContents[r]) == f(blockContents[l]) == true
+                --r;
+                break;  // l > r holds now
+            }
+            std::swap(blockContents[l], blockContents[r]);
+            blockContentsInverse[blockContents[l]] = l;
+            blockContentsInverse[blockContents[r]] = r;
+            ++l;
+            --r;
+        }
+        STORM_LOG_ASSERT(l == r + 1, "Unexpected indices");
+        return l;
+    }
 
     /*!
      * @return the index at which the given block currently starts within blockContents.

@@ -63,7 +63,9 @@ PreservationInformation Initialization<ValueType>::getPreservationInformation() 
     if (stateLabelPreservation == StateLabelPreservation::All) {
         for (auto const& label : model.getStateLabeling().getLabels()) {
             if (label == "init") {
-                continue;  // "init" must not be preserved
+                // The quotient gets the "init" label from the union over the states of a block. Preserving it would only make the quotient finer without need.
+                // Note that a formula referring to "init" still adds the label in the loop above, i.e. "init" is preserved iff a formula actually uses it.
+                continue;
             }
             information.preservedStateLabels.insert(label);
         }
@@ -101,16 +103,22 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
             .setReachabilityRewardFormulasAllowed(true);
         if (model.isOfType(storm::models::ModelType::Ctmc)) {
             // Weak bisimulation on a CTMC preserves the distribution of the time spent within a block, so time bounds and expected times are fine.
-            // Step bounds are not, which is why we only enable the time-based cases here.
+            // Step (and reward) bounds are not, which is why we only enable the time-based cases here.
             preservedFragment.setBoundedUntilFormulasAllowed(true)
                 .setTimeBoundedUntilFormulasAllowed(true)
+            .setStepBoundedUntilFormulasAllowed(false)
+            .setRewardOperatorsAllowed(false)
                 .setTimeOperatorsAllowed(true)
                 .setReachbilityTimeFormulasAllowed(true);
         }
+        std::string unsupportedFormulas;
         for (auto const& f : this->formulas) {
-            STORM_LOG_THROW(f->isInFragment(preservedFragment), storm::exceptions::IllegalFunctionCallException,
-                            "The formula " << *f << " is not known to be preserved by weak bisimulation.");
+            if (!f->isInFragment(preservedFragment)) {
+                unsupportedFormulas += (unsupportedFormulas.empty() ? "" : ", ") + f->toString();
+            }
         }
+        STORM_LOG_THROW(unsupportedFormulas.empty(), storm::exceptions::IllegalFunctionCallException,
+                        "The formula(s) " << unsupportedFormulas << " are not known to be preserved by weak bisimulation.");
     }
 
     auto const preservationInformation = getPreservationInformation();
@@ -235,6 +243,7 @@ void Initialization<ValueType>::PreservedAnnotations::applySplit(Partition& part
     }
 
     // Helper for the remaining numeric annotations
+    // TODO: Consider extending storm::utility::ConstantsComparator::isLess to handle the comparison to zero below and use the comparator here.
     auto splitByNumeric = [&numElements, &partition, &tolerance](auto const& v) {
         STORM_LOG_ASSERT(numElements == v.size(), "Annotation has wrong size.");
         auto const less = [&v](auto const& a, auto const& b) { return v[a] < v[b]; };

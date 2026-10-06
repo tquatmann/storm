@@ -165,28 +165,25 @@ auto Quotient<ValueType>::buildFromPartition(storm::models::sparse::Model<ValueT
     }
 
     // build reward models
-    {
-        for (auto const& r : preservationInformation.preservedRewardModels) {
-            std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
-            auto const& rm = model.getRewardModel(r);
-            if (rm.hasStateRewards()) {
-                stateRewards.emplace();
-                stateRewards->reserve(numberOfQuotientStates);
-                for (auto const representativeState : toRepresentativeState) {
-                    stateRewards->push_back(rm.getStateReward(representativeState));
-                }
+    for (auto const& r : preservationInformation.preservedRewardModels) {
+        std::optional<std::vector<ValueType>> stateRewards, stateActionRewards;
+        auto const& rm = model.getRewardModel(r);
+        if (rm.hasStateRewards()) {
+            stateRewards.emplace();
+            stateRewards->reserve(numberOfQuotientStates);
+            for (auto const representativeState : toRepresentativeState) {
+                stateRewards->push_back(rm.getStateReward(representativeState));
             }
-            if (rm.hasStateActionRewards()) {
-                stateActionRewards.emplace();
-                stateActionRewards->reserve(numberOfQuotientChoices);
-                for (auto const representativeChoice : toRepresentativeChoice) {
-                    stateActionRewards->push_back(rm.getStateActionReward(representativeChoice));
-                }
-            }
-            STORM_LOG_THROW(!rm.hasTransitionRewards(), storm::exceptions::NotSupportedException,
-                            "Transition rewards are not supported for quotient construction");
-            components.rewardModels.emplace(r, storm::models::sparse::StandardRewardModel<ValueType>(std::move(stateRewards), std::move(stateActionRewards)));
         }
+        if (rm.hasStateActionRewards()) {
+            stateActionRewards.emplace();
+            stateActionRewards->reserve(numberOfQuotientChoices);
+            for (auto const representativeChoice : toRepresentativeChoice) {
+                stateActionRewards->push_back(rm.getStateActionReward(representativeChoice));
+            }
+        }
+        STORM_LOG_THROW(!rm.hasTransitionRewards(), storm::exceptions::NotSupportedException, "Transition rewards are not supported for quotient construction");
+        components.rewardModels.emplace(r, storm::models::sparse::StandardRewardModel<ValueType>(std::move(stateRewards), std::move(stateActionRewards)));
     }
 
     // build model type specific components
