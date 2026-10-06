@@ -106,8 +106,8 @@ Initialization<ValueType>::Initialization(storm::models::sparse::Model<ValueType
             // Step (and reward) bounds are not, which is why we only enable the time-based cases here.
             preservedFragment.setBoundedUntilFormulasAllowed(true)
                 .setTimeBoundedUntilFormulasAllowed(true)
-            .setStepBoundedUntilFormulasAllowed(false)
-            .setRewardOperatorsAllowed(false)
+                .setStepBoundedUntilFormulasAllowed(false)
+                .setRewardOperatorsAllowed(false)
                 .setTimeOperatorsAllowed(true)
                 .setReachbilityTimeFormulasAllowed(true);
         }
